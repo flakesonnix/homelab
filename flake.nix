@@ -27,6 +27,15 @@
         lib = nixpkgs.lib;
       };
 
+      mkIso = import ./lib/mk-iso.nix {
+        inherit
+          nixpkgs
+          system
+          self
+          ;
+        lib = nixpkgs.lib;
+      };
+
       mkSys = mkSystem.mkSys;
 
       hosts = { };
@@ -45,5 +54,9 @@
       nixosConfigurations = builtins.mapAttrs (_: host: host.conf) hosts;
 
       deploy.nodes = builtins.mapAttrs (_: host: host.deploy) hosts;
+
+      iso = mkIso.mkCalamaresIso "installer" [ ./hosts/iso ];
+
+      packages.x86_64-linux.iso = mkIso.mkCalamaresIso "installer" [ ./hosts/iso ];
     };
 }
