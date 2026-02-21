@@ -6,6 +6,8 @@ in
 {
   imports = [ calamaresModule ];
 
+  boot.zfs.enable = false;
+
   nixpkgs.config = {
     allowBroken = true;
     allowUnfree = true;
