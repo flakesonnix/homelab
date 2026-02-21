@@ -48,6 +48,7 @@
           deploy-rs.packages.${system}.deploy-rs
           nil
           nixfmt-rfc-style
+	  nix-output-monitor
         ];
       };
 

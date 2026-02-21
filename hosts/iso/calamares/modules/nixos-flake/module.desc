@@ -1,0 +1,8 @@
+# NixOS Flake Installation Module
+# This module installs NixOS from a flake instead of generating configuration.nix
+
+---
+type: job
+name: nixos-flake
+interfaces: [python, qtprocess]
+script: main.py
