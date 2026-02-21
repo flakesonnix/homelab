@@ -13,21 +13,24 @@ in
 
   boot.supportedFilesystems = [ "btrfs" "ext4" "vfat" "ntfs" "xfs" ];
 
+  boot.kernelModules = [ "mptsas" "sg" ];
+
   nix.settings.experimental-features = [
     "nix-command"
     "flakes"
   ];
 
+  isoImage.squashfsCompression = "zstd -Xcompression-level 6";
+
   environment.systemPackages = with pkgs; [
     git
-    vim
-    wget
-    curl
     hostnameSelector
     flakeInstaller
   ];
 
   boot.kernelPackages = pkgs.linuxPackages_latest;
+
+  services.xserver.videoDrivers = [ "nvidia" "amdgpu" "intel" ];
 
   nixpkgs.hostPlatform = "x86_64-linux";
 
