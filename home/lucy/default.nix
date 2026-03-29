@@ -6,6 +6,7 @@
     ./git.nix
     ./editor.nix
     ./packages.nix
+    ../modules/home/niri.nix
   ];
 
   home = {
@@ -15,4 +16,6 @@
   };
 
   programs.home-manager.enable = true;
+
+  lucy.niri.enable = true;
 }
