@@ -8,15 +8,9 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    niri-flake = {
-      url = "github:sodiboo/niri-flake";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.nixpkgs-stable.follows = "nixpkgs";
-    };
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, niri-flake, ... }:
+  outputs = inputs@{ self, nixpkgs, home-manager, ... }:
     {
       lib = import ./lib;
 
@@ -38,10 +32,7 @@
 
       homeConfigurations."lucy@p50" = home-manager.lib.homeManagerConfiguration {
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
-        modules = [
-          (import ./home/lucy)
-          niri-flake.homeModules.niri
-        ];
+        modules = [ import ./home/lucy ];
       };
 
       devShells.x86_64-linux.default = nixpkgs.legacyPackages.x86_64-linux.mkShell {
