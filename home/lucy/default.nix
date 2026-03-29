@@ -12,91 +12,105 @@
   programs.waybar = {
     enable = true;
     package = pkgs.waybar;
-    settings = [
-      {
+    settings = {
+      main = {
         layer = "top";
         position = "top";
         height = 30;
         modules-left = [ "niri/workspaces" "niri/window" ];
         modules-center = [ "clock" ];
         modules-right = [ "tray" "network" "pulseaudio" "battery" "cpu" "memory" ];
+      };
 
-        "niri/workspaces" = {
-          format = "{icon}";
-          format-icons = [ "1" "2" "3" "4" "5" "6" "7" "8" "9" ];
-          persistent-workspaces = {
-            "*" = 5;
-          };
+      "niri/workspaces" = {
+        format = "{}";
+        persistent-workspaces = {
+          "*" = 5;
         };
+      };
 
-        "niri/window" = {
-          max-length = 50;
-        };
+      "niri/window" = {
+        max-length = 50;
+      };
 
-        clock = {
-          format = "%a %d %b  %H:%M";
-          format-alt = "{:%a, %d %b %Y}";
-          tooltip-format = "<big>{:%Y}</big>\n<tt><calendar></calendar></tt>";
-          interval = 1;
-        };
+      clock = {
+        format = "{:%a %d %b %H:%M}";
+        interval = 1;
+      };
 
-        tray = {
-          spacing = 10;
-        };
+      network = {
+        format-wifi = "wifi {}%";
+        format-ethernet = "eth";
+        format-disconnected = "off";
+        interval = 5;
+      };
 
-        network = {
-          format-wifi = "wifi {signalStrength}%";
-          format-ethernet = "eth";
-          format-disconnected = "off";
-          format-alt = "{ifname}: {ipaddr}";
-          interval = 5;
-        };
+      pulseaudio = {
+        format = "vol {}%";
+        format-muted = "mute";
+        on-click = "pavucontrol";
+      };
 
-        pulseaudio = {
-          format = "vol {volume}%";
-          format-muted = "mute";
-          on-click = "pavucontrol";
+      battery = {
+        format = "{}%";
+        format-charging = "chr {}%";
+        format-plugged = "pwr {}%";
+        states = {
+          good = 60;
+          warning = 30;
+          critical = 15;
         };
+      };
 
-        battery = {
-          states = {
-            good = 60;
-            warning = 30;
-            critical = 15;
-          };
-          format = "{icon} {capacity}%";
-          format-charging = "CHR {capacity}%";
-          format-plugged = "PWR {capacity}%";
-          format-alt = "{icon} {time}";
-          format-icons = [ "0" "1" "2" "3" "4" "5" "6" "7" "8" "9" ];
-        };
+      cpu = {
+        format = "cpu {}%";
+        on-click = "alacritty -e htop";
+        interval = 2;
+      };
 
-        cpu = {
-          format = "cpu {usage}%";
-          on-click = "alacritty -e htop";
-          interval = 2;
-          states = {
-            high = 85;
-            medium = 70;
-          };
-        };
+      memory = {
+        format = "mem {}%";
+        on-click = "alacritty -e htop";
+        interval = 2;
+      };
+    };
 
-        memory = {
-          format = "mem {used:0.1f}G";
-          on-click = "alacritty -e htop";
-          interval = 2;
-        };
+    style = ''
+      * {
+        font-family: "JetBrains Mono", "monospace";
+        font-size: 12px;
       }
-    ];
+      window#waybar {
+        background: #1d2021;
+        color: #ebdbb2;
+      }
+      #workspaces button {
+        padding: 0 8px;
+      }
+      #workspaces button.active {
+        color: #fb4934;
+      }
+      #clock, #battery, #cpu, #memory, #network, #pulseaudio, #tray {
+        padding: 0 10px;
+      }
+      #battery.warning {
+        color: #fabd2f;
+      }
+      #battery.critical {
+        color: #fb4934;
+      }
+      #cpu.warning, #memory.warning {
+        color: #fabd2f;
+      }
+    '';
   };
-
-  stylix.targets.waybar.font = "monospace";
 
   stylix = {
     enable = true;
     base16Scheme = "${pkgs.base16-schemes}/share/themes/gruvbox-dark-hard.yaml";
     targets.gnome.enable = false;
     targets.waybar.enable = true;
+    targets.waybar.font = "monospace";
   };
 
   gtk = {
