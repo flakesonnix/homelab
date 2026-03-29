@@ -9,11 +9,95 @@
     # (import ../../modules/home/ssh.nix)
   ];
 
-  # lucy.ssh.enable = true;
+  programs.waybar = {
+    enable = true;
+    package = pkgs.waybar;
+    settings = [
+      {
+        layer = "top";
+        position = "top";
+        height = 30;
+        modules-left = [ "niri/workspaces" "niri/window" ];
+        modules-center = [ "clock" ];
+        modules-right = [ "tray" "network" "pulseaudio" "battery" "cpu" "memory" ];
+
+        "niri/workspaces" = {
+          format = "{icon}";
+          format-icons = [ "1" "2" "3" "4" "5" "6" "7" "8" "9" ];
+          persistent-workspaces = {
+            "*" = 5;
+          };
+        };
+
+        "niri/window" = {
+          max-length = 50;
+        };
+
+        clock = {
+          format = "%A %d %B  %H:%M";
+          format-alt = "{:%A, %d %B %Y}";
+          tooltip-format = "<big>{:%Y}</big>\n<tt><calendar></calendar></tt>";
+          interval = 1;
+        };
+
+        tray = {
+          spacing = 10;
+        };
+
+        network = {
+          format-wifi = "󰤨 {signalStrength}%";
+          format-ethernet = "󰈀 ETH";
+          format-disconnected = "󰤭";
+          format-alt = "{ifname}: {ipaddr}";
+          interval = 5;
+        };
+
+        pulseaudio = {
+          format = "󰕾 {volume}%";
+          format-muted = "󰝟";
+          format-icons = {
+            default = [ "󰕿" "󰖀" "󰕾" ];
+          };
+          on-click = "pavucontrol";
+        };
+
+        battery = {
+          states = {
+            good = 60;
+            warning = 30;
+            critical = 15;
+          };
+          format = "{icon} {capacity}%";
+          format-charging = "󰂄 {capacity}%";
+          format-plugged = "󰂄 {capacity}%";
+          format-alt = "{icon} {time}";
+          format-icons = [ "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ];
+        };
+
+        cpu = {
+          format = "󰻠 {usage}%";
+          on-click = "alacritty -e htop";
+          interval = 2;
+          states = {
+            high = 85;
+            medium = 70;
+          };
+        };
+
+        memory = {
+          format = "󰍭 {used:0.1f}GiB / {total:0.1f}GiB";
+          on-click = "alacritty -e htop";
+          interval = 2;
+        };
+      }
+    ];
+  };
+
   stylix = {
     enable = true;
     base16Scheme = "${pkgs.base16-schemes}/share/themes/gruvbox-dark-hard.yaml";
     targets.gnome.enable = false;
+    targets.waybar.enable = true;
   };
 
   home = {
@@ -41,6 +125,8 @@
       layout {
         gaps 16
       }
+
+      spawn-at-startup "waybar"
 
       binds {
         Mod+Shift+Slash {

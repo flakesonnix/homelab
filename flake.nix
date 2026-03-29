@@ -45,16 +45,7 @@
         modules = [ import ./home/lucy stylix.homeModules.stylix ];
       };
 
-      packages.x86_64-linux =
-        let
-          docs = import ./docs { pkgs = nixpkgs.legacyPackages.x86_64-linux; };
-        in
-        {
-          docs = docs;
-          docs-html = docs.out;
-          docs-pdf = docs.out;
-          docs-epub = docs.out;
-        };
+      packages.x86_64-linux = { };
 
       devShells.x86_64-linux.default = nixpkgs.legacyPackages.x86_64-linux.mkShell {
         packages = with nixpkgs.legacyPackages.x86_64-linux; [

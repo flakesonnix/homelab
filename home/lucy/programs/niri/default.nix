@@ -25,7 +25,7 @@ let
       Mod+Shift+Slash {
         show-hotkey-overlay
       }
-      Mod+T {
+      Mod+Return {
         spawn "alacritty"
       }
       Mod+D {
