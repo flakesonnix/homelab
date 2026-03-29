@@ -150,6 +150,8 @@
         gaps 16
       }
 
+      prefer-no-csd
+
       spawn-at-startup "waybar"
 
       binds {
