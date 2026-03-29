@@ -12,6 +12,9 @@
   programs.waybar = {
     enable = true;
     package = pkgs.waybar;
+    systemd = {
+      enable = true;
+    };
     settings = {
       main = {
         layer = "top";
@@ -169,8 +172,6 @@
       }
 
       prefer-no-csd
-
-      spawn-at-startup "waybar"
 
       binds {
         Mod+Shift+Slash {
