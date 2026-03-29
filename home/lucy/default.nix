@@ -12,103 +12,19 @@
   programs.waybar = {
     enable = true;
     package = pkgs.waybar;
-    systemd = {
-      enable = true;
-    };
-    settings = {
-      main = {
+    settings = [
+      {
         layer = "top";
         position = "top";
         height = 30;
-        modules-left = [ "niri/workspaces" "niri/window" ];
+        modules-left = [ "niri/workspaces" ];
         modules-center = [ "clock" ];
-        modules-right = [ "tray" "network" "pulseaudio" "battery" "cpu" "memory" ];
-      };
-
-      "niri/workspaces" = {
-        format = "{}";
-        persistent-workspaces = {
-          "*" = 5;
-        };
-      };
-
-      "niri/window" = {
-        max-length = 50;
-      };
-
-      clock = {
-        format = "{:%a %d %b %H:%M}";
-        interval = 1;
-      };
-
-      network = {
-        format-wifi = "wifi {}%";
-        format-ethernet = "eth";
-        format-disconnected = "off";
-        interval = 5;
-      };
-
-      pulseaudio = {
-        format = "vol {}%";
-        format-muted = "mute";
-        on-click = "pavucontrol";
-      };
-
-      battery = {
-        format = "{}%";
-        format-charging = "chr {}%";
-        format-plugged = "pwr {}%";
-        states = {
-          good = 60;
-          warning = 30;
-          critical = 15;
-        };
-      };
-
-      cpu = {
-        format = "cpu {}%";
-        on-click = "alacritty -e htop";
-        interval = 2;
-      };
-
-      memory = {
-        format = "mem {}%";
-        on-click = "alacritty -e htop";
-        interval = 2;
-      };
+        modules-right = [ "battery" "cpu" "memory" ];
+      }
+    ];
+    systemd = {
+      enable = true;
     };
-
-    style = ''
-      * {
-        font-family: "JetBrains Mono", "Symbols Nerd Font", "monospace";
-        font-size: 13px;
-      }
-      window#waybar {
-        background: #1d2021;
-        color: #ebdbb2;
-      }
-      #workspaces {
-        padding: 0 8px;
-      }
-      #workspaces button {
-        padding: 0 4px;
-      }
-      #workspaces button.active {
-        color: #fb4934;
-      }
-      #clock, #battery, #cpu, #memory, #network, #pulseaudio, #tray {
-        padding: 0 12px;
-      }
-      #battery.warning {
-        color: #fabd2f;
-      }
-      #battery.critical {
-        color: #fb4934;
-      }
-      #cpu.warning, #memory.warning {
-        color: #fabd2f;
-      }
-    '';
   };
 
   home.packages = with pkgs; [
