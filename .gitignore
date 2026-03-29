@@ -1,0 +1,16 @@
+# Nix
+result
+result-*
+*.drv
+*.nar
+
+# direnv
+.direnv
+
+# editor
+*.swp
+*.swo
+*~
+
+# build outputs
+哥 德巴赫
