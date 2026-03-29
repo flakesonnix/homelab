@@ -36,11 +36,25 @@
         modules = [ import ./home/lucy ];
       };
 
+      packages.x86_64-linux =
+        let
+          docs = import ./docs { pkgs = nixpkgs.legacyPackages.x86_64-linux; };
+        in
+        {
+          docs = docs;
+          docs-html = docs.out;
+          docs-pdf = docs.out;
+          docs-epub = docs.out;
+        };
+
       devShells.x86_64-linux.default = nixpkgs.legacyPackages.x86_64-linux.mkShell {
         packages = with nixpkgs.legacyPackages.x86_64-linux; [
           nixpkgs-fmt
           nil
           git
+          pandoc
+          texliveMinimal
+          librsvg
         ];
       };
 
