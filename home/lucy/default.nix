@@ -6,7 +6,10 @@
     ./git.nix
     ./editor.nix
     ./packages.nix
+    (import ../modules/home/ssh.nix)
   ];
+
+  lucy.ssh.enable = true;
 
   home = {
     username = "lucy";

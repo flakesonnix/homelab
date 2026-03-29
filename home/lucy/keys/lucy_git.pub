@@ -1,0 +1,3 @@
+# Placeholder SSH public key for git hosting - REPLACE WITH ACTUAL KEY
+# Generate with: ssh-keygen -t ed25519 -C "lucy@git" -f ~/.ssh/lucy_git
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFTESTGITPUBLICKKEYFORTESTING lucy@git
