@@ -1,3 +1,6 @@
+# NOT AFFECTED by Lassulus/wrappers PR #135
+# This wrapper uses pkgs.stdenvNoCC.mkDerivation directly, not the wrappers library.
+# PR #135 adds hot-reloading to wrappers' niri module (not used here).
 { pkgs ? import <nixpkgs> { } }:
 
 let

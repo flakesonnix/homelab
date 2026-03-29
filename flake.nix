@@ -2,15 +2,20 @@
   description = "NixOS dotfiles for lucy";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     home-manager = {
-      url = "github:nix-community/home-manager";
+      url = "github:nix-community/home-manager/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    stylix = {
+      url = "github:nix-community/stylix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, ... }:
+  outputs = inputs@{ self, nixpkgs, home-manager, stylix, ... }:
     let
       myLib = import ./lib;
     in
@@ -21,19 +26,23 @@
         system = "x86_64-linux";
         modules = [
           ./nix-settings.nix
+          home-manager.nixosModules.home-manager
           {
             p50.nixSettings = true;
             imports = [ ./hosts/p50 ];
             users.users.lucy.isNormalUser = true;
             users.users.lucy.description = "Lucy";
             users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
+            home-manager.users.lucy = {
+              imports = [ ./home/lucy stylix.homeModules.stylix ];
+            };
           }
         ];
       };
 
       homeConfigurations."lucy@p50" = home-manager.lib.homeManagerConfiguration {
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
-        modules = [ import ./home/lucy ];
+        modules = [ import ./home/lucy stylix.homeModules.stylix ];
       };
 
       packages.x86_64-linux =

@@ -28,6 +28,7 @@
   time.timeZone = "Europe/Berlin";
 
   # Select internationalisation properties.
+  i18n.inputMethod.enable = false;
   i18n.defaultLocale = "en_US.UTF-8";
 
   i18n.extraLocaleSettings = {
@@ -76,7 +77,12 @@
     description = "Lucy";
     extraGroups = [ "networkmanager" "wheel" ];
     packages = with pkgs; [
-    #  thunderbird
+      niri
+      alacritty
+      zathura
+      fzf
+      bat
+      discord
     ];
   };
 
@@ -104,7 +110,7 @@
   # List services that you want to enable:
 
   # Enable the OpenSSH daemon.
-  # services.openssh.enable = true;
+  services.openssh.enable = true;
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
