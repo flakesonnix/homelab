@@ -77,21 +77,24 @@
 
     style = ''
       * {
-        font-family: "JetBrains Mono", "monospace";
-        font-size: 12px;
+        font-family: "JetBrains Mono", "Symbols Nerd Font", "monospace";
+        font-size: 13px;
       }
       window#waybar {
         background: #1d2021;
         color: #ebdbb2;
       }
-      #workspaces button {
+      #workspaces {
         padding: 0 8px;
+      }
+      #workspaces button {
+        padding: 0 4px;
       }
       #workspaces button.active {
         color: #fb4934;
       }
       #clock, #battery, #cpu, #memory, #network, #pulseaudio, #tray {
-        padding: 0 10px;
+        padding: 0 12px;
       }
       #battery.warning {
         color: #fabd2f;
@@ -104,6 +107,10 @@
       }
     '';
   };
+
+  home.packages = with pkgs; [
+    jetbrains-mono
+  ];
 
   stylix = {
     enable = true;
