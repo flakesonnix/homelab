@@ -7,9 +7,11 @@
     ./editor.nix
     ./packages.nix
     (import ../modules/home/ssh.nix)
+    (import ../modules/home/stylix.nix)
   ];
 
   lucy.ssh.enable = true;
+  lucy.stylix.enable = true;
 
   home = {
     username = "lucy";
