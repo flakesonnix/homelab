@@ -34,8 +34,8 @@
         };
 
         clock = {
-          format = "%A %d %B  %H:%M";
-          format-alt = "{:%A, %d %B %Y}";
+          format = "%a %d %b  %H:%M";
+          format-alt = "{:%a, %d %b %Y}";
           tooltip-format = "<big>{:%Y}</big>\n<tt><calendar></calendar></tt>";
           interval = 1;
         };
@@ -45,19 +45,16 @@
         };
 
         network = {
-          format-wifi = "󰤨 {signalStrength}%";
-          format-ethernet = "󰈀 ETH";
-          format-disconnected = "󰤭";
+          format-wifi = "wifi {signalStrength}%";
+          format-ethernet = "eth";
+          format-disconnected = "off";
           format-alt = "{ifname}: {ipaddr}";
           interval = 5;
         };
 
         pulseaudio = {
-          format = "󰕾 {volume}%";
-          format-muted = "󰝟";
-          format-icons = {
-            default = [ "󰕿" "󰖀" "󰕾" ];
-          };
+          format = "vol {volume}%";
+          format-muted = "mute";
           on-click = "pavucontrol";
         };
 
@@ -68,14 +65,14 @@
             critical = 15;
           };
           format = "{icon} {capacity}%";
-          format-charging = "󰂄 {capacity}%";
-          format-plugged = "󰂄 {capacity}%";
+          format-charging = "CHR {capacity}%";
+          format-plugged = "PWR {capacity}%";
           format-alt = "{icon} {time}";
-          format-icons = [ "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ];
+          format-icons = [ "0" "1" "2" "3" "4" "5" "6" "7" "8" "9" ];
         };
 
         cpu = {
-          format = "󰻠 {usage}%";
+          format = "cpu {usage}%";
           on-click = "alacritty -e htop";
           interval = 2;
           states = {
@@ -85,7 +82,7 @@
         };
 
         memory = {
-          format = "󰍭 {used:0.1f}GiB / {total:0.1f}GiB";
+          format = "mem {used:0.1f}G";
           on-click = "alacritty -e htop";
           interval = 2;
         };
@@ -93,11 +90,17 @@
     ];
   };
 
+  stylix.targets.waybar.font = "monospace";
+
   stylix = {
     enable = true;
     base16Scheme = "${pkgs.base16-schemes}/share/themes/gruvbox-dark-hard.yaml";
     targets.gnome.enable = false;
     targets.waybar.enable = true;
+  };
+
+  gtk = {
+    gtk4.theme = null;
   };
 
   home = {
