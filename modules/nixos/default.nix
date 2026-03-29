@@ -2,7 +2,7 @@
 
 {
   imports = [
-    ./niri.nix
+    ./nix-settings.nix
   ];
 
   options.lucy.nixos = {

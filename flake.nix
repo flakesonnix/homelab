@@ -2,7 +2,7 @@
   description = "NixOS dotfiles for lucy";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/24.11";
 
     home-manager = {
       url = "github:nix-community/home-manager";
@@ -11,23 +11,24 @@
   };
 
   outputs = inputs@{ self, nixpkgs, home-manager, ... }:
+    let
+      myLib = import ./lib;
+    in
     {
-      lib = import ./lib;
+      lib = myLib;
 
       nixosConfigurations.p50 = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = { };
-        modules =
-          [
-            ./hosts/p50
-            home-manager.nixosModules.home-manager
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.users.lucy = import ./home/lucy;
-            }
-            ./modules/nixos
-          ];
+        modules = [
+          ./nix-settings.nix
+          {
+            p50.nixSettings = true;
+            imports = [ ./hosts/p50 ];
+            users.users.lucy.isNormalUser = true;
+            users.users.lucy.description = "Lucy";
+            users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
+          }
+        ];
       };
 
       homeConfigurations."lucy@p50" = home-manager.lib.homeManagerConfiguration {
