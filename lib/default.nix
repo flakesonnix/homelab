@@ -1,4 +1,3 @@
-{ innerLib }@lib:
 {
   mkUser =
     { username

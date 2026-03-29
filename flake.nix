@@ -11,15 +11,12 @@
   };
 
   outputs = inputs@{ self, nixpkgs, home-manager, ... }:
-    let
-      lib = import ./lib;
-    in
     {
       lib = import ./lib;
 
       nixosConfigurations.p50 = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        specialArgs = { inherit lib; };
+        specialArgs = { };
         modules =
           [
             ./hosts/p50
