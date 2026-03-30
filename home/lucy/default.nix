@@ -20,10 +20,40 @@
         modules-left = [ "niri/workspaces" ];
         modules-center = [ "clock" ];
         modules-right = [ "battery" "cpu" "memory" ];
+        "niri/workspaces" = {
+          format = "{}";
+        };
+        clock = {
+          format = "{:%H:%M}";
+          interval = 1;
+        };
+        cpu = {
+          format = "{}%";
+          interval = 2;
+        };
+        memory = {
+          format = "{}%";
+          interval = 2;
+        };
+        battery = {
+          format = "{}%";
+          interval = 60;
+        };
       }
     ];
+    style = ''
+      * {
+        font-family: monospace;
+        font-size: 12px;
+      }
+      window#waybar {
+        background: #1a1520;
+        color: #a990af;
+      }
+    '';
     systemd = {
       enable = true;
+      targets = [ "graphical-session.target" ];
     };
   };
 
