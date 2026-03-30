@@ -124,7 +124,6 @@ in
     vesktop
     vlc
     p7zip
-    tor-browser
     teamspeak3
     teamspeak6-client
   ];
