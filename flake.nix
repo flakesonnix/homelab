@@ -18,9 +18,14 @@
       url = "github:lassulus/wrappers";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nix-flatpak = {
+      url = "github:gmodena/nix-flatpak";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, stylix, wrappers, ... }:
+  outputs = inputs@{ self, nixpkgs, home-manager, stylix, wrappers, nix-flatpak, ... }:
     let
       myLib = import ./lib;
     in
@@ -41,7 +46,11 @@
             users.users.lucy.description = "Lucy";
             users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
             home-manager.users.lucy = {
-              imports = [ ./home/lucy stylix.homeModules.stylix ];
+              imports = [ 
+                ./home/lucy 
+                stylix.homeModules.stylix
+                nix-flatpak.homeManagerModules.nix-flatpak
+              ];
             };
           }
         ];

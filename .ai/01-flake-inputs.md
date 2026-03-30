@@ -71,6 +71,24 @@ github:lassulus/wrappers
 
 ---
 
+## Input: nix-flatpak
+
+### URL
+```
+github:gmodena/nix-flatpak
+```
+
+### Purpose
+- Declarative flatpak management for NixOS/home-manager
+- Used for: TeamSpeak via flatpak (avoids qtwebengine dependency)
+
+### Wiring
+- `nix-flatpak.homeManagerModules.nix-flatpak` imported in home-manager
+- `services.flatpak.packages` for flatpak installation
+- `inputs.nixpkgs.follows = "nixpkgs"` to deduplicate
+
+---
+
 ## Not Yet Integrated
 
 ### flake-parts

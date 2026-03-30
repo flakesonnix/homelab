@@ -15,6 +15,13 @@
   lucy.editor.enable = true;
   lucy.easyeffects.enable = true;
 
+  services.flatpak = {
+    enable = true;
+    packages = [
+      "com.teamspeak.TeamSpeak"
+    ];
+  };
+
   programs.waybar = {
     enable = true;
     package = pkgs.waybar;

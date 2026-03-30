@@ -132,13 +132,15 @@ lucy.easyeffects.enable = true;
 ## Decision 7: Package Additions
 
 ### Packages Added
-- vlc, p7zip, tor-browser: User requested
-- teamspeak3, teamspeak6-client: User requested
+- vlc, p7zip: User requested
+- thunderbird: Email client
+- teamspeak6-client: Voice chat (from nixpkgs)
 - easyeffects: User requested with presets
 - noisetorch: Noise suppression for microphone
 - vesktop: Discord client with Vencord (replaced discord)
 - btop, htop: System monitoring tools
 - hyfetch: Pride-themed neofetch with transgender flag
+- com.teamspeak.TeamSpeak: TeamSpeak via flatpak
 
 ---
 
@@ -164,19 +166,43 @@ environment.systemPackages = [ hyfetch-wrapped ];
 
 ---
 
-## Decision 9: QtWebEngine Workaround for Tor Browser
+## Decision 9: QtWebEngine Workaround (Removed)
 
 ### Context
-Tor browser depends on qtwebengine which is marked as insecure in nixpkgs.
+Originally added for tor-browser and teamspeak3 which depended on qtwebengine.
 
 ### Decision
-Add qtwebengine-5.15.19 to permittedInsecurePackages.
+Removed tor-browser and teamspeak3 to eliminate qtwebengine dependency.
+
+### Current Status
+No longer needed - qtwebengine workaround removed.
+
+---
+
+## Decision 10: Nix-Flatpak for TeamSpeak
+
+### Context
+User wanted TeamSpeak but nixpkgs version pulls in insecure qtwebengine. Flatpak version is cleaner.
+
+### Decision
+Use nix-flatpak to install TeamSpeak via flatpak in home-manager.
 
 ### Implementation
 ```nix
-nixpkgs.config.permittedInsecurePackages = [
-  "qtwebengine-5.15.19"
-];
+# In flake.nix:
+nix-flatpak = {
+  url = "github:gmodena/nix-flatpak";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
+
+# In flake.nix nixosConfigurations:
+homeManagerModules.nix-flatpak  # in home-manager imports
+
+# In home/lucy/default.nix:
+services.flatpak = {
+  enable = true;
+  packages = [ "com.teamspeak.TeamSpeak" ];
+};
 ```
 
 ---

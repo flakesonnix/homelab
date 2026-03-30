@@ -3,15 +3,18 @@
 ## Git Status
 ```
 On branch master
-Last commit: e04ba71 fix: allow insecure qtwebengine for tor-browser
+Last commit: 16367c7 fix: add qtwebengine workaround for desktop dependencies
 ```
 
 ## Recent Commits
-- `e04ba71` - fix: allow insecure qtwebengine for tor-browser
+- `16367c7` - fix: add qtwebengine workaround for desktop dependencies
+- `92d1adb` - docs: update documentation with latest changes
 - `7bbbb52` - refactor: restructure configuration with profiles and wrappers
 
 ## Changes Made (Uncommitted)
-- hosts/p50/default.nix: Added btop, htop, hyfetch packages with transgender flag wrapper
+- flake.nix: Added nix-flatpak input
+- hosts/p50/default.nix: Removed teamspeak3 (qtwebengine dep), removed qtwebengine workaround
+- home/lucy/default.nix: Added flatpak TeamSpeak
 
 ## Flake Check Status
 ```
@@ -23,6 +26,7 @@ SUCCESS - All flake outputs pass evaluation
 - home-manager (nix-community/home-manager)
 - stylix (nix-community/stylix)
 - wrappers (lassulus/wrappers)
+- nix-flatpak (gmodena/nix-flatpak)
 
 ## Directory Structure
 ```
@@ -73,8 +77,9 @@ SUCCESS - All flake outputs pass evaluation
 ### System (hosts/p50)
 - niri (via programs.niri.enable + wrappers)
 - vesktop (Discord client with Vencord)
-- vlc, p7zip, tor-browser
-- teamspeak3, teamspeak6-client
+- vlc, p7zip
+- thunderbird
+- teamspeak6-client
 - btop, htop
 - hyfetch (with transgender flag via wrappers)
 - noisetorch
@@ -83,3 +88,4 @@ SUCCESS - All flake outputs pass evaluation
 - alacritty, zathura, fzf, bat
 - jetbrains-mono (via home.packages)
 - easyeffects (with JackHack96 presets)
+- com.teamspeak.TeamSpeak (via flatpak)

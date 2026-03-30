@@ -124,17 +124,12 @@ in
     vesktop
     vlc
     p7zip
-    teamspeak3
-    teamspeak6-client
+    thunderbird
   ];
 
   programs.noisetorch.enable = true;
 
   services.openssh.enable = true;
-
-  nixpkgs.config.permittedInsecurePackages = [
-    "qtwebengine-5.15.19"
-  ];
 
   system.stateVersion = "25.11";
 }
