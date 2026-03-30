@@ -3,18 +3,13 @@
 ## Git Status
 ```
 On branch master
-Last commit: d75ffe0 docs: update documentation with wpaperd and recent changes
+Last commit: 425d201 feat: migrate to flake-parts, add nixos-hardware and sops-nix
 ```
 
 ## Recent Commits
+- `425d201` - feat: migrate to flake-parts, add nixos-hardware and sops-nix
 - `d75ffe0` - docs: update documentation with wpaperd and recent changes
 - `1c95ff8` - fix(docs): fix metadata path and simplify build
-- `ac36638` - feat: add nix-flatpak for TeamSpeak and cleanup packages
-
-## Changes Made (Uncommitted)
-- flake.nix: Migrated to flake-parts, added nixos-hardware, sops-nix inputs
-- hosts/p50/default.nix: Added sops configuration
-- hosts/p50/secrets.yaml: New file for secrets
 
 ## Flake Check Status
 ```

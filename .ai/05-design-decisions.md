@@ -331,7 +331,11 @@ services.someService.passwordFile = config.sops.secrets.password.path;
 
 ---
 
-## Future Design Decisions Needed
+## Future Design Decisions
 
-1. **MicroVM Integration**: For running VMs (requires nixos-hardware first)
+All planned features have been implemented:
+- ✅ flake-parts Migration
+- ✅ nixos-hardware Integration
+- ✅ SOPS Integration
+- ⏳ MicroVM Integration (not yet requested)
 
