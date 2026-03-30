@@ -5,9 +5,10 @@ This file documents the structure of key configuration files. For full content, 
 ## Key Files
 
 ### ./flake.nix
-- Entry point for NixOS flake
-- Inputs: nixpkgs (nixos-unstable), home-manager, stylix, wrappers, nix-flatpak
+- Entry point for NixOS flake (uses flake-parts)
+- Inputs: nixpkgs, home-manager, stylix, wrappers, nix-flatpak, nixos-hardware, sops-nix, flake-parts
 - Outputs: nixosConfigurations.p50, homeConfigurations."lucy@p50", devShells, formatter
+- Uses flake-parts for modular organization
 - specialArgs: passes `wrappers` to NixOS modules
 
 ### ./hosts/p50/default.nix
@@ -15,8 +16,12 @@ This file documents the structure of key configuration files. For full content, 
 - Wraps niri with Lassulus wrappers for declarative config
 - Wraps hyfetch with transgender flag
 - Installs packages: alacritty, zathura, fzf, bat, btop, htop, vesktop, vlc, p7zip, thunderbird
-- Enables: programs.niri, programs.noisetorch, services.openssh
+- Enables: programs.niri, programs.noisetorch, services.openssh, sops
 - Spawns at startup: waybar, wpaperd
+
+### ./hosts/p50/secrets.yaml
+- SOPS secrets file for encrypted secrets
+- Add secrets using: `sops set secrets.yaml key value`
 
 ### ./home/lucy/default.nix
 - Home-manager configuration for user lucy
@@ -65,3 +70,7 @@ This file documents the structure of key configuration files. For full content, 
 
 ### Flatpak packages (home/lucy/default.nix → services.flatpak)
 - com.teamspeak.TeamSpeak
+
+### NixOS Modules
+- nixos-hardware/lenovo-thinkpad-p50: Hardware config
+- sops-nix: Secrets management

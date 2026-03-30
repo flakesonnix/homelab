@@ -21,7 +21,7 @@ github:NixOS/nixpkgs/nixos-unstable
 
 ### URL
 ```
-github:nix-community/home-manager
+github:nix-community/home-manager/master
 ```
 
 ### Purpose
@@ -45,7 +45,7 @@ github:nix-community/stylix
 
 ### Purpose
 - Provides theming system for NixOS/home-manager
-- Used for color scheme and font configuration
+- Used for: color scheme and font configuration
 
 ### Wiring
 - `stylix.homeModules.stylix` imported in home configurations
@@ -89,20 +89,61 @@ github:gmodena/nix-flatpak
 
 ---
 
-## Not Yet Integrated
+## Input: nixos-hardware
 
-### flake-parts
-- Not added yet - original hand-rolled flake.nix works fine
-- Would provide: modular flake output organization
+### URL
+```
+github:NixOS/nixos-hardware
+```
+
+### Purpose
+- Hardware-specific NixOS modules for various devices
+- Used for: ThinkPad P50 hardware configuration
+
+### Wiring
+- `nixos-hardware.nixosModules.lenovo-thinkpad-p50` imported in nixosConfigurations
+- `inputs.nixpkgs.follows = "nixpkgs"` to deduplicate
+
+---
+
+## Input: sops-nix
+
+### URL
+```
+github:Mic92/sops-nix
+```
+
+### Purpose
+- Declarative secrets management with age encryption
+- Used for: secrets.yaml-based secret storage
+
+### Wiring
+- `sops-nix.nixosModules.sops` imported in nixosConfigurations
+- `services.sops` configuration in hosts/p50/default.nix
+- `inputs.nixpkgs.follows = "nixpkgs"` to deduplicate
+
+---
+
+## Input: flake-parts
+
+### URL
+```
+github:hercules-ci/flake-parts
+```
+
+### Purpose
+- Modular flake output organization
+- Used for: cleaner flake structure with perSystem configuration
+
+### Wiring
+- `flake-parts.lib.mkFlake { inherit inputs; }` wraps flake outputs
+- `systems` and `perSystem` for multi-system support
+- `inputs.nixpkgs.follows = "nixpkgs"` to deduplicate
+
+---
+
+## Future Integrations
 
 ### microvm.nix
 - Not added yet - requires nixos-hardware first
 - Would provide: declarative microVM management
-
-### sops-nix
-- Not added yet - planned for secrets management
-- Would provide: age-based secrets encryption
-
-### nixos-hardware
-- Not added yet - planned for ThinkPad P50 hardware configuration
-- Would provide: NVIDIA PRIME config, proper hardware modules

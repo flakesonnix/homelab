@@ -133,5 +133,13 @@ in
 
   services.openssh.enable = true;
 
+  sops = {
+    defaultSopsFile = ./secrets.yaml;
+    age = {
+      generateKey = true;
+    };
+    secrets = { };
+  };
+
   system.stateVersion = "25.11";
 }

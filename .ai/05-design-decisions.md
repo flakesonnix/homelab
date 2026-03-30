@@ -245,9 +245,93 @@ Added Mod+W as additional binding for close-window.
 
 ---
 
+## Decision 13: Flake-Parts Migration
+
+### Context
+User requested flake-parts migration for better flake organization.
+
+### Decision
+Migrate flake.nix to use flake-parts for modular output organization.
+
+### Implementation
+```nix
+flake-parts = {
+  url = "github:hercules-ci/flake-parts";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
+
+# In outputs:
+flake-parts.lib.mkFlake { inherit inputs; } (
+  {
+    systems = [ "x86_64-linux" ];
+    perSystem = { config, pkgs, ... }: {
+      devShells.default = pkgs.mkShell { ... };
+      formatter = pkgs.nixpkgs-fmt;
+    };
+  }
+  //
+  { flake = { ... }; }
+);
+```
+
+---
+
+## Decision 14: NixOS-Hardware Integration
+
+### Context
+User requested nixos-hardware for ThinkPad P50 hardware configuration.
+
+### Decision
+Import lenovo-thinkpad-p50 module from nixos-hardware.
+
+### Implementation
+```nix
+nixos-hardware = {
+  url = "github:NixOS/nixos-hardware";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
+
+# In nixosConfigurations:
+nixos-hardware.nixosModules.lenovo-thinkpad-p50
+```
+
+---
+
+## Decision 15: SOPS-Nix for Secrets
+
+### Context
+User requested secrets management with age encryption.
+
+### Decision
+Configure sops-nix for declarative secrets management.
+
+### Implementation
+```nix
+sops-nix = {
+  url = "github:Mic92/sops-nix";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
+
+# In nixosConfigurations:
+sops-nix.nixosModules.sops
+
+# In hosts/p50/default.nix:
+sops = {
+  defaultSopsFile = ./secrets.yaml;
+  age.generateKey = true;
+  secrets = { };
+};
+```
+
+### Usage
+Add secrets to `secrets.yaml` and use in configuration:
+```nix
+services.someService.passwordFile = config.sops.secrets.password.path;
+```
+
+---
+
 ## Future Design Decisions Needed
 
 1. **MicroVM Integration**: For running VMs (requires nixos-hardware first)
-2. **nixos-hardware Integration**: Proper GPU/PRIME config for ThinkPad P50
-3. **SOPS Integration**: Secrets management with age encryption
-4. **flake-parts Migration**: Could improve flake organization
+

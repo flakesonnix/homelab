@@ -3,18 +3,18 @@
 ## Git Status
 ```
 On branch master
-Last commit: 1c95ff8 fix(docs): fix metadata path and simplify build
+Last commit: d75ffe0 docs: update documentation with wpaperd and recent changes
 ```
 
 ## Recent Commits
+- `d75ffe0` - docs: update documentation with wpaperd and recent changes
 - `1c95ff8` - fix(docs): fix metadata path and simplify build
 - `ac36638` - feat: add nix-flatpak for TeamSpeak and cleanup packages
-- `92d1adb` - docs: update documentation with latest changes
-- `7bbbb52` - refactor: restructure configuration with profiles and wrappers
 
 ## Changes Made (Uncommitted)
-- hosts/p50/default.nix: Added wpaperd to spawn-at-startup, added Mod+W for close-window
-- home/lucy/default.nix: Added wpaperd package and services.wpaperd configuration
+- flake.nix: Migrated to flake-parts, added nixos-hardware, sops-nix inputs
+- hosts/p50/default.nix: Added sops configuration
+- hosts/p50/secrets.yaml: New file for secrets
 
 ## Flake Check Status
 ```
@@ -27,6 +27,9 @@ SUCCESS - All flake outputs pass evaluation
 - stylix (nix-community/stylix)
 - wrappers (lassulus/wrappers)
 - nix-flatpak (gmodena/nix-flatpak)
+- nixos-hardware (NixOS/nixos-hardware)
+- sops-nix (Mic92/sops-nix)
+- flake-parts (hercules-ci/flake-parts)
 
 ## Directory Structure
 ```
@@ -53,6 +56,7 @@ SUCCESS - All flake outputs pass evaluation
   ./p50/
     ./default.nix
     ./hardware-configuration.nix
+    ./secrets.yaml
 ./lib/
   ./default.nix
 ./modules/
