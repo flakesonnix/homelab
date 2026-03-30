@@ -207,6 +207,44 @@ services.flatpak = {
 
 ---
 
+## Decision 11: Wpaperd for Wallpaper
+
+### Context
+User requested wpaperd for Wayland wallpaper daemon with their wallpaper.
+
+### Decision
+Configure wpaperd via home-manager with wallpaper at ~/Pictures/s-l1600.jpg.
+
+### Implementation
+```nix
+# In home/lucy/default.nix:
+home.packages = [ wpaperd ];
+
+services.wpaperd = {
+  enable = true;
+  settings.default = {
+    path = "${config.home.homeDirectory}/Pictures/s-l1600.jpg";
+    scale = "fill";
+    mode = "crop";
+  };
+};
+
+# In niri spawn-at-startup:
+spawn-at-startup = [ "waybar" "wpaperd" ];
+```
+
+---
+
+## Decision 12: Mod+W for Close Window
+
+### Context
+User prefers Mod+W for closing windows (common in many WMs).
+
+### Decision
+Added Mod+W as additional binding for close-window.
+
+---
+
 ## Future Design Decisions Needed
 
 1. **MicroVM Integration**: For running VMs (requires nixos-hardware first)

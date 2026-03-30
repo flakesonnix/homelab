@@ -28,6 +28,7 @@ let
         "Mod+Return" = { spawn = "alacritty"; };
         "Mod+D" = { spawn = "fuzzel"; };
         "Mod+Q" = { "close-window" = null; };
+        "Mod+W" = { "close-window" = null; };
         "Mod+Left" = { "focus-column-left" = null; };
         "Mod+Down" = { "focus-window-down" = null; };
         "Mod+Up" = { "focus-window-up" = null; };
@@ -68,6 +69,7 @@ let
       };
       spawn-at-startup = [
         "waybar"
+        "wpaperd"
       ];
       layout = {
         gaps = 16;

@@ -6,7 +6,7 @@ This file documents the structure of key configuration files. For full content, 
 
 ### ./flake.nix
 - Entry point for NixOS flake
-- Inputs: nixpkgs (nixos-unstable), home-manager, stylix, wrappers
+- Inputs: nixpkgs (nixos-unstable), home-manager, stylix, wrappers, nix-flatpak
 - Outputs: nixosConfigurations.p50, homeConfigurations."lucy@p50", devShells, formatter
 - specialArgs: passes `wrappers` to NixOS modules
 
@@ -14,13 +14,15 @@ This file documents the structure of key configuration files. For full content, 
 - Main host configuration for ThinkPad P50
 - Wraps niri with Lassulus wrappers for declarative config
 - Wraps hyfetch with transgender flag
-- Installs packages: alacritty, zathura, fzf, bat, btop, htop, vesktop, vlc, p7zip, tor-browser, teamspeak3, teamspeak6-client
+- Installs packages: alacritty, zathura, fzf, bat, btop, htop, vesktop, vlc, p7zip, thunderbird
 - Enables: programs.niri, programs.noisetorch, services.openssh
+- Spawns at startup: waybar, wpaperd
 
 ### ./home/lucy/default.nix
 - Home-manager configuration for user lucy
 - Enables modules: lucy.shell, lucy.git, lucy.editor, lucy.easyeffects
-- Configures: programs.waybar, home.packages, stylix, gtk
+- Configures: programs.waybar, home.packages, stylix, gtk, services.wpaperd, services.flatpak
+- Packages: jetbrains-mono, wpaperd
 
 ### ./profiles/base.nix
 - Base profile with common NixOS settings
@@ -51,12 +53,15 @@ This file documents the structure of key configuration files. For full content, 
 
 ### System packages (hosts/p50/default.nix → users.users.lucy.packages)
 - alacritty, zathura, fzf, bat
-- vesktop, vlc, p7zip, tor-browser
-- teamspeak3, teamspeak6-client
-- btop, htop (hyfetch via systemPackages with wrapper)
+- vesktop, vlc, p7zip
+- thunderbird
+- btop, htop
 
 ### User packages (home/lucy/default.nix → home.packages)
-- jetbrains-mono
+- jetbrains-mono, wpaperd
 
 ### Environment packages (hosts/p50/default.nix → environment.systemPackages)
 - niri (wrapped), hyfetch (wrapped)
+
+### Flatpak packages (home/lucy/default.nix → services.flatpak)
+- com.teamspeak.TeamSpeak

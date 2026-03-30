@@ -3,18 +3,18 @@
 ## Git Status
 ```
 On branch master
-Last commit: 16367c7 fix: add qtwebengine workaround for desktop dependencies
+Last commit: 1c95ff8 fix(docs): fix metadata path and simplify build
 ```
 
 ## Recent Commits
-- `16367c7` - fix: add qtwebengine workaround for desktop dependencies
+- `1c95ff8` - fix(docs): fix metadata path and simplify build
+- `ac36638` - feat: add nix-flatpak for TeamSpeak and cleanup packages
 - `92d1adb` - docs: update documentation with latest changes
 - `7bbbb52` - refactor: restructure configuration with profiles and wrappers
 
 ## Changes Made (Uncommitted)
-- flake.nix: Added nix-flatpak input
-- hosts/p50/default.nix: Removed teamspeak3 (qtwebengine dep), removed qtwebengine workaround
-- home/lucy/default.nix: Added flatpak TeamSpeak
+- hosts/p50/default.nix: Added wpaperd to spawn-at-startup, added Mod+W for close-window
+- home/lucy/default.nix: Added wpaperd package and services.wpaperd configuration
 
 ## Flake Check Status
 ```
@@ -79,7 +79,6 @@ SUCCESS - All flake outputs pass evaluation
 - vesktop (Discord client with Vencord)
 - vlc, p7zip
 - thunderbird
-- teamspeak6-client
 - btop, htop
 - hyfetch (with transgender flag via wrappers)
 - noisetorch
@@ -89,3 +88,15 @@ SUCCESS - All flake outputs pass evaluation
 - jetbrains-mono (via home.packages)
 - easyeffects (with JackHack96 presets)
 - com.teamspeak.TeamSpeak (via flatpak)
+- wpaperd (with s-l1600.jpg wallpaper)
+
+## Niri Keybindings
+- Mod+Return: spawn alacritty
+- Mod+D: spawn fuzzel
+- Mod+Q/W: close window
+- Mod+[HJKL/Arrows]: focus navigation
+- Mod+Ctrl+[HJKL/Arrows]: move window
+- Mod+[1-9]: workspace focus
+- Mod+R: switch column width
+- Mod+F: maximize column
+- Mod+Shift+F: fullscreen

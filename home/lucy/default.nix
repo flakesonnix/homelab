@@ -68,7 +68,19 @@
 
   home.packages = with pkgs; [
     jetbrains-mono
+    wpaperd
   ];
+
+  services.wpaperd = {
+    enable = true;
+    settings = {
+      default = {
+        path = "${config.home.homeDirectory}/Pictures/s-l1600.jpg";
+        scale = "fill";
+        mode = "crop";
+      };
+    };
+  };
 
   stylix = {
     enable = true;
