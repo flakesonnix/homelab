@@ -51,10 +51,6 @@
         color: #a990af;
       }
     '';
-    systemd = {
-      enable = true;
-      targets = [ "graphical-session.target" ];
-    };
   };
 
   home.packages = with pkgs; [
@@ -118,6 +114,8 @@
       }
 
       prefer-no-csd
+
+      spawn-at-startup "waybar"
 
       binds {
         Mod+Shift+Slash {
