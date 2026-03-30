@@ -21,6 +21,4 @@
     alsa.support32Bit = true;
     pulse.enable = lib.mkDefault true;
   };
-
-  programs.home-manager.enable = lib.mkDefault true;
 }

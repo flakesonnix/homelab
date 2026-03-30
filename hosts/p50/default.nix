@@ -1,36 +1,90 @@
-# Edit this configuration file to define what should be installed on
-# your system.  Help is available in the configuration.nix(5) man page
-# and in the NixOS manual (accessible by running ‘nixos-help’).
+{ config, pkgs, wrappers, ... }:
 
-{ config, pkgs, ... }:
+let
+  niri-wrapped = wrappers.wrapperModules.niri.apply {
+    inherit pkgs;
+    settings = {
+      input = {
+        keyboard = {
+          xkb = {
+            layout = "us";
+          };
+        };
+        touchpad = {
+          tap = null;
+          "natural-scroll" = null;
+        };
+      };
+      binds = {
+        "Mod+Shift+Slash" = { "show-hotkey-overlay" = null; };
+        "Mod+Return" = { spawn = "alacritty"; };
+        "Mod+D" = { spawn = "fuzzel"; };
+        "Mod+Q" = { "close-window" = null; };
+        "Mod+Left" = { "focus-column-left" = null; };
+        "Mod+Down" = { "focus-window-down" = null; };
+        "Mod+Up" = { "focus-window-up" = null; };
+        "Mod+Right" = { "focus-column-right" = null; };
+        "Mod+H" = { "focus-column-left" = null; };
+        "Mod+J" = { "focus-window-down" = null; };
+        "Mod+K" = { "focus-window-up" = null; };
+        "Mod+L" = { "focus-column-right" = null; };
+        "Mod+Ctrl+Left" = { "move-column-left" = null; };
+        "Mod+Ctrl+Down" = { "move-window-down" = null; };
+        "Mod+Ctrl+Up" = { "move-window-up" = null; };
+        "Mod+Ctrl+Right" = { "move-column-right" = null; };
+        "Mod+Ctrl+H" = { "move-column-left" = null; };
+        "Mod+Ctrl+J" = { "move-window-down" = null; };
+        "Mod+Ctrl+K" = { "move-window-up" = null; };
+        "Mod+Ctrl+L" = { "move-column-right" = null; };
+        "Mod+Page_Down" = { "focus-workspace-down" = null; };
+        "Mod+Page_Up" = { "focus-workspace-up" = null; };
+        "Mod+U" = { "focus-workspace-down" = null; };
+        "Mod+I" = { "focus-workspace-up" = null; };
+        "Mod+1" = { "focus-workspace" = 1; };
+        "Mod+2" = { "focus-workspace" = 2; };
+        "Mod+3" = { "focus-workspace" = 3; };
+        "Mod+4" = { "focus-workspace" = 4; };
+        "Mod+5" = { "focus-workspace" = 5; };
+        "Mod+6" = { "focus-workspace" = 6; };
+        "Mod+7" = { "focus-workspace" = 7; };
+        "Mod+8" = { "focus-workspace" = 8; };
+        "Mod+9" = { "focus-workspace" = 9; };
+        "Mod+Comma" = { "consume-window-into-column" = null; };
+        "Mod+Period" = { "expel-window-from-column" = null; };
+        "Mod+R" = { "switch-preset-column-width" = null; };
+        "Mod+F" = { "maximize-column" = null; };
+        "Mod+Shift+F" = { "fullscreen-window" = null; };
+        "Mod+C" = { "center-column" = null; };
+        "Print" = { screenshot = null; };
+        "Mod+Shift+E" = { quit = null; };
+      };
+      spawn-at-startup = [
+        "waybar"
+      ];
+      layout = {
+        gaps = 16;
+      };
+      extraConfig = ''
+        prefer-no-csd
+      '';
+    };
+  };
+in
 
 {
-  imports =
-    [ # Include the results of the hardware scan.
-      ./hardware-configuration.nix
-    ];
+  imports = [
+    ./hardware-configuration.nix
+  ];
 
-  # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
   networking.hostName = "p50";
-  # networking.wireless.enable = true;  # Enables wireless support via wpa_supplicant.
-
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://user:password@proxy:port/";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
-  # Enable networking
   networking.networkmanager.enable = true;
 
-  # Set your time zone.
   time.timeZone = "Europe/Berlin";
 
-  # Select internationalisation properties.
   i18n.inputMethod.enable = false;
-  i18n.defaultLocale = "en_US.UTF-8";
-
   i18n.extraLocaleSettings = {
     LC_ADDRESS = "de_DE.UTF-8";
     LC_IDENTIFICATION = "de_DE.UTF-8";
@@ -43,87 +97,28 @@
     LC_TIME = "de_DE.UTF-8";
   };
 
-  # Enable the X11 windowing system.
-  services.xserver.enable = true;
+  programs.niri.enable = true;
 
-  # Enable the GNOME Desktop Environment.
-  services.displayManager.gdm.enable = true;
-  services.desktopManager.gnome.enable = true;
+  environment.systemPackages = [ niri-wrapped.wrapper ];
 
-  # Configure keymap in X11
-  services.xserver.xkb = {
-    layout = "us";
-    variant = "";
-  };
+  services.displayManager.sessionPackages = [ niri-wrapped.wrapper ];
 
-  # Enable CUPS to print documents.
-  services.printing.enable = true;
-
-  # Enable sound with pipewire.
-  security.rtkit.enable = true;
-  services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
-  };
-
-  # Enable touchpad support (enabled default in most desktopManager).
-  # services.xserver.libinput.enable = true;
-
-  # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.lucy = {
-    isNormalUser = true;
-    description = "Lucy";
-    extraGroups = [ "networkmanager" "wheel" ];
-    packages = with pkgs; [
-      niri
-      alacritty
-      zathura
-      fzf
-      bat
-      discord
-    ];
-  };
-
-  # Install firefox.
-  programs.firefox.enable = true;
-
-  # Allow unfree packages
-  nixpkgs.config.allowUnfree = true;
-
-  # List packages installed in system profile. To search, run:
-  # $ nix search wget
-  environment.systemPackages = with pkgs; [
-  #  vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-  #  wget
+  users.users.lucy.packages = with pkgs; [
+    alacritty
+    zathura
+    fzf
+    bat
+    discord
+    vlc
+    p7zip
+    tor-browser
+    teamspeak3
+    teamspeak6-client
   ];
 
-  # Some programs need SUID wrappers, can be configured further or are
-  # started in user sessions.
-  # programs.mtr.enable = true;
-  # programs.gnupg.agent = {
-  #   enable = true;
-  #   enableSSHSupport = true;
-  # };
+  programs.noisetorch.enable = true;
 
-  # List services that you want to enable:
-
-  # Enable the OpenSSH daemon.
   services.openssh.enable = true;
 
-  # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ ... ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
-  # Or disable the firewall altogether.
-  # networking.firewall.enable = false;
-
-  # This value determines the NixOS release from which the default
-  # settings for stateful data, like file locations and database versions
-  # on your system were taken. It‘s perfectly fine and recommended to leave
-  # this value at the release version of the first install of this system.
-  # Before changing this value read the documentation for this option
-  # (e.g. man configuration.nix or on https://nixos.org/nixos/options.html).
-  system.stateVersion = "25.11"; # Did you read the comment?
-
+  system.stateVersion = "25.11";
 }

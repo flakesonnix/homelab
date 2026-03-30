@@ -2,54 +2,70 @@
 
 ## Git Status
 ```
-nothing to commit, working tree clean
+working tree dirty (uncommitted changes)
 ```
 
-## Git Log (full history)
-```
-d0f9dff fix: correct NixOS module syntax in nix-settings.nix
-7e602c4 feat: add niri window manager configuration
-37572a9 feat: add niri window manager modules
-66f72e5 feat: add profiles/base.nix and profiles/desktop.nix
-dd9fdb0 refactor: rename host configuration to default.nix
-d3ebd73 feat: add flake.nix with home-manager integration
-1a8827d chore: initialize repository structure
-```
+## Changes Made (Uncommitted)
+- flake.nix: Added profiles/desktop.nix to modules, simplified structure
+- hosts/p50/default.nix: Refactored to use profiles
+- profiles/base.nix: Added GPG agent configuration
+- profiles/desktop.nix: Added as desktop profile
+- modules/nixos/default.nix: Removed nix-settings import (now in flake.nix)
+- modules/home/default.nix: Fixed module signature for NixOS
+- modules/home/stylix.nix: Fixed mkIf condition, custom color scheme
+- home/lucy/default.nix: Added easyeffects module import, enabled stubs
+- home/lucy/shell.nix: Enhanced zsh configuration
+- home/lucy/git.nix: Updated to new home-manager git settings format
+- home/lucy/editor.nix: Enhanced neovim configuration
+- home/lucy/programs/easyeffects/: New module for easyeffects with presets
+- Added packages: teamspeak3, teamspeak6-client, easyeffects
 
-## Current nix flake check Output
+## Flake Check Status
 ```
-evaluating flake...
-checking flake output 'lib'...
-checking flake output 'nixosConfigurations'...
-checking NixOS configuration 'nixosConfigurations.p50'...
-checking flake output 'homeConfigurations'...
-checking flake output 'devShells'...
-derivation evaluated to /nix/store/ibipqjys1f5xs61liap44ndzz2s4mff6-nix-shell.drv
-checking flake output 'formatter'...
-derivation evaluated to /nix/store/km7q5m8jwp5961vyl6c8xpn5a4var108-nixpkgs-fmt-1.3.0.drv
+SUCCESS - All flake outputs pass evaluation
 ```
-
-Exit code: 0 (SUCCESS - NO ERRORS)
-
-## Flake Inputs (from flake.lock)
-See: flake-lock.json
 
 ## Directory Structure
 ```
 ./flake.nix
 ./.gitignore
-./home/lucy/default.nix
-./home/lucy/editor.nix
-./home/lucy/git.nix
-./home/lucy/packages.nix
-./home/lucy/shell.nix
-./hosts/p50/default.nix
-./hosts/p50/hardware-configuration.nix
-./lib/default.nix
-./modules/home/default.nix
-./modules/nixos/default.nix
-./modules/nixos/niri.nix
+./.ai/
+./docs/
+./flake.lock
+./home/
+  ./lucy/
+    ./default.nix
+    ./editor.nix
+    ./git.nix
+    ./packages.nix
+    ./shell.nix
+    ./programs/
+      ./easyeffects/
+      ./alacritty/
+      ./bat/
+      ./fzf/
+      ./niri/
+      ./zathura/
+./hosts/
+  ./p50/
+    ./default.nix
+    ./hardware-configuration.nix
+./lib/
+  ./default.nix
+./modules/
+  ./home/
+    ./default.nix
+    ./latex.nix
+    ./ssh.nix
+    ./stylix.nix
+    ./waybar.nix
+  ./nixos/
+    ./default.nix
+    ./latex.nix
+    ./niri.nix
 ./nix-settings.nix
-./profiles/base.nix
-./profiles/desktop.nix
+./profiles/
+  ./base.nix
+  ./desktop.nix
+./README.md
 ```

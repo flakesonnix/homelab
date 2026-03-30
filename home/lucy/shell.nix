@@ -6,6 +6,13 @@
   };
 
   config = lib.mkIf config.lucy.shell.enable {
-    programs.zsh.enable = true;
+    programs.zsh = {
+      enable = true;
+      enableCompletion = true;
+      syntaxHighlighting.enable = true;
+    };
+    home.sessionVariables = {
+      SHELL = "${pkgs.zsh}/bin/zsh";
+    };
   };
 }

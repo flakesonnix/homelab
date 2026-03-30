@@ -1,277 +1,147 @@
 # Design Decisions - Complete Record
 
-## Decision 1: Nixpkgs Version - 24.11 Instead of nixos-unstable
+## Decision 1: Nixpkgs Version - nixos-unstable (Fixed)
 
 ### Context
-Initial setup intended to use nixos-unstable as per requirements.
+Initially used nixpkgs 24.11 due to nixos-unstable having a bug with mkRenamedOptionModule.
 
 ### Decision
-Use nixpkgs 24.11 (stable) instead of nixos-unstable.
+Switched back to nixos-unstable after the bug was fixed.
 
-### Reason
-The nixos-unstable channel (specifically revision 46db2e09e1d3f113a13c0d7b81e2f221c63b8ce9 from 2026-03-24) has a bug in `nixos/modules/config/console.nix`:
-```
-error: attribute 'mkRenamedOptionModule' missing
-```
-
-This is a breaking change in nixpkgs that was later fixed. Using 24.11 stable provides a working configuration.
-
-### Alternatives Considered
-1. Continue using nixos-unstable and wait for fix - REJECTED: Blocks all progress
-2. Pin to a newer nixos-unstable revision - REJECTED: Could not find working revision
-3. Use NixOS 24.11 stable - ACCEPTED: Works reliably
+### Current Status
+Using nixos-unstable successfully.
 
 ---
 
-## Decision 2: niri-flake Integration - Removed
+## Decision 2: Niri Configuration - Using Lassulus Wrappers
 
 ### Context
-User requested integration of niri-flake for Wayland compositor management.
+User requested using nixpkgs programs.niri module. Initially tried nixpkgs but user wanted wrappers from Lassulus.
 
 ### Decision
-Removed niri-flake after initial integration attempt.
+Use `wrappers.wrapperModules.niri.apply` from Lassulus/wrappers for declarative niri configuration.
 
-### Reason
-When niri-flake was added to the flake inputs and the nixosModules.niri was imported, it triggered the same mkRenamedOptionModule bug:
-```
-error: attribute 'mkRenamedOptionModule' missing
-at /nix/store/fvb3fhm8c193i6692v5223bxpa5w2nv7-source/nixos/modules/config/console.nix
-```
-
-This happens because niri-flake imports nixpkgs modules that reference the broken console.nix.
-
-### Current Approach
-Niri is configured using the nixpkgs package directly (pkgs.niri) without niri-flake:
-- System-level: modules/nixos/niri.nix installs pkgs.niri
-- User-level: home/lucy/default.nix installs pkgs.niri and writes KDL config manually
-
-### Alternatives Considered
-1. Try niri-flake unstable version - REJECTED: Same module compatibility issue
-2. Use pkgs.niri directly - ACCEPTED: Works, minimal configuration needed
-
----
-
-## Decision 3: nixos-hardware Integration - Removed
-
-### Context
-User requested integration of nixos-hardware for ThinkPad P50 (hybrid GPU, specific hardware).
-
-### Decision
-Removed nixos-hardware after initial integration attempt.
-
-### Reason
-Same mkRenamedOptionModule bug triggered when nixos-hardware.nixosModules.lenovo-thinkpad-p50 was imported.
-
-### Hardware Details (Known from nixos-hardware)
-```
-lenovo-thinkpad-p50 imports:
-- common/gpu/nvidia/prime.nix
-- common/gpu/nvidia/maxwell
-- common/cpu/intel
-- ../. (lenovo-thinkpad base)
-
-NVIDIA PRIME config (from prime.nix):
-- hardware.nvidia.prime.offload.enable = true
-- hardware.nvidia.prime.intelBusId = "PCI:0:2:0"
-- hardware.nvidia.prime.nvidiaBusId = "PCI:1:0:0"
-
-Hardware details from hosts/p50/hardware-configuration.nix:
-- boot.kernelModules = [ "kvm-intel" ]
-- Root: LUKS encrypted ext4
-- Boot: EFI vfat
-- Swap: LUKS encrypted
-- CPU: Intel with microcode
-```
-
-### Alternatives Considered
-1. Wait for nixpkgs fix, then re-add - PLANNED: When nixos-unstable works again
-2. Manually configure hardware - ACCEPTED: Current approach in hardware-configuration.nix
-
----
-
-## Decision 4: Network Configuration - Basic NetworkManager
-
-### Context
-p50 has two network interfaces:
-- enp0s31f6: Wired ethernet, 192.168.178.0/24
-- wlp4s0: WiFi
-
-### Decision
-Use NetworkManager for both interfaces with no custom bridge/NAT yet.
-
-### Current Configuration
+### Implementation
 ```nix
-networking.networkmanager.enable = true;
-```
+# In flake.nix:
+wrappers = {
+  url = "github:lassulus/wrappers";
+  inputs.nixpkgs.follows = "nixpkgs";
+};
 
-### Future Plans (NOT YET IMPLEMENTED)
-- microvm.nix integration for running VMs
-- Bridge interface for microvm network isolation
-- NAT for microvm outbound traffic
-
----
-
-## Decision 5: GNOME Desktop Instead of Niri (Initial Setup)
-
-### Context
-Both GNOME and niri are configured but GNOME is the default.
-
-### Decision
-hosts/p50/default.nix enables GNOME:
-```nix
-services.xserver.enable = true;
-services.xserver.displayManager.gdm.enable = true;
-services.xserver.desktopManager.gnome.enable = true;
-```
-
-### User-Level Niri
-home/lucy/default.nix installs niri and provides config, but GNOME is still the primary DE.
-
-### Reason
-GNOME provides a complete desktop environment out of the box. Niri is a more minimal Wayland compositor that requires more manual configuration.
-
----
-
-## Decision 6: lib/default.nix - Minimal Helper Functions
-
-### Context
-Framework goal was to create mkHost, mkUser helpers.
-
-### Decision
-Only mkUser is implemented. mkHost is not needed yet because:
-- nixosConfigurations are defined directly in flake.nix
-- The pattern is simple enough to not need abstraction
-
-### Current lib/default.nix
-```nix
-{
-  mkUser =
-    { username
-    , description ? ""
-    , modules ? [ ]
-    }:
-    {
-      inherit username modules description;
+# In hosts/p50/default.nix:
+let
+  niri-wrapped = wrappers.wrapperModules.niri.apply {
+    inherit pkgs;
+    settings = {
+      input = { ... };
+      binds = { ... };
+      spawn-at-startup = [ "waybar" ];
+      layout = { gaps = 16; };
     };
+  };
+in {
+  environment.systemPackages = [ niri-wrapped.wrapper ];
+  services.displayManager.sessionPackages = [ niri-wrapped.wrapper ];
 }
 ```
 
-### Future Plans
-- Add more helpers as the configuration grows
-- Could add mkHost when more hosts are added
+### Benefits
+- Declarative Nix configuration instead of KDL
+- Generates and validates KDL config automatically
+- Sets NIRI_CONFIG environment variable
+- Type-safe module system
 
 ---
 
-## Decision 7: Host p50 - Username in Both flake.nix and hosts/p50
+## Decision 3: Profile-based Configuration
 
 ### Context
-User lucy is defined in both places.
+Profiles were defined but not used in the original configuration.
 
 ### Decision
-User is defined in flake.nix in the nixosConfigurations.p50 modules list:
-```nix
-users.users.lucy.isNormalUser = true;
-users.users.lucy.description = "Lucy";
-users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
-```
-
-And also in hosts/p50/default.nix (from original nixos-generate-config).
-
-### Reason
-The flake.nix version is for when building via flake. The hosts/p50 version would be for when deploying directly. Currently both are kept for compatibility.
-
----
-
-## Decision 8: Profiles - Not Yet Used
-
-### Context
-profiles/base.nix and profiles/desktop.nix were created.
-
-### Decision
-Profiles are NOT currently imported or used in the active configuration.
-
-### Reason
-The hosts/p50/default.nix has all the configuration directly. Profiles could be imported to provide composable layers:
-- profiles/base.nix: Common system config
-- profiles/desktop.nix: Desktop-specific config
-
-### Future Plans
-- Import profiles into hosts/p50/default.nix for better modularity
-- Use profiles as imports: `imports = [ ../profiles/desktop.nix ];`
-
----
-
-## Decision 9: Home-Manager Modules - Stubs
-
-### Context
-modules/home/default.nix and individual module files (shell.nix, git.nix, etc.) have enable options.
-
-### Decision
-Currently all enable options are false by default:
-```nix
-config = lib.mkIf (lib.mkDefault false) { };
-```
-
-### Reason
-This allows users to opt-in to specific configurations. Currently:
-- lucy.shell.enable = false (not used)
-- lucy.git.enable = false (not used)  
-- lucy.editor.enable = false (not used)
-- lucy.packages.enable = false (not used)
-
-The actual configurations in home/lucy/default.nix are applied unconditionally.
-
-### Future Plans
-- Flip enable options to true as configurations are finalized
-- Or remove the enable options and always apply configurations
-
----
-
-## Decision 10: Constraint - No Garbage Collection
-
-### Context
-Requirements stated: no automatic garbage collection.
+Import profiles/desktop.nix into flake.nix modules for better organization.
 
 ### Implementation
-This constraint is followed by:
-- NOT setting any nix.gc.* options
-- NOT adding any nix-collect-garbage commands
-- nix.settings.auto-optimise-store = true is SET (this is different - it hardlinks, doesn't delete)
+```nix
+modules = [
+  ./nix-settings.nix
+  ./profiles/desktop.nix
+  ./hosts/p50
+  ...
+]
+```
+
+### Profiles
+- `profiles/base.nix`: Common system config (i18n, unfree, firefox, printing, rtkit, gnupg agent)
+- `profiles/desktop.nix`: Desktop config (GDM, GNOME, X server, PipeWire)
 
 ---
 
-## Decision 11: Constraint - No nixpkgs.lib Shadowing
+## Decision 4: Home Manager Module Stubs - Enabled
 
 ### Context
-Early in development, there was an error with mkRenamedOptionModule.
-
-### Root Cause
-The flake.nix had:
-```nix
-specialArgs = { lib = myLib; };
-```
-
-This shadowed nixpkgs.lib with the custom lib, breaking NixOS module system.
+modules/home had stub modules with enable options that were always false.
 
 ### Decision
-Remove specialArgs entirely:
+Enable all module stubs (shell, git, editor) and import them in home/lucy/default.nix.
+
+### Implementation
 ```nix
-nixosConfigurations.p50 = nixpkgs.lib.nixosSystem {
-  system = "x86_64-linux";
-  modules = [ ... ];
-};
+lucy.shell.enable = true;
+lucy.git.enable = true;
+lucy.editor.enable = true;
 ```
 
-### Reason
-NixOS modules need access to nixpkgs.lib. Our custom lib (lib/default.nix) is passed via the flake output `lib = myLib;` which is separate from the NixOS module system's lib.
+---
+
+## Decision 5: Stylix Configuration
+
+### Context
+Stylix was configured inline in home/lucy/default.nix.
+
+### Decision
+Move stylix configuration to a proper module in modules/home/stylix.nix with:
+- Custom base16 color scheme
+- Waybar target enabled
+- GTK theming
+
+### Implementation
+Custom dark color scheme matching original hardcoded values in home/lucy/default.nix.
+
+---
+
+## Decision 6: EasyEffects with Presets
+
+### Context
+User requested EasyEffects with JackHack96 presets.
+
+### Decision
+Created home-manager module that:
+- Installs easyeffects package
+- Fetches presets from JackHack96/EasyEffects-Presets GitHub repo
+- Symlinks preset JSON files to ~/.config/easyeffects/output/
+
+### Implementation
+```nix
+lucy.easyeffects.enable = true;
+```
+
+---
+
+## Decision 7: Package Additions
+
+### Packages Added
+- vlc, p7zip, tor-browser: User requested
+- teamspeak3, teamspeak6-client: User requested
+- easyeffects: User requested with presets
+- noisetorch: Noise suppression for microphone
 
 ---
 
 ## Future Design Decisions Needed
 
-1. **MicroVM Integration**: When nixpkgs is fixed, add microvm.nix for running VMs
-2. **nixos-hardware Integration**: When nixpkgs is fixed, add proper GPU/PRIME config
-3. **GPG/USB Key Integration**: User requested but not yet implemented
-4. **SOPS Integration**: User mentioned but not yet implemented
-5. **flake-parts Migration**: Could improve flake organization
-6. **Profile Usage**: Currently profiles are defined but not used
+1. **MicroVM Integration**: For running VMs (requires nixos-hardware first)
+2. **nixos-hardware Integration**: Proper GPU/PRIME config for ThinkPad P50
+3. **SOPS Integration**: Secrets management with age encryption
+4. **flake-parts Migration**: Could improve flake organization

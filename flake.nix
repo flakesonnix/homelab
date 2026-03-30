@@ -13,9 +13,14 @@
       url = "github:nix-community/stylix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    wrappers = {
+      url = "github:lassulus/wrappers";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, stylix, ... }:
+  outputs = inputs@{ self, nixpkgs, home-manager, stylix, wrappers, ... }:
     let
       myLib = import ./lib;
     in
@@ -24,12 +29,14 @@
 
       nixosConfigurations.p50 = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
+        specialArgs = { inherit wrappers; };
         modules = [
           ./nix-settings.nix
+          ./profiles/desktop.nix
+          ./hosts/p50
           home-manager.nixosModules.home-manager
           {
             p50.nixSettings = true;
-            imports = [ ./hosts/p50 ];
             users.users.lucy.isNormalUser = true;
             users.users.lucy.description = "Lucy";
             users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];

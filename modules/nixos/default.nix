@@ -1,10 +1,6 @@
 { lib, ... }:
 
 {
-  imports = [
-    ./nix-settings.nix
-  ];
-
   options.lucy.nixos = {
     enable = lib.mkEnableOption "lucy's NixOS system configuration";
   };

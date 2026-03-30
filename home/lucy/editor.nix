@@ -6,6 +6,9 @@
   };
 
   config = lib.mkIf config.lucy.editor.enable {
-    programs.neovim.enable = true;
+    programs.neovim = {
+      enable = true;
+      defaultEditor = true;
+    };
   };
 }

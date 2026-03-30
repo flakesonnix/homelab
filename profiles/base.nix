@@ -1,4 +1,4 @@
-{ lib }:
+{ lib, ... }:
 
 {
   imports = [
@@ -19,6 +19,11 @@
   services.printing.enable = true;
 
   security.rtkit.enable = true;
+
+  programs.gnupg.agent = {
+    enable = true;
+    enableSSHSupport = true;
+  };
 
   users.users.lucy = {
     isNormalUser = true;
