@@ -2,28 +2,27 @@
 
 ## Git Status
 ```
-working tree dirty (uncommitted changes)
+On branch master
+Last commit: e04ba71 fix: allow insecure qtwebengine for tor-browser
 ```
 
+## Recent Commits
+- `e04ba71` - fix: allow insecure qtwebengine for tor-browser
+- `7bbbb52` - refactor: restructure configuration with profiles and wrappers
+
 ## Changes Made (Uncommitted)
-- flake.nix: Added profiles/desktop.nix to modules, simplified structure
-- hosts/p50/default.nix: Refactored to use profiles
-- profiles/base.nix: Added GPG agent configuration
-- profiles/desktop.nix: Added as desktop profile
-- modules/nixos/default.nix: Removed nix-settings import (now in flake.nix)
-- modules/home/default.nix: Fixed module signature for NixOS
-- modules/home/stylix.nix: Fixed mkIf condition, custom color scheme
-- home/lucy/default.nix: Added easyeffects module import, enabled stubs
-- home/lucy/shell.nix: Enhanced zsh configuration
-- home/lucy/git.nix: Updated to new home-manager git settings format
-- home/lucy/editor.nix: Enhanced neovim configuration
-- home/lucy/programs/easyeffects/: New module for easyeffects with presets
-- Added packages: teamspeak3, teamspeak6-client, easyeffects
+- hosts/p50/default.nix: Added btop, htop, hyfetch packages with transgender flag wrapper
 
 ## Flake Check Status
 ```
 SUCCESS - All flake outputs pass evaluation
 ```
+
+## Flake Inputs
+- nixpkgs (nixos-unstable)
+- home-manager (nix-community/home-manager)
+- stylix (nix-community/stylix)
+- wrappers (lassulus/wrappers)
 
 ## Directory Structure
 ```
@@ -69,3 +68,18 @@ SUCCESS - All flake outputs pass evaluation
   ./desktop.nix
 ./README.md
 ```
+
+## Packages Installed
+### System (hosts/p50)
+- niri (via programs.niri.enable + wrappers)
+- vesktop (Discord client with Vencord)
+- vlc, p7zip, tor-browser
+- teamspeak3, teamspeak6-client
+- btop, htop
+- hyfetch (with transgender flag via wrappers)
+- noisetorch
+
+### User (home/lucy)
+- alacritty, zathura, fzf, bat
+- jetbrains-mono (via home.packages)
+- easyeffects (with JackHack96 presets)

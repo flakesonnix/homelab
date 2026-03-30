@@ -1,6 +1,14 @@
 { config, pkgs, wrappers, ... }:
 
 let
+  hyfetch-wrapped = wrappers.lib.wrapPackage {
+    inherit pkgs;
+    package = pkgs.hyfetch;
+    flags = {
+      "-p" = "trans";
+    };
+  };
+
   niri-wrapped = wrappers.wrapperModules.niri.apply {
     inherit pkgs;
     settings = {
@@ -99,7 +107,10 @@ in
 
   programs.niri.enable = true;
 
-  environment.systemPackages = [ niri-wrapped.wrapper ];
+  environment.systemPackages = [
+    niri-wrapped.wrapper
+    hyfetch-wrapped
+  ];
 
   services.displayManager.sessionPackages = [ niri-wrapped.wrapper ];
 
@@ -108,7 +119,9 @@ in
     zathura
     fzf
     bat
-    discord
+    btop
+    htop
+    vesktop
     vlc
     p7zip
     tor-browser

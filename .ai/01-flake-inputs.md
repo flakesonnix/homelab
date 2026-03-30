@@ -62,10 +62,11 @@ github:lassulus/wrappers
 
 ### Purpose
 - Provides wrapper modules for declarative package configuration
-- Used for: niri configuration (converts Nix attrs to KDL)
+- Used for: niri configuration (converts Nix attrs to KDL), hyfetch flags
 
 ### Wiring
 - `wrappers.wrapperModules.niri.apply` used in hosts/p50/default.nix
+- `wrappers.lib.wrapPackage` used for hyfetch with custom flags
 - `inputs.nixpkgs.follows = "nixpkgs"` to deduplicate
 
 ---

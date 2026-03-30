@@ -136,6 +136,48 @@ lucy.easyeffects.enable = true;
 - teamspeak3, teamspeak6-client: User requested
 - easyeffects: User requested with presets
 - noisetorch: Noise suppression for microphone
+- vesktop: Discord client with Vencord (replaced discord)
+- btop, htop: System monitoring tools
+- hyfetch: Pride-themed neofetch with transgender flag
+
+---
+
+## Decision 8: HyFetch with Transgender Flag
+
+### Context
+User requested hyfetch with transgender pride flag configured declaratively.
+
+### Decision
+Use Lassulus wrappers to wrap hyfetch with `-p trans` flag.
+
+### Implementation
+```nix
+hyfetch-wrapped = wrappers.lib.wrapPackage {
+  inherit pkgs;
+  package = pkgs.hyfetch;
+  flags = {
+    "-p" = "trans";
+  };
+};
+environment.systemPackages = [ hyfetch-wrapped ];
+```
+
+---
+
+## Decision 9: QtWebEngine Workaround for Tor Browser
+
+### Context
+Tor browser depends on qtwebengine which is marked as insecure in nixpkgs.
+
+### Decision
+Add qtwebengine-5.15.19 to permittedInsecurePackages.
+
+### Implementation
+```nix
+nixpkgs.config.permittedInsecurePackages = [
+  "qtwebengine-5.15.19"
+];
+```
 
 ---
 
