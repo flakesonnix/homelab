@@ -107,8 +107,6 @@ in
     LC_TIME = "de_DE.UTF-8";
   };
 
-  programs.niri.enable = true;
-
   environment.systemPackages = [
     niri-wrapped.wrapper
     hyfetch-wrapped

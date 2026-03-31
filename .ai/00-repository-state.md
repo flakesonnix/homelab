@@ -52,6 +52,8 @@ SUCCESS - All flake outputs pass evaluation
     ./default.nix
     ./hardware-configuration.nix
     ./secrets.yaml
+  ./vm/
+    ./default.nix  # microvm config (commented out)
 ./lib/
   ./default.nix
 ./modules/
@@ -81,6 +83,10 @@ SUCCESS - All flake outputs pass evaluation
 - btop, htop
 - hyfetch (with transgender flag via wrappers)
 - noisetorch
+
+### MicroVM (hosts/vm)
+- Lightweight NixOS VM via microvm.nix (not active)
+- Can be enabled by uncommenting in flake.nix
 
 ### User (home/lucy)
 - alacritty, zathura, fzf, bat

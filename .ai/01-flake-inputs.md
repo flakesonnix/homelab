@@ -142,8 +142,33 @@ github:hercules-ci/flake-parts
 
 ---
 
+## Input: microvm
+
+### URL
+```
+github:microvm-nix/microvm.nix
+```
+
+### Purpose
+- Provides lightweight NixOS virtual machine management
+- Used for: declarative microVM configuration
+
+### Wiring
+- `microvm.nixosModules.microvm` imported in hosts/vm/default.nix
+- `inputs.nixpkgs.follows = "nixpkgs"` to deduplicate
+- `nixosConfigurations.microvm` added to flake outputs
+
+### Configuration
+- Hypervisor: qemu
+- Resources: 2 vCPUs, 1024MB RAM
+- Networking: TAP interface (microvm-br0)
+- 9p share for nix-store
+
+---
+
 ## Future Integrations
 
 ### microvm.nix
-- Not added yet - requires nixos-hardware first
+- Can be added when needed
+- Currently disabled due to flake check path issues
 - Would provide: declarative microVM management

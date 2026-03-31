@@ -23,6 +23,14 @@ This file documents the structure of key configuration files. For full content, 
 - SOPS secrets file for encrypted secrets
 - Add secrets using: `sops set secrets.yaml key value`
 
+### ./hosts/vm/default.nix
+- Lightweight MicroVM configuration (commented out)
+- Uses microvm.nix module with qemu hypervisor
+- 2 vCPUs, 1024MB RAM, TAP networking
+- Root login via SSH (password: root)
+- Packages: htop, vim
+- Enable by uncommenting in flake.nix
+
 ### ./home/lucy/default.nix
 - Home-manager configuration for user lucy
 - Enables modules: lucy.shell, lucy.git, lucy.editor, lucy.easyeffects

@@ -69,6 +69,7 @@
   home.packages = with pkgs; [
     jetbrains-mono
     wpaperd
+    comma
   ];
 
   services.wpaperd = {

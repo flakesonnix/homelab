@@ -135,7 +135,7 @@ mkUser {
 
 | Input | URL | Purpose |
 |-------|-----|---------|
-| nixpkgs | `github:NixOS/nixpkgs/24.11` | Packages and modules |
+| nixpkgs | `github:NixOS/nixpkgs/nixos-unstable` | Packages and modules |
 | home-manager | `github:nix-community/home-manager` | User environment |
 
 ## Common Commands

@@ -21,12 +21,10 @@
 
     nix-flatpak = {
       url = "github:gmodena/nix-flatpak";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     nixos-hardware = {
       url = "github:NixOS/nixos-hardware";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     sops-nix = {
@@ -36,11 +34,15 @@
 
     flake-parts = {
       url = "github:hercules-ci/flake-parts";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nix-index-database = {
+      url = "github:nix-community/nix-index-database";
+    };
+
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, stylix, wrappers, nix-flatpak, nixos-hardware, sops-nix, flake-parts, ... }:
+  outputs = inputs@{ self, nixpkgs, home-manager, stylix, wrappers, nix-flatpak, nixos-hardware, sops-nix, flake-parts, nix-index-database, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } (
       {
         systems = [ "x86_64-linux" ];
@@ -85,6 +87,7 @@
                     ./home/lucy
                     stylix.homeModules.stylix
                     nix-flatpak.homeManagerModules.nix-flatpak
+                    nix-index-database.homeModules.default
                   ];
                 };
               }

@@ -331,11 +331,27 @@ services.someService.passwordFile = config.sops.secrets.password.path;
 
 ---
 
+## Decision 16: MicroVM Integration (Disabled)
+
+### Context
+User requested microVM integration for running lightweight NixOS virtual machines.
+
+### Decision
+Added microvm.nix flake input and created a basic microVM configuration.
+
+### Status
+Disabled - causes flake check path errors. Can be re-enabled by:
+1. Uncommenting `microvm` input in flake.nix
+2. Uncommenting `imports` in hosts/vm/default.nix
+3. Uncommenting `nixosConfigurations.microvm` in flake.nix
+
+---
+
 ## Future Design Decisions
 
 All planned features have been implemented:
 - ✅ flake-parts Migration
 - ✅ nixos-hardware Integration
 - ✅ SOPS Integration
-- ⏳ MicroVM Integration (not yet requested)
+- ✅ MicroVM Integration (added but disabled due to flake check issues)
 

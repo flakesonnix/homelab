@@ -10,6 +10,7 @@
       enable = true;
       enableCompletion = true;
       syntaxHighlighting.enable = true;
+      dotDir = config.home.homeDirectory;
     };
     home.sessionVariables = {
       SHELL = "${pkgs.zsh}/bin/zsh";
