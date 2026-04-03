@@ -5,78 +5,7 @@ let
     inherit pkgs;
     package = pkgs.hyfetch;
     flags = {
-      "-p" = "trans";
-    };
-  };
-
-  niri-wrapped = wrappers.wrapperModules.niri.apply {
-    inherit pkgs;
-    settings = {
-      input = {
-        keyboard = {
-          xkb = {
-            layout = "us";
-          };
-        };
-        touchpad = {
-          tap = null;
-          "natural-scroll" = null;
-        };
-      };
-      binds = {
-        "Mod+Shift+Slash" = { "show-hotkey-overlay" = null; };
-        "Mod+Return" = { spawn = "alacritty"; };
-        "Mod+D" = { spawn = "fuzzel"; };
-        "Mod+Q" = { "close-window" = null; };
-        "Mod+W" = { "close-window" = null; };
-        "Mod+Left" = { "focus-column-left" = null; };
-        "Mod+Down" = { "focus-window-down" = null; };
-        "Mod+Up" = { "focus-window-up" = null; };
-        "Mod+Right" = { "focus-column-right" = null; };
-        "Mod+H" = { "focus-column-left" = null; };
-        "Mod+J" = { "focus-window-down" = null; };
-        "Mod+K" = { "focus-window-up" = null; };
-        "Mod+L" = { "focus-column-right" = null; };
-        "Mod+Ctrl+Left" = { "move-column-left" = null; };
-        "Mod+Ctrl+Down" = { "move-window-down" = null; };
-        "Mod+Ctrl+Up" = { "move-window-up" = null; };
-        "Mod+Ctrl+Right" = { "move-column-right" = null; };
-        "Mod+Ctrl+H" = { "move-column-left" = null; };
-        "Mod+Ctrl+J" = { "move-window-down" = null; };
-        "Mod+Ctrl+K" = { "move-window-up" = null; };
-        "Mod+Ctrl+L" = { "move-column-right" = null; };
-        "Mod+Page_Down" = { "focus-workspace-down" = null; };
-        "Mod+Page_Up" = { "focus-workspace-up" = null; };
-        "Mod+U" = { "focus-workspace-down" = null; };
-        "Mod+I" = { "focus-workspace-up" = null; };
-        "Mod+1" = { "focus-workspace" = 1; };
-        "Mod+2" = { "focus-workspace" = 2; };
-        "Mod+3" = { "focus-workspace" = 3; };
-        "Mod+4" = { "focus-workspace" = 4; };
-        "Mod+5" = { "focus-workspace" = 5; };
-        "Mod+6" = { "focus-workspace" = 6; };
-        "Mod+7" = { "focus-workspace" = 7; };
-        "Mod+8" = { "focus-workspace" = 8; };
-        "Mod+9" = { "focus-workspace" = 9; };
-        "Mod+Comma" = { "consume-window-into-column" = null; };
-        "Mod+Period" = { "expel-window-from-column" = null; };
-        "Mod+R" = { "switch-preset-column-width" = null; };
-        "Mod+F" = { "maximize-column" = null; };
-        "Mod+Shift+F" = { "fullscreen-window" = null; };
-        "Mod+C" = { "center-column" = null; };
-        "Print" = { screenshot = null; };
-        "Mod+Shift+E" = { quit = null; };
-      };
-      spawn-at-startup = [
-        "waybar"
-        "wpaperd"
-      ];
-      layout = {
-        gaps = 16;
-      };
-      extraConfig = ''
-        prefer-no-csd
-      '';
+      "-p" = "transgender";
     };
   };
 in
@@ -84,13 +13,22 @@ in
 {
   imports = [
     ./hardware-configuration.nix
+    ../../modules/nixos/network.nix
+    ../../modules/nixos/ssh-keys.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
   networking.hostName = "p50";
-  networking.networkmanager.enable = true;
+
+  networking.staticIP = {
+    enable = true;
+    address = "192.168.178.31";
+    prefixLength = 24;
+    gateway = "192.168.178.1";
+    interface = "enp0s31f6";
+  };
 
   time.timeZone = "Europe/Berlin";
 
@@ -107,29 +45,44 @@ in
     LC_TIME = "de_DE.UTF-8";
   };
 
-  environment.systemPackages = [
-    niri-wrapped.wrapper
+  environment.systemPackages = with pkgs; [
     hyfetch-wrapped
+    gnomeExtensions.dash-to-dock
   ];
-
-  services.displayManager.sessionPackages = [ niri-wrapped.wrapper ];
 
   users.users.lucy.packages = with pkgs; [
     alacritty
     zathura
     fzf
     bat
-    btop
-    htop
     vesktop
     vlc
     p7zip
     thunderbird
+    deskflow
+    keepassxc
   ];
 
   programs.noisetorch.enable = true;
 
-  services.openssh.enable = true;
+  services.openssh = {
+    enable = true;
+    settings = {
+      PasswordAuthentication = false;
+      PermitRootLogin = "prohibit-password";
+      X11Forwarding = true;
+    };
+  };
+
+  networking.firewall = {
+    enable = true;
+    allowedTCPPorts = [ 22 24800 ];
+  };
+
+  ssh-keys = {
+    publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
+    comment = "lucy@p50";
+  };
 
   sops = {
     defaultSopsFile = ./secrets.yaml;

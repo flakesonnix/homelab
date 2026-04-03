@@ -4,6 +4,11 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
+    deploy-rs = {
+      url = "github:serokell/deploy-rs";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     home-manager = {
       url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -42,7 +47,34 @@
 
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, stylix, wrappers, nix-flatpak, nixos-hardware, sops-nix, flake-parts, nix-index-database, ... }:
+  outputs = inputs@{ self, nixpkgs, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, nixos-hardware, sops-nix, flake-parts, nix-index-database, ... }:
+    let
+      p50-config = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = { inherit wrappers; };
+        modules = [
+          ./nix-settings.nix
+          ./profiles/desktop.nix
+          ./hosts/p50
+          nixos-hardware.nixosModules.lenovo-thinkpad-p50
+          sops-nix.nixosModules.sops
+          home-manager.nixosModules.home-manager
+          {
+            users.users.lucy.isNormalUser = true;
+            users.users.lucy.description = "Lucy";
+            users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
+            home-manager.users.lucy = {
+              imports = [
+                ./home/lucy
+                stylix.homeModules.stylix
+                nix-flatpak.homeManagerModules.nix-flatpak
+                nix-index-database.homeModules.default
+              ];
+            };
+          }
+        ];
+      };
+    in
     flake-parts.lib.mkFlake { inherit inputs; } (
       {
         systems = [ "x86_64-linux" ];
@@ -56,6 +88,7 @@
               pandoc
               texliveMinimal
               librsvg
+              deploy-rs.packages.x86_64-linux.default
             ];
           };
 
@@ -67,32 +100,7 @@
         flake = {
           lib = import ./lib;
 
-          nixosConfigurations.p50 = nixpkgs.lib.nixosSystem {
-            system = "x86_64-linux";
-            specialArgs = { inherit wrappers; };
-            modules = [
-              ./nix-settings.nix
-              ./profiles/desktop.nix
-              ./hosts/p50
-              nixos-hardware.nixosModules.lenovo-thinkpad-p50
-              sops-nix.nixosModules.sops
-              home-manager.nixosModules.home-manager
-              {
-                p50.nixSettings = true;
-                users.users.lucy.isNormalUser = true;
-                users.users.lucy.description = "Lucy";
-                users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
-                home-manager.users.lucy = {
-                  imports = [
-                    ./home/lucy
-                    stylix.homeModules.stylix
-                    nix-flatpak.homeManagerModules.nix-flatpak
-                    nix-index-database.homeModules.default
-                  ];
-                };
-              }
-            ];
-          };
+          nixosConfigurations.p50 = p50-config;
 
           homeConfigurations."lucy@p50" = home-manager.lib.homeManagerConfiguration {
             pkgs = nixpkgs.legacyPackages.x86_64-linux;
@@ -102,5 +110,48 @@
           packages.x86_64-linux = { };
         };
       }
-    );
+    )
+    //
+    {
+      deploy = {
+        nodes = {
+          p50 = {
+            hostname = "192.168.178.31";
+            profiles = {
+              system = {
+                path = deploy-rs.lib.x86_64-linux.deploy {
+                  user = "lucy";
+                  remoteBuild = true;
+                  nixosConfiguration = p50-config;
+                };
+              };
+            };
+          };
+          desktop = {
+            hostname = "192.168.178.2";
+            profiles = {
+              system = {
+                path = deploy-rs.lib.x86_64-linux.deploy {
+                  user = "lucy";
+                  remoteBuild = true;
+                  nixosConfiguration = p50-config;
+                };
+              };
+            };
+          };
+          omen = {
+            hostname = "192.168.178.4";
+            profiles = {
+              system = {
+                path = deploy-rs.lib.x86_64-linux.deploy {
+                  user = "lucy";
+                  remoteBuild = true;
+                  nixosConfiguration = p50-config;
+                };
+              };
+            };
+          };
+        };
+      };
+    };
 }

@@ -5,8 +5,10 @@
     ./shell.nix
     ./git.nix
     ./editor.nix
-    ./packages.nix
+    ./programs/packages.nix
     ./programs/easyeffects
+    ./programs/htop.nix
+    ./programs/btop.nix
     ../../modules/home/stylix.nix
   ];
 
@@ -14,12 +16,41 @@
   lucy.git.enable = true;
   lucy.editor.enable = true;
   lucy.easyeffects.enable = true;
+  lucy.htop.enable = true;
+  lucy.btop.enable = true;
+  lucy.stylix.enable = true;
+  lucy.programs.jetbrains-mono = true;
+  lucy.programs.wpaperd = true;
+  lucy.programs.comma = true;
+
+  programs.ssh = {
+    enable = true;
+    matchBlocks = {
+      "p50" = {
+        host = "192.168.178.31";
+        user = "lucy";
+        identityFile = "${config.home.homeDirectory}/.ssh/id_ed25519";
+      };
+    };
+  };
 
   services.flatpak = {
     enable = true;
     packages = [
       "com.teamspeak.TeamSpeak"
     ];
+  };
+
+  dconf.settings = {
+    "org/gnome/shell" = {
+      enabled-extensions = [ "dash-to-dock@micxgx.gmail.com" ];
+    };
+    "org/gnome/shell/extensions/dash-to-dock" = {
+      dock-position = "LEFT";
+      show-apps-at-top = true;
+      extend-height = false;
+      dash-max-icon-size = 48;
+    };
   };
 
   programs.waybar = {
@@ -30,10 +61,10 @@
         layer = "top";
         position = "top";
         height = 30;
-        modules-left = [ "niri/workspaces" ];
+        modules-left = [ "wlr/workspaces" ];
         modules-center = [ "clock" ];
         modules-right = [ "battery" "cpu" "memory" ];
-        "niri/workspaces" = {
+        "wlr/workspaces" = {
           format = "{}";
         };
         clock = {
@@ -64,53 +95,6 @@
         color: #a990af;
       }
     '';
-  };
-
-  home.packages = with pkgs; [
-    jetbrains-mono
-    wpaperd
-    comma
-  ];
-
-  services.wpaperd = {
-    enable = true;
-    settings = {
-      default = {
-        path = "${config.home.homeDirectory}/Pictures/s-l1600.jpg";
-        scale = "fill";
-        mode = "crop";
-      };
-    };
-  };
-
-  stylix = {
-    enable = true;
-    base16Scheme = {
-      scheme = "Custom";
-      base00 = "1a1520";
-      base01 = "2e2334";
-      base02 = "52374f";
-      base03 = "6c70a8";
-      base04 = "7986a3";
-      base05 = "a990af";
-      base06 = "d8b3cf";
-      base07 = "f8f2f7";
-      base08 = "de99ac";
-      base09 = "bf8c79";
-      base0A = "778ad8";
-      base0B = "a1a5e0";
-      base0C = "b8d4e8";
-      base0D = "96656a";
-      base0E = "d8b3cf";
-      base0F = "52374f";
-    };
-    targets.gnome.enable = false;
-    targets.waybar.enable = true;
-    targets.waybar.font = "monospace";
-  };
-
-  gtk = {
-    gtk4.theme = null;
   };
 
   home = {
