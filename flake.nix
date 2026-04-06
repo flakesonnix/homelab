@@ -74,6 +74,58 @@
           }
         ];
       };
+
+      desktop-config = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = { inherit wrappers; };
+        modules = [
+          ./nix-settings.nix
+          ./profiles/desktop.nix
+          ./hosts/desktop
+          sops-nix.nixosModules.sops
+          home-manager.nixosModules.home-manager
+          {
+            users.users.lucy.isNormalUser = true;
+            users.users.lucy.description = "Lucy";
+            users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
+            home-manager.users.lucy = {
+              imports = [
+                ./home/lucy
+                stylix.homeModules.stylix
+                nix-flatpak.homeManagerModules.nix-flatpak
+                nix-index-database.homeModules.default
+              ];
+            };
+          }
+        ];
+      };
+
+      omen-config = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = { inherit wrappers; };
+        modules = [
+          ./nix-settings.nix
+          ./profiles/desktop.nix
+          ./hosts/omen
+          sops-nix.nixosModules.sops
+          home-manager.nixosModules.home-manager
+          {
+            users.users.lucy.isNormalUser = true;
+            users.users.lucy.description = "Lucy";
+            users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
+            home-manager.users.lucy = {
+              imports = [
+                ./home/lucy
+                stylix.homeModules.stylix
+                nix-flatpak.homeManagerModules.nix-flatpak
+                nix-index-database.homeModules.default
+              ];
+            };
+          }
+        ];
+      };
+
+      deploy-lib = deploy-rs.lib.x86_64-linux;
     in
     flake-parts.lib.mkFlake { inherit inputs; } (
       {
@@ -100,7 +152,11 @@
         flake = {
           lib = import ./lib;
 
-          nixosConfigurations.p50 = p50-config;
+          nixosConfigurations = {
+            p50 = p50-config;
+            desktop = desktop-config;
+            omen = omen-config;
+          };
 
           homeConfigurations."lucy@p50" = home-manager.lib.homeManagerConfiguration {
             pkgs = nixpkgs.legacyPackages.x86_64-linux;
@@ -108,50 +164,37 @@
           };
 
           packages.x86_64-linux = { };
+
+          deploy.nodes = {
+            p50 = {
+              hostname = "192.168.178.31";
+              profiles.system = {
+                path = deploy-lib.activate.nixos p50-config;
+                user = "root";
+              };
+              remoteBuild = true;
+              ssh_user = "root";
+            };
+            desktop = {
+              hostname = "192.168.178.2";
+              profiles.system = {
+                path = deploy-lib.activate.nixos desktop-config;
+                user = "root";
+              };
+              remoteBuild = true;
+              ssh_user = "root";
+            };
+            omen = {
+              hostname = "192.168.178.4";
+              profiles.system = {
+                path = deploy-lib.activate.nixos omen-config;
+                user = "root";
+              };
+              remoteBuild = true;
+              ssh_user = "root";
+            };
+          };
         };
       }
-    )
-    //
-    {
-      deploy = {
-        nodes = {
-          p50 = {
-            hostname = "192.168.178.31";
-            profiles = {
-              system = {
-                path = deploy-rs.lib.x86_64-linux.deploy {
-                  user = "lucy";
-                  remoteBuild = true;
-                  nixosConfiguration = p50-config;
-                };
-              };
-            };
-          };
-          desktop = {
-            hostname = "192.168.178.2";
-            profiles = {
-              system = {
-                path = deploy-rs.lib.x86_64-linux.deploy {
-                  user = "lucy";
-                  remoteBuild = true;
-                  nixosConfiguration = p50-config;
-                };
-              };
-            };
-          };
-          omen = {
-            hostname = "192.168.178.4";
-            profiles = {
-              system = {
-                path = deploy-rs.lib.x86_64-linux.deploy {
-                  user = "lucy";
-                  remoteBuild = true;
-                  nixosConfiguration = p50-config;
-                };
-              };
-            };
-          };
-        };
-      };
-    };
+    );
 }

@@ -1,0 +1,115 @@
+{ lib, config, pkgs, ... }:
+
+let
+  cfg = config.hq.audio;
+in
+
+{
+  options.hq.audio = {
+    sink = lib.mkEnableOption "HQ audio sink (make this machine a network audio output)";
+    sinkName = lib.mkOption {
+      type = lib.types.str;
+      default = "Pulsebert";
+      description = "Name of the audio sink for network discovery";
+    };
+    airplay = lib.mkEnableOption "HQ AirPlay server (for Apple devices)";
+    airplayName = lib.mkOption {
+      type = lib.types.str;
+      default = "Glotzbert";
+      description = "Name of the AirPlay service";
+    };
+    backend = lib.mkOption {
+      type = lib.types.enum [ "pulseaudio" "pipewire" ];
+      default = "pipewire";
+      description = "Audio backend to use";
+    };
+  };
+
+  config = lib.mkIf cfg.sink {
+    services.avahi = {
+      enable = true;
+      nssmdns4 = true;
+      publish = {
+        enable = true;
+        addresses = true;
+        workstation = true;
+      };
+    };
+
+    networking.firewall = {
+      enable = true;
+      allowedUDPPorts = [ 5353 ];
+      allowedTCPPorts = [ 5353 5000 6000 ];
+    };
+  };
+
+  config = lib.mkIf (cfg.sink && cfg.backend == "pulseaudio") {
+    hardware.pulseaudio = {
+      enable = true;
+      extraConfig = ''
+        # Enable network access
+        load-module module-native-protocol-tcp auth-anonymous=1
+        load-module module-udev-detect
+        # Set sink name for discovery
+        set-default-sink ${cfg.sinkName}
+      '';
+    };
+    environment.systemPackages = [ pkgs.avahi ];
+  };
+
+  config = lib.mkIf (cfg.sink && cfg.backend == "pipewire") {
+    services.pipewire = {
+      enable = true;
+      audio.enable = true;
+      pulse.enable = true;
+      alsa.enable = true;
+      wireplumber.enable = true;
+      extraConfig = {
+        "90-network-access" = {
+          "context.extra-modules" = [
+            "libpipewire-module-rt"
+            "libpipewire-module-profiler"
+            "libpipewire-module-metadata"
+            "libpipewire-module-spa-device"
+            "libpipewire-module-spa-node-factory"
+            "libpipewire-module-client-node"
+            "libpipewire-module-link-factory"
+            "libpipewire-module-session-manager"
+          ];
+          "context.properties" = {
+            "network.tcp.globals" = "*";
+          };
+        };
+      };
+    };
+    environment.systemPackages = [ pkgs.avahi ];
+  };
+
+  config = lib.mkIf cfg.airplay {
+    services.avahi = {
+      enable = true;
+      nssmdns4 = true;
+      publish = {
+        enable = true;
+        addresses = true;
+      };
+    };
+
+    services.shairport-sync = {
+      enable = true;
+      name = cfg.airplayName;
+      networkInterfaces = [ "*" ];
+      port = 5000;
+      timingPort = 6000;
+      serviceType = "_raop._tcp";
+    };
+
+    networking.firewall = {
+      enable = true;
+      allowedTCPPorts = [ 5000 6000 ];
+      allowedUDPPorts = [ 6001 ];
+    };
+
+    environment.systemPackages = [ pkgs.shairport-sync ];
+  };
+}
