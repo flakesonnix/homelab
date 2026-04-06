@@ -9,6 +9,11 @@
         default = true;
         description = "Enable kernel mode setting";
       };
+      prime = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Enable NVIDIA PRIME offload";
+      };
     };
   };
 
@@ -19,6 +24,27 @@
       powerManagement.finegrained.frequencyManagement = "on";
       modesetting.enable = config.lucy.nvidia.modesetting;
       nvidiaSettings = true;
+      package = config.boot.kernelPackages.nvidiaPackages.production;
     };
+
+    boot.kernelParams = [
+      "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
+      "nvidia.NVreg_TemporaryFilePath=/var/tmp"
+    ];
+
+    services.logind = {
+      suspendMode = "s2idle";
+      suspendThenHibernate = false;
+      powerKey = "poweroff";
+      suspendKey = "suspend";
+      lidSwitch = "suspend";
+      lidSwitchExternalPower = "suspend";
+      lidSwitchDocked = "ignore";
+    };
+
+    systemd.sleep.extraConfig = ''
+      # Enable deep sleep for better NVIDIA resume
+      SuspendState=mem freeze freeze
+    '';
   };
 }
