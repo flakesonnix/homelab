@@ -34,7 +34,6 @@
     ];
 
     services.logind = {
-      suspendThenHibernate = false;
       powerKey = "poweroff";
       suspendKey = "suspend";
       lidSwitch = "suspend";
