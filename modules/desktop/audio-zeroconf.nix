@@ -60,7 +60,7 @@ in
       alsa.enable = true;
       wireplumber.enable = true;
       extraConfig = {
-        "90-network-access" = {
+        pipewire = {
           "context.extra-modules" = [
             "libpipewire-module-rt"
             "libpipewire-module-profiler"
