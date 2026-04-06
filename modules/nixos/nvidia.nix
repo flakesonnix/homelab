@@ -21,7 +21,8 @@
     services.xserver.videoDrivers = [ "nvidia" ];
     hardware.nvidia = {
       powerManagement.enable = true;
-      powerManagement.finegrained.frequencyManagement = "on";
+      powerManagement.finegrained = config.lucy.nvidia.prime;
+      open = false;
       modesetting.enable = config.lucy.nvidia.modesetting;
       nvidiaSettings = true;
       package = config.boot.kernelPackages.nvidiaPackages.production;
@@ -40,10 +41,5 @@
       lidSwitchExternalPower = "suspend";
       lidSwitchDocked = "ignore";
     };
-
-    systemd.sleep.extraConfig = ''
-      # Enable deep sleep for better NVIDIA resume
-      SuspendState=mem freeze freeze
-    '';
   };
 }

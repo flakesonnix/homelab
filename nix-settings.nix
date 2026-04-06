@@ -1,16 +1,16 @@
 { lib, config, ... }:
 
 {
-  options.p50 = {
-    nixSettings = lib.mkEnableOption "Nix settings for p50";
-  };
-
-  config = lib.mkIf config.p50.nixSettings {
-    nix = {
-      settings = {
-        experimental-features = [ "nix-command" "flakes" ];
-        auto-optimise-store = true;
-      };
+  nix = {
+    settings = {
+      experimental-features = [ "nix-command" "flakes" ];
+      auto-optimise-store = true;
+      trusted-public-keys = [
+        "cache.nixos.org-1:6NCHdD59X431o0gWyzPY0oqSzmC7kiNqdCXUcrKHC6A="
+      ];
+      substituters = [
+        "https://cache.nixos.org"
+      ];
     };
   };
 }

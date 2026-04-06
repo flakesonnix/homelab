@@ -3,7 +3,14 @@
 {
   imports = [
     ./hardware-configuration.nix
+    ../../modules/nixos/base.nix
     ../../modules/nixos/network.nix
+    ../../modules/nixos/nvidia.nix
+    ../../modules/nixos/gnome.nix
+    ../../modules/nixos/gnome-extensions.nix
+    ../../modules/nixos/packages.nix
+    ../../modules/nixos/openclaude.nix
+    ../../modules/desktop/audio-zeroconf.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -20,65 +27,30 @@
     interface = "enp8s0";
   };
 
-  time.timeZone = "Europe/Berlin";
+  boot.initrd.network.ssh.port = 2223;
+  boot.initrd.availableKernelModules = [ "r8169" ];
 
-  i18n.defaultLocale = "en_US.UTF-8";
+  lucy.base.enable = true;
+  lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
+  lucy.base.sshKeyComment = "lucy@p50";
 
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "de_DE.UTF-8";
-    LC_IDENTIFICATION = "de_DE.UTF-8";
-    LC_MEASUREMENT = "de_DE.UTF-8";
-    LC_MONETARY = "de_DE.UTF-8";
-    LC_NAME = "de_DE.UTF-8";
-    LC_NUMERIC = "de_DE.UTF-8";
-    LC_PAPER = "de_DE.UTF-8";
-    LC_TELEPHONE = "de_DE.UTF-8";
-    LC_TIME = "de_DE.UTF-8";
-  };
+  lucy.nvidia.enable = true;
+  lucy.gnome.enable = true;
+  lucy.gnome.wayland = false;
+  lucy.gnomeExtensions.enable = true;
+  lucy.openclaude.enable = false;
 
-  services.xserver.enable = true;
-  services.xserver.displayManager.gdm.enable = true;
-  services.xserver.desktopManager.gnome.enable = true;
-  services.xserver.xkb = {
-    layout = "us";
-    variant = "";
-  };
+  hq.audio.backend = "pipewire";
+  hq.audio.sink = true;
+  hq.audio.sinkName = "Pulsebert";
+  hq.audio.airplay = true;
+  hq.audio.airplayName = "Glotzbert";
 
-  services.printing.enable = true;
-
-  services.pulseaudio.enable = false;
-  security.rtkit.enable = true;
-  services.pipewire = {
-    enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
-  };
-
-  users.users.lucy = {
-    isNormalUser = true;
-    description = "Lucy";
-    extraGroups = [ "networkmanager" "wheel" ];
-    packages = with pkgs; [
-      deskflow
-    ];
-  };
-
-  programs.firefox.enable = true;
-  programs.dconf.enable = true;
-
-  nixpkgs.config.allowUnfree = true;
-
-  environment.systemPackages = with pkgs; [
-    gnomeExtensions.dash-to-dock
+  lucy.basePackages = with pkgs; [
+    deskflow
   ];
 
-  services.openssh.enable = true;
-
-  networking.firewall = {
-    enable = true;
-    allowedTCPPorts = [ 22 24800 ];
-  };
+  lucy.hostPackages = with pkgs; [ ];
 
   xdg.portal = {
     enable = true;

@@ -9,6 +9,8 @@
     ./programs/easyeffects
     ./programs/htop.nix
     ./programs/btop.nix
+    ./programs/gnome-theme.nix
+    ./programs/openclaude.nix
     ../../modules/home/stylix.nix
   ];
 
@@ -19,9 +21,11 @@
   lucy.htop.enable = true;
   lucy.btop.enable = true;
   lucy.stylix.enable = true;
+  lucy.gnomeTheme.enable = true;
   lucy.programs.jetbrains-mono = true;
   lucy.programs.wpaperd = true;
   lucy.programs.comma = true;
+  lucy.openclaude.enable = true;
 
   programs.ssh = {
     enable = true;
@@ -39,18 +43,6 @@
     packages = [
       "com.teamspeak.TeamSpeak"
     ];
-  };
-
-  dconf.settings = {
-    "org/gnome/shell" = {
-      enabled-extensions = [ "dash-to-dock@micxgx.gmail.com" ];
-    };
-    "org/gnome/shell/extensions/dash-to-dock" = {
-      dock-position = "LEFT";
-      show-apps-at-top = true;
-      extend-height = false;
-      dash-max-icon-size = 48;
-    };
   };
 
   programs.waybar = {
@@ -87,12 +79,22 @@
     ];
     style = ''
       * {
-        font-family: monospace;
+        font-family: "JetBrains Mono", monospace;
         font-size: 12px;
       }
       window#waybar {
-        background: #1a1520;
-        color: #a990af;
+        background: rgba(42, 31, 45, 0.9);
+        color: #ffb6c1;
+        border-radius: 8px;
+      }
+      button {
+        color: #ff69b4;
+        background: transparent;
+        border: none;
+      }
+      button:hover {
+        color: #ff1493;
+        background: rgba(255, 105, 180, 0.2);
       }
     '';
   };
@@ -104,4 +106,6 @@
   };
 
   programs.home-manager.enable = true;
+
+  nix.settings.experimental-features = [ "nix-command" "flakes" ];
 }

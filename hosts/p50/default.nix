@@ -13,8 +13,15 @@ in
 {
   imports = [
     ./hardware-configuration.nix
+    ../../modules/nixos/base.nix
     ../../modules/nixos/network.nix
-    ../../modules/nixos/ssh-keys.nix
+    ../../modules/nixos/gnome.nix
+    ../../modules/nixos/gnome-extensions.nix
+    ../../modules/nixos/packages.nix
+    ../../modules/nixos/latex.nix
+    ../../modules/nixos/openclaude.nix
+    ../../modules/nixos/asterisk.nix
+    ../../modules/nixos/audio-stream.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -30,27 +37,33 @@ in
     interface = "enp0s31f6";
   };
 
-  time.timeZone = "Europe/Berlin";
+  lucy.base.enable = true;
+  lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
+  lucy.base.sshKeyComment = "lucy@p50";
 
-  i18n.inputMethod.enable = false;
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "de_DE.UTF-8";
-    LC_IDENTIFICATION = "de_DE.UTF-8";
-    LC_MEASUREMENT = "de_DE.UTF-8";
-    LC_MONETARY = "de_DE.UTF-8";
-    LC_NAME = "de_DE.UTF-8";
-    LC_NUMERIC = "de_DE.UTF-8";
-    LC_PAPER = "de_DE.UTF-8";
-    LC_TELEPHONE = "de_DE.UTF-8";
-    LC_TIME = "de_DE.UTF-8";
+  lucy.gnome.enable = true;
+  lucy.gnome.wayland = true;
+  lucy.gnomeExtensions.enable = true;
+  lucy.latex.enable = true;
+  lucy.openclaude.enable = false;
+
+  hq.audio.streamTo = "192.168.178.2";
+
+  services.asteriskLocal = {
+    enable = false;  # Disabled by default, enable to use
+    openFirewall = true;
+    phones = {
+      desk1 = { extension = "1001"; password = "secret123"; };
+      desk2 = { extension = "1002"; password = "secret456"; };
+    };
+    extraExtensions = ''
+      ; Ring all desks at once
+      exten => 9000,1,Dial(PJSIP/desk1&PJSIP/desk2,20)
+      same => n,Hangup()
+    '';
   };
 
-  environment.systemPackages = with pkgs; [
-    hyfetch-wrapped
-    gnomeExtensions.dash-to-dock
-  ];
-
-  users.users.lucy.packages = with pkgs; [
+  lucy.basePackages = with pkgs; [
     alacritty
     zathura
     fzf
@@ -61,36 +74,19 @@ in
     thunderbird
     deskflow
     keepassxc
+    nodejs_22
+    ausweisapp
+  ];
+
+  lucy.hostPackages = with pkgs; [ ];
+
+  environment.systemPackages = with pkgs; [
+    hyfetch-wrapped
   ];
 
   programs.noisetorch.enable = true;
 
-  services.openssh = {
-    enable = true;
-    settings = {
-      PasswordAuthentication = false;
-      PermitRootLogin = "prohibit-password";
-      X11Forwarding = true;
-    };
-  };
-
-  networking.firewall = {
-    enable = true;
-    allowedTCPPorts = [ 22 24800 ];
-  };
-
-  ssh-keys = {
-    publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
-    comment = "lucy@p50";
-  };
-
-  sops = {
-    defaultSopsFile = ./secrets.yaml;
-    age = {
-      generateKey = true;
-    };
-    secrets = { };
-  };
+  services.openssh.settings.PermitRootLogin = "prohibit-password";
 
   system.stateVersion = "25.11";
 }

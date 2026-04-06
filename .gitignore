@@ -3,14 +3,19 @@ result
 result-*
 *.drv
 *.nar
-
-# direnv
 .direnv
 
-# editor
+# Editor
 *.swp
 *.swo
 *~
 
-# build outputs
-哥 德巴赫
+# Secrets (sops)
+hosts/*/secrets.yaml
+secrets.yaml
+*.age
+.sops.yaml
+
+# Build
+.deploy
+

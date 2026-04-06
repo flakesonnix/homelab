@@ -6,12 +6,10 @@
   };
 
   config = lib.mkIf config.lucy.openclaude.enable {
-    home.packages = [
-      (pkgs.writeScriptBin "openclaude" ''
-        #!${pkgs.bash}/bin/bash
-        export PATH="${pkgs.nodejs_22}/bin:$PATH"
-        exec -a openclaude ${pkgs.nodejs_22}/bin/npm exec -g @gitlawb/openclaude -- "$@"
-      '')
-    ];
+    home.packages = [ pkgs.nodejs ];
+
+    home.activation.installOpenclaude = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      ${pkgs.nodejs}/bin/npm install -g @gitlawb/openclaude 2>/dev/null || true
+    '';
   };
 }

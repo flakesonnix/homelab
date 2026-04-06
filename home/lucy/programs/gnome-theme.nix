@@ -8,11 +8,11 @@
   config = lib.mkIf config.lucy.gnomeTheme.enable {
     dconf.settings = {
       "org/gnome/desktop/interface" = {
-        color-scheme = "prefer-dark";
-        gtk-theme = "Adwaita-dark";
-        icon-theme = "Papirus-Dark";
-        font-name = "JetBrains Mono 11";
-        cursor-size = 24;
+        color-scheme = lib.mkForce "prefer-dark";
+        gtk-theme = lib.mkForce "Adwaita-dark";
+        icon-theme = lib.mkForce "Papirus-Dark";
+        font-name = lib.mkForce "JetBrains Mono 11";
+        cursor-size = lib.mkForce 24;
       };
 
       "org/gnome/desktop/background" = {
@@ -60,8 +60,6 @@
       };
     };
 
-    home.packages = with pkgs; [
-      gnomeExtensions.user-theme
-    ];
+    home.packages = with pkgs; [ ];
   };
 }

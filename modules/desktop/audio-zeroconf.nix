@@ -80,11 +80,7 @@ in
 
     services.shairport-sync = lib.mkIf cfg.airplay {
       enable = true;
-      name = cfg.airplayName;
-      networkInterfaces = [ "*" ];
-      port = 5000;
-      timingPort = 6000;
-      serviceType = "_raop._tcp";
+      arguments = "--name=${cfg.airplayName}";
     };
 
     environment.systemPackages = with pkgs; lib.mkMerge [

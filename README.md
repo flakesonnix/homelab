@@ -1,161 +1,116 @@
-# NixOS Dotfiles for Lucy's ThinkPad P50
+# NixOS Dotfiles
 
-This is a declarative NixOS configuration repository following nixpkgs maintainer conventions. It uses home-manager for user configuration, flake-based deployment, and modular architecture.
+Multi-host NixOS configuration with deploy-rs.
 
-## Architecture
+## Hosts
 
-```
-dotfiles/
-├── flake.nix              # Entry point, defines all inputs/outputs
-├── flake.lock             # Pinned versions for all inputs
-├── lib/                   # Helper functions (mkUser)
-├── hosts/                 # Host-specific NixOS configurations
-│   └── p50/              # ThinkPad P50 configuration
-├── home/                  # home-manager user configurations
-│   └── lucy/             # User lucy's home config
-├── modules/               # Reusable NixOS/home-manager modules
-│   ├── nixos/           # System-level modules
-│   └── home/            # User-level modules
-├── profiles/             # Composable system profiles
-│   ├── base.nix         # Base system profile
-│   └── desktop.nix      # Desktop profile with GNOME
-└── nix-settings.nix     # Nix settings (flakes, auto-optimise)
-```
+| Host | Type | GPU | Notes |
+|------|------|-----|-------|
+| p50 | ThinkPad Laptop | Intel HD 530 | Wayland |
+| desktop | Desktop PC | NVIDIA GTX 1070 | X11 |
+| omen | Desktop PC | NVIDIA RTX 2070 | X11, suspend fix |
 
-## Quickstart
-
-### Install on Fresh NixOS
+## Quick Start
 
 ```bash
-# Clone the repo
-git clone https://github.com/yourusername/dotfiles.git /etc/nixos
+# Deploy to a host
+deploy .#p50
+deploy .#desktop  
+deploy .#omen
 
-# Build the system
-sudo nixos-rebuild switch --flake .#p50
-
-# Or build home-manager config
-home-manager switch --flake .#lucy@p50
+# Direct rebuild
+nixos-rebuild switch --flake .#p50
 ```
 
-### Development Shell
+## Secrets Management (sops-nix)
 
 ```bash
-# Enter dev shell with nix tools
-nix develop
+# Generate age key
+./setup-sops.sh
 
-# Format all Nix files
-nix fmt
+# Edit secrets (use your editor)
+SOPS_AGE_KEY_FILE=~/.sops/keys.txt nvim hosts/p50/secrets.yaml
+
+# Or use sops-edit
+sops-edit hosts/p50/secrets.yaml
 ```
 
-## Adding a New Host
+### secrets.yaml structure:
 
-Create `hosts/<hostname>/default.nix`:
+```yaml
+keys:
+  - &default_age <your-public-key>
 
-```nix
-{ config, pkgs, ... }:
-
-{
-  imports = [ ./hardware-configuration.nix ];
-
-  networking.hostName = "newhost";
-
-  users.users.lucy = {
-    isNormalUser = true;
-    extraGroups = [ "wheel" "networkmanager" ];
-  };
-
-  # ... your config
-}
+secrets:
+  pppoe-password: ENC[AES256_GCM,...]
+  luks-key: ENC[AES256_GCM,...]
 ```
 
-Add to `flake.nix`:
+## Project Structure
+
+```
+.
+├── flake.nix              # Main flake
+├── modules/nixos/          # Reusable modules
+│   ├── base.nix          # Base config (SSH, sudo, libvirt)
+│   ├── network.nix       # Static IP configuration
+│   ├── glasfaser.nix     # Telekom Glasfaser PPPoE
+│   ├── nvidia.nix        # NVIDIA GPU + suspend fixes
+│   ├── gnome.nix         # GNOME desktop
+│   ├── gnome-extensions.nix
+│   ├── latex.nix         # LaTeX writing environment
+│   ├── asterisk.nix      # Asterisk SIP PBX
+│   ├── openclaude.nix    # OpenClaude CLI
+│   ├── packages.nix      # Base packages
+│   └── sops.nix          # Secrets management
+├── hosts/                 # Host-specific configs
+│   └── p50/
+│       └── secrets.yaml   # Encrypted secrets
+└── home/lucy/           # Home-manager user config
+```
+
+## Modules Overview
+
+| Module | Responsibility |
+|--------|----------------|
+| `base.nix` | SSH, sudo, libvirt, firewall, initrd SSH |
+| `network.nix` | Static IP via NetworkManager |
+| `glasfaser.nix` | Telekom VLAN 7 + PPPoE |
+| `nvidia.nix` | GPU settings, suspend/resume |
+| `gnome.nix` | Desktop environment |
+| `asterisk.nix` | SIP PBX with PJSIP |
+| `latex.nix` | TeX Live + texlab |
+
+## Telekom Glasfaser Setup
 
 ```nix
-nixosConfigurations.newhost = nixpkgs.lib.nixosSystem {
-  system = "x86_64-linux";
-  modules = [ ./hosts/newhost ];
+networking.glasfaser = {
+  enable = true;
+  interface = "enp0s31f6";
+  vlanId = 7;
+  username = "user@t-online.de";
+  passwordFile = /run/secrets/pppoe-password;
 };
 ```
 
-## Adding a New User
-
-Use `mkUser` from `lib/default.nix`:
+## Asterisk SIP PBX
 
 ```nix
-mkUser {
-  username = "newuser";
-  description = "New User";
-  modules = [ ./home/newuser ];
-}
+services.asteriskLocal = {
+  enable = true;
+  openFirewall = true;
+  phones = {
+    desk1 = { extension = "1001"; password = "secret"; };
+  };
+};
 ```
 
-## Adding a New Module
-
-### NixOS Module (`modules/nixos/`)
-
-```nix
-{ lib, config, ... }:
-
-{
-  options.myModule.enable = lib.mkEnableOption "my awesome module";
-
-  config = lib.mkIf config.myModule.enable {
-    # Your config here
-    environment.systemPackages = [ pkgs.hello ];
-  };
-}
-```
-
-### Home Manager Module (`modules/home/`)
-
-```nix
-{ lib, config, ... }:
-
-{
-  options.lucy.myModule = {
-    enable = lib.mkEnableOption "my user module";
-  };
-
-  config = lib.mkIf config.lucy.myModule.enable {
-    home.packages = [ pkgs.hello ];
-  };
-}
-```
-
-## Modules Reference
-
-| Module | Location | Purpose |
-|--------|----------|---------|
-| niri | `modules/nixos/niri.nix` | Wayland compositor |
-| nix-settings | `nix-settings.nix` | Nix configuration |
-| base profile | `profiles/base.nix` | Base system config |
-| desktop profile | `profiles/desktop.nix` | GNOME + pipewire |
-
-## Flake Inputs
-
-| Input | URL | Purpose |
-|-------|-----|---------|
-| nixpkgs | `github:NixOS/nixpkgs/nixos-unstable` | Packages and modules |
-| home-manager | `github:nix-community/home-manager` | User environment |
+After rebuild: `sudo asterisk -rx 'core reload'`
 
 ## Common Commands
 
 ```bash
-# Update all flake inputs
-nix flake update
-
-# Check configuration
-nix flake check
-
-# Build system
-nix build .#nixosConfigurations.p50.config.system.build.toplevel
-
-# Format code
-nix fmt
+nix flake check     # Validate config
+nix flake update    # Update inputs
+nix fmt            # Format code
 ```
-
-## Hardware Notes (p50)
-
-- ThinkPad P50 with Intel HD Graphics 530 + NVIDIA Quadro M1000M
-- Network: Ethernet (enp0s31f6) + WiFi (wlp4s0)
-- Storage: LUKS encrypted root + swap

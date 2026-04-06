@@ -252,12 +252,10 @@ let
    * This uses lib.warn to alert operators about potential security issues
    * without blocking the configuration from building.
    */
-  credentialWarnings = lib.pipe cfg.phones [
-    lib.mapAttrsToList (n: p: { inherit n; password = p.password; })
-    (lib.filter (p: p.name == p.password))
-    (lib.map (p: "asteriskLocal: phone '${p.name}' has password equal to account name - this is a weak credential"))
-    lib.concatStringsSep "\n"
-  ];
+  credentialWarnings = let
+    phones-list = lib.mapAttrsToList (name: phone: { inherit name; password = phone.password; }) cfg.phones;
+    weak-creds = lib.filter (p: p.name == p.password) phones-list;
+  in lib.concatStringsSep "\n" (lib.map (p: "asteriskLocal: phone '${p.name}' has password equal to account name - this is a weak credential") weak-creds);
 
 in
 
@@ -425,18 +423,13 @@ in
       ];
     };
 
-    # Emit credential warnings when evaluating the configuration
-    # Using _module.check to defer warnings until after module evaluation
-    imports = lib.optional (credentialWarnings != "") (
-      { lib._warnings = [ credentialWarnings ]; }
-    );
-
     # Configuration assertions - fail early if configuration is invalid
-    assertions = configAssertions;
-
-    # Documentation
-    meta = {
-      description = "Asterisk Local SIP PBX - Internal phone network using PJSIP";
-    };
+    assertions = configAssertions ++ [
+      # Warn about weak credentials
+      {
+        assertion = lib.length credentialWarnings == 0;
+        message = "asteriskLocal: ${credentialWarnings}";
+      }
+    ];
   };
 }

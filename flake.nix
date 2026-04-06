@@ -192,6 +192,7 @@
               };
               remoteBuild = true;
               ssh_user = "root";
+              sshOpts = [ "-t" ];
             };
           };
         };

@@ -1,16 +1,14 @@
 { lib, config, pkgs, ... }:
 
 {
-  options.p50 = {
-    latex = {
-      enable = lib.mkEnableOption "LaTeX writing environment";
-    };
+  options.lucy.latex = {
+    enable = lib.mkEnableOption "LaTeX writing environment";
   };
 
-  config = lib.mkIf config.p50.latex {
+  config = lib.mkIf config.lucy.latex.enable {
     environment.systemPackages = with pkgs; [
       texliveSmall
-      latexmk
+      texlivePackages.latexmk
       biber
       texlab
       zathura

@@ -1,33 +1,16 @@
-{ lib, stdenv, fetchurl, nodejs, npmConfigHook }:
+{ lib, config, ... }:
 
-stdenv.mkDerivation {
-  pname = "openclaude";
-  version = "0.1.9";
-
-  src = lib.cleanSource (builtins.fetchGit {
-    url = "https://github.com/gitlawb/openclaude";
-    rev = "HEAD";
-  });
-
-  nativeBuildInputs = [ nodejs npmConfigHook ];
-
-  npmDeps = fetchurl {
-    url = "https://registry.npmjs.org/@gitlawb/openclaude/-/openclaude-${version}.tgz";
-    sha256 = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+{
+  options.lucy.openclaude = {
+    enable = lib.mkEnableOption "OpenClaude CLI tool";
   };
 
-  makeCacheDirs = [ ];
-
-  dontNpmBuild = false;
-  installPhase = ''
-    mkdir -p $out/lib/node_modules/@gitlawb
-    tar -xzf $npmDeps -C $out/lib/node_modules/@gitlawb
-    mv $out/lib/node_modules/@gitlawb/package $out/lib/node_modules/@gitlawb/openclaude
-    chmod +x $out/lib/node_modules/@gitlawb/openclaude/bin/openclaude.js
-    ln -s $out/lib/node_modules/@gitlawb/openclaude/bin/openclaude.js $out/bin/openclaude
-  '';
-
-  postPatch = ''
-    export HOME=$TMPDIR
-  '';
+  config = lib.mkIf config.lucy.openclaude.enable {
+    assertions = [
+      {
+        assertion = false;
+        message = "openclaude is broken: npm packaging issues - requires network access during build";
+      }
+    ];
+  };
 }

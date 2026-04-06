@@ -3,7 +3,13 @@
 {
   imports = [
     ./hardware-configuration.nix
+    ../../modules/nixos/base.nix
     ../../modules/nixos/network.nix
+    ../../modules/nixos/nvidia.nix
+    ../../modules/nixos/gnome.nix
+    ../../modules/nixos/gnome-extensions.nix
+    ../../modules/nixos/packages.nix
+    ../../modules/nixos/openclaude.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -17,68 +23,63 @@
     address = "192.168.178.4";
     prefixLength = 24;
     gateway = "192.168.178.1";
-    interface = "enp8s0";
+    interface = "enp60s0";
   };
 
-  time.timeZone = "Europe/Berlin";
+  boot.initrd.network.ssh.port = 2224;
+  boot.initrd.availableKernelModules = [ "r8169" ];
 
-  i18n.defaultLocale = "en_US.UTF-8";
+  lucy.base.enable = true;
+  lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
+  lucy.base.sshKeyComment = "lucy@p50";
 
-  i18n.extraLocaleSettings = {
-    LC_ADDRESS = "de_DE.UTF-8";
-    LC_IDENTIFICATION = "de_DE.UTF-8";
-    LC_MEASUREMENT = "de_DE.UTF-8";
-    LC_MONETARY = "de_DE.UTF-8";
-    LC_NAME = "de_DE.UTF-8";
-    LC_NUMERIC = "de_DE.UTF-8";
-    LC_PAPER = "de_DE.UTF-8";
-    LC_TELEPHONE = "de_DE.UTF-8";
-    LC_TIME = "de_DE.UTF-8";
-  };
+  lucy.nvidia.enable = true;
+  lucy.gnome.enable = true;
+  lucy.gnome.wayland = false;
+  lucy.gnomeExtensions.enable = true;
+  # lucy.openclaude.enable = true;  # disabled - build issues
 
-  services.xserver.enable = true;
-  services.xserver.displayManager.gdm.enable = true;
-  services.xserver.desktopManager.gnome.enable = true;
-  services.xserver.xkb = {
-    layout = "us";
-    variant = "";
-  };
-
-  services.printing.enable = true;
-
-  services.pulseaudio.enable = false;
-  security.rtkit.enable = true;
-  services.pipewire = {
+  services.xserver.displayManager.gdm = {
     enable = true;
-    alsa.enable = true;
-    alsa.support32Bit = true;
-    pulse.enable = true;
+    wayland = false;
   };
 
-  users.users.lucy = {
-    isNormalUser = true;
-    description = "Lucy";
-    extraGroups = [ "networkmanager" "wheel" ];
-    packages = with pkgs; [
-      deskflow
-    ];
+  services.thermald.enable = true;
+
+  powerManagement.enable = true;
+  powerManagement.cpuFreqGovernor = "powersave";
+
+  systemd.services.nvidia-resume = {
+    description = "Reinitialize NVIDIA driver after resume";
+    after = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
+    wantedBy = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
+    script = ''
+      #!/bin/sh
+      # Re-bind the NVIDIA driver if it failed to resume properly
+      if [ -d /sys/bus/pci/drivers/nvidia ]; then
+        for dev in /sys/bus/pci/drivers/nvidia/*; do
+          if [ -e "$dev" ]; then
+            vendor=$(cat "$dev/vendor" 2>/dev/null)
+            if [ "$vendor" = "0x10de" ]; then
+              devname=$(basename "$dev")
+              echo "$devname" > /sys/bus/pci/drivers/nvidia/unbind 2>/dev/null
+              echo "$devname" > /sys/bus/pci/drivers/nvidia/bind 2>/dev/null
+            fi
+          fi
+        done
+      fi
+      # Restart GDM if needed
+      systemctl restart gdm.service 2>/dev/null || true
+    '';
+    serviceConfig.Type = "oneshot";
+    serviceConfig.RemainAfterExit = true;
   };
 
-  programs.firefox.enable = true;
-  programs.dconf.enable = true;
-
-  nixpkgs.config.allowUnfree = true;
-
-  environment.systemPackages = with pkgs; [
-    gnomeExtensions.dash-to-dock
+  lucy.basePackages = with pkgs; [
+    deskflow
   ];
 
-  services.openssh.enable = true;
-
-  networking.firewall = {
-    enable = true;
-    allowedTCPPorts = [ 22 24800 ];
-  };
+  lucy.hostPackages = with pkgs; [ ];
 
   system.stateVersion = "25.11";
 }
