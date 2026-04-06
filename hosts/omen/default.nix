@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ lib, config, pkgs, ... }:
 
 {
   imports = [
@@ -50,7 +50,7 @@
   powerManagement.cpuFreqGovernor = "powersave";
 
   systemd.services.nvidia-resume = {
-    description = "Reinitialize NVIDIA driver after resume";
+    description = lib.mkForce "Reinitialize NVIDIA driver after resume";
     after = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
     wantedBy = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
     script = ''

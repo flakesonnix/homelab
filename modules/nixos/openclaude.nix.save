@@ -1,0 +1,57 @@
+
+{ lib, config, pkgs, ... }:
+
+let
+  openclaude = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
+    pname = "openclaude";
+    version = "0.1.8";
+    
+    src = pkgs.fetchFromGitHub {
+      owner = "gitlawb";
+      repo = "openclaude";
+      tag = "v${finalAttrs.version}";
+      hash = "sha256-UGhkVOuE3sNPHSyDcGkPY/J0+2kyrcyp5GFv0LjtDYY=";
+    };
+
+    nativeBuildInputs = [ pkgs.bun pkgs.makeWrapper ];
+    
+    dontConfigure = true;
+
+    buildPhase = ''
+      runHook preBuild
+      HOME=$TMPDIR bun install --frozen-lockfile --ignore-scripts
+      HOME=$TMPDIR bun run build
+      runHook postBuild
+    '';
+
+    installPhase = ''
+      runHook preInstall
+      mkdir -p $out/bin
+      makeWrapper $out/packages/app/dist/openclaude-*/bin/openclaude $out/bin/openclaude \
+        --prefix PATH : $out/node_modules/.bin
+      runHook postInstall
+    '';
+
+    passthru = {
+      js = "$out/packages/app/dist/cli.mjs";
+    };
+
+    meta = with lib; {
+      description = "Claude Code for any LLM - OpenAI, Gemini, DeepSeek, Ollama, and 200+ models";
+      homepage = "https://github.com/gitlawb/openclaude";
+      license = licenses.mit;
+      mainProgram = "openclaude";
+      platforms = platforms.linux;
+    };
+  });
+in
+
+{
+  options.lucy.openclaude = {
+    enable = lib.mkEnableOption "OpenClaude CLI tool";
+  };
+
+  config = lib.mkIf config.lucy.openclaude.enable {
+    environment.systemPackages = [ openclaude ];
+  };
+}
