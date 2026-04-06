@@ -30,10 +30,10 @@
     boot.kernelParams = [
       "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
       "nvidia.NVreg_TemporaryFilePath=/var/tmp"
+      "mem_sleep_default=s2idle"
     ];
 
     services.logind = {
-      suspendMode = "s2idle";
       suspendThenHibernate = false;
       powerKey = "poweroff";
       suspendKey = "suspend";
