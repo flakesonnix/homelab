@@ -26,6 +26,7 @@
     interface = "enp60s0";
   };
 
+  boot.initrd.network.enable = true;
   boot.initrd.network.ssh.port = 2224;
   boot.initrd.availableKernelModules = [ "r8169" ];
 
