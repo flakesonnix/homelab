@@ -25,8 +25,8 @@ in
     };
   };
 
-  config = lib.mkIf cfg.sink {
-    services.avahi = {
+  config = {
+    services.avahi = lib.mkIf cfg.sink {
       enable = true;
       nssmdns4 = true;
       publish = {
@@ -36,15 +36,13 @@ in
       };
     };
 
-    networking.firewall = {
+    networking.firewall = lib.mkIf cfg.sink {
       enable = true;
       allowedUDPPorts = [ 5353 ];
       allowedTCPPorts = [ 5353 5000 6000 ];
     };
-  };
 
-  config = lib.mkIf (cfg.sink && cfg.backend == "pulseaudio") {
-    hardware.pulseaudio = {
+    hardware.pulseaudio = lib.mkIf (cfg.sink && cfg.backend == "pulseaudio") {
       enable = true;
       extraConfig = ''
         # Enable network access
@@ -54,11 +52,8 @@ in
         set-default-sink ${cfg.sinkName}
       '';
     };
-    environment.systemPackages = [ pkgs.avahi ];
-  };
 
-  config = lib.mkIf (cfg.sink && cfg.backend == "pipewire") {
-    services.pipewire = {
+    services.pipewire = lib.mkIf (cfg.sink && cfg.backend == "pipewire") {
       enable = true;
       audio.enable = true;
       pulse.enable = true;
@@ -82,20 +77,8 @@ in
         };
       };
     };
-    environment.systemPackages = [ pkgs.avahi ];
-  };
 
-  config = lib.mkIf cfg.airplay {
-    services.avahi = {
-      enable = true;
-      nssmdns4 = true;
-      publish = {
-        enable = true;
-        addresses = true;
-      };
-    };
-
-    services.shairport-sync = {
+    services.shairport-sync = lib.mkIf cfg.airplay {
       enable = true;
       name = cfg.airplayName;
       networkInterfaces = [ "*" ];
@@ -104,12 +87,10 @@ in
       serviceType = "_raop._tcp";
     };
 
-    networking.firewall = {
-      enable = true;
-      allowedTCPPorts = [ 5000 6000 ];
-      allowedUDPPorts = [ 6001 ];
-    };
-
-    environment.systemPackages = [ pkgs.shairport-sync ];
+    environment.systemPackages = with pkgs; lib.mkMerge [
+      (lib.mkIf (cfg.sink && cfg.backend == "pulseaudio") [ avahi ])
+      (lib.mkIf (cfg.sink && cfg.backend == "pipewire") [ avahi ])
+      (lib.mkIf cfg.airplay [ shairport-sync ])
+    ];
   };
 }
