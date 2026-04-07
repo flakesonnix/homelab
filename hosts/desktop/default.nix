@@ -75,7 +75,9 @@
     anonymousUser = false;
   };
 
-  networking.firewall.allowedTCPPorts = [ 21 445 139 ];
+  services.uptime-kuma.enable = true;
+
+  networking.firewall.allowedTCPPorts = [ 21 445 139 3001 ];
   networking.firewall.allowedUDPPorts = [ 137 138 ];
 
   systemd.tmpfiles.rules = [
