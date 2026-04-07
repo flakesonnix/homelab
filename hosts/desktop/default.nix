@@ -45,8 +45,8 @@
   hq.audio.backend = "pipewire";
   hq.audio.sink = true;
   hq.audio.sinkName = "Pulsebert";
-  hq.audio.airplay = true;
-  hq.audio.airplayName = "Glotzbert";
+  # hq.audio.airplay = true;
+  # hq.audio.airplayName = "Glotzbert";
 
   lucy.basePackages = with pkgs; [
     deskflow
