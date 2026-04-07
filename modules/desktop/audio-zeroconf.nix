@@ -80,7 +80,7 @@ in
 
     services.shairport-sync = lib.mkIf cfg.airplay {
       enable = true;
-      arguments = "--name=${cfg.airplayName}";
+      settings.name = cfg.airplayName;
     };
 
     environment.systemPackages = with pkgs; lib.mkMerge [
