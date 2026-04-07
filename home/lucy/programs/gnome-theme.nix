@@ -60,6 +60,11 @@
       };
     };
 
-    home.packages = with pkgs; [ ];
+    home.packages = with pkgs; [
+      gnomeExtensions.dash-to-dock
+      gnomeExtensions.vicinae
+      gnomeExtensions.caffeine
+      gnomeExtensions.user-themes
+    ];
   };
 }
