@@ -81,6 +81,7 @@
       virt-manager
       virt-viewer
       gnome-tweaks
+      wl-clipboard
     ];
 
     users.users.lucy.extraGroups = [ "libvirtd" ];
