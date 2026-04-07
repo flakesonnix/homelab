@@ -26,13 +26,51 @@
         picture-uri = "file:///run/current-system/sw/share/backgrounds/gnome/adwaita-dark.svg";
       };
 
+      "org/gnome/desktop/wm/preferences" = {
+        button-layout = "appmenu:minimize,maximize,close";
+        action-double-click-titlebar = "toggle-maximize";
+        action-middle-click-titlebar = "lower";
+        action-right-click-titlebar = "menu";
+        focus-mode = "click";
+        resize-with-right-button = true;
+      };
+
+      "org/gnome/desktop/interface" = {
+        clock-format = "24h";
+        clock-show-weekday = true;
+        show-battery-percentage = true;
+        enable-animations = false;
+      };
+
+      "org/gnome/desktop/peripherals/mouse" = {
+        accel-profile = "flat";
+      };
+
+      "org/gnome/desktop/peripherals/touchpad" = {
+        tap-to-click = true;
+        two-finger-scrolling-enabled = true;
+      };
+
+      "org/gnome/mutter" = {
+        experimental-features = [ "scale-monitor-framebuffer" ];
+      };
+
+      "org/gnome/settings-daemon/plugins/power" = {
+        sleep-inactive-ac-type = "nothing";
+        sleep-inactive-battery-type = "suspend";
+      };
+
+      "org/gnome/desktop/notifications" = {
+        show-in-lock-screen = false;
+      };
+
       "org/gnome/shell" = {
-        enabled-extensions = [
-          "dash-to-dock@micxgx.gmail.com"
-          "vicinae@rootmos.github.com"
-          "caffeine@patapon.info"
+        favorite-apps = [
+          "firefox.desktop"
+          "org.gnome.Nautilus.desktop"
+          "org.gnome.Terminal.desktop"
+          "code.desktop"
         ];
-        theme = "Adwaita-dark";
       };
 
       "org/gnome/shell/extensions/dash-to-dock" = {
