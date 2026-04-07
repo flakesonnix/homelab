@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ lib, config, pkgs, ... }:
 
 {
   imports = [
@@ -38,6 +38,8 @@
   lucy.gnome.enable = true;
   lucy.gnome.wayland = false;
   lucy.gnomeExtensions.enable = true;
+
+  hardware.nvidia.powerManagement.enable = lib.mkForce false;
   lucy.openclaude.enable = false;
 
   hq.audio.backend = "pipewire";
