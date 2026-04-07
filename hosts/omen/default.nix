@@ -7,7 +7,6 @@
     ../../modules/nixos/network.nix
     ../../modules/nixos/nvidia.nix
     ../../modules/nixos/gnome.nix
-    ../../modules/nixos/gnome-extensions.nix
     ../../modules/nixos/packages.nix
     ../../modules/nixos/openclaude.nix
   ];
@@ -38,7 +37,6 @@
   lucy.nvidia.enable = true;
   lucy.gnome.enable = true;
   lucy.gnome.wayland = false;
-  lucy.gnomeExtensions.enable = true;
   # lucy.openclaude.enable = true;  # disabled - build issues
 
   services.xserver.displayManager.gdm = {
