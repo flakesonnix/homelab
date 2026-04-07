@@ -50,7 +50,35 @@
     deskflow
   ];
 
-  lucy.hostPackages = with pkgs; [ ];
+  services.samba = {
+    enable = true;
+    openFirewall = true;
+    shares = {
+      public = {
+        path = "/srv/public";
+        browseable = "yes";
+        "read only" = "no";
+        "guest ok" = "yes";
+        "public" = "yes";
+        "force user" = "lucy";
+        "force group" = "users";
+      };
+    };
+  };
+
+  services.vsftpd = {
+    enable = true;
+    localUsers = true;
+    writeEnable = true;
+    anonymousUser = false;
+  };
+
+  networking.firewall.allowedTCPPorts = [ 21 445 139 ];
+  networking.firewall.allowedUDPPorts = [ 137 138 ];
+
+  systemd.tmpfiles.rules = [
+    "d /srv/public 0755 lucy users -"
+  ];
 
   xdg.portal = {
     enable = true;

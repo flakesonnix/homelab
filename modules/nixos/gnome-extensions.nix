@@ -10,6 +10,7 @@
           pkgs.gnomeExtensions.dash-to-dock
           pkgs.gnomeExtensions.vicinae
           pkgs.gnomeExtensions.caffeine
+          pkgs.gnomeExtensions.user-themes
         ];
         description = "List of GNOME extensions to install";
       };
