@@ -106,9 +106,6 @@
     };
     boot.initrd.availableKernelModules = [ "r8169" "e1000e" ];
 
-    sops = {
-      defaultSopsFile = ./secrets.yaml;
-      age.keyFile = /etc/sops/age/keys.txt;
-    };
+    nix.settings.trusted-users = [ "root" "lucy" ];
   };
 }
