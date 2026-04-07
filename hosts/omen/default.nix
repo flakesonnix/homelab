@@ -28,7 +28,7 @@
 
   boot.initrd.network.enable = true;
   boot.initrd.network.udhcpc.enable = true;
-  boot.initrd.network.ssh.port = 2224;
+  boot.initrd.network.ssh.port = lib.mkForce 2224;
   boot.initrd.availableKernelModules = [ "r8169" ];
 
   lucy.base.enable = true;
