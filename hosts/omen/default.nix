@@ -27,7 +27,10 @@
   };
 
   boot.initrd.network.enable = true;
-  boot.initrd.network.udhcpc.enable = true;
+  boot.initrd.network.postCommands = ''
+    ip addr add 192.168.178.4/24 dev enp60s0
+    ip route add default via 192.168.178.1
+  '';
   boot.initrd.network.ssh.port = lib.mkForce 2224;
   boot.initrd.availableKernelModules = [ "r8169" ];
 
