@@ -44,6 +44,8 @@
   lucy.gnomeExtensions.enable = true;
   # lucy.openclaude.enable = true;  # disabled - build issues
 
+  hardware.nvidia.powerManagement.enable = lib.mkForce false;
+
   services.xserver.displayManager.gdm = {
     enable = true;
     wayland = false;

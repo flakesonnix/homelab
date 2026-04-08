@@ -70,6 +70,7 @@
                 nix-flatpak.homeManagerModules.nix-flatpak
                 nix-index-database.homeModules.default
               ];
+              nixpkgs.config.allowUnfree = true;
             };
           }
         ];
@@ -95,6 +96,7 @@
                 nix-flatpak.homeManagerModules.nix-flatpak
                 nix-index-database.homeModules.default
               ];
+              nixpkgs.config.allowUnfree = true;
             };
           }
         ];
@@ -120,6 +122,7 @@
                 nix-flatpak.homeManagerModules.nix-flatpak
                 nix-index-database.homeModules.default
               ];
+              nixpkgs.config.allowUnfree = true;
             };
           }
         ];

@@ -3,9 +3,20 @@
 {
   options.lucy.ssh = {
     enable = lib.mkEnableOption "SSH configuration";
+    extraHosts = lib.mkOption {
+      type = lib.types.attrsOf (lib.types.submodule {
+        options = {
+          host = lib.mkOption { type = lib.types.str; };
+          user = lib.mkOption { type = lib.types.str; };
+          identityFile = lib.mkOption { type = lib.types.str; };
+        };
+      });
+      default = {};
+      description = "Additional SSH hosts to configure";
+    };
   };
 
-  config = lib.mkIf config.lucy.ssh {
+  config = lib.mkIf config.lucy.ssh.enable {
     programs.ssh = {
       enable = true;
       controlMaster = "auto";
@@ -16,28 +27,35 @@
       hashKnownHosts = true;
       addKeysToAgent = "yes";
 
-      matchBlocks = {
-        "github.com" = {
-          identityFile = "~/.ssh/lucy_git";
-          hostname = "github.com";
-        };
+      matchBlocks = lib.mkMerge [
+        {
+          "github.com" = {
+            identityFile = "~/.ssh/lucy_git";
+            hostname = "github.com";
+          };
 
-        "gitlab.com" = {
-          identityFile = "~/.ssh/lucy_git";
-          hostname = "gitlab.com";
-        };
+          "gitlab.com" = {
+            identityFile = "~/.ssh/lucy_git";
+            hostname = "gitlab.com";
+          };
 
-        "sr.ht" = {
-          identityFile = "~/.ssh/lucy_git";
-          hostname = "sr.ht";
-        };
+          "sr.ht" = {
+            identityFile = "~/.ssh/lucy_git";
+            hostname = "sr.ht";
+          };
 
-        "localhost" = {
-          hostname = "localhost";
-          StrictHostKeyChecking = "accept-new";
-          UserKnownHostsFile = "~/.ssh/known_hosts_local";
-        };
-      };
+          "localhost" = {
+            hostname = "localhost";
+            StrictHostKeyChecking = "accept-new";
+            UserKnownHostsFile = "~/.ssh/known_hosts_local";
+          };
+        }
+        (lib.mapAttrsAttrsToList (name: value: lib.nameValuePair name {
+          host = value.host;
+          user = value.user;
+          identityFile = value.identityFile;
+        }) config.lucy.ssh.extraHosts)
+      ];
 
       knownHosts = [
         {

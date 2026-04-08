@@ -22,12 +22,27 @@
   lucy.btop.enable = true;
   lucy.stylix.enable = true;
   lucy.gnomeTheme.enable = true;
+  lucy.ssh.enable = true;
+  lucy.ssh.extraHosts = {
+    "p50" = {
+      host = "192.168.178.31";
+      user = "lucy";
+      identityFile = "~/.ssh/id_ed25519";
+    };
+  };
   lucy.programs.jetbrains-mono = true;
   lucy.programs.wpaperd = true;
   lucy.programs.comma = true;
+  lucy.programs.android-studio = true;
   lucy.openclaude.enable = true;
 
+  programs.neovim = {
+    withRuby = true;
+    withPython3 = true;
+  };
+
   programs.ssh = {
+    enableDefaultConfig = false;
     enable = true;
     matchBlocks = {
       "p50" = {
