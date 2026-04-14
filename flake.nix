@@ -1,6 +1,12 @@
 {
   description = "NixOS dotfiles for lucy";
 
+  nixConfig = {
+    accept-flake-config = true;
+    warn-dirty = false;
+    warnImplicit = false;
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -184,7 +190,7 @@
               };
               remoteBuild = true;
               ssh_user = "root";
-              sshOpts = [ "-t" ];
+              sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" ];
             };
           };
         };

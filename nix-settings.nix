@@ -12,6 +12,7 @@
         "https://cache.nixos.org"
       ];
     };
+    warnings = "";
   };
 
   nixpkgs.config.allowUnfree = true;
