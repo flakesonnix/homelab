@@ -47,9 +47,7 @@
     };
 
     hyprnix = {
-      url = "github:flakesonnix/dots-hyprland";
-      inputs.nixpkgs.follows = "nixpkgs";
-      inputs.home-manager.follows = "home-manager";
+      url = "path:/home/lucy/RustroverProjects/hyprnix";
     };
 
   };
@@ -108,7 +106,6 @@
                   stylix.homeModules.stylix
                   nix-flatpak.homeManagerModules.nix-flatpak
                   nix-index-database.homeModules.default
-                  hyprnix.homeManagerModules.hyprnix
                 ];
                 nixpkgs.config.allowUnfree = true;
               };
