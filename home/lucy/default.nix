@@ -12,6 +12,7 @@
     ./programs/gnome-theme.nix
     ./programs/openclaude.nix
     ../../modules/home/stylix.nix
+    ../../modules/home/ssh.nix
   ];
 
   lucy.shell.enable = true;
@@ -39,18 +40,6 @@
   programs.neovim = {
     withRuby = true;
     withPython3 = true;
-  };
-
-  programs.ssh = {
-    enableDefaultConfig = false;
-    enable = true;
-    matchBlocks = {
-      "p50" = {
-        host = "192.168.178.31";
-        user = "lucy";
-        identityFile = "${config.home.homeDirectory}/.ssh/id_ed25519";
-      };
-    };
   };
 
   services.flatpak = {

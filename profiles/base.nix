@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ lib, pkgs, ... }:
 
 {
   imports = [
@@ -13,8 +13,16 @@
   i18n.defaultLocale = lib.mkDefault "en_US.UTF-8";
 
   nixpkgs.config.allowUnfree = true;
+  nixpkgs.config.cudaSupport = true;
 
   programs.firefox.enable = true;
+  programs.firefox.policies = {
+    ExtensionSettings = {
+      "uBlock0@raymondhill.net" = {
+        install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
+      };
+    };
+  };
 
   services.printing.enable = true;
 

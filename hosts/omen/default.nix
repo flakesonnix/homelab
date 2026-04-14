@@ -1,4 +1,14 @@
-{ lib, config, pkgs, ... }:
+{ lib, config, pkgs, wrappers, ... }:
+
+let
+  hyfetch-wrapped = wrappers.lib.wrapPackage {
+    inherit pkgs;
+    package = pkgs.hyfetch;
+    flags = {
+      "-p" = "transgender";
+    };
+  };
+in
 
 {
   imports = [
@@ -9,29 +19,18 @@
     ../../modules/nixos/gnome.nix
     ../../modules/nixos/gnome-extensions.nix
     ../../modules/nixos/packages.nix
+    ../../modules/nixos/latex.nix
     ../../modules/nixos/openclaude.nix
+    ../../modules/nixos/asterisk.nix
+    ../../modules/nixos/audio-stream.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  boot.initrd.luks.devices."luks-42997d57-8a2a-443a-851b-79ae5ec6dd42".device = "/dev/disk/by-uuid/42997d57-8a2a-443a-851b-79ae5ec6dd42";
-
   networking.hostName = "omen";
-  networking.staticIP = {
-    enable = true;
-    address = "192.168.178.4";
-    prefixLength = 24;
-    gateway = "192.168.178.1";
-    interface = "enp60s0";
-  };
+  networking.networkmanager.enable = true;
 
-  boot.initrd.network.enable = true;
-  boot.initrd.network.postCommands = ''
-    ip addr add 192.168.178.4/24 dev enp60s0
-    ip route add default via 192.168.178.1
-  '';
-  boot.initrd.network.ssh.port = lib.mkForce 2224;
   boot.initrd.availableKernelModules = [ "r8169" ];
 
   lucy.base.enable = true;
@@ -40,16 +39,9 @@
 
   lucy.nvidia.enable = true;
   lucy.gnome.enable = true;
-  lucy.gnome.wayland = false;
   lucy.gnomeExtensions.enable = true;
-  # lucy.openclaude.enable = true;  # disabled - build issues
 
   hardware.nvidia.powerManagement.enable = lib.mkForce false;
-
-  services.xserver.displayManager.gdm = {
-    enable = true;
-    wayland = false;
-  };
 
   services.thermald.enable = true;
 
@@ -66,7 +58,6 @@
       ExecStart = lib.mkForce [
         "/bin/sh" "-c" ''
           #!/bin/sh
-          # Re-bind the NVIDIA driver if it failed to resume properly
           if [ -d /sys/bus/pci/drivers/nvidia ]; then
             for dev in /sys/bus/pci/drivers/nvidia/*; do
               if [ -e "$dev" ]; then
@@ -79,18 +70,61 @@
               fi
             done
           fi
-          # Restart GDM if needed
           systemctl restart gdm.service 2>/dev/null || true
         ''
       ];
     };
   };
 
+  services.asteriskLocal = {
+    enable = false;
+    openFirewall = true;
+    phones = {
+      desk1 = { extension = "1001"; password = "secret123"; };
+      desk2 = { extension = "1002"; password = "secret456"; };
+    };
+    extraExtensions = ''
+      exten => 9000,1,Dial(PJSIP/desk1&PJSIP/desk2,20)
+      same => n,Hangup()
+    '';
+  };
+
+  hq.audio.streamTo = "192.168.178.2";
+
+  programs.noisetorch.enable = true;
+
   lucy.basePackages = with pkgs; [
+    alacritty
+    zathura
+    fzf
+    bat
+    vesktop
+    vlc
+    p7zip
+    thunderbird
     deskflow
+    keepassxc
+    nodejs_22
+    ausweisapp
   ];
 
-  lucy.hostPackages = with pkgs; [ ];
+  lucy.hostPackages = with pkgs; [
+    ollama-cuda
+    lmstudio
+  ];
+
+  services.ollama = {
+    enable = true;
+    package = pkgs.ollama-cuda;
+  };
+
+  nixpkgs.config.cudaSupport = true;
+
+  environment.systemPackages = with pkgs; [
+    hyfetch-wrapped
+  ];
+
+  services.openssh.settings.PermitRootLogin = "prohibit-password";
 
   system.stateVersion = "25.11";
 }

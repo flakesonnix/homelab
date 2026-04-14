@@ -19,6 +19,7 @@
   config = lib.mkIf config.lucy.ssh.enable {
     programs.ssh = {
       enable = true;
+      enableDefaultConfig = false;
       controlMaster = "auto";
       controlPath = "~/.ssh/sockets/%r@%h-%p";
       controlPersist = "10m";
@@ -27,50 +28,22 @@
       hashKnownHosts = true;
       addKeysToAgent = "yes";
 
-      matchBlocks = lib.mkMerge [
-        {
-          "github.com" = {
-            identityFile = "~/.ssh/lucy_git";
-            hostname = "github.com";
-          };
+      matchBlocks = {
+        "github.com" = {
+          identityFile = "~/.ssh/lucy_git";
+          hostname = "github.com";
+        };
 
-          "gitlab.com" = {
-            identityFile = "~/.ssh/lucy_git";
-            hostname = "gitlab.com";
-          };
+        "gitlab.com" = {
+          identityFile = "~/.ssh/lucy_git";
+          hostname = "gitlab.com";
+        };
 
-          "sr.ht" = {
-            identityFile = "~/.ssh/lucy_git";
-            hostname = "sr.ht";
-          };
-
-          "localhost" = {
-            hostname = "localhost";
-            StrictHostKeyChecking = "accept-new";
-            UserKnownHostsFile = "~/.ssh/known_hosts_local";
-          };
-        }
-        (lib.mapAttrsAttrsToList (name: value: lib.nameValuePair name {
-          host = value.host;
-          user = value.user;
-          identityFile = value.identityFile;
-        }) config.lucy.ssh.extraHosts)
-      ];
-
-      knownHosts = [
-        {
-          hostNames = [ "github.com" ];
-          publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
-        }
-        {
-          hostNames = [ "gitlab.com" ];
-          publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF7w4xFUxO6lnI9Kx3E1V8Yq4J4RQG2LVmV9rFk4F3s0";
-        }
-        {
-          hostNames = [ "sr.ht" ];
-          publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAAOKu4T3jGAMfXL6Q6J3iY7VqX8Y2K3E5V9N4B8M6L2P1K";
-        }
-      ];
+        "sr.ht" = {
+          identityFile = "~/.ssh/lucy_git";
+          hostname = "sr.ht";
+        };
+      } // lib.mapAttrs (n: v: { host = v.host; user = v.user; identityFile = v.identityFile; }) config.lucy.ssh.extraHosts;
     };
 
     home.file.".ssh/config".text = ''

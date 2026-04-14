@@ -10,6 +10,7 @@
     ../../modules/nixos/gnome-extensions.nix
     ../../modules/nixos/packages.nix
     ../../modules/nixos/openclaude.nix
+    ../../modules/nixos/dect.nix
     ../../modules/desktop/audio-zeroconf.nix
   ];
 
@@ -41,6 +42,8 @@
 
   hardware.nvidia.powerManagement.enable = lib.mkForce false;
   lucy.openclaude.enable = false;
+
+  lucy.dect.enable = true;
 
   hq.audio.backend = "pipewire";
   hq.audio.sink = true;
@@ -77,8 +80,11 @@
 
   services.uptime-kuma.enable = true;
 
-  networking.firewall.allowedTCPPorts = [ 21 445 139 3001 ];
-  networking.firewall.allowedUDPPorts = [ 137 138 ];
+  networking.firewall.allowedTCPPorts = [ 21 445 139 3001 7236 ];
+  networking.firewall.allowedUDPPorts = [ 137 138 7236 ];
+  networking.firewall.allowedUDPPortRanges = [
+    { from = 10000; to = 20000; }  # RTP audio
+  ];
 
   systemd.tmpfiles.rules = [
     "d /srv/public 0755 lucy users -"
