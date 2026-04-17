@@ -18,6 +18,7 @@ in
     ../../modules/nixos/nvidia.nix
     ../../modules/nixos/gnome.nix
     ../../modules/nixos/gnome-extensions.nix
+    ../../modules/nixos/hyprland.nix
     ../../modules/nixos/packages.nix
     ../../modules/nixos/latex.nix
     ../../modules/nixos/openclaude.nix
@@ -39,7 +40,8 @@ in
 
   lucy.nvidia.enable = true;
   lucy.gnome.enable = true;
-  lucy.hyprland.enable = false;
+  lucy.hyprland.enable = true;
+  lucy.gnomeExtensions.enable = true;
 
   hardware.nvidia.powerManagement.enable = lib.mkForce false;
 
