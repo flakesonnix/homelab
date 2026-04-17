@@ -48,6 +48,10 @@
                 name = "domain-name-servers";
                 data = config.lucy.router.ipv4Gateway;
               }
+              {
+                name = "domain-name";
+                data = "internal.meow";
+              }
             ];
           }
         ];
@@ -61,6 +65,11 @@
           interface = [ "0.0.0.0" ];
           access-control = [ "10.0.0.0/8 allow" ];
           do-daemonize = false;
+          local-zone = "internal.meow. static";
+          local-data-rr = [
+            "desktop.internal.meow. 3600 IN A 10.0.0.1"
+            "omen.internal.meow. 3600 IN A 10.0.0.2"
+          ];
         };
         forward-zone = [
           {
