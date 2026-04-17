@@ -93,6 +93,11 @@
     interface = "enp60s0";
     ipv4Gateway = "10.0.0.1";
     ipv4Range = "10.0.0.128/25";
+    domain = "internal.meow";
+    hosts = [
+      { name = "desktop"; ip = "10.0.0.1"; }
+      { name = "omen"; ip = "10.0.0.2"; }
+    ];
   };
 
   systemd.tmpfiles.rules = [

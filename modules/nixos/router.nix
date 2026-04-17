@@ -17,6 +17,27 @@
       default = "10.0.0.1";
       description = "IPv4 gateway";
     };
+    domain = lib.mkOption {
+      type = lib.types.str;
+      default = "internal.meow";
+      description = "Internal domain name";
+    };
+    hosts = lib.mkOption {
+      type = lib.types.listOf (lib.types.submodule {
+        options = {
+          name = lib.mkOption {
+            type = lib.types.str;
+            description = "Hostname";
+          };
+          ip = lib.mkOption {
+            type = lib.types.str;
+            description = "IP address";
+          };
+        };
+      });
+      default = [];
+      description = "List of hosts for DNS";
+    };
   };
 
   config = lib.mkIf config.lucy.router.enable {
@@ -50,7 +71,7 @@
               }
               {
                 name = "domain-name";
-                data = "internal.meow";
+                data = config.lucy.router.domain;
               }
             ];
           }
@@ -58,25 +79,21 @@
       };
     };
 
-    services.unbound = {
+    services.adguardhome = {
       enable = true;
+      package = pkgs.adguardhome;
       settings = {
-        server = {
-          interface = [ "0.0.0.0" ];
-          access-control = [ "10.0.0.0/8 allow" ];
-          do-daemonize = false;
-          local-zone = "internal.meow. static";
-          local-data-rr = [
-            "desktop.internal.meow. 3600 IN A 10.0.0.1"
-            "omen.internal.meow. 3600 IN A 10.0.0.2"
-          ];
+        bind-hosts = [ "0.0.0.0" ];
+        port = 53;
+        dns = {
+          bind-hosts = [ "0.0.0.0" ];
+          port = 53;
+          upstream-dns = [ "1.1.1.1" "1.0.0.1" ];
+          rewrites = map (host: {
+            domain = "${host.name}.${config.lucy.router.domain}";
+            answer = host.ip;
+          }) config.lucy.router.hosts;
         };
-        forward-zone = [
-          {
-            name = ".";
-            forward-addr = [ "1.1.1.1" "1.0.0.1" ];
-          }
-        ];
       };
     };
 
