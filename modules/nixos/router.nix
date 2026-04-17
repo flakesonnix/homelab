@@ -54,6 +54,23 @@
       };
     };
 
+    services.unbound = {
+      enable = true;
+      settings = {
+        server = {
+          interface = [ "0.0.0.0" ];
+          access-control = [ "10.0.0.0/8 allow" ];
+          do-daemonize = false;
+        };
+        forward-zone = [
+          {
+            name = ".";
+            forward-addr = [ "1.1.1.1" "1.0.0.1" ];
+          }
+        ];
+      };
+    };
+
     services.radvd = {
       enable = true;
       config = ''
