@@ -39,7 +39,7 @@ in
 
   lucy.nvidia.enable = true;
   lucy.gnome.enable = true;
-  lucy.gnomeExtensions.enable = true;
+  lucy.hyprland.enable = false;
 
   hardware.nvidia.powerManagement.enable = lib.mkForce false;
 
