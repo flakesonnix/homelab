@@ -8,6 +8,8 @@
     ../../modules/nixos/nvidia.nix
     ../../modules/nixos/gnome.nix
     ../../modules/nixos/gnome-extensions.nix
+    ../../modules/nixos/hyprland.nix
+    ../../modules/nixos/router.nix
     ../../modules/nixos/packages.nix
     ../../modules/nixos/openclaude.nix
     ../../modules/nixos/dect.nix
@@ -85,6 +87,13 @@
   networking.firewall.allowedUDPPortRanges = [
     { from = 10000; to = 20000; }  # RTP audio
   ];
+
+  lucy.router = {
+    enable = true;
+    interface = "enp60s0";
+    ipv4Gateway = "10.0.0.1";
+    ipv4Range = "10.0.0.128/25";
+  };
 
   systemd.tmpfiles.rules = [
     "d /srv/public 0755 lucy users -"
