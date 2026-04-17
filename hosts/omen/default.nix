@@ -110,6 +110,7 @@ in
 
   lucy.hostPackages = with pkgs; [
     ani-cli
+    scdl
   ];
 
   # services.ollama = {
