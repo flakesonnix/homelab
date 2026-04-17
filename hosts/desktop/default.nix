@@ -36,9 +36,9 @@
   lucy.base.sshKeyComment = "lucy@p50";
 
   lucy.nvidia.enable = true;
-  lucy.gnome.enable = true;
-  lucy.gnome.wayland = false;
-  lucy.gnomeExtensions.enable = true;
+  lucy.gnome.enable = false;
+  lucy.hyprland.enable = true;
+  lucy.gnomeExtensions.enable = false;
 
   hardware.nvidia.powerManagement.enable = lib.mkForce false;
   lucy.openclaude.enable = false;
