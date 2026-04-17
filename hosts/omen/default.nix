@@ -109,16 +109,15 @@ in
   ];
 
   lucy.hostPackages = with pkgs; [
-    ollama-cuda
-    lmstudio
+    ani-cli
   ];
 
-  services.ollama = {
-    enable = true;
-    package = pkgs.ollama-cuda;
-  };
+  # services.ollama = {
+  #   enable = true;
+  #   package = pkgs.ollama-cuda;
+  # };
 
-  nixpkgs.config.cudaSupport = true;
+  # nixpkgs.config.cudaSupport = true;
 
   environment.systemPackages = with pkgs; [
     hyfetch-wrapped
