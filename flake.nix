@@ -53,7 +53,7 @@
     };
 
     hyprnix = {
-      url = "path:/home/lucy/RustroverProjects/hyprnix";
+      url = "github:flakesonnix/hyprnix";
     };
 
   };
