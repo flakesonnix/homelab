@@ -56,9 +56,14 @@
       url = "github:flakesonnix/hyprnix";
     };
 
+    nixos-router = {
+      url = "github:chayleaf/nixos-router";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
-  outputs = inputs@{ self, nixpkgs, nix-topology, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, hyprnix, ... }:
+  outputs = inputs@{ self, nixpkgs, nix-topology, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, hyprnix, nixos-router, ... }:
     let
       pkgs = import nixpkgs {
         system = "x86_64-linux";
@@ -67,11 +72,12 @@
 
       desktop-config = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
-          specialArgs = { inherit wrappers; };
+          specialArgs = { inherit wrappers inputs; };
           modules = [
             ./nix-settings.nix
             ./profiles/desktop.nix
             ./hosts/desktop
+            inputs.nixos-router.nixosModules.default
             sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
             nix-topology.nixosModules.default
@@ -94,7 +100,7 @@
 
       omen-config = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
-          specialArgs = { inherit wrappers; };
+          specialArgs = { inherit wrappers inputs; };
           modules = [
             ./nix-settings.nix
             ./profiles/desktop.nix

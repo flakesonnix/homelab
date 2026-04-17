@@ -9,7 +9,6 @@
     ../../modules/nixos/gnome.nix
     ../../modules/nixos/gnome-extensions.nix
     ../../modules/nixos/hyprland.nix
-    ../../modules/nixos/router.nix
     ../../modules/nixos/packages.nix
     ../../modules/nixos/openclaude.nix
     ../../modules/nixos/dect.nix
@@ -88,16 +87,49 @@
     { from = 10000; to = 20000; }  # RTP audio
   ];
 
-  lucy.router = {
+  router = {
     enable = true;
-    interface = "enp60s0";
-    ipv4Gateway = "10.0.0.1";
-    ipv4Range = "10.0.0.128/25";
-    domain = "internal.meow";
-    hosts = [
-      { name = "desktop"; ip = "10.0.0.1"; }
-      { name = "omen"; ip = "10.0.0.2"; }
-    ];
+    interfaces.lan = {
+      ipv4 = {
+        enableForwarding = true;
+        addresses = [
+          {
+            address = "10.0.0.1";
+            prefixLength = 8;
+          }
+        ];
+        kea = {
+          enable = true;
+          settings = {
+            valid-lifetime = 7200;
+            subnet4 = [
+              {
+                subnet = "10.0.0.0/8";
+                pools = [
+                  {
+                    pool = "10.0.0.128/25";
+                  }
+                ];
+                option-data = [
+                  {
+                    name = "routers";
+                    data = "10.0.0.1";
+                  }
+                  {
+                    name = "domain-name-servers";
+                    data = "10.0.0.1";
+                  }
+                  {
+                    name = "domain-name";
+                    data = "internal.meow";
+                  }
+                ];
+              }
+            ];
+          };
+        };
+      };
+    };
   };
 
   systemd.tmpfiles.rules = [
