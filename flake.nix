@@ -188,7 +188,7 @@
                 path = deploy-lib.activate.nixos omen-config;
                 user = "root";
               };
-              remoteBuild = true;
+              remoteBuild = false;
               ssh_user = "root";
               sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" ];
             };
