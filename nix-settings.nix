@@ -5,6 +5,7 @@ nix = {
     settings = {
       experimental-features = [ "nix-command" "flakes" ];
       auto-optimise-store = true;
+      require-sigs = false;
       trusted-public-keys = [
         "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
         "ollama.cachix.org-1:5Sgl02t2AMtL/y8rfl7GeG5p+rM6UXCdN2nJZh3BDk="
