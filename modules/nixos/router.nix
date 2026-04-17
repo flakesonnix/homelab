@@ -20,20 +20,37 @@
   };
 
   config = lib.mkIf config.lucy.router.enable {
-    services.dhcpd = {
+    services.kea.dhcp4 = {
       enable = true;
-      interfaces = [ config.lucy.router.interface ];
       settings = {
-        default-lease-time = 7200;
-        max-lease-time = 86400;
-        option subnet-mask = "255.0.0.0";
-        option routers = config.lucy.router.ipv4Gateway;
-        option domain-name-servers = config.lucy.router.ipv4Gateway;
-        subnet = config.lucy.router.interface {
-          pool {
-            range = config.lucy.router.ipv4Range;
-          }
+        server-tag = "desktop-router";
+        interface = [ config.lucy.router.interface ];
+        lease-database = {
+          type = "memfile";
+          persist = true;
+          lfc-interval = 3600;
         };
+        subnet4 = [
+          {
+            subnet = "10.0.0.0/8";
+            id = 1;
+            pools = [
+              {
+                pool = config.lucy.router.ipv4Range;
+              }
+            ];
+            option-data = [
+              {
+                name = "routers";
+                data = config.lucy.router.ipv4Gateway;
+              }
+              {
+                name = "domain-name-servers";
+                data = config.lucy.router.ipv4Gateway;
+              }
+            ];
+          }
+        ];
       };
     };
 
