@@ -18,30 +18,45 @@ in
     ../../modules/nixos/nvidia.nix
     ../../modules/nixos/gnome.nix
     ../../modules/nixos/gnome-extensions.nix
-    ../../modules/nixos/hyprland.nix
+    ../../modules/nixos/niri.nix
     ../../modules/nixos/packages.nix
     ../../modules/nixos/latex.nix
     ../../modules/nixos/openclaude.nix
     ../../modules/nixos/asterisk.nix
     ../../modules/nixos/audio-stream.nix
+    ../../modules/home
   ];
 
-  boot.loader.systemd-boot.enable = true;
+  nix.settings.require-sigs = false;
+
   boot.loader.efi.canTouchEfiVariables = true;
 
   networking.hostName = "omen";
   networking.networkmanager.enable = true;
 
   boot.initrd.availableKernelModules = [ "r8169" ];
+  boot.kernelParams = [
+    "tpm.disable=1"
+    "nvme_core.default_ps_max_latency_us=0"
+    "console=tty1"
+  ];
+
+  systemd.services = {
+    "serial-getty@ttyS0".enable = false;
+    "serial-getty@ttyS1".enable = false;
+    "serial-getty@ttyS2".enable = false;
+    "serial-getty@ttyS3".enable = false;
+  };
 
   lucy.base.enable = true;
   lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
   lucy.base.sshKeyComment = "lucy@p50";
 
   lucy.nvidia.enable = true;
-  lucy.gnome.enable = true;
-  lucy.hyprland.enable = true;
-  lucy.gnomeExtensions.enable = true;
+  lucy.gnome.enable = false;
+  lucy.gnomeExtensions.enable = false;
+  # lucy.hyprland.enable = true;
+  lucy.niri.enable = true;
 
   hardware.nvidia.powerManagement.enable = lib.mkForce false;
 
@@ -113,14 +128,13 @@ in
   lucy.hostPackages = with pkgs; [
     ani-cli
     scdl
+    kdePackages.kdenlive
   ];
 
   # services.ollama = {
   #   enable = true;
   #   package = pkgs.ollama-cuda;
   # };
-
-  # nixpkgs.config.cudaSupport = true;
 
   environment.systemPackages = with pkgs; [
     hyfetch-wrapped

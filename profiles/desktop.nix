@@ -6,9 +6,6 @@
     ../modules/home
   ];
 
-  services.displayManager.gdm.enable = lib.mkDefault true;
-  services.desktopManager.gnome.enable = lib.mkDefault true;
-
   services.xserver.enable = lib.mkDefault true;
   services.xserver.xkb = {
     layout = lib.mkDefault "us";

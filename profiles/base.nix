@@ -13,7 +13,6 @@
   i18n.defaultLocale = lib.mkDefault "en_US.UTF-8";
 
   nixpkgs.config.allowUnfree = true;
-  nixpkgs.config.cudaSupport = true;
 
   programs.firefox.enable = true;
   programs.firefox.policies = {

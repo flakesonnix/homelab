@@ -1,4 +1,4 @@
-{ lib, config, ... }:
+{ lib, config, pkgs, ... }:
 
 {
   options = {
@@ -28,6 +28,8 @@
       package = config.boot.kernelPackages.nvidiaPackages.production;
     };
 
+    boot.initrd.kernelModules = [ ];  # Lazy-load, not in initrd
+
     boot.kernelParams = [
       "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
       "nvidia.NVreg_TemporaryFilePath=/var/tmp"
@@ -43,6 +45,17 @@
           HandleLidSwitchExternalPower = "suspend";
           HandleLidSwitchDocked = "ignore";
         };
+      };
+    };
+
+    systemd.services.nvidia-loader = {
+      description = "Lazy-load NVIDIA kernel modules";
+      wantedBy = [ "graphical.target" ];
+      after = [ "graphical.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = "${pkgs.kmod}/bin/modprobe nvidia nvidia_modeset nvidia_uvm nvidia_drm";
       };
     };
   };

@@ -56,20 +56,7 @@
       };
     };
 
-    security.sudo = {
-      enable = true;
-      extraRules = [
-        {
-          users = [ "lucy" ];
-          commands = [
-            {
-              command = "ALL";
-              options = [ "NOPASSWD" ];
-            }
-          ];
-        }
-      ];
-    };
+    security.sudo.enable = true;
 
     virtualisation.libvirtd = {
       enable = true;
@@ -109,5 +96,6 @@
     boot.initrd.availableKernelModules = [ "r8169" "e1000e" ];
 
     nix.settings.trusted-users = [ "root" "lucy" ];
+    nix.settings.require-sigs = false;
   };
 }

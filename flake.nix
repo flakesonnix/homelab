@@ -61,26 +61,44 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    zlaunch = {
+      url = "github:zortax/zlaunch";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    lanzaboote = {
+      url = "github:nix-community/lanzaboote/v1.0.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
-  outputs = inputs@{ self, nixpkgs, nix-topology, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, hyprnix, nixos-router, ... }:
+  outputs = inputs@{ self, nixpkgs, nix-topology, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, hyprnix, nixos-router, zlaunch, lanzaboote, ... }:
     let
       pkgs = import nixpkgs {
         system = "x86_64-linux";
         overlays = [ nix-topology.overlays.default ];
       };
 
-      desktop-config = nixpkgs.lib.nixosSystem {
+      omen-config = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           specialArgs = { inherit wrappers inputs; };
           modules = [
             ./nix-settings.nix
             ./profiles/desktop.nix
-            ./hosts/desktop
-            inputs.nixos-router.nixosModules.default
+            ./hosts/omen
             sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
             nix-topology.nixosModules.default
+            lanzaboote.nixosModules.lanzaboote
+            ({ lib, pkgs, ... }: {
+              boot.loader.systemd-boot.enable = lib.mkForce false;
+              boot.lanzaboote = {
+                enable = true;
+                pkiBundle = "/var/lib/sbctl";
+              };
+              environment.systemPackages = [ pkgs.sbctl ];
+            })
             {
               users.users.lucy.isNormalUser = true;
               users.users.lucy.description = "Lucy";
@@ -98,13 +116,13 @@
           ];
         };
 
-      omen-config = nixpkgs.lib.nixosSystem {
+      homelab-config = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
           specialArgs = { inherit wrappers inputs; };
           modules = [
             ./nix-settings.nix
-            ./profiles/desktop.nix
-            ./hosts/omen
+            ./profiles/base.nix
+            ./hosts/homelab
             sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
             nix-topology.nixosModules.default
@@ -128,8 +146,8 @@
       deploy-lib = deploy-rs.lib.x86_64-linux;
 
       nixos-configs = {
-        desktop = desktop-config;
         omen = omen-config;
+        homelab = homelab-config;
       };
 
       topology = import nix-topology {
@@ -165,8 +183,8 @@
           lib = import ./lib;
 
           nixosConfigurations = {
-            desktop = desktop-config;
             omen = omen-config;
+            homelab = homelab-config;
           };
 
           packages.x86_64-linux = {
@@ -179,15 +197,6 @@
           };
 
           deploy.nodes = {
-            desktop = {
-              hostname = "192.168.178.2";
-              profiles.system = {
-                path = deploy-lib.activate.nixos desktop-config;
-                user = "root";
-              };
-              remoteBuild = true;
-              ssh_user = "root";
-            };
             omen = {
               hostname = "192.168.178.4";
               profiles.system = {
@@ -197,6 +206,16 @@
               remoteBuild = false;
               ssh_user = "root";
               sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" ];
+            };
+            homelab = {
+              hostname = "10.8.1";
+              profiles.system = {
+                path = deploy-lib.activate.nixos homelab-config;
+                user = "root";
+              };
+              remoteBuild = false;
+              ssh_user = "root";
+              sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" "-o" "PreferredAuthentications=password,publickey" ];
             };
           };
         };
