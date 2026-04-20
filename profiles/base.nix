@@ -1,9 +1,13 @@
-{ lib, pkgs, ... }:
+{ lib, pkgs, config, ... }:
 
 {
   imports = [
     ../modules/nixos
   ];
+
+  options = {
+    lucy.enableFirefox = lib.mkEnableOption "Firefox browser";
+  };
 
   environment.sessionVariables = {
     EDITOR = "vim";
@@ -14,11 +18,13 @@
 
   nixpkgs.config.allowUnfree = true;
 
-  programs.firefox.enable = true;
-  programs.firefox.policies = {
-    ExtensionSettings = {
-      "uBlock0@raymondhill.net" = {
-        install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
+  programs.firefox = lib.mkIf config.lucy.enableFirefox {
+    enable = true;
+    policies = {
+      ExtensionSettings = {
+        "uBlock0@raymondhill.net" = {
+          install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
+        };
       };
     };
   };

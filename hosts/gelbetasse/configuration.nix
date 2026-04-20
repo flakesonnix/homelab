@@ -5,6 +5,8 @@
     ./hardware-configuration.nix
   ];
 
+  lucy.base.isServer = true;
+
   boot.loader.grub.enable = lib.mkForce false;
   boot.loader.systemd-boot.enable = true;
 
