@@ -12,7 +12,7 @@
   zramSwap.enable = true;
 
   networking.hostName = "gelbetasse";
-  networking.domain = "internal.gelbetasse.org";
+  networking.domain = "gelbetasse.org";
   networking.nameservers = [ "127.0.0.1" ];
 
   networking.firewall.enable = false;
@@ -22,9 +22,9 @@
     address = "0.0.0.0";
     port = 8080;
     settings = {
-      server_url = "https://headscale.internal.gelbetasse.org";
+      server_url = "https://headscale.gelbetasse.org";
       dns = {
-        base_domain = "internal.gelbetasse.org";
+        base_domain = "gelbetasse.org";
         magic_dns = true;
         nameservers.global = [ "8.8.8.8" "8.8.4.4" ];
       };
@@ -34,7 +34,7 @@
     };
   };
 
-  services.nginx.virtualHosts."headscale.internal.gelbetasse.org" = {
+  services.nginx.virtualHosts."headscale.gelbetasse.org" = {
     enableACME = true;
     forceSSL = true;
     locations."/" = {
@@ -48,7 +48,7 @@
     settings = {
       server = [ "8.8.8.8" "8.8.4.4" ];
       cache-size = 1000;
-      address = [ "/headscale.internal.gelbetasse.org/127.0.0.1" ];
+      address = [ "/headscale.gelbetasse.org/127.0.0.1" ];
     };
   };
 
