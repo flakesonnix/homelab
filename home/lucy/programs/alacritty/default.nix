@@ -6,13 +6,13 @@ let
   alacrittyConfig = ''
     font:
       normal:
-        family: "Hacks"
+        family: "Hack"
         style: Regular
       bold:
-        family: "Hacks"
+        family: "Hack"
         style: Bold
       italic:
-        family: "Hacks"
+        family: "Hack"
         style: Italic
       size: 18
 
@@ -43,7 +43,7 @@ let
         white:   '#ebdbb2'
 
     window:
-      opacity: 0.95
+      opacity: 0.9
       padding:
         x: 10
         y: 10
