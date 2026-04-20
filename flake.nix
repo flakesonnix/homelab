@@ -247,14 +247,14 @@
               sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" "-o" "PreferredAuthentications=password,publickey" ];
             };
             gelbetasse = {
-              hostname = "gelbetasse.internal.gelbetasse.org";
+              hostname = "77.68.49.160";
               profiles.system = {
                 path = deploy-lib.activate.nixos gelbetasse-config;
                 user = "root";
               };
               remoteBuild = false;
               ssh_user = "root";
-              sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" ];
+              sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" "-4" ];
             };
           };
         };

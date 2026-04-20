@@ -12,7 +12,7 @@
   zramSwap.enable = true;
 
   networking.hostName = "gelbetasse";
-  networking.domain = "internal.gelbetasse.org";
+  networking.domain = "gelbetasse.org";
   networking.nameservers = [ "127.0.0.1" ];
 
   networking.firewall.enable = false;
