@@ -10,30 +10,33 @@
       enable = true;
       base16Scheme = {
         scheme = "Custom";
-        base00 = "1a1520";
-        base01 = "2e2334";
-        base02 = "52374f";
-        base03 = "6c70a8";
-        base04 = "7986a3";
-        base05 = "a990af";
-        base06 = "d8b3cf";
-        base07 = "f8f2f7";
-        base08 = "de99ac";
-        base09 = "bf8c79";
-        base0A = "778ad8";
-        base0B = "a1a5e0";
-        base0C = "b8d4e8";
-        base0D = "96656a";
-        base0E = "d8b3cf";
-        base0F = "52374f";
+        base00 = "1a1423";
+        base01 = "2a2436";
+        base02 = "3d2a4d";
+        base03 = "5c5875";
+        base04 = "817695";
+        base05 = "d8b3cf";
+        base06 = "f0d0f5";
+        base07 = "ffffff";
+        base08 = "ff69b4";
+        base09 = "c678dd";
+        base0A = "dda0dd";
+        base0B = "ba55d3";
+        base0C = "ffb6c1";
+        base0D = "ff1493";
+        base0E = "da70d6";
+        base0F = "9932cc";
       };
-      targets.waybar.enable = true;
-      targets.waybar.font = "monospace";
+      targets = {
+        waybar.enable = true;
+        alacritty.enable = true;
+        gtk.enable = true;
+      };
+      image = null;
     };
 
     gtk = {
       enable = true;
-      gtk4.theme = null;
     };
   };
 }

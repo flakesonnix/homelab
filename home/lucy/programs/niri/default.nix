@@ -28,10 +28,13 @@ let
       Mod+Return {
         spawn "alacritty"
       }
+      Mod+T {
+        spawn "alacritty"
+      }
       Mod+D {
         spawn "fuzzel"
       }
-      Mod+Q {
+      Mod+W {
         close-window
       }
       Mod+Left {

@@ -16,8 +16,6 @@
       };
     };
 
-    home.activation.removeHtopConflict = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      rm -rf "$HOME/.config/htop"
-    '';
+    xdg.configFile."htop".force = true;
   };
 }
