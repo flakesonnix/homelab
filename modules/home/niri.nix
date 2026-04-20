@@ -44,13 +44,9 @@
         background-color "transparent"
       }
 
-      spawn-at-startup {
-        spawn "waybar"
-      }
-
-      spawn-at-startup {
-        spawn "${pkgs.xwayland-satellite}/bin/xwayland-satellite"
-      }
+      spawn-at-startup "waybar"
+      spawn-at-startup "wpaperd"
+      spawn-at-startup "${pkgs.xwayland-satellite}/bin/xwayland-satellite"
 
       prefer-no-csd
 

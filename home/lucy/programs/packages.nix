@@ -22,7 +22,7 @@
       enable = true;
       settings.default = {
         path = "/home/lucy/Pictures/s-l1600.jpg";
-        mode = "fill";
+        mode = "fit";
       };
     };
   };

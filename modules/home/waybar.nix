@@ -1,11 +1,12 @@
 { lib, config, pkgs, ... }:
 
 {
-  options.lucy.waybar = {
+  options.lucy.waybar = { home.packages = [ pkgs.siji pkgs.nerd-fonts.jetbrains-mono ];
     enable = lib.mkEnableOption "Waybar status bar";
   };
 
   config = lib.mkIf config.lucy.waybar.enable {
+    home.packages = [ pkgs.siji pkgs.nerd-fonts.jetbrains-mono ];
     programs.waybar = {
       enable = true;
       package = pkgs.waybar;

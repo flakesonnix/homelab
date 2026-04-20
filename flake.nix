@@ -143,11 +143,39 @@
           ];
         };
 
+      gelbetasse-config = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          specialArgs = { inherit wrappers inputs; };
+          modules = [
+            ./nix-settings.nix
+            ./profiles/base.nix
+            ./hosts/gelbetasse
+            sops-nix.nixosModules.sops
+            home-manager.nixosModules.home-manager
+            nix-topology.nixosModules.default
+            {
+              users.users.lucy.isNormalUser = true;
+              users.users.lucy.description = "Lucy";
+              users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
+              home-manager.users.lucy = {
+                imports = [
+                  ./home/lucy
+                  stylix.homeModules.stylix
+                  nix-flatpak.homeManagerModules.nix-flatpak
+                  nix-index-database.homeModules.default
+                ];
+                nixpkgs.config.allowUnfree = true;
+              };
+            }
+          ];
+        };
+
       deploy-lib = deploy-rs.lib.x86_64-linux;
 
       nixos-configs = {
         omen = omen-config;
         homelab = homelab-config;
+        gelbetasse = gelbetasse-config;
       };
 
       topology = import nix-topology {
@@ -185,6 +213,7 @@
           nixosConfigurations = {
             omen = omen-config;
             homelab = homelab-config;
+            gelbetasse = gelbetasse-config;
           };
 
           packages.x86_64-linux = {
@@ -216,6 +245,16 @@
               remoteBuild = false;
               ssh_user = "root";
               sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" "-o" "PreferredAuthentications=password,publickey" ];
+            };
+            gelbetasse = {
+              hostname = "gelbetasse.internal.gelbetasse.org";
+              profiles.system = {
+                path = deploy-lib.activate.nixos gelbetasse-config;
+                user = "root";
+              };
+              remoteBuild = false;
+              ssh_user = "root";
+              sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" ];
             };
           };
         };
