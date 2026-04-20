@@ -151,21 +151,14 @@
             ./profiles/base.nix
             ./hosts/gelbetasse
             sops-nix.nixosModules.sops
-            home-manager.nixosModules.home-manager
             nix-topology.nixosModules.default
+            {
+              lucy.enableFirefox = false;
+            }
             {
               users.users.lucy.isNormalUser = true;
               users.users.lucy.description = "Lucy";
               users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
-              home-manager.users.lucy = {
-                imports = [
-                  ./home/lucy
-                  stylix.homeModules.stylix
-                  nix-flatpak.homeManagerModules.nix-flatpak
-                  nix-index-database.homeModules.default
-                ];
-                nixpkgs.config.allowUnfree = true;
-              };
             }
           ];
         };

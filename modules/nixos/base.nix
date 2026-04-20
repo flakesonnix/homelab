@@ -4,6 +4,7 @@
   options = {
     lucy.base = {
       enable = lib.mkEnableOption "Base configuration shared across all hosts";
+      isServer = lib.mkEnableOption "Server mode (no desktop apps)";
       timezone = lib.mkOption {
         type = lib.types.str;
         default = "Europe/Berlin";
@@ -52,26 +53,26 @@
       enable = true;
       settings = {
         PasswordAuthentication = false;
-        X11Forwarding = true;
+        X11Forwarding = !config.lucy.base.isServer;
       };
     };
 
     security.sudo.enable = true;
 
-    virtualisation.libvirtd = {
+    virtualisation.libvirtd = lib.mkIf (!config.lucy.base.isServer) {
       enable = true;
       onBoot = "ignore";
       onShutdown = "shutdown";
     };
 
     environment.systemPackages = with pkgs; [
-      virt-manager
-      virt-viewer
-      gnome-tweaks
+      (lib.mkIf (!config.lucy.base.isServer) virt-manager)
+      (lib.mkIf (!config.lucy.base.isServer) virt-viewer)
+      (lib.mkIf (!config.lucy.base.isServer) gnome-tweaks)
       wl-clipboard
     ];
 
-    users.users.lucy.extraGroups = [ "libvirtd" ];
+    users.users.lucy.extraGroups = lib.mkIf (!config.lucy.base.isServer) [ "libvirtd" ];
 
     networking.firewall = {
       enable = true;
