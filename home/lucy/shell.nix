@@ -11,6 +11,9 @@
       enableCompletion = true;
       syntaxHighlighting.enable = true;
       dotDir = config.home.homeDirectory;
+      initContent = ''
+        alias neofetch=hyfetch
+      '';
     };
     home.sessionVariables = {
       SHELL = "${pkgs.zsh}/bin/zsh";

@@ -794,11 +794,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1775600302,
-        "narHash": "sha256-2fgKImv78CXIcfo1RsY7EI4uMZ84x/MggA5rrusYc7c=",
+        "lastModified": 1776505856,
+        "narHash": "sha256-VbnOijrn4EdYYJwiNQFxQNXECKBa60U66UPxUQAGkBE=",
         "owner": "lassulus",
         "repo": "wrappers",
-        "rev": "9d8397d8ef1ac35763085f3338589f558128f7db",
+        "rev": "738d4bf81cbf306f6917c540a5b798110e3cf1e8",
         "type": "github"
       },
       "original": {

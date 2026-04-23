@@ -43,7 +43,7 @@ let
         white:   '#ebdbb2'
 
     window:
-      opacity: 0.9
+      opacity: 0.8
       padding:
         x: 10
         y: 10

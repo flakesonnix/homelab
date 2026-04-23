@@ -143,33 +143,14 @@
           ];
         };
 
-      gelbetasse-config = nixpkgs.lib.nixosSystem {
-          system = "x86_64-linux";
-          specialArgs = { inherit wrappers inputs; };
-          modules = [
-            ./nix-settings.nix
-            ./profiles/base.nix
-            ./hosts/gelbetasse
-            sops-nix.nixosModules.sops
-            nix-topology.nixosModules.default
-            {
-              lucy.enableFirefox = false;
-            }
-            {
-              users.users.lucy.isNormalUser = true;
-              users.users.lucy.description = "Lucy";
-              users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
-            }
-          ];
-        };
-
-      deploy-lib = deploy-rs.lib.x86_64-linux;
+      
 
       nixos-configs = {
         omen = omen-config;
         homelab = homelab-config;
-        gelbetasse = gelbetasse-config;
       };
+
+      deploy-lib = deploy-rs.lib.x86_64-linux;
 
       topology = import nix-topology {
         inherit pkgs;
@@ -203,11 +184,7 @@
         flake = {
           lib = import ./lib;
 
-          nixosConfigurations = {
-            omen = omen-config;
-            homelab = homelab-config;
-            gelbetasse = gelbetasse-config;
-          };
+          nixosConfigurations = nixos-configs;
 
           packages.x86_64-linux = {
             topology = (import nix-topology {
@@ -238,16 +215,6 @@
               remoteBuild = false;
               ssh_user = "root";
               sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" "-o" "PreferredAuthentications=password,publickey" ];
-            };
-            gelbetasse = {
-              hostname = "77.68.49.160";
-              profiles.system = {
-                path = deploy-lib.activate.nixos gelbetasse-config;
-                user = "root";
-              };
-              remoteBuild = false;
-              ssh_user = "root";
-              sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" "-4" ];
             };
           };
         };
