@@ -45,7 +45,7 @@
       }
 
       spawn-at-startup "waybar"
-      spawn-at-startup "wpaperd"
+      spawn-at-startup "${pkgs.swaybg}/bin/swaybg -i /home/lucy/Pictures/s-l1600.jpg -m fill"
       spawn-at-startup "${pkgs.xwayland-satellite}/bin/xwayland-satellite"
 
       prefer-no-csd
@@ -219,6 +219,9 @@
         Print { screenshot; }
         Ctrl+Print { screenshot-screen; }
         Alt+Print { screenshot-window; }
+        Mod+Shift+S { screenshot; }
+        Mod+Ctrl+Shift+S { screenshot-screen; }
+        Mod+Alt+Shift+S { screenshot-window; }
 
         Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
 

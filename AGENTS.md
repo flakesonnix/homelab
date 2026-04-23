@@ -6,7 +6,7 @@ NixOS flake-based dotfiles. deploy-rs for remote deploy.
 
 ```bash
 deploy .#omen      # → 192.168.178.4
-deploy .#homelab   # → 192.168.178.177
+deploy .#homelab   # → 10.8.1
 ```
 
 Local rebuild: `nixos-rebuild switch --flake .#omen`
@@ -31,7 +31,7 @@ SOPS_AGE_KEY_FILE=~/.sops/keys.txt nvim hosts/p50/secrets.yaml
 | Host | Profile | IP | GPU |
 |------|---------|-----|-----|
 | omen | desktop | 192.168.178.4 | RTX 2070 |
-| homelab | base | 192.168.178.177 | - |
+| homelab | base | 10.8.1 | - |
 
 ## Architecture
 
@@ -41,6 +41,41 @@ SOPS_AGE_KEY_FILE=~/.sops/keys.txt nvim hosts/p50/secrets.yaml
 - `modules/nixos/`: Reusable NixOS modules
 - `modules/home/`: Home-manager modules (option prefix: `lucy.<module>.enable`)
 - `profiles/`: Composable module collections
+
+## Package Options
+
+Packages are defined in `modules/nixos/packages.nix`. Enable via host config:
+
+```nix
+lucy.firefox = true;
+lucy.discord = true;
+lucy.clion = true;
+lucy.lmstudio = true;
+lucy.ollama = true;
+lucy.swaybg = true;
+lucy.devBase = true;
+lucy.pwvucontrol = true;
+lucy.scrcpy = true;
+lucy.nload = true;
+lucy.iotop = true;
+lucy.iftop = true;
+```
+
+Available options:
+- `lucy.basePackages`: Packages for all hosts (list)
+- `lucy.hostPackages`: Host-specific packages (list)
+- `lucy.firefox`: Firefox browser
+- `lucy.discord`: Discord
+- `lucy.clion`: CLion IDE
+- `lucy.lmstudio`: LM Studio (LLM runner)
+- `lucy.ollama`: Ollama with CUDA
+- `lucy.swaybg`: swaybg wallpaper
+- `lucy.devBase`: Development tools (gcc, gdb, cmake, ninja, etc.)
+- `lucy.pwvucontrol`: PipeWire volume control
+- `lucy.scrcpy`: Android screen mirror
+- `lucy.nload`: Network monitor
+- `lucy.iotop`: I/O monitor
+- `lucy.iftop`: Network monitor
 
 ## New Module
 
@@ -69,6 +104,12 @@ Home module → `modules/home/<name>.nix`:
   };
 }
 ```
+
+## Storage Optimization
+
+Enabled on omen:
+- Automatic weekly garbage collection (delete older than 30 days)
+- Automatic store optimization
 
 ## Gotchas
 

@@ -29,6 +29,14 @@ in
 
   nix.settings.require-sigs = false;
 
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 30d";
+  };
+
+  nix.optimise.automatic = true;
+
   boot.loader.efi.canTouchEfiVariables = true;
 
   networking.hostName = "omen";
@@ -123,22 +131,29 @@ in
     keepassxc
     nodejs_22
     ausweisapp
-  ];
-
-  lucy.hostPackages = with pkgs; [
+    kdePackages.kdenlive
     ani-cli
     scdl
-    kdePackages.kdenlive
   ];
 
-  # services.ollama = {
-  #   enable = true;
-  #   package = pkgs.ollama-cuda;
-  # };
+  lucy.firefox = true;
+  lucy.discord = true;
+  lucy.clion = true;
+  lucy.ollama = true;
+  lucy.lmstudio = true;
+  lucy.swaybg = true;
+  lucy.devBase = true;
+  lucy.pwvucontrol = true;
+  lucy.scrcpy = true;
+  lucy.nload = true;
+  lucy.iotop = true;
+  lucy.iftop = true;
 
   environment.systemPackages = with pkgs; [
     hyfetch-wrapped
   ];
+
+  fonts.packages = with pkgs; [ hack-font ];
 
   services.openssh.settings.PermitRootLogin = "prohibit-password";
 

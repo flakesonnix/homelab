@@ -32,7 +32,6 @@
   lucy.ssh.enable = true;
   lucy.programs.jetbrains-mono = true;
   lucy.programs.nautilus = true;
-  lucy.programs.wpaperd = true;
   lucy.programs.comma = true;
   lucy.programs.android-studio = true;
   lucy.programs.fuzzel = true;
@@ -41,6 +40,31 @@
   programs.neovim = {
     withRuby = true;
     withPython3 = true;
+  };
+
+  programs.alacritty = {
+    enable = true;
+    settings = lib.mkForce {
+      font = {
+        normal = { family = "Hack"; style = "Regular"; };
+        bold = { family = "Hack"; style = "Bold"; };
+        italic = { family = "Hack"; style = "Italic"; };
+        size = 18;
+      };
+      window = {
+        opacity = 0.8;
+        padding = { x = 10; y = 10; };
+        dynamic_padding = true;
+      };
+      scrolling = { history = 10000; };
+      cursor = {
+        style = {
+          shape = "Block";
+          blinking = "On";
+        };
+        unfocused_hollow = true;
+      };
+    };
   };
 
   services.flatpak = {
@@ -54,6 +78,19 @@
     username = "lucy";
     homeDirectory = "/home/lucy";
     stateVersion = "26.05";
+  };
+
+  xdg.desktopEntries = {
+    lmstudio = {
+      name = "LM Studio";
+      genericName = "LLM Runner";
+      comment = "Run LLMs locally";
+      exec = "lmstudio --no-sandbox %U";
+      icon = "lmstudio";
+      terminal = false;
+      categories = [ "Development" ];
+      mimeType = [ "x-scheme-handler/chat" ];
+    };
   };
 
   programs.home-manager.enable = true;
