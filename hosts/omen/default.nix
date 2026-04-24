@@ -24,7 +24,6 @@ in
     ../../modules/nixos/openclaude.nix
     ../../modules/nixos/asterisk.nix
     ../../modules/nixos/audio-stream.nix
-    ../../modules/home
   ];
 
   nix.settings.require-sigs = false;

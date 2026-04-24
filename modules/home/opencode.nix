@@ -11,11 +11,11 @@
     ];
 
     programs.bash.initExtra = ''
-      export PATH="$HOME/.opencode/bin:$PATH"
+      export PATH="${builtins.getEnv "HOME"}/.opencode/bin:$PATH"
       export PATH="$(npm prefix -g)/bin:$PATH"
     '';
-    programs.zsh.initExtra = ''
-      export PATH="$HOME/.opencode/bin:$PATH"
+    programs.zsh.initContent = ''
+      export PATH="${builtins.getEnv "HOME"}/.opencode/bin:$PATH"
       export PATH="$(npm prefix -g)/bin:$PATH"
     '';
   };
