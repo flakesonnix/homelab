@@ -52,28 +52,19 @@
       url = "github:nix-community/nix-index-database";
     };
 
-    hyprnix = {
-      url = "github:flakesonnix/hyprnix";
-    };
+     lanzaboote = {
+       url = "github:nix-community/lanzaboote/v1.0.0";
+       inputs.nixpkgs.follows = "nixpkgs";
+     };
 
-    nixos-router = {
-      url = "github:chayleaf/nixos-router";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    zlaunch = {
-      url = "github:zortax/zlaunch";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    lanzaboote = {
-      url = "github:nix-community/lanzaboote/v1.0.0";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+     comfyui-nix = {
+       url = "github:utensils/comfyui-nix";
+       inputs.nixpkgs.follows = "nixpkgs";
+     };
 
   };
 
-  outputs = inputs@{ self, nixpkgs, nix-topology, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, hyprnix, nixos-router, zlaunch, lanzaboote, ... }:
+   outputs = inputs@{ self, nixpkgs, nix-topology, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, lanzaboote, comfyui-nix, ... }:
     let
       pkgs = import nixpkgs {
         system = "x86_64-linux";
@@ -82,7 +73,7 @@
 
       omen-config = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
-          specialArgs = { inherit wrappers inputs; };
+          specialArgs = { inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database; };
           modules = [
             ./nix-settings.nix
             ./profiles/desktop.nix
@@ -99,26 +90,13 @@
               };
               environment.systemPackages = [ pkgs.sbctl ];
             })
-            {
-              users.users.lucy.isNormalUser = true;
-              users.users.lucy.description = "Lucy";
-              users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
-              home-manager.users.lucy = {
-                imports = [
-                  ./home/lucy
-                  stylix.homeModules.stylix
-                  nix-flatpak.homeManagerModules.nix-flatpak
-                  nix-index-database.homeModules.default
-                ];
-                nixpkgs.config.allowUnfree = true;
-              };
-            }
+            ./modules/nixos/hm-base.nix
           ];
         };
 
       homelab-config = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
-          specialArgs = { inherit wrappers inputs; };
+          specialArgs = { inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database; };
           modules = [
             ./nix-settings.nix
             ./profiles/base.nix
@@ -126,20 +104,7 @@
             sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
             nix-topology.nixosModules.default
-            {
-              users.users.lucy.isNormalUser = true;
-              users.users.lucy.description = "Lucy";
-              users.users.lucy.extraGroups = [ "wheel" "networkmanager" ];
-              home-manager.users.lucy = {
-                imports = [
-                  ./home/lucy
-                  stylix.homeModules.stylix
-                  nix-flatpak.homeManagerModules.nix-flatpak
-                  nix-index-database.homeModules.default
-                ];
-                nixpkgs.config.allowUnfree = true;
-              };
-            }
+            ./modules/nixos/hm-base.nix
           ];
         };
 
@@ -187,12 +152,7 @@
           nixosConfigurations = nixos-configs;
 
           packages.x86_64-linux = {
-            topology = (import nix-topology {
-              inherit pkgs;
-              modules = [
-                { nixosConfigurations = nixos-configs; }
-              ];
-            }).config.output;
+            topology = topology.config.output;
           };
 
           deploy.nodes = {

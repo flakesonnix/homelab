@@ -106,9 +106,9 @@
 
   services.dnsmasq = {
     enable = true;
-    servers = [ "8.8.8.8" "8.8.4.4" ];
     settings = {
       cache-size = 1000;
+      server = [ "8.8.8.8" "8.8.4.4" ];
     };
   };
 
@@ -127,15 +127,6 @@
 
   users.users.root = {
     initialPassword = "root";
-    openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS lucy@p50"
-    ];
-  };
-
-  users.users.lucy = {
-    isNormalUser = true;
-    description = "Lucy";
-    extraGroups = [ "wheel" "networkmanager" ];
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS lucy@p50"
     ];
