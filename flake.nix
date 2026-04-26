@@ -77,6 +77,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    devshell = {
+      url = "github:numtide/devshell";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
   outputs = inputs@{ self, nixpkgs, nix-topology, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, lanzaboote, comfyui-nix, treefmt-nix, pre-commit-hooks, run0-sudo-shim, ... }:
@@ -142,10 +147,14 @@
     in
     flake-parts.lib.mkFlake { inherit inputs; } (
       {
+        imports = [
+          inputs.devshell.flakeModule
+        ];
         systems = [ "x86_64-linux" ];
 
         perSystem = { system, pkgs, ... }: {
-          devShells.default = pkgs.mkShell {
+          devshells.default = {
+            name = "dotfiles";
             packages = with pkgs; [
               nixpkgs-fmt
               nil
@@ -157,6 +166,13 @@
               statix
               deadnix
               nix-direnv
+            ];
+            commands = [
+              { name = "rebuild"; command = "nh os switch .#omen"; help = "Rebuild omen host"; }
+              { name = "rebuild-homelab"; command = "nh os switch .#homelab"; help = "Rebuild homelab host"; }
+              { name = "update"; command = "nix flake update"; help = "Update flake inputs"; }
+              { name = "fmt"; command = "nix fmt"; help = "Format the repository"; }
+              { name = "check"; command = "nix flake check"; help = "Check the flake"; }
             ];
           };
 
