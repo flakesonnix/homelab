@@ -65,6 +65,7 @@
       };
       window = {
         opacity = 0.8;
+        blur = true;
         padding = { x = 10; y = 10; };
         dynamic_padding = true;
       };
