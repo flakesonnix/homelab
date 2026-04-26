@@ -37,14 +37,14 @@
 
     networking.interfaces.${config.networking.staticIP.interface}.ipv4.addresses = [
       {
-        address = config.networking.staticIP.address;
-        prefixLength = config.networking.staticIP.prefixLength;
+        inherit (config.networking.staticIP) address;
+        inherit (config.networking.staticIP) prefixLength;
       }
     ];
 
     networking.defaultGateway = {
       address = config.networking.staticIP.gateway;
-      interface = config.networking.staticIP.interface;
+      inherit (config.networking.staticIP) interface;
     };
 
     networking.nameservers = config.networking.staticIP.dns;

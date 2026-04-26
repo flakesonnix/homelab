@@ -1,4 +1,4 @@
-{ lib, config, pkgs, wrappers, ... }:
+{ lib, config, pkgs, ... }:
 
 {
   options.lucy.niri = {

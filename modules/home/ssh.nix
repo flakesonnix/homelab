@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 
 {
   options.lucy.ssh = {
@@ -11,7 +11,7 @@
           identityFile = lib.mkOption { type = lib.types.str; };
         };
       });
-      default = {};
+      default = { };
       description = "Additional SSH hosts to configure";
     };
   };
@@ -43,7 +43,7 @@
           hostname = "sr.ht";
           identityFile = "~/.ssh/lucy_git";
         };
-      } // lib.mapAttrs (n: v: { host = v.host; user = v.user; identityFile = v.identityFile; }) config.lucy.ssh.extraHosts;
+      } // lib.mapAttrs (_n: v: { inherit (v) host; inherit (v) user; inherit (v) identityFile; }) config.lucy.ssh.extraHosts;
     };
 
     home.file.".ssh/config".text = ''

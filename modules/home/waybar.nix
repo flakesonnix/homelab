@@ -21,7 +21,7 @@
 
         "niri/workspaces" = {
           format = "{index}";
-          persistent-workspaces = {"*" = 5;};
+          persistent-workspaces = { "*" = 5; };
         };
 
         clock = { format = "{:%H:%M}"; format-alt = "{:%d.%m.%Y}"; interval = 1; };

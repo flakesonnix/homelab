@@ -1,4 +1,4 @@
-{ lib, pkgs, stylix, nix-flatpak, nix-index-database, ... }:
+{ stylix, nix-flatpak, nix-index-database, ... }:
 
 {
   home-manager.backupFileExtension = "backup";
