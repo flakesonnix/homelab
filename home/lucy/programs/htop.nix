@@ -19,7 +19,5 @@
         shadow_other_users = false;
       };
     };
-
-    xdg.configFile."htop".force = true;
   };
 }
