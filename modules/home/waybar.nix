@@ -4,7 +4,7 @@
   options.lucy.waybar.enable = lib.mkEnableOption "Waybar status bar";
 
   config = lib.mkIf config.lucy.waybar.enable {
-    home.packages = [ pkgs.siji pkgs.nerd-fonts.jetbrains-mono ];
+    home.packages = [ pkgs.siji ];
     programs.waybar = {
       enable = true;
       package = pkgs.waybar;
@@ -20,7 +20,19 @@
         modules-right = [ "tray" "network" "pulseaudio" "battery" "cpu" "memory" "temperature" "disk" "custom/power" ];
 
         "niri/workspaces" = {
-          format = "{index}";
+          format = "{icon}";
+          format-icons = {
+            "1" = "󰎙";
+            "2" = "󰎠";
+            "3" = "󰎢";
+            "4" = "󰎤";
+            "5" = "󰎥";
+            "6" = "󰎦";
+            "7" = "󰎨";
+            "8" = "󰎪";
+            "9" = "󰎬";
+            "10" = "󰎭";
+          };
           persistent-workspaces = {"*" = 5;};
         };
 
@@ -33,18 +45,18 @@
           };
         };
         tray = { spacing = 8; };
-        network = { format-wifi = "wifi {signal}%"; format-ethernet = "LAN"; format-disconnected = "offline"; interval = 5; };
-        pulseaudio = { format = "{volume}%"; format-muted = "muted"; on-click = "pavucontrol"; };
-        battery = { states = { good = 60; warning = 30; critical = 15; }; format = "BAT {capacity}%"; };
+        network = { format-wifi = "󰤨 {signal}%"; format-ethernet = "󰈀"; format-disconnected = "󰖪"; interval = 5; };
+        pulseaudio = { format = "󰕾 {volume}%"; format-muted = "󰖁"; on-click = "pavucontrol"; };
+        battery = { states = { good = 60; warning = 30; critical = 15; }; format = "{icon} {capacity}%"; format-icons = [ "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ]; };
         cpu = { format = "{usage}%"; on-click = "alacritty -e htop"; interval = 2; };
         memory = { format = "{used:0.1f}GiB"; on-click = "alacritty -e htop"; interval = 2; };
-        temperature = { thermal-zone = 2; critical-threshold = 80; format = "TMP {temperatureC}°C"; };
-        disk = { format = "DSK {used}/{size}"; tooltip = true; };
-        "custom/power" = { format = "OFF"; on-click = "loginctl kill-user $USER"; tooltip = false; };
+        temperature = { thermal-zone = 2; critical-threshold = 80; format = "󰔏 {temperatureC}°C"; };
+        disk = { format = "󰋊 {used}/{size}"; tooltip = true; };
+        "custom/power" = { format = "⏻"; on-click = "loginctl kill-user $USER"; tooltip = false; };
       }];
 
       style = ''
-        * { font-family: "JetBrainsMono Nerd Font", monospace; font-size: 13px; }
+        * { font-family: "JetBrainsMono Nerd Font", "Symbols Nerd Font Mono", monospace; font-size: 13px; }
         window#waybar { background: linear-gradient(180deg, #2a1f35 0%, #1a1423 100%); color: #ffb6c1; border: 2px solid #ff69b4; border-radius: 16px; }
         #workspaces { margin-left: 8px; }
         #workspaces button { color: #dda0dd; padding: 4px 10px; margin: 2px; }

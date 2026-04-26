@@ -1,55 +1,34 @@
-# NOT AFFECTED by Lassulus/wrappers PR #135
-# This wrapper uses pkgs.stdenvNoCC.mkDerivation directly, not the wrappers library.
-{ pkgs ? import <nixpkgs> { } }:
+{ config, lib, ... }:
 
-let
-  zathurarc = ''
-    set zoom-step 10
-    set pages-per-row 1
-    set default-zoom fit-width
-    set selection-clipboard clipboard
-    set show-scrollbar false
-    set window-title-basename true
-    set synctex true
-    set forward-search-command "nvim --remote-silent +%{line} %{input}"
-    
-    set font "Liberation Sans 12"
-    set inputbar-bg "#282828"
-    set inputbar-fg "#ebdbb2"
-    set statusbar-bg "#282828"
-    set statusbar-fg "#ebdbb2"
-    set notification-bg "#282828"
-    set notification-fg "#ebdbb2"
-    set completion-bg "#282828"
-    set completion-fg "#ebdbb2"
-    set completion-highlight-bg "#504945"
-    set completion-highlight-fg "#ebdbb2"
-    set window-title-basename true
-    set statusbar-basename true
-  '';
-in
+{
+  options.lucy.zathura = {
+    enable = lib.mkEnableOption "zathura configuration";
+  };
 
-pkgs.stdenvNoCC.mkDerivation {
-  pname = "zathura-with-config";
-  version = "0.1.0";
-
-  src = pkgs.zathura;
-
-  nativeBuildInputs = [ pkgs.makeWrapper ];
-
-  installPhase = ''
-    mkdir -p $out/bin
-    mkdir -p $out/etc/xdg/zathura
-    
-    cp $src/bin/zathura $out/bin/zathura
-    cp -r $src/lib $out/lib
-    cp -r $src/share $out/share
-    
-    echo '${zathurarc}' > $out/etc/xdg/zathurarc
-    
-    wrapProgram $out/bin/zathura \
-      --set XDG_CONFIG_HOME "$out/etc/xdl"
-  '';
-
-  outputs = [ "out" ];
+  config = lib.mkIf config.lucy.zathura.enable {
+    programs.zathura = {
+      enable = true;
+      options = {
+        adjust-open = "best-fit";
+        font = "JetBrainsMono Nerd Font 12";
+        guioptions = "none";
+        page-padding = 12;
+        recolor = false;
+        scroll-page-aware = true;
+        selection-clipboard = "clipboard";
+        show-hidden = true;
+        synctex = true;
+        window-title-basename = true;
+      };
+      mappings = {
+        D = "toggle_page_mode";
+        i = "recolor";
+        r = "reload";
+      };
+      extraConfig = ''
+        set default-zoom fit-width
+        set forward-search-command "nvim --remote-silent +%{line} %{input}"
+      '';
+    };
+  };
 }

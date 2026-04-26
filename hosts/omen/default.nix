@@ -24,6 +24,7 @@ in
     ../../modules/nixos/openclaude.nix
     ../../modules/nixos/asterisk.nix
     ../../modules/nixos/audio-stream.nix
+    ../../modules/nixos/waybar.nix
   ];
 
   nix.settings.require-sigs = false;
@@ -71,6 +72,7 @@ in
   lucy.gnomeExtensions.enable = false;
   # lucy.hyprland.enable = true;
   lucy.niri.enable = true;
+  lucy.waybar.installFonts = true;
 
   hardware.nvidia.powerManagement.enable = lib.mkForce false;
 
