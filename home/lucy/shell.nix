@@ -45,6 +45,10 @@ in
         ll = "ls -lah";
         la = "ls -A";
         grep = "grep --color=auto";
+        rebuild = "sudo nixos-rebuild switch --flake ~/Documents/dotfiles#omen";
+        uds = "df -h";
+        umc = "free -m";
+        specs = "hyfetch";
       };
       initExtra = ''
         shopt -s autocd checkwinsize cmdhist globstar histappend

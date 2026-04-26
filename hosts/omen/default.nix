@@ -39,13 +39,6 @@ in
 
   boot.loader.efi.canTouchEfiVariables = true;
 
-  # Raw USB device used as LUKS key material for root unlock.
-  boot.initrd.luks.devices."luks-90b17531-753e-4576-a453-a7d81be1d09e" = {
-    keyFile = "/dev/disk/by-uuid/EFF1-8229";
-    keyFileSize = 4096;
-    keyFileTimeout = 1;
-  };
-
   networking.hostName = "omen";
   networking.networkmanager.enable = true;
 
