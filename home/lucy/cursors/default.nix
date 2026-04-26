@@ -19,7 +19,7 @@ stdenvNoCC.mkDerivation {
       local target_name="$2"
       local tmpdir
       tmpdir=$(mktemp -d)
-      win2xcur -o "$tmpdir" "$source_file"
+      win2xcur -o "$tmpdir" "$src/$source_file"
       mv "$tmpdir"/* "$out/share/icons/HelloKittyPeachMilkDonut/cursors/$target_name"
       rmdir "$tmpdir"
     }
@@ -106,12 +106,10 @@ Context=Animations
 EOF
 
     # Copy preview image from source root
-    cp "$src/Hello_Cursor Set.png" $out/share/icons/HelloKittyPeachMilkDonut/cursor-preview.png
+    cp "$src/Hello_Cursor Set.png" "$out/share/icons/HelloKittyPeachMilkDonut/cursor-preview.png"
   '';
 
-  installPhase = ''
-    mkdir -p $out
-  '';
+  dontInstall = true;
 
   outputs = [ "out" ];
 }
