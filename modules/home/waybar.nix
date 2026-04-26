@@ -32,7 +32,7 @@
             deactivated = "󰅶";
           };
         };
-        network = { format-wifi = "  {signalStrength}%"; format-ethernet = ""; format-disconnected = ""; interval = 5; on-click = "nm-connection-editor"; };
+        network = { format-wifi = "  {signalStrength}%"; format-ethernet = ""; format-disconnected = ""; interval = 5; on-click = "alacritty -e nmtui"; };
         pulseaudio = { format = "  {volume}%"; format-muted = ""; on-click = "pavucontrol"; };
         battery = { states = { good = 60; warning = 30; critical = 15; }; format = "{icon} {capacity}%"; format-icons = [ "" "" "" "" "" ]; };
         cpu = { format = "{usage}%"; on-click = "alacritty -e htop"; interval = 2; };
