@@ -45,10 +45,5 @@
         };
       } // lib.mapAttrs (_n: v: { inherit (v) host; inherit (v) user; inherit (v) identityFile; }) config.lucy.ssh.extraHosts;
     };
-
-    home.file.".ssh/config".text = ''
-      # SSH configuration managed by home-manager
-      # Do not edit manually
-    '';
   };
 }

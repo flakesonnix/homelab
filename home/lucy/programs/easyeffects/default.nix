@@ -34,15 +34,13 @@ in
   config = lib.mkIf config.lucy.easyeffects.enable {
     home.packages = [ pkgs.easyeffects ];
 
-    home.file = {
-      ".config/easyeffects/output" = {
-        source = "${presets}/output";
-        recursive = true;
-      };
-      ".config/easyeffects/irs" = {
-        source = "${presets}/irs";
-        recursive = true;
-      };
+    xdg.configFile."easyeffects/output" = {
+      source = "${presets}/output";
+      recursive = true;
+    };
+    xdg.configFile."easyeffects/irs" = {
+      source = "${presets}/irs";
+      recursive = true;
     };
   };
 }
