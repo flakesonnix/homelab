@@ -90,6 +90,13 @@
     username = "lucy";
     homeDirectory = "/home/lucy";
     stateVersion = "26.05";
+    pointerCursor = {
+      gtk.enable = true;
+      x11.enable = true;
+      name = "HelloKittyPeachMilkDonut";
+      package = pkgs.callPackage ./cursors/default.nix { };
+      size = 32;
+    };
   };
 
   xdg.desktopEntries = {

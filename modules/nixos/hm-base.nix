@@ -1,6 +1,8 @@
 { lib, pkgs, stylix, nix-flatpak, nix-index-database, ... }:
 
 {
+  home-manager.backupFileExtension = "backup";
+
   users.users.lucy = {
     isNormalUser = true;
     description = "Lucy";

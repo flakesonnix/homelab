@@ -1,7 +1,6 @@
 { lib
 , stdenvNoCC
 , win2xcur
-, makeDesktopItem
 }:
 
 stdenvNoCC.mkDerivation {
@@ -10,18 +9,28 @@ stdenvNoCC.mkDerivation {
 
   src = ./hello-kitty-peach-milk-donut;
 
-  nativeBuildInputs = [ win2xcur makeDesktopItem ];
+  nativeBuildInputs = [ win2xcur ];
 
   buildPhase = ''
     mkdir -p $out/share/icons/HelloKittyPeachMilkDonut/cursors
 
+    convert_cursor() {
+      local source_file="$1"
+      local target_name="$2"
+      local tmpdir
+      tmpdir=$(mktemp -d)
+      win2xcur -o "$tmpdir" "$source_file"
+      mv "$tmpdir"/* "$out/share/icons/HelloKittyPeachMilkDonut/cursors/$target_name"
+      rmdir "$tmpdir"
+    }
+
     # Convert each .cur file to xcursor
-    win2xcur --output-dir $out/share/icons/HelloKittyPeachMilkDonut/cursors Hello_Normal.cur default
-    win2xcur --output-dir $out/share/icons/HelloKittyPeachMilkDonut/cursors Hello_Link.cur pointer
-    win2xcur --output-dir $out/share/icons/HelloKittyPeachMilkDonut/cursors Hello_Text.cur text
-    win2xcur --output-dir $out/share/icons/HelloKittyPeachMilkDonut/cursors Hello_Busy.cur wait
-    win2xcur --output-dir $out/share/icons/HelloKittyPeachMilkDonut/cursors Hello_Background.cur all-scroll
-    win2xcur --output-dir $out/share/icons/HelloKittyPeachMilkDonut/cursors Hello_Unavailable.cur not-allowed
+    convert_cursor Hello_Normal.cur default
+    convert_cursor Hello_Link.cur pointer
+    convert_cursor Hello_Text.cur text
+    convert_cursor Hello_Busy.cur wait
+    convert_cursor Hello_Background.cur all-scroll
+    convert_cursor Hello_Unavailable.cur not-allowed
 
     # Create additional symlinks for X11 cursor compatibility
     cd $out/share/icons/HelloKittyPeachMilkDonut/cursors
@@ -96,8 +105,8 @@ Size=32
 Context=Animations
 EOF
 
-    # Copy preview image
-    cp ../Hello_Cursor\ Set.png $out/share/icons/HelloKittyPeachMilkDonut/cursor-preview.png
+    # Copy preview image from source root
+    cp "$src/Hello_Cursor Set.png" $out/share/icons/HelloKittyPeachMilkDonut/cursor-preview.png
   '';
 
   installPhase = ''

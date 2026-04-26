@@ -74,7 +74,7 @@
 
         Mod+Return hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
         Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
-        Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "swaylock"; }
+        Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "${pkgs.swaylock-fancy}/bin/swaylock-fancy"; }
 
         XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1+ -l 1.0"; }
         XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1-"; }
@@ -232,6 +232,6 @@
       }
     '';
 
-    home.packages = [ pkgs.wl-clipboard ];
+    home.packages = [ pkgs.wl-clipboard pkgs.swaylock-fancy ];
   };
 }
