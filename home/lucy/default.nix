@@ -9,8 +9,14 @@
     ./programs/easyeffects
     ./programs/htop.nix
     ./programs/btop.nix
+    ./programs/bat
+    ./programs/fzf
+    ./programs/firefox.nix
     ./programs/gnome-theme.nix
     ./programs/openclaude.nix
+    ./programs/thunderbird.nix
+    ./programs/vesktop.nix
+    ./programs/zathura
     ../../modules/home/stylix.nix
     ../../modules/home/ssh.nix
     ../../modules/home/waybar.nix
@@ -24,12 +30,18 @@
   lucy.easyeffects.enable = true;
   lucy.htop.enable = true;
   lucy.btop.enable = true;
+  lucy.bat.enable = true;
+  lucy.fzf.enable = true;
+  lucy.firefoxUi.enable = true;
   lucy.stylix.enable = true;
   lucy.waybar.enable = true;
   lucy.opencode.enable = true;
   lucy.niri.enable = true;
   lucy.gnomeTheme.enable = true;
   lucy.ssh.enable = true;
+  lucy.thunderbirdUi.enable = true;
+  lucy.vesktop.enable = true;
+  lucy.zathura.enable = true;
   lucy.programs.jetbrains-mono = true;
   lucy.programs.nautilus = true;
   lucy.programs.comma = true;
@@ -46,10 +58,10 @@
     enable = true;
     settings = lib.mkForce {
       font = {
-        normal = { family = "Hack"; style = "Regular"; };
-        bold = { family = "Hack"; style = "Bold"; };
-        italic = { family = "Hack"; style = "Italic"; };
-        size = 18;
+        normal = { family = "JetBrainsMono Nerd Font"; style = "Regular"; };
+        bold = { family = "JetBrainsMono Nerd Font"; style = "Bold"; };
+        italic = { family = "JetBrainsMono Nerd Font"; style = "Italic"; };
+        size = 15;
       };
       window = {
         opacity = 0.8;
