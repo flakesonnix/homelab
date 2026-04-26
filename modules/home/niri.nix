@@ -44,8 +44,8 @@
         background-color "transparent"
       }
 
-      spawn-at-startup "waybar"
-      spawn-at-startup "${pkgs.swaybg}/bin/swaybg -i /home/lucy/Pictures/s-l1600.jpg -m fill"
+      spawn-at-startup "${pkgs.waybar}/bin/waybar"
+      spawn-at-startup "${pkgs.swaybg}/bin/swaybg" "-i" "/home/lucy/Pictures/s-l1600.jpg" "-m" "fill"
       spawn-at-startup "${pkgs.xwayland-satellite}/bin/xwayland-satellite"
 
       prefer-no-csd

@@ -12,43 +12,40 @@
         layer = "top";
         position = "top";
         height = 32;
-        modules-left = [ "hyprland/workspaces" ];
+        margin-top = 10;
+        margin-left = 14;
+        margin-right = 14;
+        modules-left = [ "niri/workspaces" ];
         modules-center = [ "clock" "idle_inhibitor" ];
         modules-right = [ "tray" "network" "pulseaudio" "battery" "cpu" "memory" "temperature" "disk" "custom/power" ];
 
-        "hyprland/workspaces" = {
-          format = "{icon}";
-          format-icons = {
-            "1" = "󰎙";
-            "2" = "󰎠";
-            "3" = "󰎢";
-            "4" = "󰎤";
-            "5" = "󰎥";
-            "6" = "󰎦";
-            "7" = "󰎨";
-            "8" = "󰎪";
-            "9" = "󰎬";
-            "10" = "󰎭";
-          };
+        "niri/workspaces" = {
+          format = "{index}";
           persistent-workspaces = {"*" = 5;};
         };
 
         clock = { format = "{:%H:%M}"; format-alt = "{:%d.%m.%Y}"; interval = 1; };
-        idle_inhibitor = { format = "{icon}"; format-icons = { activated = "󰅶"; deactivated = "󰅷"; }; };
+        idle_inhibitor = {
+          format = "{icon}";
+          format-icons = {
+            activated = "●";
+            deactivated = "○";
+          };
+        };
         tray = { spacing = 8; };
         network = { format-wifi = "wifi {signal}%"; format-ethernet = "LAN"; format-disconnected = "offline"; interval = 5; };
         pulseaudio = { format = "{volume}%"; format-muted = "muted"; on-click = "pavucontrol"; };
-        battery = { states = { good = 60; warning = 30; critical = 15; }; format = "{capacity}%"; format-icons = [ "󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹" ]; };
+        battery = { states = { good = 60; warning = 30; critical = 15; }; format = "BAT {capacity}%"; };
         cpu = { format = "{usage}%"; on-click = "alacritty -e htop"; interval = 2; };
         memory = { format = "{used:0.1f}GiB"; on-click = "alacritty -e htop"; interval = 2; };
-        temperature = { thermal-zone = 2; critical-threshold = 80; format = "{temperatureC}°C"; format-icons = [ "󰈐" "󰈑" "󰈓" ]; };
-        disk = { format = "󰋊 {used}/{size}"; tooltip = true; };
-        "custom/power" = { format = "󰐥"; on-click = "loginctl kill-user $USER"; tooltip = false; };
+        temperature = { thermal-zone = 2; critical-threshold = 80; format = "TMP {temperatureC}°C"; };
+        disk = { format = "DSK {used}/{size}"; tooltip = true; };
+        "custom/power" = { format = "OFF"; on-click = "loginctl kill-user $USER"; tooltip = false; };
       }];
 
       style = ''
-        * { font-family: "JetBrains Mono", monospace; font-size: 13px; }
-        window#waybar { background: linear-gradient(180deg, #2a1f35 0%, #1a1423 100%); color: #ffb6c1; border-bottom: 3px solid #ff69b4; }
+        * { font-family: "JetBrainsMono Nerd Font", monospace; font-size: 13px; }
+        window#waybar { background: linear-gradient(180deg, #2a1f35 0%, #1a1423 100%); color: #ffb6c1; border: 2px solid #ff69b4; border-radius: 16px; }
         #workspaces { margin-left: 8px; }
         #workspaces button { color: #dda0dd; padding: 4px 10px; margin: 2px; }
         #workspaces button.active { color: #fff; background: linear-gradient(135deg, #ff69b4, #c678dd); border-radius: 12px; box-shadow: 0 2px 8px rgba(255,105,180,0.4); }
