@@ -183,6 +183,16 @@
         Mod+Ctrl+8 { move-column-to-workspace 8; }
         Mod+Ctrl+9 { move-column-to-workspace 9; }
 
+        Mod+Shift+1 { move-window-to-workspace 1; }
+        Mod+Shift+2 { move-window-to-workspace 2; }
+        Mod+Shift+3 { move-window-to-workspace 3; }
+        Mod+Shift+4 { move-window-to-workspace 4; }
+        Mod+Shift+5 { move-window-to-workspace 5; }
+        Mod+Shift+6 { move-window-to-workspace 6; }
+        Mod+Shift+7 { move-window-to-workspace 7; }
+        Mod+Shift+8 { move-window-to-workspace 8; }
+        Mod+Shift+9 { move-window-to-workspace 9; }
+
         Mod+BracketLeft  { consume-or-expel-window-left; }
         Mod+BracketRight { consume-or-expel-window-right; }
 
