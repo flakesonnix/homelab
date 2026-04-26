@@ -16,7 +16,7 @@
     services.xserver.enable = true;
     services.displayManager.gdm = {
       enable = true;
-      wayland = config.lucy.gnome.wayland;
+      inherit (config.lucy.gnome) wayland;
     };
     services.desktopManager.gnome.enable = true;
     services.xserver.xkb = {

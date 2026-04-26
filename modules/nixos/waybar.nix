@@ -1,11 +1,13 @@
 { lib, config, pkgs, ... }:
 
 let
-  nerdFontFamilies = builtins.filter (name: !(builtins.elem name [
-    "override"
-    "overrideDerivation"
-    "recurseForDerivations"
-  ])) (builtins.attrNames pkgs.nerd-fonts);
+  nerdFontFamilies = builtins.filter
+    (name: !(builtins.elem name [
+      "override"
+      "overrideDerivation"
+      "recurseForDerivations"
+    ]))
+    (builtins.attrNames pkgs.nerd-fonts);
 in
 
 {

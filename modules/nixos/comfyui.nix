@@ -1,4 +1,4 @@
-{ lib, config, pkgs, comfyui-nix, ... }:
+{ lib, config, comfyui-nix, ... }:
 
 {
   imports = [ comfyui-nix.nixosModules.default ];

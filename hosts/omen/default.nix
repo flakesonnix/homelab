@@ -1,4 +1,4 @@
-{ lib, config, pkgs, wrappers, ... }:
+{ lib, pkgs, wrappers, ... }:
 
 let
   hyfetch-wrapped = wrappers.lib.wrapPackage {
@@ -82,7 +82,9 @@ in
       Type = "oneshot";
       RemainAfterExit = true;
       ExecStart = lib.mkForce [
-        "/bin/sh" "-c" ''
+        "/bin/sh"
+        "-c"
+        ''
           #!/bin/sh
           if [ -d /sys/bus/pci/drivers/nvidia ]; then
             for dev in /sys/bus/pci/drivers/nvidia/*; do

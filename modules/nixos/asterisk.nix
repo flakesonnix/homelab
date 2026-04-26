@@ -20,7 +20,7 @@
  * to inject passwords at runtime rather than storing them in the Nix store.
  */
 
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 
 let
   cfg = config.services.asteriskLocal;
@@ -239,10 +239,12 @@ let
   configAssertions = [
     # Check for duplicate extension numbers
     {
-      assertion = let
-        extensions-list = lib.mapAttrsToList (name: phone: phone.extension) cfg.phones;
-        unique-extensions = lib.unique extensions-list;
-      in lib.length extensions-list == lib.length unique-extensions;
+      assertion =
+        let
+          extensions-list = lib.mapAttrsToList (_name: phone: phone.extension) cfg.phones;
+          unique-extensions = lib.unique extensions-list;
+        in
+        lib.length extensions-list == lib.length unique-extensions;
       message = "asteriskLocal: duplicate extension numbers detected. Each phone must have a unique extension.";
     }
   ];
@@ -252,10 +254,12 @@ let
    * This uses lib.warn to alert operators about potential security issues
    * without blocking the configuration from building.
    */
-  credentialWarnings = let
-    phones-list = lib.mapAttrsToList (name: phone: { inherit name; password = phone.password; }) cfg.phones;
-    weak-creds = lib.filter (p: p.name == p.password) phones-list;
-  in lib.concatStringsSep "\n" (lib.map (p: "asteriskLocal: phone '${p.name}' has password equal to account name - this is a weak credential") weak-creds);
+  credentialWarnings =
+    let
+      phones-list = lib.mapAttrsToList (name: phone: { inherit name; inherit (phone) password; }) cfg.phones;
+      weak-creds = lib.filter (p: p.name == p.password) phones-list;
+    in
+    lib.concatStringsSep "\n" (lib.map (p: "asteriskLocal: phone '${p.name}' has password equal to account name - this is a weak credential") weak-creds);
 
 in
 
@@ -340,7 +344,7 @@ in
           };
         };
       });
-      default = {};
+      default = { };
       description = lib.mdDoc ''
         Attribute set of phones keyed by account name.
         
@@ -401,15 +405,15 @@ in
     # Enable the Asterisk service
     services.asterisk = {
       enable = true;
-      
+
       # Generated configuration files
       confFiles = {
         # pjsip.conf - SIP endpoint configuration
         "pjsip.conf" = pjsipConf;
-        
+
         # extensions.conf - Dial plan
         "extensions.conf" = extensionsConf;
-        
+
         # Disable unneeded modules for a simple internal PBX
         "asterisk.conf" = "[modules]\nautoload = no\n; Load only what we need for basic SIP functionality\npreload => res_pjsip.so\npreload => res_pjsip_session.so\npreload => app_dial.so\npreload => app_playback.so\npreload => func_callerid.so\n";
       };
@@ -419,7 +423,7 @@ in
     networking.firewall = lib.mkIf cfg.openFirewall {
       allowedUDPPorts = [ 5060 ];
       allowedUDPPortRanges = [
-        { from = 10000; to = 20000; }  # RTP media port range
+        { from = 10000; to = 20000; } # RTP media port range
       ];
     };
 

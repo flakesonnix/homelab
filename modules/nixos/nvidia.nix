@@ -28,7 +28,7 @@
       package = config.boot.kernelPackages.nvidiaPackages.production;
     };
 
-    boot.initrd.kernelModules = [ ];  # Lazy-load, not in initrd
+    boot.initrd.kernelModules = [ ]; # Lazy-load, not in initrd
 
     boot.kernelParams = [
       "nvidia.NVreg_PreserveVideoMemoryAllocations=1"

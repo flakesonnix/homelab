@@ -37,15 +37,15 @@ in
       ++ lib.optionals config.lucy.swaybg [ pkgs.swaybg ]
       ++ lib.optionals config.lucy.ollama [ pkgs.ollama-cuda ]
       ++ lib.optionals config.lucy.lmstudio [
-        (pkgs.appimageTools.wrapType2 {
-          pname = "lmstudio";
-          version = "latest";
-          src = pkgs.fetchurl {
-            url = "https://lmstudio.ai/download/latest/linux/x64";
-            sha256 = "1hnb0qx154f6s9hgbdmbnv7hb0pzfs1p1wxyjcbbx61aqn8ckd2k";
-          };
-        })
-      ];
+      (pkgs.appimageTools.wrapType2 {
+        pname = "lmstudio";
+        version = "latest";
+        src = pkgs.fetchurl {
+          url = "https://lmstudio.ai/download/latest/linux/x64";
+          sha256 = "1hnb0qx154f6s9hgbdmbnv7hb0pzfs1p1wxyjcbbx61aqn8ckd2k";
+        };
+      })
+    ];
 
     programs.npm.enable = true;
     programs.npm.package = pkgs.nodejs_22;
