@@ -1,4 +1,4 @@
-{ config, pkgs, lib, ... }:
+{ pkgs, lib, ... }:
 
 {
   imports = [
@@ -97,6 +97,11 @@
       package = pkgs.callPackage ./cursors/default.nix { };
       size = 32;
     };
+    packages = with pkgs; [
+      nh
+      nvd
+      nix-tree
+    ];
   };
 
   xdg.desktopEntries = {

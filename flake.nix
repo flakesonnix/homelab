@@ -52,19 +52,29 @@
       url = "github:nix-community/nix-index-database";
     };
 
-     lanzaboote = {
-       url = "github:nix-community/lanzaboote/v1.0.0";
-       inputs.nixpkgs.follows = "nixpkgs";
-     };
+    lanzaboote = {
+      url = "github:nix-community/lanzaboote/v1.0.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
-     comfyui-nix = {
-       url = "github:utensils/comfyui-nix";
-       inputs.nixpkgs.follows = "nixpkgs";
-     };
+    comfyui-nix = {
+      url = "github:utensils/comfyui-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    pre-commit-hooks = {
+      url = "github:cachix/pre-commit-hooks.nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
   };
 
-   outputs = inputs@{ self, nixpkgs, nix-topology, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, lanzaboote, comfyui-nix, ... }:
+  outputs = inputs@{ self, nixpkgs, nix-topology, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, lanzaboote, comfyui-nix, treefmt-nix, pre-commit-hooks, ... }:
     let
       pkgs = import nixpkgs {
         system = "x86_64-linux";
@@ -72,43 +82,43 @@
       };
 
       omen-config = nixpkgs.lib.nixosSystem {
-          system = "x86_64-linux";
-          specialArgs = { inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database; };
-          modules = [
-            ./nix-settings.nix
-            ./profiles/desktop.nix
-            ./hosts/omen
-            sops-nix.nixosModules.sops
-            home-manager.nixosModules.home-manager
-            nix-topology.nixosModules.default
-            lanzaboote.nixosModules.lanzaboote
-            ({ lib, pkgs, ... }: {
-              boot.loader.systemd-boot.enable = lib.mkForce false;
-              boot.lanzaboote = {
-                enable = true;
-                pkiBundle = "/var/lib/sbctl";
-              };
-              environment.systemPackages = [ pkgs.sbctl ];
-            })
-            ./modules/nixos/hm-base.nix
-          ];
-        };
+        system = "x86_64-linux";
+        specialArgs = { inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database; };
+        modules = [
+          ./nix-settings.nix
+          ./profiles/desktop.nix
+          ./hosts/omen
+          sops-nix.nixosModules.sops
+          home-manager.nixosModules.home-manager
+          nix-topology.nixosModules.default
+          lanzaboote.nixosModules.lanzaboote
+          ({ lib, pkgs, ... }: {
+            boot.loader.systemd-boot.enable = lib.mkForce false;
+            boot.lanzaboote = {
+              enable = true;
+              pkiBundle = "/var/lib/sbctl";
+            };
+            environment.systemPackages = [ pkgs.sbctl ];
+          })
+          ./modules/nixos/hm-base.nix
+        ];
+      };
 
       homelab-config = nixpkgs.lib.nixosSystem {
-          system = "x86_64-linux";
-          specialArgs = { inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database; };
-          modules = [
-            ./nix-settings.nix
-            ./profiles/base.nix
-            ./hosts/homelab
-            sops-nix.nixosModules.sops
-            home-manager.nixosModules.home-manager
-            nix-topology.nixosModules.default
-            ./modules/nixos/hm-base.nix
-          ];
-        };
+        system = "x86_64-linux";
+        specialArgs = { inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database; };
+        modules = [
+          ./nix-settings.nix
+          ./profiles/base.nix
+          ./hosts/homelab
+          sops-nix.nixosModules.sops
+          home-manager.nixosModules.home-manager
+          nix-topology.nixosModules.default
+          ./modules/nixos/hm-base.nix
+        ];
+      };
 
-      
+
 
       nixos-configs = {
         omen = omen-config;
@@ -128,7 +138,7 @@
       {
         systems = [ "x86_64-linux" ];
 
-        perSystem = { config, pkgs, ... }: {
+        perSystem = { system, pkgs, ... }: {
           devShells.default = pkgs.mkShell {
             packages = with pkgs; [
               nixpkgs-fmt
@@ -138,10 +148,25 @@
               texliveMinimal
               librsvg
               deploy-rs.packages.x86_64-linux.default
+              statix
+              deadnix
+              nix-direnv
             ];
           };
 
-          formatter = pkgs.nixpkgs-fmt;
+          formatter = (treefmt-nix.lib.evalModule pkgs ./treefmt.nix).config.build.wrapper;
+
+          checks = {
+            formatting = (treefmt-nix.lib.evalModule pkgs ./treefmt.nix).config.build.check self;
+            pre-commit = pre-commit-hooks.lib.${system}.run {
+              src = self;
+              hooks = {
+                nixpkgs-fmt.enable = true;
+                statix.enable = true;
+                deadnix.enable = true;
+              };
+            };
+          };
         };
       }
       //
