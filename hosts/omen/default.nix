@@ -67,6 +67,10 @@ in
   lucy.niri.enable = true;
   lucy.waybar.installFonts = true;
 
+  security.run0-sudo-shim.enable = true;
+  # Optional: persistent authentication can be enabled here if desired
+  # security.polkit.persistentAuthentication = true;
+
   hardware.nvidia.powerManagement.enable = lib.mkForce false;
 
   services.thermald.enable = true;

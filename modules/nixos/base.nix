@@ -57,7 +57,7 @@
       };
     };
 
-    security.sudo.enable = true;
+    security.sudo.enable = lib.mkDefault true;
 
     virtualisation.libvirtd = lib.mkIf (!config.lucy.base.isServer) {
       enable = true;

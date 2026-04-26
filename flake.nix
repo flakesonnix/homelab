@@ -72,9 +72,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    run0-sudo-shim = {
+      url = "github:lordgrimmauld/run0-sudo-shim";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
-  outputs = inputs@{ self, nixpkgs, nix-topology, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, lanzaboote, comfyui-nix, treefmt-nix, pre-commit-hooks, ... }:
+  outputs = inputs@{ self, nixpkgs, nix-topology, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, lanzaboote, comfyui-nix, treefmt-nix, pre-commit-hooks, run0-sudo-shim, ... }:
     let
       pkgs = import nixpkgs {
         system = "x86_64-linux";
@@ -101,6 +106,7 @@
             environment.systemPackages = [ pkgs.sbctl ];
           })
           ./modules/nixos/hm-base.nix
+          run0-sudo-shim.nixosModules.default
         ];
       };
 
