@@ -98,6 +98,11 @@
           ./nix-settings.nix
           ./profiles/desktop.nix
           ./hosts/omen
+          {
+            # Upstream nix-topology still references the renamed
+            # services.jellyseerr option in its service extractor.
+            topology.extractors.services.enable = false;
+          }
           sops-nix.nixosModules.sops
           home-manager.nixosModules.home-manager
           nix-topology.nixosModules.default
@@ -122,6 +127,11 @@
           ./nix-settings.nix
           ./profiles/base.nix
           ./hosts/homelab
+          {
+            # Keep topology evaluation warning-free until nix-topology
+            # switches its service extractor to services.seerr.
+            topology.extractors.services.enable = false;
+          }
           sops-nix.nixosModules.sops
           home-manager.nixosModules.home-manager
           nix-topology.nixosModules.default
