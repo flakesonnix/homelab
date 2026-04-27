@@ -1,6 +1,22 @@
 { lib, pkgs, wrappers, ... }:
 
 let
+  disabledGettys = [ "ttyS0" "ttyS1" "ttyS2" "ttyS3" ];
+  enabledLucyPackages = [
+    "firefox"
+    "discord"
+    "clion"
+    "ollama"
+    "lmstudio"
+    "swaybg"
+    "devBase"
+    "pwvucontrol"
+    "scrcpy"
+    "nload"
+    "iotop"
+    "iftop"
+  ];
+
   hyfetch-wrapped = wrappers.lib.wrapPackage {
     inherit pkgs;
     package = pkgs.hyfetch;
@@ -49,23 +65,40 @@ in
     "console=tty1"
   ];
 
-  systemd.services = {
-    "serial-getty@ttyS0".enable = false;
-    "serial-getty@ttyS1".enable = false;
-    "serial-getty@ttyS2".enable = false;
-    "serial-getty@ttyS3".enable = false;
+  systemd.services = lib.genAttrs (map (tty: "serial-getty@${tty}") disabledGettys)
+    (_: {
+      enable = false;
+    }) // {
+    nvidia-resume = {
+      description = lib.mkForce "Reinitialize NVIDIA driver after resume";
+      after = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
+      wantedBy = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = lib.mkForce [
+          "/bin/sh"
+          "-c"
+          ''
+            #!/bin/sh
+            if [ -d /sys/bus/pci/drivers/nvidia ]; then
+              for dev in /sys/bus/pci/drivers/nvidia/*; do
+                if [ -e "$dev" ]; then
+                  vendor=$(cat "$dev/vendor" 2>/dev/null)
+                  if [ "$vendor" = "0x10de" ]; then
+                    devname=$(basename "$dev")
+                    echo "$devname" > /sys/bus/pci/drivers/nvidia/unbind 2>/dev/null
+                    echo "$devname" > /sys/bus/pci/drivers/nvidia/bind 2>/dev/null
+                  fi
+                fi
+              done
+            fi
+            systemctl restart gdm.service 2>/dev/null || true
+          ''
+        ];
+      };
+    };
   };
-
-  lucy.base.enable = true;
-  lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
-  lucy.base.sshKeyComment = "lucy@p50";
-
-  lucy.nvidia.enable = true;
-  lucy.gnome.enable = false;
-  lucy.gnomeExtensions.enable = false;
-  # lucy.hyprland.enable = true;
-  lucy.niri.enable = true;
-  lucy.waybar.installFonts = true;
 
   security.run0-sudo-shim.enable = true;
   # Optional: persistent authentication can be enabled here if desired
@@ -77,36 +110,6 @@ in
 
   powerManagement.enable = true;
   powerManagement.cpuFreqGovernor = "powersave";
-
-  systemd.services.nvidia-resume = {
-    description = lib.mkForce "Reinitialize NVIDIA driver after resume";
-    after = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
-    wantedBy = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = lib.mkForce [
-        "/bin/sh"
-        "-c"
-        ''
-          #!/bin/sh
-          if [ -d /sys/bus/pci/drivers/nvidia ]; then
-            for dev in /sys/bus/pci/drivers/nvidia/*; do
-              if [ -e "$dev" ]; then
-                vendor=$(cat "$dev/vendor" 2>/dev/null)
-                if [ "$vendor" = "0x10de" ]; then
-                  devname=$(basename "$dev")
-                  echo "$devname" > /sys/bus/pci/drivers/nvidia/unbind 2>/dev/null
-                  echo "$devname" > /sys/bus/pci/drivers/nvidia/bind 2>/dev/null
-                fi
-              fi
-            done
-          fi
-          systemctl restart gdm.service 2>/dev/null || true
-        ''
-      ];
-    };
-  };
 
   services.asteriskLocal = {
     enable = false;
@@ -125,36 +128,38 @@ in
 
   programs.noisetorch.enable = true;
 
-  lucy.basePackages = with pkgs; [
-    alacritty
-    zathura
-    fzf
-    bat
-    vesktop
-    vlc
-    p7zip
-    thunderbird
-    deskflow
-    keepassxc
-    nodejs_22
-    ausweisapp
-    kdePackages.kdenlive
-    ani-cli
-    scdl
-  ];
-
-  lucy.firefox = true;
-  lucy.discord = true;
-  lucy.clion = true;
-  lucy.ollama = true;
-  lucy.lmstudio = true;
-  lucy.swaybg = true;
-  lucy.devBase = true;
-  lucy.pwvucontrol = true;
-  lucy.scrcpy = true;
-  lucy.nload = true;
-  lucy.iotop = true;
-  lucy.iftop = true;
+  lucy = lib.mkMerge (
+    [
+      {
+        base.enable = true;
+        base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
+        base.sshKeyComment = "lucy@p50";
+        nvidia.enable = true;
+        gnome.enable = false;
+        gnomeExtensions.enable = false;
+        niri.enable = true;
+        waybar.installFonts = true;
+        basePackages = with pkgs; [
+          alacritty
+          zathura
+          fzf
+          bat
+          vesktop
+          vlc
+          p7zip
+          thunderbird
+          deskflow
+          keepassxc
+          nodejs_22
+          ausweisapp
+          kdePackages.kdenlive
+          ani-cli
+          scdl
+        ];
+      }
+    ]
+    ++ map (name: lib.setAttrByPath [ name ] true) enabledLucyPackages
+  );
 
   environment.systemPackages = with pkgs; [
     hyfetch-wrapped
