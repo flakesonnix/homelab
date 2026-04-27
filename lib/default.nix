@@ -1,10 +1,9 @@
 {
-  mkUser =
-    { username
-    , description ? ""
-    , modules ? [ ]
-    }:
-    {
-      inherit username modules description;
-    };
+  mkUser = {
+    username,
+    description ? "",
+    modules ? [],
+  }: {
+    inherit username modules description;
+  };
 }

@@ -1,6 +1,9 @@
-{ lib, config, pkgs, ... }:
-
 {
+  lib,
+  config,
+  pkgs,
+  ...
+}: {
   options = {
     lucy.gnomeExtensions = {
       enable = lib.mkEnableOption "GNOME extensions";

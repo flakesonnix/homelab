@@ -38,8 +38,16 @@
       url = "github:hercules-ci/flake-parts";
     };
 
+    flake-root = {
+      url = "github:srid/flake-root";
+    };
+
     nix-index-database = {
       url = "github:nix-community/nix-index-database";
+    };
+
+    nixos-hardware = {
+      url = "github:NixOS/nixos-hardware/master";
     };
 
     lanzaboote = {
@@ -50,6 +58,19 @@
     comfyui-nix = {
       url = "github:utensils/comfyui-nix";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    alejandra = {
+      url = "github:Kamadorueda/alejandra";
+    };
+
+    haumea = {
+      url = "github:nix-community/haumea";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nix-health = {
+      url = "github:juspay/nix-health";
     };
 
     treefmt-nix = {
@@ -71,47 +92,73 @@
       url = "github:numtide/devshell";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
   };
 
-  outputs = inputs@{ self, nixpkgs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, lanzaboote, comfyui-nix, treefmt-nix, pre-commit-hooks, run0-sudo-shim, ... }:
-    let
-
-      omen-config = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        specialArgs = { inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database; };
-        modules = [
-          ./nix-settings.nix
-          ./profiles/desktop.nix
-          ./hosts/omen
-          sops-nix.nixosModules.sops
-          home-manager.nixosModules.home-manager
-          lanzaboote.nixosModules.lanzaboote
-          ({ lib, pkgs, ... }: {
-            boot.loader.systemd-boot.enable = lib.mkForce false;
-            boot.lanzaboote = {
-              enable = true;
-              pkiBundle = "/var/lib/sbctl";
-            };
-            environment.systemPackages = [ pkgs.sbctl ];
-          })
-          ./modules/nixos/hm-base.nix
-          run0-sudo-shim.nixosModules.default
-        ];
-      };
-    in
-    flake-parts.lib.mkFlake { inherit inputs; } (
+  outputs = inputs @ {
+    self,
+    nixpkgs,
+    home-manager,
+    stylix,
+    wrappers,
+    nix-flatpak,
+    sops-nix,
+    flake-parts,
+    nix-index-database,
+    lanzaboote,
+    comfyui-nix,
+    treefmt-nix,
+    pre-commit-hooks,
+    run0-sudo-shim,
+    nixos-hardware,
+    ...
+  }: let
+    omen-config = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      specialArgs = {inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database nixos-hardware;};
+      modules = [
+        ./nix-settings.nix
+        ./profiles/desktop.nix
+        ./hosts/omen
+        sops-nix.nixosModules.sops
+        home-manager.nixosModules.home-manager
+        lanzaboote.nixosModules.lanzaboote
+        ({
+          lib,
+          pkgs,
+          ...
+        }: {
+          boot.loader.systemd-boot.enable = lib.mkForce false;
+          boot.lanzaboote = {
+            enable = true;
+            pkiBundle = "/var/lib/sbctl";
+          };
+          environment.systemPackages = [pkgs.sbctl];
+        })
+        ./modules/nixos/hm-base.nix
+        run0-sudo-shim.nixosModules.default
+      ];
+    };
+  in
+    flake-parts.lib.mkFlake {inherit inputs;} (
       {
         imports = [
+          inputs.flake-root.flakeModule
           inputs.devshell.flakeModule
         ];
-        systems = [ "x86_64-linux" ];
+        systems = ["x86_64-linux"];
 
-        perSystem = { system, pkgs, ... }: {
+        perSystem = {
+          system,
+          pkgs,
+          config,
+          ...
+        }: {
           devshells.default = {
             name = "dotfiles";
             packages = with pkgs; [
+              config.flake-root.package
               nixpkgs-fmt
+              pkgs.alejandra
               nil
               git
               pandoc
@@ -122,21 +169,37 @@
               nix-direnv
             ];
             commands = [
-              { name = "rebuild"; command = "nh os switch"; help = "Rebuild omen host"; }
-              { name = "update"; command = "nix flake update"; help = "Update flake inputs"; }
-              { name = "fmt"; command = "nix fmt"; help = "Format the repository"; }
-              { name = "check"; command = "nix flake check"; help = "Check the flake"; }
+              {
+                name = "rebuild";
+                command = "nh os switch";
+                help = "Rebuild omen host";
+              }
+              {
+                name = "update";
+                command = "nix flake update";
+                help = "Update flake inputs";
+              }
+              {
+                name = "fmt";
+                command = "nix fmt";
+                help = "Format the repository";
+              }
+              {
+                name = "check";
+                command = "nix flake check";
+                help = "Check the flake";
+              }
             ];
           };
 
-          formatter = (treefmt-nix.lib.evalModule pkgs ./treefmt.nix).config.build.wrapper;
+          formatter = pkgs.alejandra;
 
           checks = {
             formatting = (treefmt-nix.lib.evalModule pkgs ./treefmt.nix).config.build.check self;
             pre-commit = pre-commit-hooks.lib.${system}.run {
               src = self;
               hooks = {
-                nixpkgs-fmt.enable = true;
+                alejandra.enable = true;
                 statix.enable = true;
                 deadnix.enable = true;
               };
@@ -144,8 +207,7 @@
           };
         };
       }
-      //
-      {
+      // {
         flake = {
           lib = import ./lib;
 

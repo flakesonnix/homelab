@@ -1,6 +1,9 @@
-{ lib, config, pkgs, ... }:
-
 {
+  lib,
+  config,
+  pkgs,
+  ...
+}: {
   options = {
     lucy.nvidia = {
       enable = lib.mkEnableOption "NVIDIA GPU configuration";
@@ -18,7 +21,7 @@
   };
 
   config = lib.mkIf config.lucy.nvidia.enable {
-    services.xserver.videoDrivers = [ "nvidia" ];
+    services.xserver.videoDrivers = ["nvidia"];
     hardware.nvidia = {
       powerManagement.enable = true;
       powerManagement.finegrained = config.lucy.nvidia.prime;
@@ -28,7 +31,7 @@
       package = config.boot.kernelPackages.nvidiaPackages.production;
     };
 
-    boot.initrd.kernelModules = [ ]; # Lazy-load, not in initrd
+    boot.initrd.kernelModules = []; # Lazy-load, not in initrd
 
     boot.kernelParams = [
       "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
@@ -50,8 +53,8 @@
 
     systemd.services.nvidia-loader = {
       description = "Lazy-load NVIDIA kernel modules";
-      wantedBy = [ "graphical.target" ];
-      after = [ "graphical.target" ];
+      wantedBy = ["graphical.target"];
+      after = ["graphical.target"];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;

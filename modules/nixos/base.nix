@@ -1,6 +1,9 @@
-{ lib, config, pkgs, ... }:
-
 {
+  lib,
+  config,
+  pkgs,
+  ...
+}: {
   options = {
     lucy.base = {
       enable = lib.mkEnableOption "Base configuration shared across all hosts";
@@ -72,12 +75,12 @@
       wl-clipboard
     ];
 
-    users.users.lucy.extraGroups = lib.mkIf (!config.lucy.base.isServer) [ "libvirtd" ];
+    users.users.lucy.extraGroups = lib.mkIf (!config.lucy.base.isServer) ["libvirtd"];
 
     networking.firewall = {
       enable = true;
-      allowedTCPPorts = [ 22 24800 ] ++ (lib.range 5555 5585);
-      allowedUDPPorts = [ 5555 5585 ];
+      allowedTCPPorts = [22 24800] ++ (lib.range 5555 5585);
+      allowedUDPPorts = [5555 5585];
     };
 
     users.users.lucy.openssh.authorizedKeys.keys = [
@@ -91,12 +94,12 @@
     boot.initrd.network.ssh = {
       enable = true;
       port = config.lucy.base.initrdSshPort;
-      hostKeys = [ "/etc/secrets/initrd/ssh_host_ed25519_key" ];
+      hostKeys = ["/etc/secrets/initrd/ssh_host_ed25519_key"];
       authorizedKeys = config.users.users.root.openssh.authorizedKeys.keys;
     };
-    boot.initrd.availableKernelModules = [ "r8169" "e1000e" ];
+    boot.initrd.availableKernelModules = ["r8169" "e1000e"];
 
-    nix.settings.trusted-users = [ "root" "lucy" ];
+    nix.settings.trusted-users = ["root" "lucy"];
     nix.settings.require-sigs = false;
   };
 }

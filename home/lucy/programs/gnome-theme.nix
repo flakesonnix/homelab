@@ -1,20 +1,23 @@
-{ config, pkgs, lib, ... }:
-
 {
+  config,
+  pkgs,
+  lib,
+  ...
+}: {
   options.lucy.gnomeTheme = {
-    enable = lib.mkEnableOption "Pink pastel femboy GNOME theme";
+    enable = lib.mkEnableOption "Clean macOS dark GNOME theme";
   };
 
   config = lib.mkIf config.lucy.gnomeTheme.enable {
     gtk = {
       enable = true;
       font = {
-        name = "Inter 11";
-        package = pkgs.inter;
+        name = lib.mkForce "Inter 11";
+        package = lib.mkForce pkgs.inter;
       };
       iconTheme = {
-        name = "Papirus-Dark";
-        package = pkgs.papirus-icon-theme;
+        name = lib.mkForce "Papirus-Dark";
+        package = lib.mkForce pkgs.papirus-icon-theme;
       };
       gtk3.extraConfig = {
         gtk-application-prefer-dark-theme = 1;
@@ -37,7 +40,7 @@
         picture-uri = "file:///run/current-system/sw/share/backgrounds/gnome/adwaita-dark.svg";
         picture-uri-dark = "file:///run/current-system/sw/share/backgrounds/gnome/adwaita-dark.svg";
         color-shading-type = "solid";
-        primary-color = "#2a1f2d";
+        primary-color = "#11111e";
       };
 
       "org/gnome/desktop/screensaver" = {
@@ -53,13 +56,6 @@
         resize-with-right-button = true;
       };
 
-      "org/gnome/desktop/interface" = {
-        clock-format = "24h";
-        clock-show-weekday = true;
-        show-battery-percentage = true;
-        enable-animations = true;
-      };
-
       "org/gnome/desktop/peripherals/mouse" = {
         accel-profile = "flat";
       };
@@ -70,7 +66,7 @@
       };
 
       "org/gnome/mutter" = {
-        experimental-features = [ "scale-monitor-framebuffer" ];
+        experimental-features = ["scale-monitor-framebuffer"];
       };
 
       "org/gnome/settings-daemon/plugins/power" = {
@@ -89,10 +85,6 @@
         show-delete-permanently = true;
         show-hidden-files = false;
         sort-directories-first = true;
-      };
-
-      "org/gtk/gtk4/settings/color-chooser" = {
-        magenta-hue = 320;
       };
 
       "org/gnome/settings-daemon/plugins/color" = {

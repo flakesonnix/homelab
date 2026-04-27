@@ -1,7 +1,10 @@
-{ lib, config, pkgs, ... }:
-
-let
-  lockCommand = ''${pkgs.swaylock-fancy}/bin/swaylock-fancy --font "JetBrainsMono Nerd Font" --text "See you soon, Lucy" --show-failed-attempts'';
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}: let
+  lockCommand = "sh -c '${pkgs.swaylock-fancy}/bin/swaylock-fancy --font Inter --text SeeYouSoonLucy --show-failed-attempts'";
   startupCommands = lib.concatStringsSep "\n" [
     ''spawn-at-startup "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"''
     ''spawn-at-startup "${pkgs.waybar}/bin/waybar"''
@@ -24,7 +27,7 @@ let
     ''
     ''
       window-rule {
-        geometry-corner-radius 18
+        geometry-corner-radius 16
         clip-to-geometry true
       }
     ''
@@ -32,18 +35,16 @@ let
 
   workspaceBinds =
     lib.concatMapStringsSep "\n"
-      (
-        n:
-        let
-          id = toString n;
-        in
-        ''
-          Mod+${id} { focus-workspace ${id}; }
-          Mod+Ctrl+${id} { move-column-to-workspace ${id}; }
-          Mod+Shift+${id} { move-window-to-workspace ${id}; }
-        ''
-      )
-      (lib.range 1 9);
+    (
+      n: let
+        id = toString n;
+      in ''
+        Mod+${id} { focus-workspace ${id}; }
+        Mod+Ctrl+${id} { move-column-to-workspace ${id}; }
+        Mod+Shift+${id} { move-window-to-workspace ${id}; }
+      ''
+    )
+    (lib.range 1 9);
 
   staticBinds = ''
     Mod+Shift+Slash { show-hotkey-overlay; }
@@ -203,7 +204,7 @@ let
     ''
     ''
       layout {
-        gaps 20
+        gaps 16
         center-focused-column "on-overflow"
         default-column-width { proportion 0.5; }
 
@@ -213,16 +214,16 @@ let
 
         border {
           width 1
-          active-gradient from="#ffb6c1" to="#c678dd" angle=45
-          inactive-color "#4b405e"
+          active-color "#3a3a50"
+          inactive-color "#252536"
         }
 
         shadow {
           on
-          softness 48
-          spread 2
-          offset x=0 y=10
-          color "#120d1a40"
+          softness 32
+          spread 0
+          offset x=0 y=8
+          color "#00000038"
         }
 
         background-color "transparent"
@@ -234,14 +235,12 @@ let
     ''animations {}''
     windowRules
     ''
-            binds {
-      ${lib.concatStringsSep "\n" [ staticBinds workspaceBinds trailingBinds ]}
-            }
+      binds {
+        ${lib.concatStringsSep "\n" [staticBinds workspaceBinds trailingBinds]}
+      }
     ''
   ];
-in
-
-{
+in {
   options.lucy.niri = {
     enable = lib.mkEnableOption "Niri compositor config";
   };
@@ -249,64 +248,72 @@ in
   config = lib.mkIf config.lucy.niri.enable {
     xdg.configFile."niri/config.kdl".force = true;
     xdg.configFile."niri/config.kdl".text = niriConfig;
-    xdg.configFile."wlogout/layout".text = ''
+    xdg.configFile."wlogout/layout".source = pkgs.writeText "layout" (builtins.toJSON [
       {
-        "label" : "lock",
-        "action" : "${lockCommand}",
-        "text" : "Lock",
-        "keybind" : "l"
-      }
-      {
-        "label" : "logout",
-        "action" : "loginctl kill-user $USER",
-        "text" : "Logout",
-        "keybind" : "e"
+        label = "lock";
+        action = lockCommand;
+        text = "Lock";
+        keybind = "l";
       }
       {
-        "label" : "suspend",
-        "action" : "systemctl suspend",
-        "text" : "Sleep",
-        "keybind" : "u"
+        label = "logout";
+        action = "loginctl kill-user $USER";
+        text = "Logout";
+        keybind = "e";
       }
       {
-        "label" : "reboot",
-        "action" : "systemctl reboot",
-        "text" : "Restart",
-        "keybind" : "r"
+        label = "suspend";
+        action = "systemctl suspend";
+        text = "Sleep";
+        keybind = "u";
       }
       {
-        "label" : "shutdown",
-        "action" : "systemctl poweroff",
-        "text" : "Shutdown",
-        "keybind" : "s"
+        label = "reboot";
+        action = "systemctl reboot";
+        text = "Restart";
+        keybind = "r";
       }
-    '';
-    xdg.configFile."wlogout/style.css".text = ''
-      * {
-        background-image: none;
-        box-shadow: none;
-        font-family: "JetBrainsMono Nerd Font", sans-serif;
+      {
+        label = "shutdown";
+        action = "systemctl poweroff";
+        text = "Shutdown";
+        keybind = "s";
       }
+    ]);
+    xdg.configFile."wlogout/style.css".source = pkgs.writeText "style.css" (lib.concatStringsSep "\n" [
+      "* {"
+      "  background-image: none;"
+      "  box-shadow: none;"
+      "  font-family: \"Inter\", sans-serif;"
+      "}"
+      ""
+      "window {"
+      "  background: rgba(17, 17, 30, 0.78);"
+      "  border: 1px solid rgba(255, 255, 255, 0.08);"
+      "  border-radius: 20px;"
+      "}"
+      ""
+      "button {"
+      "  color: #e0e0f0;"
+      "  background: rgba(255, 255, 255, 0.06);"
+      "  border: 1px solid rgba(255, 255, 255, 0.08);"
+      "  border-radius: 18px;"
+      "  margin: 12px;"
+      "  padding: 20px 28px;"
+      "  font-size: 13px;"
+      "  font-weight: 500;"
+      "  letter-spacing: 0.02em;"
+      "  transition: all 150ms ease;"
+      "  backdrop-filter: blur(24px);"
+      "}"
+      ""
+      "button:hover {"
+      "  background: rgba(255, 255, 255, 0.12);"
+      "  color: #ffffff;"
+      "  border-color: rgba(255, 255, 255, 0.16);"
+      "}"
+    ]);
 
-      window {
-        background: rgba(16, 12, 22, 0.62);
-      }
-
-      button {
-        color: #f0d0f5;
-        background: linear-gradient(180deg, rgba(58, 51, 74, 0.86), rgba(24, 20, 31, 0.82));
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 24px;
-        margin: 18px;
-        padding: 26px 34px;
-        font-size: 18px;
-      }
-
-      button:hover {
-        background: linear-gradient(180deg, rgba(255, 105, 180, 0.34), rgba(198, 120, 221, 0.28));
-      }
-    '';
-
-    home.packages = [ pkgs.wl-clipboard pkgs.swaylock-fancy pkgs.wlogout ];
+    home.packages = [pkgs.wl-clipboard pkgs.swaylock-fancy pkgs.wlogout];
   };
 }

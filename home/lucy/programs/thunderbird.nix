@@ -1,6 +1,8 @@
-{ config, lib, ... }:
-
 {
+  config,
+  lib,
+  ...
+}: {
   options.lucy.thunderbirdUi = {
     enable = lib.mkEnableOption "Thunderbird UI customization";
   };

@@ -1,6 +1,8 @@
-{ config, lib, ... }:
-
 {
+  config,
+  lib,
+  ...
+}: {
   options.lucy.zathura = {
     enable = lib.mkEnableOption "zathura configuration";
   };

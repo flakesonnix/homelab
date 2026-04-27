@@ -1,6 +1,9 @@
-{ config, pkgs, lib, ... }:
-
-let
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}: let
   packageOptions = {
     jetbrains-mono = {
       description = "JetBrains Mono font";
@@ -14,19 +17,28 @@ let
       description = "comma (run programs without installing)";
       package = pkgs.comma;
     };
+    manix = {
+      description = "manix option and API search";
+      package = pkgs.manix;
+    };
+    nix-output-monitor = {
+      description = "nix-output-monitor build UI";
+      package = pkgs.nix-output-monitor;
+    };
     android-studio = {
       description = "Android Studio";
       package = pkgs.android-studio;
     };
   };
-in
-{
+in {
   options.lucy.programs = lib.mapAttrs (_: value: lib.mkEnableOption value.description) packageOptions;
 
   config = {
-    home.packages = lib.concatMap
-      (name:
-        lib.optionals config.lucy.programs.${name} [ packageOptions.${name}.package ]
+    home.packages =
+      lib.concatMap
+      (
+        name:
+          lib.optionals config.lucy.programs.${name} [packageOptions.${name}.package]
       )
       (lib.attrNames packageOptions);
 

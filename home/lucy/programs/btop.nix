@@ -1,6 +1,8 @@
-{ config, lib, ... }:
-
 {
+  config,
+  lib,
+  ...
+}: {
   options.lucy.btop = {
     enable = lib.mkEnableOption "lucy's btop configuration";
   };

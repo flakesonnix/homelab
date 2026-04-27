@@ -1,6 +1,8 @@
-{ lib, config, ... }:
-
 {
+  lib,
+  config,
+  ...
+}: {
   options = {
     lucy.gnome = {
       enable = lib.mkEnableOption "GNOME desktop configuration";

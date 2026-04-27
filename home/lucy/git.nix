@@ -1,6 +1,8 @@
-{ config, lib, ... }:
-
 {
+  config,
+  lib,
+  ...
+}: {
   options.lucy.git = {
     enable = lib.mkEnableOption "lucy's git configuration";
   };

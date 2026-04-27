@@ -1,6 +1,9 @@
-{ config, lib, pkgs, ... }:
-
 {
+  config,
+  lib,
+  pkgs,
+  ...
+}: {
   options.lucy.fuzzel = {
     enable = lib.mkEnableOption "Fuzzel launcher configuration";
   };
@@ -8,7 +11,7 @@
   config = lib.mkIf config.lucy.fuzzel.enable {
     programs.fuzzel = {
       enable = true;
-      settings = {
+      settings = lib.mkForce {
         main = {
           terminal = "alacritty";
           layer = "overlay";
@@ -43,6 +46,6 @@
       };
     };
 
-    home.packages = [ pkgs.inter ];
+    home.packages = [pkgs.inter];
   };
 }

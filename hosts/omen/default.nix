@@ -1,7 +1,11 @@
-{ lib, pkgs, wrappers, ... }:
-
-let
-  disabledGettys = [ "ttyS0" "ttyS1" "ttyS2" "ttyS3" ];
+{
+  lib,
+  pkgs,
+  wrappers,
+  nixos-hardware,
+  ...
+}: let
+  disabledGettys = ["ttyS0" "ttyS1" "ttyS2" "ttyS3"];
   enabledLucyPackages = [
     "firefox"
     "discord"
@@ -24,11 +28,13 @@ let
       "-p" = "transgender";
     };
   };
-in
-
-{
+in {
   imports = [
     ./hardware-configuration.nix
+    # Exact 15-dh1xxx profile not in nixos-hardware; keep to generic laptop bits.
+    nixos-hardware.nixosModules.common-cpu-intel
+    nixos-hardware.nixosModules.common-pc-laptop
+    nixos-hardware.nixosModules.common-pc-ssd
     ../../modules/nixos/base.nix
     ../../modules/nixos/network.nix
     ../../modules/nixos/nvidia.nix
@@ -36,6 +42,7 @@ in
     ../../modules/nixos/gnome-extensions.nix
     ../../modules/nixos/niri.nix
     ../../modules/nixos/packages.nix
+    ../../modules/nixos/fonts.nix
     ../../modules/nixos/latex.nix
     ../../modules/nixos/asterisk.nix
     ../../modules/nixos/audio-stream.nix
@@ -57,47 +64,49 @@ in
   networking.hostName = "omen";
   networking.networkmanager.enable = true;
 
-  boot.initrd.availableKernelModules = [ "r8169" ];
+  boot.initrd.availableKernelModules = ["r8169"];
   boot.kernelParams = [
     "tpm.disable=1"
     "nvme_core.default_ps_max_latency_us=0"
     "console=tty1"
   ];
 
-  systemd.services = lib.genAttrs (map (tty: "serial-getty@${tty}") disabledGettys)
+  systemd.services =
+    lib.genAttrs (map (tty: "serial-getty@${tty}") disabledGettys)
     (_: {
       enable = false;
-    }) // {
-    nvidia-resume = {
-      description = lib.mkForce "Reinitialize NVIDIA driver after resume";
-      after = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
-      wantedBy = [ "suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target" ];
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        ExecStart = lib.mkForce [
-          "/bin/sh"
-          "-c"
-          ''
-            #!/bin/sh
-            if [ -d /sys/bus/pci/drivers/nvidia ]; then
-              for dev in /sys/bus/pci/drivers/nvidia/*; do
-                if [ -e "$dev" ]; then
-                  vendor=$(cat "$dev/vendor" 2>/dev/null)
-                  if [ "$vendor" = "0x10de" ]; then
-                    devname=$(basename "$dev")
-                    echo "$devname" > /sys/bus/pci/drivers/nvidia/unbind 2>/dev/null
-                    echo "$devname" > /sys/bus/pci/drivers/nvidia/bind 2>/dev/null
+    })
+    // {
+      nvidia-resume = {
+        description = lib.mkForce "Reinitialize NVIDIA driver after resume";
+        after = ["suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target"];
+        wantedBy = ["suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target"];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStart = lib.mkForce [
+            "/bin/sh"
+            "-c"
+            ''
+              #!/bin/sh
+              if [ -d /sys/bus/pci/drivers/nvidia ]; then
+                for dev in /sys/bus/pci/drivers/nvidia/*; do
+                  if [ -e "$dev" ]; then
+                    vendor=$(cat "$dev/vendor" 2>/dev/null)
+                    if [ "$vendor" = "0x10de" ]; then
+                      devname=$(basename "$dev")
+                      echo "$devname" > /sys/bus/pci/drivers/nvidia/unbind 2>/dev/null
+                      echo "$devname" > /sys/bus/pci/drivers/nvidia/bind 2>/dev/null
+                    fi
                   fi
-                fi
-              done
-            fi
-            systemctl restart gdm.service 2>/dev/null || true
-          ''
-        ];
+                done
+              fi
+              systemctl restart gdm.service 2>/dev/null || true
+            ''
+          ];
+        };
       };
     };
-  };
 
   security.run0-sudo-shim.enable = true;
   # Optional: persistent authentication can be enabled here if desired
@@ -114,8 +123,14 @@ in
     enable = false;
     openFirewall = true;
     phones = {
-      desk1 = { extension = "1001"; password = "secret123"; };
-      desk2 = { extension = "1002"; password = "secret456"; };
+      desk1 = {
+        extension = "1001";
+        password = "secret123";
+      };
+      desk2 = {
+        extension = "1002";
+        password = "secret456";
+      };
     };
     extraExtensions = ''
       exten => 9000,1,Dial(PJSIP/desk1&PJSIP/desk2,20)
@@ -136,6 +151,7 @@ in
         nvidia.enable = true;
         gnome.enable = false;
         gnomeExtensions.enable = false;
+        fonts.inter = true;
         niri.enable = true;
         waybar.installFonts = true;
         basePackages = with pkgs; [
@@ -157,14 +173,14 @@ in
         ];
       }
     ]
-    ++ map (name: lib.setAttrByPath [ name ] true) enabledLucyPackages
+    ++ map (name: lib.setAttrByPath [name] true) enabledLucyPackages
   );
 
   environment.systemPackages = with pkgs; [
     hyfetch-wrapped
   ];
 
-  fonts.packages = with pkgs; [ hack-font ];
+  fonts.packages = with pkgs; [hack-font];
 
   services.openssh.settings.PermitRootLogin = "prohibit-password";
 

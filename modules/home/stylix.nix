@@ -1,6 +1,8 @@
-{ lib, config, ... }:
-
 {
+  lib,
+  config,
+  ...
+}: {
   options.lucy.stylix = {
     enable = lib.mkEnableOption "Stylix theming";
   };
@@ -10,22 +12,22 @@
       enable = true;
       base16Scheme = {
         scheme = "Custom";
-        base00 = "1a1423";
-        base01 = "2a2436";
-        base02 = "3d2a4d";
-        base03 = "5c5875";
-        base04 = "817695";
-        base05 = "d8b3cf";
-        base06 = "f0d0f5";
-        base07 = "ffffff";
-        base08 = "ff69b4";
-        base09 = "c678dd";
-        base0A = "dda0dd";
-        base0B = "ba55d3";
-        base0C = "ffb6c1";
-        base0D = "ff1493";
-        base0E = "da70d6";
-        base0F = "9932cc";
+        base00 = "11111e";
+        base01 = "1a1a2e";
+        base02 = "252536";
+        base03 = "3a3a50";
+        base04 = "5a5a7a";
+        base05 = "9090b0";
+        base06 = "c0c0d8";
+        base07 = "e8e8f0";
+        base08 = "ffffff";
+        base09 = "a0a0ff";
+        base0A = "8080ff";
+        base0B = "c0c0ff";
+        base0C = "d0d0ff";
+        base0D = "a8a8ff";
+        base0E = "b0b0ff";
+        base0F = "7070ee";
       };
       targets = {
         waybar.enable = true;

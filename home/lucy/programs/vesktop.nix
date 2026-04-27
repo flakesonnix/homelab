@@ -1,6 +1,8 @@
-{ config, lib, ... }:
-
 {
+  config,
+  lib,
+  ...
+}: {
   options.lucy.vesktop = {
     enable = lib.mkEnableOption "Vesktop settings";
   };

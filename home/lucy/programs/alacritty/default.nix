@@ -1,6 +1,8 @@
-{ config, lib, ... }:
-
 {
+  config,
+  lib,
+  ...
+}: {
   options.lucy.alacritty = {
     enable = lib.mkEnableOption "Alacritty configuration";
   };
@@ -11,26 +13,26 @@
       settings = lib.mkForce {
         font = {
           normal = {
-            family = "JetBrainsMono Nerd Font";
+            family = "Inter";
             style = "Regular";
           };
           bold = {
-            family = "JetBrainsMono Nerd Font";
-            style = "Bold";
+            family = "Inter";
+            style = "SemiBold";
           };
           italic = {
-            family = "JetBrainsMono Nerd Font";
+            family = "Inter";
             style = "Italic";
           };
-          size = 15;
+          size = 13;
         };
 
         window = {
-          opacity = 0.74;
+          opacity = 0.7;
           blur = true;
           padding = {
-            x = 14;
-            y = 12;
+            x = 12;
+            y = 10;
           };
           dynamic_padding = true;
           decorations = "Buttonless";
@@ -44,6 +46,18 @@
             blinking = "On";
           };
           unfocused_hollow = true;
+        };
+
+        colors = {
+          primary = {
+            background = "#11111e";
+            foreground = "#c8c8d8";
+            dim_foreground = "#9090b0";
+          };
+          cursor = {
+            text = "#11111e";
+            cursor = "#c0c0d8";
+          };
         };
       };
     };

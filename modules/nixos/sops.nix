@@ -1,6 +1,8 @@
-{ lib, config, ... }:
-
 {
+  lib,
+  config,
+  ...
+}: {
   options = {
     lucy.secrets = {
       enable = lib.mkEnableOption "sops-nix secrets management";

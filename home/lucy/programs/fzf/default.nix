@@ -1,6 +1,8 @@
-{ config, lib, ... }:
-
 {
+  config,
+  lib,
+  ...
+}: {
   options.lucy.fzf = {
     enable = lib.mkEnableOption "fzf configuration";
   };

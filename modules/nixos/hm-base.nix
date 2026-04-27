@@ -1,12 +1,15 @@
-{ stylix, nix-flatpak, nix-index-database, ... }:
-
 {
+  stylix,
+  nix-flatpak,
+  nix-index-database,
+  ...
+}: {
   home-manager.backupFileExtension = "backup";
 
   users.users.lucy = {
     isNormalUser = true;
     description = "Lucy";
-    extraGroups = [ "wheel" "networkmanager" ];
+    extraGroups = ["wheel" "networkmanager"];
   };
 
   home-manager.users.lucy = {

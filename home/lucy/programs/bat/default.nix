@@ -1,6 +1,8 @@
-{ config, lib, ... }:
-
 {
+  config,
+  lib,
+  ...
+}: {
   options.lucy.bat = {
     enable = lib.mkEnableOption "bat configuration";
   };
