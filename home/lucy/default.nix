@@ -1,10 +1,11 @@
-{ pkgs, lib, ... }:
+{ pkgs, ... }:
 
 {
   imports = [
     ./shell.nix
     ./git.nix
     ./editor.nix
+    ./programs/alacritty
     ./programs/packages.nix
     ./programs/easyeffects
     ./programs/htop.nix
@@ -27,6 +28,7 @@
   lucy.shell.enable = true;
   lucy.git.enable = true;
   lucy.editor.enable = true;
+  lucy.alacritty.enable = true;
   lucy.easyeffects.enable = true;
   lucy.htop.enable = true;
   lucy.btop.enable = true;
@@ -48,32 +50,6 @@
   lucy.programs.android-studio = true;
   lucy.programs.fuzzel = true;
   lucy.openclaude.enable = true;
-
-  programs.alacritty = {
-    enable = true;
-    settings = lib.mkForce {
-      font = {
-        normal = { family = "JetBrainsMono Nerd Font"; style = "Regular"; };
-        bold = { family = "JetBrainsMono Nerd Font"; style = "Bold"; };
-        italic = { family = "JetBrainsMono Nerd Font"; style = "Italic"; };
-        size = 15;
-      };
-      window = {
-        opacity = 0.8;
-        blur = true;
-        padding = { x = 10; y = 10; };
-        dynamic_padding = true;
-      };
-      scrolling = { history = 10000; };
-      cursor = {
-        style = {
-          shape = "Block";
-          blinking = "On";
-        };
-        unfocused_hollow = true;
-      };
-    };
-  };
 
   services.flatpak = {
     enable = true;
