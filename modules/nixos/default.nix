@@ -1,6 +1,4 @@
-{ lib, ... }:
-
-{
+{lib, ...}: {
   imports = [
     ./base.nix
     ./gnome.nix
@@ -11,5 +9,5 @@
     enable = lib.mkEnableOption "lucy's NixOS system configuration";
   };
 
-  config = lib.mkIf (lib.mkDefault false) { };
+  config = lib.mkIf (lib.mkDefault false) {};
 }

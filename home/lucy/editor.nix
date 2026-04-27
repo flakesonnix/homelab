@@ -1,6 +1,8 @@
-{ config, lib, ... }:
-
 {
+  config,
+  lib,
+  ...
+}: {
   options.lucy.editor = {
     enable = lib.mkEnableOption "lucy's editor configuration";
   };

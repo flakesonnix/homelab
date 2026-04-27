@@ -1,6 +1,9 @@
-{ lib, config, pkgs, ... }:
-
 {
+  lib,
+  config,
+  pkgs,
+  ...
+}: {
   options.lucy.niri = {
     enable = lib.mkEnableOption "Niri compositor";
   };

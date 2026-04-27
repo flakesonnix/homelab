@@ -1,6 +1,8 @@
-{ osConfig, pkgs, ... }:
-
 {
+  osConfig,
+  pkgs,
+  ...
+}: {
   imports = [
     ./shell.nix
     ./git.nix
@@ -48,6 +50,8 @@
   lucy.programs.jetbrains-mono = true;
   lucy.programs.nautilus = true;
   lucy.programs.comma = true;
+  lucy.programs.manix = true;
+  lucy.programs.nix-output-monitor = true;
   lucy.programs.android-studio = true;
 
   services.flatpak = {
@@ -71,7 +75,7 @@
       gtk.enable = true;
       x11.enable = true;
       name = "HelloKittyPeachMilkDonut";
-      package = pkgs.callPackage ./cursors/default.nix { };
+      package = pkgs.callPackage ./cursors/default.nix {};
       size = 32;
     };
     packages = with pkgs; [
@@ -88,12 +92,12 @@
       exec = "lmstudio --no-sandbox %U";
       icon = "lmstudio";
       terminal = false;
-      categories = [ "Development" ];
-      mimeType = [ "x-scheme-handler/chat" ];
+      categories = ["Development"];
+      mimeType = ["x-scheme-handler/chat"];
     };
   };
 
   programs.home-manager.enable = true;
 
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings.experimental-features = ["nix-command" "flakes"];
 }

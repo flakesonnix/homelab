@@ -1,6 +1,8 @@
-{ lib, config, ... }:
-
 {
+  lib,
+  config,
+  ...
+}: {
   options = {
     networking.staticIP = {
       enable = lib.mkEnableOption "Static IP configuration";
@@ -19,7 +21,7 @@
       };
       dns = lib.mkOption {
         type = lib.types.listOf lib.types.str;
-        default = [ "1.1.1.1" "8.8.8.8" ];
+        default = ["1.1.1.1" "8.8.8.8"];
         description = "List of DNS server addresses";
       };
       interface = lib.mkOption {

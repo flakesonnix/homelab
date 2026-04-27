@@ -1,6 +1,9 @@
-{ lib, config, pkgs, ... }:
-
 {
+  lib,
+  config,
+  pkgs,
+  ...
+}: {
   options.lucy.opencode = {
     enable = lib.mkEnableOption "Opencode AI coding agent";
   };

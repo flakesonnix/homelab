@@ -1,6 +1,8 @@
-{ config, lib, ... }:
-
 {
+  config,
+  lib,
+  ...
+}: {
   options.lucy.firefoxUi = {
     enable = lib.mkEnableOption "Firefox UI customization";
   };
@@ -64,6 +66,6 @@
       };
     };
 
-    stylix.targets.firefox.profileNames = [ "lucy" ];
+    stylix.targets.firefox.profileNames = ["lucy"];
   };
 }

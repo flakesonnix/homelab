@@ -1,6 +1,9 @@
-{ config, pkgs, lib, ... }:
-
-let
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}: let
   presets = pkgs.stdenvNoCC.mkDerivation {
     pname = "easyeffects-presets";
     version = "1.0";
@@ -24,15 +27,13 @@ let
       cp irs/*.irs $out/irs/ 2>/dev/null || true
     '';
   };
-in
-
-{
+in {
   options.lucy.easyeffects = {
     enable = lib.mkEnableOption "EasyEffects with presets";
   };
 
   config = lib.mkIf config.lucy.easyeffects.enable {
-    home.packages = [ pkgs.easyeffects ];
+    home.packages = [pkgs.easyeffects];
 
     xdg.configFile."easyeffects/output" = {
       source = "${presets}/output";

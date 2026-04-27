@@ -1,10 +1,10 @@
-{ lib, config, ... }:
-
-let
-  cfg = config.hq.audio;
-in
-
 {
+  lib,
+  config,
+  ...
+}: let
+  cfg = config.hq.audio;
+in {
   options.hq.audio = {
     streamTo = lib.mkOption {
       type = lib.types.str;

@@ -1,6 +1,8 @@
-{ config, lib, ... }:
-
 {
+  config,
+  lib,
+  ...
+}: {
   options.lucy.htop = {
     enable = lib.mkEnableOption "lucy's htop configuration";
   };

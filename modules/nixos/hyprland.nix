@@ -1,6 +1,9 @@
-{ lib, config, pkgs, ... }:
-
 {
+  lib,
+  config,
+  pkgs,
+  ...
+}: {
   options.lucy.hyprland = {
     enable = lib.mkEnableOption "Hyprland compositor configuration";
   };

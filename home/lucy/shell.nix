@@ -1,6 +1,9 @@
-{ config, pkgs, lib, ... }:
-
-let
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}: let
   bashPrompt = ''
     __lucy_git_branch() {
       local branch
@@ -26,8 +29,7 @@ let
 
     PROMPT_COMMAND=__lucy_prompt
   '';
-in
-{
+in {
   options.lucy.shell = {
     enable = lib.mkEnableOption "lucy's shell configuration";
   };
@@ -36,7 +38,7 @@ in
     programs.bash = {
       enable = true;
       enableCompletion = true;
-      historyControl = [ "ignoreboth" "erasedups" ];
+      historyControl = ["ignoreboth" "erasedups"];
       historyFileSize = 50000;
       historySize = 10000;
       shellAliases = {
