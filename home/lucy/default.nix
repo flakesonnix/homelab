@@ -58,6 +58,11 @@
     ];
   };
 
+  programs.nh = {
+    enable = true;
+    flake = /home/lucy/Documents/dotfiles;
+  };
+
   home = {
     username = "lucy";
     homeDirectory = "/home/lucy";
@@ -70,7 +75,6 @@
       size = 32;
     };
     packages = with pkgs; [
-      nh
       nvd
       nix-tree
     ];
