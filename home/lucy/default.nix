@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ osConfig, pkgs, ... }:
 
 {
   imports = [
@@ -14,7 +14,6 @@
     ./programs/fzf
     ./programs/firefox.nix
     ./programs/gnome-theme.nix
-    ./programs/openclaude.nix
     ./programs/thunderbird.nix
     ./programs/vesktop.nix
     ./programs/zathura
@@ -49,7 +48,6 @@
   lucy.programs.comma = true;
   lucy.programs.android-studio = true;
   lucy.programs.fuzzel = true;
-  lucy.openclaude.enable = true;
 
   services.flatpak = {
     enable = true;
@@ -61,6 +59,7 @@
   programs.nh = {
     enable = true;
     flake = /home/lucy/Documents/dotfiles;
+    osFlake = "/home/lucy/Documents/dotfiles#${osConfig.networking.hostName}";
   };
 
   home = {

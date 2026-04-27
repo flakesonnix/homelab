@@ -10,16 +10,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    nix-topology = {
-      url = "github:oddlama/nix-topology";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    deploy-rs = {
-      url = "github:serokell/deploy-rs";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     home-manager = {
       url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -84,12 +74,8 @@
 
   };
 
-  outputs = inputs@{ self, nixpkgs, nix-topology, deploy-rs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, lanzaboote, comfyui-nix, treefmt-nix, pre-commit-hooks, run0-sudo-shim, ... }:
+  outputs = inputs@{ self, nixpkgs, home-manager, stylix, wrappers, nix-flatpak, sops-nix, flake-parts, nix-index-database, lanzaboote, comfyui-nix, treefmt-nix, pre-commit-hooks, run0-sudo-shim, ... }:
     let
-      pkgs = import nixpkgs {
-        system = "x86_64-linux";
-        overlays = [ nix-topology.overlays.default ];
-      };
 
       omen-config = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
@@ -98,14 +84,8 @@
           ./nix-settings.nix
           ./profiles/desktop.nix
           ./hosts/omen
-          {
-            # Upstream nix-topology still references the renamed
-            # services.jellyseerr option in its service extractor.
-            topology.extractors.services.enable = false;
-          }
           sops-nix.nixosModules.sops
           home-manager.nixosModules.home-manager
-          nix-topology.nixosModules.default
           lanzaboote.nixosModules.lanzaboote
           ({ lib, pkgs, ... }: {
             boot.loader.systemd-boot.enable = lib.mkForce false;
@@ -117,41 +97,6 @@
           })
           ./modules/nixos/hm-base.nix
           run0-sudo-shim.nixosModules.default
-        ];
-      };
-
-      homelab-config = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        specialArgs = { inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database; };
-        modules = [
-          ./nix-settings.nix
-          ./profiles/base.nix
-          ./hosts/homelab
-          {
-            # Keep topology evaluation warning-free until nix-topology
-            # switches its service extractor to services.seerr.
-            topology.extractors.services.enable = false;
-          }
-          sops-nix.nixosModules.sops
-          home-manager.nixosModules.home-manager
-          nix-topology.nixosModules.default
-          ./modules/nixos/hm-base.nix
-        ];
-      };
-
-
-
-      nixos-configs = {
-        omen = omen-config;
-        homelab = homelab-config;
-      };
-
-      deploy-lib = deploy-rs.lib.x86_64-linux;
-
-      topology = import nix-topology {
-        inherit pkgs;
-        modules = [
-          { nixosConfigurations = nixos-configs; }
         ];
       };
     in
@@ -172,14 +117,12 @@
               pandoc
               texliveMinimal
               librsvg
-              deploy-rs.packages.x86_64-linux.default
               statix
               deadnix
               nix-direnv
             ];
             commands = [
-              { name = "rebuild"; command = "nh os switch .#omen"; help = "Rebuild omen host"; }
-              { name = "rebuild-homelab"; command = "nh os switch .#homelab"; help = "Rebuild homelab host"; }
+              { name = "rebuild"; command = "nh os switch"; help = "Rebuild omen host"; }
               { name = "update"; command = "nix flake update"; help = "Update flake inputs"; }
               { name = "fmt"; command = "nix fmt"; help = "Format the repository"; }
               { name = "check"; command = "nix flake check"; help = "Check the flake"; }
@@ -206,33 +149,8 @@
         flake = {
           lib = import ./lib;
 
-          nixosConfigurations = nixos-configs;
-
-          packages.x86_64-linux = {
-            topology = topology.config.output;
-          };
-
-          deploy.nodes = {
-            omen = {
-              hostname = "192.168.178.4";
-              profiles.system = {
-                path = deploy-lib.activate.nixos omen-config;
-                user = "root";
-              };
-              remoteBuild = false;
-              ssh_user = "root";
-              sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" ];
-            };
-            homelab = {
-              hostname = "10.8.1";
-              profiles.system = {
-                path = deploy-lib.activate.nixos homelab-config;
-                user = "root";
-              };
-              remoteBuild = false;
-              ssh_user = "root";
-              sshOpts = [ "-t" "-o" "StrictHostKeyChecking=no" "-o" "PreferredAuthentications=password,publickey" ];
-            };
+          nixosConfigurations = {
+            omen = omen-config;
           };
         };
       }

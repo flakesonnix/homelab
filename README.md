@@ -1,25 +1,18 @@
 # NixOS Dotfiles
 
-Multi-host NixOS configuration with deploy-rs.
+NixOS configuration for `omen`.
 
 ## Hosts
 
 | Host | Type | GPU | Notes |
 |------|------|-----|-------|
-| p50 | ThinkPad Laptop | Intel HD 530 | Wayland |
-| desktop | Desktop PC | NVIDIA GTX 1070 | X11 |
-| omen | Desktop PC | NVIDIA RTX 2070 | X11, suspend fix |
+| omen | Desktop PC | NVIDIA RTX 2070 | Niri, suspend fix |
 
 ## Quick Start
 
 ```bash
-# Deploy to a host
-deploy .#p50
-deploy .#desktop  
-deploy .#omen
-
 # Direct rebuild
-nixos-rebuild switch --flake .#p50
+nixos-rebuild switch --flake .#omen
 ```
 
 ## Secrets Management (sops-nix)
@@ -29,10 +22,7 @@ nixos-rebuild switch --flake .#p50
 ./setup-sops.sh
 
 # Edit secrets (use your editor)
-SOPS_AGE_KEY_FILE=~/.sops/keys.txt nvim hosts/p50/secrets.yaml
-
-# Or use sops-edit
-sops-edit hosts/p50/secrets.yaml
+SOPS_AGE_KEY_FILE=~/.sops/keys.txt nvim hosts/omen/secrets.yaml
 ```
 
 ### secrets.yaml structure:
@@ -51,22 +41,18 @@ secrets:
 ```
 .
 ├── flake.nix              # Main flake
-├── modules/nixos/          # Reusable modules
+├── modules/nixos/        # Reusable modules
 │   ├── base.nix          # Base config (SSH, sudo, libvirt)
 │   ├── network.nix       # Static IP configuration
-│   ├── glasfaser.nix     # Telekom Glasfaser PPPoE
 │   ├── nvidia.nix        # NVIDIA GPU + suspend fixes
 │   ├── gnome.nix         # GNOME desktop
 │   ├── gnome-extensions.nix
 │   ├── latex.nix         # LaTeX writing environment
 │   ├── asterisk.nix      # Asterisk SIP PBX
-│   ├── openclaude.nix    # OpenClaude CLI
-│   ├── packages.nix      # Base packages
-│   └── sops.nix          # Secrets management
-├── hosts/                 # Host-specific configs
-│   └── p50/
-│       └── secrets.yaml   # Encrypted secrets
-└── home/lucy/           # Home-manager user config
+│   └── packages.nix      # Base packages
+├── hosts/
+│   └── omen/
+└── home/lucy/            # Home-manager user config
 ```
 
 ## Modules Overview

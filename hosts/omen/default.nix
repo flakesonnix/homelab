@@ -37,7 +37,6 @@ in
     ../../modules/nixos/niri.nix
     ../../modules/nixos/packages.nix
     ../../modules/nixos/latex.nix
-    ../../modules/nixos/openclaude.nix
     ../../modules/nixos/asterisk.nix
     ../../modules/nixos/audio-stream.nix
     ../../modules/nixos/waybar.nix
