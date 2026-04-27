@@ -18,10 +18,6 @@ let
       description = "Android Studio";
       package = pkgs.android-studio;
     };
-    fuzzel = {
-      description = "fuzzel (app launcher)";
-      package = pkgs.fuzzel;
-    };
   };
 in
 {

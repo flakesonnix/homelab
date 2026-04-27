@@ -53,12 +53,12 @@
           modules-center = [ "custom/launcher" "custom/firefox" "custom/files" "custom/terminal" "custom/vesktop" "custom/thunderbird" ];
           modules-right = [ ];
 
-          "custom/launcher" = { format = "󰣇"; on-click = "fuzzel"; tooltip = false; };
-          "custom/firefox" = { format = "󰈹"; on-click = "firefox"; tooltip = false; };
-          "custom/files" = { format = "󰉋"; on-click = "nautilus"; tooltip = false; };
-          "custom/terminal" = { format = ""; on-click = "alacritty"; tooltip = false; };
-          "custom/vesktop" = { format = "󰙯"; on-click = "vesktop"; tooltip = false; };
-          "custom/thunderbird" = { format = "󰇮"; on-click = "thunderbird"; tooltip = false; };
+          "custom/launcher" = { format = "󰣇"; on-click = "fuzzel --show drun"; tooltip = true; tooltip-format = "Applications"; };
+          "custom/firefox" = { format = "󰈹"; on-click = "firefox"; tooltip = true; tooltip-format = "Firefox"; };
+          "custom/files" = { format = "󰉋"; on-click = "nautilus"; tooltip = true; tooltip-format = "Files"; };
+          "custom/terminal" = { format = ""; on-click = "alacritty"; tooltip = true; tooltip-format = "Terminal"; };
+          "custom/vesktop" = { format = "󰙯"; on-click = "vesktop"; tooltip = true; tooltip-format = "Vesktop"; };
+          "custom/thunderbird" = { format = "󰇮"; on-click = "thunderbird"; tooltip = true; tooltip-format = "Thunderbird"; };
         }
       ];
 
@@ -136,6 +136,7 @@
         window#waybar.dock #custom-thunderbird:hover {
           background: rgba(255, 255, 255, 0.08);
           color: #ffffff;
+          padding-bottom: 2px;
         }
 
         window#waybar.dock #custom-launcher {

@@ -8,6 +8,7 @@
     ./programs/alacritty
     ./programs/packages.nix
     ./programs/easyeffects
+    ./programs/fuzzel.nix
     ./programs/htop.nix
     ./programs/btop.nix
     ./programs/bat
@@ -43,11 +44,11 @@
   lucy.thunderbirdUi.enable = true;
   lucy.vesktop.enable = true;
   lucy.zathura.enable = true;
+  lucy.fuzzel.enable = true;
   lucy.programs.jetbrains-mono = true;
   lucy.programs.nautilus = true;
   lucy.programs.comma = true;
   lucy.programs.android-studio = true;
-  lucy.programs.fuzzel = true;
 
   services.flatpak = {
     enable = true;
