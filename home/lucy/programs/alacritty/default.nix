@@ -26,13 +26,14 @@
         };
 
         window = {
-          opacity = 0.8;
+          opacity = 0.74;
           blur = true;
           padding = {
-            x = 10;
-            y = 10;
+            x = 14;
+            y = 12;
           };
           dynamic_padding = true;
+          decorations = "Buttonless";
         };
 
         scrolling.history = 10000;

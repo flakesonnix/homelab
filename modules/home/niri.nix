@@ -1,6 +1,7 @@
 { lib, config, pkgs, ... }:
 
 let
+  lockCommand = ''${pkgs.swaylock-fancy}/bin/swaylock-fancy --font "JetBrainsMono Nerd Font" --text "See you soon, Lucy" --show-failed-attempts'';
   startupCommands = lib.concatStringsSep "\n" [
     ''spawn-at-startup "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"''
     ''spawn-at-startup "${pkgs.waybar}/bin/waybar"''
@@ -23,7 +24,7 @@ let
     ''
     ''
       window-rule {
-        geometry-corner-radius 12
+        geometry-corner-radius 18
         clip-to-geometry true
       }
     ''
@@ -49,7 +50,7 @@ let
 
     Mod+Return hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
     Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
-    Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn "${pkgs.swaylock-fancy}/bin/swaylock-fancy"; }
+    Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn-sh "${lockCommand}"; }
 
     XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1+ -l 1.0"; }
     XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1-"; }
@@ -202,7 +203,8 @@ let
     ''
     ''
       layout {
-        gaps 16
+        gaps 20
+        center-focused-column "on-overflow"
         default-column-width { proportion 0.5; }
 
         focus-ring {
@@ -210,17 +212,17 @@ let
         }
 
         border {
-          width 2
-          active-gradient from="#ff69b4" to="#c678dd" angle=45
-          inactive-color "#2a2436"
+          width 1
+          active-gradient from="#ffb6c1" to="#c678dd" angle=45
+          inactive-color "#4b405e"
         }
 
         shadow {
           on
-          softness 30
-          spread 5
-          offset x=0 y=5
-          color "#ff69b433"
+          softness 48
+          spread 2
+          offset x=0 y=10
+          color "#120d1a40"
         }
 
         background-color "transparent"
@@ -247,7 +249,64 @@ in
   config = lib.mkIf config.lucy.niri.enable {
     xdg.configFile."niri/config.kdl".force = true;
     xdg.configFile."niri/config.kdl".text = niriConfig;
+    xdg.configFile."wlogout/layout".text = ''
+      {
+        "label" : "lock",
+        "action" : "${lockCommand}",
+        "text" : "Lock",
+        "keybind" : "l"
+      }
+      {
+        "label" : "logout",
+        "action" : "loginctl kill-user $USER",
+        "text" : "Logout",
+        "keybind" : "e"
+      }
+      {
+        "label" : "suspend",
+        "action" : "systemctl suspend",
+        "text" : "Sleep",
+        "keybind" : "u"
+      }
+      {
+        "label" : "reboot",
+        "action" : "systemctl reboot",
+        "text" : "Restart",
+        "keybind" : "r"
+      }
+      {
+        "label" : "shutdown",
+        "action" : "systemctl poweroff",
+        "text" : "Shutdown",
+        "keybind" : "s"
+      }
+    '';
+    xdg.configFile."wlogout/style.css".text = ''
+      * {
+        background-image: none;
+        box-shadow: none;
+        font-family: "JetBrainsMono Nerd Font", sans-serif;
+      }
 
-    home.packages = [ pkgs.wl-clipboard pkgs.swaylock-fancy ];
+      window {
+        background: rgba(16, 12, 22, 0.62);
+      }
+
+      button {
+        color: #f0d0f5;
+        background: linear-gradient(180deg, rgba(58, 51, 74, 0.86), rgba(24, 20, 31, 0.82));
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 24px;
+        margin: 18px;
+        padding: 26px 34px;
+        font-size: 18px;
+      }
+
+      button:hover {
+        background: linear-gradient(180deg, rgba(255, 105, 180, 0.34), rgba(198, 120, 221, 0.28));
+      }
+    '';
+
+    home.packages = [ pkgs.wl-clipboard pkgs.swaylock-fancy pkgs.wlogout ];
   };
 }

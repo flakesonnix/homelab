@@ -1,13 +1,6 @@
 # AGENTS.md
 
-NixOS flake-based dotfiles. deploy-rs for remote deploy.
-
-## Deploy
-
-```bash
-deploy .#omen      # → 192.168.178.4
-deploy .#homelab   # → 10.8.1
-```
+NixOS flake-based dotfiles for `omen`.
 
 Local rebuild: `nixos-rebuild switch --flake .#omen`
 
@@ -31,7 +24,6 @@ SOPS_AGE_KEY_FILE=~/.sops/keys.txt nvim hosts/p50/secrets.yaml
 | Host | Profile | IP | GPU |
 |------|---------|-----|-----|
 | omen | desktop | 192.168.178.4 | RTX 2070 |
-| homelab | base | 10.8.1 | - |
 
 ## Architecture
 
