@@ -6,12 +6,30 @@
   };
 
   config = lib.mkIf config.lucy.gnomeTheme.enable {
+    gtk = {
+      enable = true;
+      font = {
+        name = "Inter 11";
+        package = pkgs.inter;
+      };
+      iconTheme = {
+        name = "Papirus-Dark";
+        package = pkgs.papirus-icon-theme;
+      };
+      gtk3.extraConfig = {
+        gtk-application-prefer-dark-theme = 1;
+      };
+      gtk4.extraConfig = {
+        gtk-application-prefer-dark-theme = 1;
+      };
+    };
+
     dconf.settings = {
       "org/gnome/desktop/interface" = {
         color-scheme = lib.mkForce "prefer-dark";
         gtk-theme = lib.mkForce "Adwaita-dark";
         icon-theme = lib.mkForce "Papirus-Dark";
-        font-name = lib.mkForce "JetBrains Mono 11";
+        font-name = lib.mkForce "Inter 11";
         cursor-size = lib.mkForce 24;
       };
 
@@ -39,7 +57,7 @@
         clock-format = "24h";
         clock-show-weekday = true;
         show-battery-percentage = true;
-        enable-animations = false;
+        enable-animations = true;
       };
 
       "org/gnome/desktop/peripherals/mouse" = {
@@ -64,24 +82,13 @@
         show-in-lock-screen = false;
       };
 
-      "org/gnome/shell" = {
-        favorite-apps = [
-          "firefox.desktop"
-          "org.gnome.Nautilus.desktop"
-          "org.gnome.Terminal.desktop"
-          "code.desktop"
-        ];
-      };
-
-      "org/gnome/shell/extensions/dash-to-dock" = {
-        dock-position = "LEFT";
-        show-apps-at-top = true;
-        extend-height = false;
-        dash-max-icon-size = 48;
-        background-color = "#2a1f2d";
-        dock-color = "#ff69b4";
-        immediate-outline = false;
-        shader = "legacy";
+      "org/gnome/nautilus/preferences" = {
+        default-folder-viewer = "icon-view";
+        migrated-gtk-settings = true;
+        search-filter-time-type = "last_modified";
+        show-delete-permanently = true;
+        show-hidden-files = false;
+        sort-directories-first = true;
       };
 
       "org/gtk/gtk4/settings/color-chooser" = {
@@ -97,12 +104,5 @@
         theme-variant = "dark";
       };
     };
-
-    home.packages = with pkgs; [
-      gnomeExtensions.dash-to-dock
-      gnomeExtensions.vicinae
-      gnomeExtensions.caffeine
-      gnomeExtensions.user-themes
-    ];
   };
 }
