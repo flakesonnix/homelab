@@ -49,11 +49,6 @@
   lucy.programs.fuzzel = true;
   lucy.openclaude.enable = true;
 
-  programs.neovim = {
-    withRuby = true;
-    withPython3 = true;
-  };
-
   programs.alacritty = {
     enable = true;
     settings = lib.mkForce {
