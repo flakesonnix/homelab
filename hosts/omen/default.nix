@@ -5,6 +5,7 @@
   nixos-hardware,
   ...
 }: let
+  projectLib = import ../../lib;
   disabledGettys = ["ttyS0" "ttyS1" "ttyS2" "ttyS3"];
   enabledLucyPackages = [
     "firefox"
@@ -35,18 +36,6 @@ in {
     nixos-hardware.nixosModules.common-cpu-intel
     nixos-hardware.nixosModules.common-pc-laptop
     nixos-hardware.nixosModules.common-pc-ssd
-    ../../modules/nixos/base.nix
-    ../../modules/nixos/network.nix
-    ../../modules/nixos/nvidia.nix
-    ../../modules/nixos/gnome.nix
-    ../../modules/nixos/gnome-extensions.nix
-    ../../modules/nixos/niri.nix
-    ../../modules/nixos/packages.nix
-    ../../modules/nixos/fonts.nix
-    ../../modules/nixos/latex.nix
-    ../../modules/nixos/asterisk.nix
-    ../../modules/nixos/audio-stream.nix
-    ../../modules/nixos/waybar.nix
   ];
 
   nix.settings.require-sigs = false;
@@ -151,6 +140,7 @@ in {
         nvidia.enable = true;
         gnome.enable = false;
         gnomeExtensions.enable = false;
+        gaming.enable = true;
         fonts.inter = true;
         niri.enable = true;
         waybar.installFonts = true;
@@ -173,7 +163,7 @@ in {
         ];
       }
     ]
-    ++ map (name: lib.setAttrByPath [name] true) enabledLucyPackages
+    ++ projectLib.enableAttrs lib enabledLucyPackages
   );
 
   environment.systemPackages = with pkgs; [

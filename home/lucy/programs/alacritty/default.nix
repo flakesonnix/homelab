@@ -13,15 +13,15 @@
       settings = lib.mkForce {
         font = {
           normal = {
-            family = "Inter";
+            family = "JetBrainsMono Nerd Font Mono";
             style = "Regular";
           };
           bold = {
-            family = "Inter";
-            style = "SemiBold";
+            family = "JetBrainsMono Nerd Font Mono";
+            style = "Bold";
           };
           italic = {
-            family = "Inter";
+            family = "JetBrainsMono Nerd Font Mono";
             style = "Italic";
           };
           size = 13;

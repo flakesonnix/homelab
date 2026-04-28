@@ -1,7 +1,6 @@
 {lib, ...}: {
   imports = [
     ./base.nix
-    ../modules/home
   ];
 
   services.xserver.enable = lib.mkDefault true;

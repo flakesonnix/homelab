@@ -4,6 +4,7 @@
   lib,
   ...
 }: let
+  projectLib = import ../../../lib;
   packageOptions = {
     jetbrains-mono = {
       description = "JetBrains Mono font";
@@ -31,16 +32,10 @@
     };
   };
 in {
-  options.lucy.programs = lib.mapAttrs (_: value: lib.mkEnableOption value.description) packageOptions;
+  options.lucy.programs = projectLib.mkPackageOptions lib packageOptions;
 
   config = {
-    home.packages =
-      lib.concatMap
-      (
-        name:
-          lib.optionals config.lucy.programs.${name} [packageOptions.${name}.package]
-      )
-      (lib.attrNames packageOptions);
+    home.packages = projectLib.getEnabledPackagesBy lib config.lucy.programs packageOptions (value: [value.package]);
 
     home.sessionVariables = {
       WALLPAPER = "/home/lucy/Pictures/s-l1600.jpg";

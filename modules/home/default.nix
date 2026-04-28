@@ -1,7 +1,9 @@
-{lib, ...}: {
-  options.lucy.home = {
-    enable = lib.mkEnableOption "lucy's home-manager configuration";
-  };
-
-  config = lib.mkIf (lib.mkDefault false) {};
+_: {
+  imports = [
+    ./niri.nix
+    ./opencode.nix
+    ./ssh.nix
+    ./stylix.nix
+    ./waybar.nix
+  ];
 }

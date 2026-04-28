@@ -3,6 +3,8 @@
 
   nixConfig = {
     accept-flake-config = true;
+    extra-substituters = ["https://nix-gaming.cachix.org"];
+    extra-trusted-public-keys = ["nix-gaming.cachix.org-1:nbjlureqMbRAxR1gJ/f3hxemL9svXaZF/Ees8vCUUs4="];
     warn-dirty = false;
     warnImplicit = false;
   };
@@ -48,6 +50,16 @@
 
     nixos-hardware = {
       url = "github:NixOS/nixos-hardware/master";
+    };
+
+    nixGaming = {
+      url = "github:fufexan/nix-gaming";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    nur = {
+      url = "github:nix-community/NUR";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     lanzaboote = {
@@ -110,11 +122,13 @@
     pre-commit-hooks,
     run0-sudo-shim,
     nixos-hardware,
+    nixGaming,
+    nur,
     ...
   }: let
     omen-config = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
-      specialArgs = {inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database nixos-hardware;};
+      specialArgs = {inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database nixos-hardware nixGaming;};
       modules = [
         ./nix-settings.nix
         ./profiles/desktop.nix
@@ -122,6 +136,7 @@
         sops-nix.nixosModules.sops
         home-manager.nixosModules.home-manager
         lanzaboote.nixosModules.lanzaboote
+        nur.modules.nixos.default
         ({
           lib,
           pkgs,
