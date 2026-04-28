@@ -4,50 +4,20 @@
   pkgs,
   ...
 }: let
+  projectLib = import ../../lib;
   devTools = [pkgs.gcc pkgs.gdb pkgs.cmake pkgs.ninja pkgs.autoconf pkgs.automake pkgs.libtool pkgs.pkg-config pkgs.ccache pkgs.gnumake pkgs.tree pkgs.dust];
-in {
-  options = with lib; {
-    lucy.basePackages = mkOption {
-      type = types.listOf types.package;
-      default = [];
+  packageOptions = {
+    firefox = {
+      description = "Firefox browser";
+      userPackages = [pkgs.firefox];
     };
-    lucy.hostPackages = mkOption {
-      type = types.listOf types.package;
-      default = [];
+    discord = {
+      description = "Discord";
+      userPackages = [pkgs.discord];
     };
-    lucy.firefox = mkEnableOption "Firefox browser";
-    lucy.discord = mkEnableOption "Discord";
-    lucy.lmstudio = mkEnableOption "LM Studio";
-    lucy.clion = mkEnableOption "CLion IDE";
-    lucy.ollama = mkEnableOption "Ollama (CUDA)";
-    lucy.swaybg = mkEnableOption "swaybg wallpaper";
-    lucy.devBase = mkEnableOption "Dev tools (gcc, gdb, cmake, ninja, etc.)";
-    lucy.pwvucontrol = mkEnableOption "PipeWire volume control";
-    lucy.scrcpy = mkEnableOption "scrcpy Android screen mirror";
-    lucy.nload = mkEnableOption "nload network monitor";
-    lucy.iotop = mkEnableOption "iotop I/O monitor";
-    lucy.iftop = mkEnableOption "iftop network monitor";
-  };
-
-  config = {
-    users.users.lucy.packages =
-      config.lucy.basePackages
-      ++ config.lucy.hostPackages
-      ++ lib.optionals config.lucy.firefox [pkgs.firefox]
-      ++ lib.optionals config.lucy.discord [pkgs.discord]
-      ++ lib.optionals config.lucy.clion [pkgs.jetbrains.clion]
-      ++ lib.optionals config.lucy.devBase devTools
-      ++ lib.optionals config.lucy.pwvucontrol [pkgs.pwvucontrol]
-      ++ lib.optionals config.lucy.scrcpy [pkgs.scrcpy]
-      ++ lib.optionals config.lucy.nload [pkgs.nload]
-      ++ lib.optionals config.lucy.iotop [pkgs.iotop]
-      ++ lib.optionals config.lucy.iftop [pkgs.iftop];
-
-    environment.systemPackages =
-      [pkgs.nodejs_22 pkgs.gnome-tweaks]
-      ++ lib.optionals config.lucy.swaybg [pkgs.swaybg]
-      ++ lib.optionals config.lucy.ollama [pkgs.ollama-cuda]
-      ++ lib.optionals config.lucy.lmstudio [
+    lmstudio = {
+      description = "LM Studio";
+      systemPackages = [
         (pkgs.appimageTools.wrapType2 {
           pname = "lmstudio";
           version = "latest";
@@ -57,6 +27,69 @@ in {
           };
         })
       ];
+    };
+    clion = {
+      description = "CLion IDE";
+      userPackages = [pkgs.jetbrains.clion];
+    };
+    ollama = {
+      description = "Ollama (CUDA)";
+      systemPackages = [pkgs.ollama-cuda];
+    };
+    swaybg = {
+      description = "swaybg wallpaper";
+      systemPackages = [pkgs.swaybg];
+    };
+    devBase = {
+      description = "Dev tools (gcc, gdb, cmake, ninja, etc.)";
+      userPackages = devTools;
+    };
+    pwvucontrol = {
+      description = "PipeWire volume control";
+      userPackages = [pkgs.pwvucontrol];
+    };
+    scrcpy = {
+      description = "scrcpy Android screen mirror";
+      userPackages = [pkgs.scrcpy];
+    };
+    nload = {
+      description = "nload network monitor";
+      userPackages = [pkgs.nload];
+    };
+    iotop = {
+      description = "iotop I/O monitor";
+      userPackages = [pkgs.iotop];
+    };
+    iftop = {
+      description = "iftop network monitor";
+      userPackages = [pkgs.iftop];
+    };
+  };
+in {
+  options = with lib; {
+    lucy =
+      {
+        basePackages = mkOption {
+          type = types.listOf types.package;
+          default = [];
+        };
+        hostPackages = mkOption {
+          type = types.listOf types.package;
+          default = [];
+        };
+      }
+      // projectLib.mkPackageOptions lib packageOptions;
+  };
+
+  config = {
+    users.users.lucy.packages =
+      config.lucy.basePackages
+      ++ config.lucy.hostPackages
+      ++ projectLib.getEnabledPackagesBy lib config.lucy packageOptions (value: value.userPackages or []);
+
+    environment.systemPackages =
+      [pkgs.nodejs_22 pkgs.gnome-tweaks]
+      ++ projectLib.getEnabledPackagesBy lib config.lucy packageOptions (value: value.systemPackages or []);
 
     programs.npm.enable = true;
     programs.npm.package = pkgs.nodejs_22;

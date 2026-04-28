@@ -4,11 +4,12 @@
   pkgs,
   ...
 }: let
-  lockCommand = "sh -c '${pkgs.swaylock-fancy}/bin/swaylock-fancy --font Inter --text SeeYouSoonLucy --show-failed-attempts'";
+  lockCommand = "sh -c '${pkgs.swaylock-effects}/bin/swaylock --screenshots --clock --indicator --indicator-radius 110 --indicator-thickness 8 --effect-blur 7x5 --effect-vignette 0.25:0.6 --fade-in 0.2 --font Inter --font-size 24 --timestr %H:%M --datestr %a,\ %d\ %b --text-color f7f4ffff --text-clear-color f7f4ffff --text-ver-color fff1cfff --text-wrong-color ffd7eaff --inside-color 16162688 --inside-clear-color 322347cc --inside-ver-color 5c4b2acc --inside-wrong-color 4d2234cc --ring-color e7a6cbcc --ring-clear-color adc2ffcc --ring-ver-color f2d58acc --ring-wrong-color ff8db6cc --line-color 00000000 --separator-color 00000000 --key-hl-color ffd6ecff --bs-hl-color adc2ffff --show-failed-attempts --daemonize'";
   startupCommands = lib.concatStringsSep "\n" [
     ''spawn-at-startup "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"''
     ''spawn-at-startup "${pkgs.waybar}/bin/waybar"''
-    ''spawn-at-startup "${pkgs.swaybg}/bin/swaybg" "-i" "${config.home.sessionVariables.WALLPAPER}" "-m" "fill"''
+    ''spawn-at-startup "${pkgs.awww}/bin/awww-daemon"''
+    ''spawn-at-startup "sh" "-lc" "sleep 0.4 && ${pkgs.awww}/bin/awww img --resize crop --filter Lanczos3 --transition-type grow --transition-pos top-right --transition-step 90 --transition-duration 1.2 --transition-fps 60 ${config.home.sessionVariables.WALLPAPER}"''
     ''spawn-at-startup "${pkgs.xwayland-satellite}/bin/xwayland-satellite"''
   ];
 
@@ -192,6 +193,8 @@
   niriConfig = lib.concatStringsSep "\n\n" [
     ''
       input {
+        focus-follows-mouse off
+
         keyboard {
           xkb {}
           numlock
@@ -204,7 +207,7 @@
     ''
     ''
       layout {
-        gaps 16
+        gaps 18
         center-focused-column "on-overflow"
         default-column-width { proportion 0.5; }
 
@@ -213,17 +216,17 @@
         }
 
         border {
-          width 1
-          active-color "#3a3a50"
-          inactive-color "#252536"
+          width 2
+          active-color "#e7a6cb"
+          inactive-color "#322a43"
         }
 
         shadow {
           on
-          softness 32
+          softness 40
           spread 0
-          offset x=0 y=8
-          color "#00000038"
+          offset x=0 y=10
+          color "#120f1f52"
         }
 
         background-color "transparent"
@@ -248,6 +251,48 @@ in {
   config = lib.mkIf config.lucy.niri.enable {
     xdg.configFile."niri/config.kdl".force = true;
     xdg.configFile."niri/config.kdl".text = niriConfig;
+    services.mako = {
+      enable = true;
+      settings = lib.mkForce {
+        anchor = "top-right";
+        sort = "-time";
+        font = "Inter 12";
+        width = 360;
+        height = 160;
+        margin = "18,18,0";
+        padding = "16";
+        border-size = 1;
+        border-radius = 18;
+        default-timeout = 5000;
+        background-color = "#161626e6";
+        text-color = "#f7f4ff";
+        border-color = "#e7a6cb99";
+        progress-color = "over #adc2ffcc";
+        icons = true;
+        max-icon-size = 48;
+        layer = "overlay";
+      };
+      extraConfig = ''
+        outer-margin=18
+        format=<b>%s</b>\n<span size="small">%b</span>
+        markup=1
+        actions=1
+        history=1
+        text-alignment=left
+        [urgency=low]
+        border-color=#adc2ff66
+        default-timeout=3000
+
+        [urgency=normal]
+        border-color=#e7a6cb99
+
+        [urgency=high]
+        background-color=#2f1825ee
+        border-color=#ff8db6cc
+        text-color=#fff4f8
+        default-timeout=0
+      '';
+    };
     xdg.configFile."wlogout/layout".source = pkgs.writeText "layout" (builtins.toJSON [
       {
         label = "lock";
@@ -288,32 +333,32 @@ in {
       "}"
       ""
       "window {"
-      "  background: rgba(17, 17, 30, 0.78);"
-      "  border: 1px solid rgba(255, 255, 255, 0.08);"
-      "  border-radius: 20px;"
+      "  background: linear-gradient(135deg, rgba(18, 18, 34, 0.9), rgba(34, 24, 50, 0.88), rgba(28, 30, 58, 0.88));"
+      "  border: 1px solid rgba(255, 214, 236, 0.18);"
+      "  border-radius: 24px;"
       "}"
       ""
       "button {"
-      "  color: #e0e0f0;"
-      "  background: rgba(255, 255, 255, 0.06);"
-      "  border: 1px solid rgba(255, 255, 255, 0.08);"
-      "  border-radius: 18px;"
+      "  color: #f7f4ff;"
+      "  background: rgba(255, 255, 255, 0.07);"
+      "  border: 1px solid rgba(255, 214, 236, 0.12);"
+      "  border-radius: 20px;"
       "  margin: 12px;"
       "  padding: 20px 28px;"
-      "  font-size: 13px;"
-      "  font-weight: 500;"
-      "  letter-spacing: 0.02em;"
+      "  font-size: 14px;"
+      "  font-weight: 600;"
+      "  letter-spacing: 0.04em;"
       "  transition: all 150ms ease;"
       "  backdrop-filter: blur(24px);"
       "}"
       ""
       "button:hover {"
-      "  background: rgba(255, 255, 255, 0.12);"
+      "  background: linear-gradient(135deg, rgba(236, 160, 204, 0.22), rgba(173, 190, 255, 0.18));"
       "  color: #ffffff;"
-      "  border-color: rgba(255, 255, 255, 0.16);"
+      "  border-color: rgba(255, 226, 241, 0.22);"
       "}"
     ]);
 
-    home.packages = [pkgs.wl-clipboard pkgs.swaylock-fancy pkgs.wlogout];
+    home.packages = [pkgs.wl-clipboard pkgs.swaylock-effects pkgs.wlogout];
   };
 }

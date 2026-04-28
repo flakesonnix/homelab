@@ -20,11 +20,7 @@
     ./programs/thunderbird.nix
     ./programs/vesktop.nix
     ./programs/zathura
-    ../../modules/home/stylix.nix
-    ../../modules/home/ssh.nix
-    ../../modules/home/waybar.nix
-    ../../modules/home/opencode.nix
-    ../../modules/home/niri.nix
+    ../../modules/home
   ];
 
   lucy.shell.enable = true;
