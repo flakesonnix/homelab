@@ -1,9 +1,8 @@
-{
-  osConfig,
-  pkgs,
-  ...
-}: {
+{osConfig, ...}: {
   imports = [
+    ./bundles/core.nix
+    ./bundles/desktop.nix
+    ./bundles/dev.nix
     ./shell.nix
     ./git.nix
     ./editor.nix
@@ -23,77 +22,5 @@
     ../../modules/home
   ];
 
-  lucy.shell.enable = true;
-  lucy.git.enable = true;
-  lucy.editor.enable = true;
-  lucy.alacritty.enable = true;
-  lucy.easyeffects.enable = true;
-  lucy.htop.enable = true;
-  lucy.btop.enable = true;
-  lucy.bat.enable = true;
-  lucy.fzf.enable = true;
-  lucy.firefoxUi.enable = true;
-  lucy.stylix.enable = true;
-  lucy.waybar.enable = true;
-  lucy.opencode.enable = true;
-  lucy.niri.enable = true;
-  lucy.gnomeTheme.enable = true;
-  lucy.ssh.enable = true;
-  lucy.thunderbirdUi.enable = true;
-  lucy.vesktop.enable = true;
-  lucy.zathura.enable = true;
-  lucy.fuzzel.enable = true;
-  lucy.programs.jetbrains-mono = true;
-  lucy.programs.nautilus = true;
-  lucy.programs.comma = true;
-  lucy.programs.manix = true;
-  lucy.programs.nix-output-monitor = true;
-  lucy.programs.android-studio = true;
-
-  services.flatpak = {
-    enable = true;
-    packages = [
-      "com.teamspeak.TeamSpeak"
-    ];
-  };
-
-  programs.nh = {
-    enable = true;
-    flake = /home/lucy/Documents/dotfiles;
-    osFlake = "/home/lucy/Documents/dotfiles#${osConfig.networking.hostName}";
-  };
-
-  home = {
-    username = "lucy";
-    homeDirectory = "/home/lucy";
-    stateVersion = "26.05";
-    pointerCursor = {
-      gtk.enable = true;
-      x11.enable = true;
-      name = "HelloKittyPeachMilkDonut";
-      package = pkgs.callPackage ./cursors/default.nix {};
-      size = 32;
-    };
-    packages = with pkgs; [
-      nvd
-      nix-tree
-    ];
-  };
-
-  xdg.desktopEntries = {
-    lmstudio = {
-      name = "LM Studio";
-      genericName = "LLM Runner";
-      comment = "Run LLMs locally";
-      exec = "lmstudio --no-sandbox %U";
-      icon = "lmstudio";
-      terminal = false;
-      categories = ["Development"];
-      mimeType = ["x-scheme-handler/chat"];
-    };
-  };
-
-  programs.home-manager.enable = true;
-
-  nix.settings.experimental-features = ["nix-command" "flakes"];
+  programs.nh.osFlake = "/home/lucy/Documents/dotfiles#${osConfig.networking.hostName}";
 }
