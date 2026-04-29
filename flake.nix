@@ -167,7 +167,21 @@
           pkgs,
           config,
           ...
-        }: {
+        }: let
+          rebuildApp = pkgs.writeShellApplication {
+            name = "rebuild";
+            runtimeInputs = [pkgs.nh];
+            text = "nh os switch";
+          };
+          checkApp = pkgs.writeShellApplication {
+            name = "check";
+            text = "nix flake check";
+          };
+          updateApp = pkgs.writeShellApplication {
+            name = "update";
+            text = "nix flake update";
+          };
+        in {
           devshells.default = {
             name = "dotfiles";
             packages = with pkgs; [
@@ -208,6 +222,24 @@
           };
 
           formatter = pkgs.alejandra;
+
+          apps = {
+            rebuild = {
+              type = "app";
+              program = "${rebuildApp}/bin/rebuild";
+              meta.description = "Rebuild the omen host via nh";
+            };
+            check = {
+              type = "app";
+              program = "${checkApp}/bin/check";
+              meta.description = "Run nix flake check";
+            };
+            update = {
+              type = "app";
+              program = "${updateApp}/bin/update";
+              meta.description = "Update flake inputs";
+            };
+          };
 
           checks = {
             formatting = (treefmt-nix.lib.evalModule pkgs ./treefmt.nix).config.build.check self;
