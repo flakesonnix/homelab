@@ -1,0 +1,3 @@
+{
+  mkHost = host: host;
+}

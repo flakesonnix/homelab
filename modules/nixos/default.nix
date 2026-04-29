@@ -15,6 +15,5 @@ _: {
     ./packages.nix
     ./sops.nix
     ./waybar.nix
-    ./hyprland.nix
   ];
 }

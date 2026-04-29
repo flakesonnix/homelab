@@ -1,0 +1,3 @@
+{
+  packageToggles = ["android-studio"];
+}
