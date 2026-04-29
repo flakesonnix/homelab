@@ -1,7 +1,15 @@
 let
-  renderDeclaration = name: value: "  ${name}: ${value};";
+  dashify = name:
+    builtins.replaceStrings ["_"] ["-"] name;
+
+  renderValue = value:
+    if builtins.isList value
+    then builtins.concatStringsSep ", " value
+    else toString value;
+
+  renderDeclaration = name: value: "  ${dashify name}: ${renderValue value};";
 in {
-  inherit renderDeclaration;
+  inherit dashify renderValue renderDeclaration;
 
   renderRule = rule: let
     declarations = builtins.concatStringsSep "\n" (

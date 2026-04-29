@@ -1,4 +1,6 @@
 {
+  bar = cfg: cfg;
+
   module = name: cfg: {
     inherit name cfg;
   };
