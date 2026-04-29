@@ -1,36 +1,19 @@
-{osConfig, ...}: {
-  lucy.alacritty.enable = true;
-  lucy.easyeffects.enable = true;
-  lucy.firefoxUi.enable = true;
-  lucy.fuzzel.enable = true;
-  lucy.gnomeTheme.enable = true;
-  lucy.niri.enable = true;
-  lucy.stylix.enable = true;
-  lucy.thunderbirdUi.enable = true;
-  lucy.vesktop.enable = true;
-  lucy.waybar.enable = true;
-  lucy.zathura.enable = true;
-
-  lucy.programs.jetbrains-mono = true;
-  lucy.programs.nautilus = true;
-
-  services.flatpak = {
-    enable = true;
-    packages = [
-      "com.teamspeak.TeamSpeak"
-    ];
-  };
-
-  programs.nh.osFlake = "/home/lucy/Documents/dotfiles#${osConfig.networking.hostName}";
-
-  xdg.desktopEntries.lmstudio = {
-    name = "LM Studio";
-    genericName = "LLM Runner";
-    comment = "Run LLMs locally";
-    exec = "lmstudio --no-sandbox %U";
-    icon = "lmstudio";
-    terminal = false;
-    categories = ["Development"];
-    mimeType = ["x-scheme-handler/chat"];
-  };
+{
+  lib,
+  osConfig,
+  ...
+}: let
+  projectLib = import ../../../lib;
+  bundle = import ../../../data/bundles/desktop.nix;
+in {
+  config =
+    projectLib.framework.bundle.applyBundle {
+      inherit lib bundle;
+      packagePath = ["lucy" "programs"];
+    }
+    // {
+      inherit (bundle) services;
+      inherit (bundle) xdg;
+      programs.nh.osFlake = "/home/lucy/Documents/dotfiles#${osConfig.networking.hostName}";
+    };
 }
