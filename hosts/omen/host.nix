@@ -60,6 +60,10 @@ in {
         gnome.enable = false;
         gnomeExtensions.enable = false;
         gaming.enable = true;
+        gaming.steam.enable = true;
+        gaming.gamemode.enable = true;
+        gaming.gamescope.enable = true;
+        gaming.mangohud.enable = true;
         fonts.inter = true;
         niri.enable = true;
         waybar.installFonts = true;
