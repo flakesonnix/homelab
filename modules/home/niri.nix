@@ -40,19 +40,19 @@
       n: let
         id = toString n;
       in ''
-        Mod+${id} { focus-workspace ${id}; }
-        Mod+Ctrl+${id} { move-column-to-workspace ${id}; }
-        Mod+Shift+${id} { move-window-to-workspace ${id}; }
+        Alt+${id} { focus-workspace ${id}; }
+        Alt+Ctrl+${id} { move-column-to-workspace ${id}; }
+        Alt+Shift+${id} { move-window-to-workspace ${id}; }
       ''
     )
     (lib.range 1 9);
 
   staticBinds = ''
-    Mod+Shift+Slash { show-hotkey-overlay; }
+    Alt+Shift+Slash { show-hotkey-overlay; }
 
-    Mod+Return hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
-    Mod+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
-    Super+Alt+L hotkey-overlay-title="Lock the Screen: swaylock" { spawn-sh "${lockCommand}"; }
+    Alt+Return hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
+    Alt+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
+    Alt+Ctrl+Escape hotkey-overlay-title="Lock the Screen: swaylock" { spawn-sh "${lockCommand}"; }
 
     XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1+ -l 1.0"; }
     XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1-"; }
@@ -67,134 +67,132 @@
     XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+10%"; }
     XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "10%-"; }
 
-    Mod+O repeat=false { toggle-overview; }
+    Alt+O repeat=false { toggle-overview; }
 
-    Mod+W repeat=false { close-window; }
+    Alt+W repeat=false { close-window; }
 
-    Mod+Left  { focus-column-left; }
-    Mod+Down  { focus-window-down; }
-    Mod+Up    { focus-window-up; }
-    Mod+Right { focus-column-right; }
-    Mod+H     { focus-column-left; }
-    Mod+J     { focus-window-down; }
-    Mod+K     { focus-window-up; }
-    Mod+L     { focus-column-right; }
+    Alt+Left  { focus-column-left; }
+    Alt+Down  { focus-window-down; }
+    Alt+Up    { focus-window-up; }
+    Alt+Right { focus-column-right; }
+    Alt+H     { focus-column-left; }
+    Alt+J     { focus-window-down; }
+    Alt+K     { focus-window-up; }
+    Alt+L     { focus-column-right; }
 
-    Mod+Ctrl+Left  { move-column-left; }
-    Mod+Ctrl+Down  { move-window-down; }
-    Mod+Ctrl+Up    { move-window-up; }
-    Mod+Ctrl+Right { move-column-right; }
-    Mod+Ctrl+H     { move-column-left; }
-    Mod+Ctrl+J     { move-window-down; }
-    Mod+Ctrl+K     { move-window-up; }
-    Mod+Ctrl+L     { move-column-right; }
+    Alt+Ctrl+Left  { move-column-left; }
+    Alt+Ctrl+Down  { move-window-down; }
+    Alt+Ctrl+Up    { move-window-up; }
+    Alt+Ctrl+Right { move-column-right; }
+    Alt+Ctrl+H     { move-column-left; }
+    Alt+Ctrl+J     { move-window-down; }
+    Alt+Ctrl+K     { move-window-up; }
+    Alt+Ctrl+L     { move-column-right; }
 
-    Mod+Home { focus-column-first; }
-    Mod+End  { focus-column-last; }
-    Mod+Ctrl+Home { move-column-to-first; }
-    Mod+Ctrl+End  { move-column-to-last; }
+    Alt+Home { focus-column-first; }
+    Alt+End  { focus-column-last; }
+    Alt+Ctrl+Home { move-column-to-first; }
+    Alt+Ctrl+End  { move-column-to-last; }
 
-    Mod+Shift+Left  { focus-monitor-left; }
-    Mod+Shift+Down  { focus-monitor-down; }
-    Mod+Shift+Up    { focus-monitor-up; }
-    Mod+Shift+Right { focus-monitor-right; }
-    Mod+Shift+H     { focus-monitor-left; }
-    Mod+Shift+J     { focus-monitor-down; }
-    Mod+Shift+K     { focus-monitor-up; }
-    Mod+Shift+L     { focus-monitor-right; }
+    Alt+Shift+Left  { focus-monitor-left; }
+    Alt+Shift+Down  { focus-monitor-down; }
+    Alt+Shift+Up    { focus-monitor-up; }
+    Alt+Shift+Right { focus-monitor-right; }
+    Alt+Shift+H     { focus-monitor-left; }
+    Alt+Shift+J     { focus-monitor-down; }
+    Alt+Shift+K     { focus-monitor-up; }
+    Alt+Shift+L     { focus-monitor-right; }
 
-    Mod+Shift+Ctrl+Left  { move-column-to-monitor-left; }
-    Mod+Shift+Ctrl+Down  { move-column-to-monitor-down; }
-    Mod+Shift+Ctrl+Up    { move-column-to-monitor-up; }
-    Mod+Shift+Ctrl+Right { move-column-to-monitor-right; }
-    Mod+Shift+Ctrl+H     { move-column-to-monitor-left; }
-    Mod+Shift+Ctrl+J     { move-column-to-monitor-down; }
-    Mod+Shift+Ctrl+K     { move-column-to-monitor-up; }
-    Mod+Shift+Ctrl+L     { move-column-to-monitor-right; }
+    Alt+Shift+Ctrl+Left  { move-column-to-monitor-left; }
+    Alt+Shift+Ctrl+Down  { move-column-to-monitor-down; }
+    Alt+Shift+Ctrl+Up    { move-column-to-monitor-up; }
+    Alt+Shift+Ctrl+Right { move-column-to-monitor-right; }
+    Alt+Shift+Ctrl+H     { move-column-to-monitor-left; }
+    Alt+Shift+Ctrl+J     { move-column-to-monitor-down; }
+    Alt+Shift+Ctrl+K     { move-column-to-monitor-up; }
+    Alt+Shift+Ctrl+L     { move-column-to-monitor-right; }
 
-    Mod+Page_Down      { focus-workspace-down; }
-    Mod+Page_Up        { focus-workspace-up; }
-    Mod+U              { focus-workspace-down; }
-    Mod+I              { focus-workspace-up; }
-    Mod+Ctrl+Page_Down { move-column-to-workspace-down; }
-    Mod+Ctrl+Page_Up   { move-column-to-workspace-up; }
-    Mod+Ctrl+U         { move-column-to-workspace-down; }
-    Mod+Ctrl+I         { move-column-to-workspace-up; }
+    Alt+Page_Down      { focus-workspace-down; }
+    Alt+Page_Up        { focus-workspace-up; }
+    Alt+U              { focus-workspace-down; }
+    Alt+I              { focus-workspace-up; }
+    Alt+Ctrl+Page_Down { move-column-to-workspace-down; }
+    Alt+Ctrl+Page_Up   { move-column-to-workspace-up; }
+    Alt+Ctrl+U         { move-column-to-workspace-down; }
+    Alt+Ctrl+I         { move-column-to-workspace-up; }
 
-    Mod+Shift+Page_Down { move-workspace-down; }
-    Mod+Shift+Page_Up   { move-workspace-up; }
-    Mod+Shift+U         { move-workspace-down; }
-    Mod+Shift+I         { move-workspace-up; }
+    Alt+Shift+Page_Down { move-workspace-down; }
+    Alt+Shift+Page_Up   { move-workspace-up; }
+    Alt+Shift+U         { move-workspace-down; }
+    Alt+Shift+I         { move-workspace-up; }
 
-    Mod+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
-    Mod+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
-    Mod+Ctrl+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
-    Mod+Ctrl+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
+    Alt+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
+    Alt+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
+    Alt+Ctrl+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
+    Alt+Ctrl+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
 
-    Mod+WheelScrollRight      { focus-column-right; }
-    Mod+WheelScrollLeft       { focus-column-left; }
-    Mod+Ctrl+WheelScrollRight { move-column-right; }
-    Mod+Ctrl+WheelScrollLeft  { move-column-left; }
+    Alt+WheelScrollRight      { focus-column-right; }
+    Alt+WheelScrollLeft       { focus-column-left; }
+    Alt+Ctrl+WheelScrollRight { move-column-right; }
+    Alt+Ctrl+WheelScrollLeft  { move-column-left; }
 
-    Mod+Shift+WheelScrollDown      { focus-column-right; }
-    Mod+Shift+WheelScrollUp        { focus-column-left; }
-    Mod+Ctrl+Shift+WheelScrollDown { move-column-right; }
-    Mod+Ctrl+Shift+WheelScrollUp   { move-column-left; }
+    Alt+Shift+WheelScrollDown      { focus-column-right; }
+    Alt+Shift+WheelScrollUp        { focus-column-left; }
+    Alt+Ctrl+Shift+WheelScrollDown { move-column-right; }
+    Alt+Ctrl+Shift+WheelScrollUp   { move-column-left; }
   '';
 
   trailingBinds = ''
-    Mod+BracketLeft  { consume-or-expel-window-left; }
-    Mod+BracketRight { consume-or-expel-window-right; }
+    Alt+BracketLeft  { consume-or-expel-window-left; }
+    Alt+BracketRight { consume-or-expel-window-right; }
 
-    Mod+Comma  { consume-window-into-column; }
-    Mod+Period { expel-window-from-column; }
+    Alt+Comma  { consume-window-into-column; }
+    Alt+Period { expel-window-from-column; }
 
-    Mod+R { switch-preset-column-width; }
-    Mod+Shift+R { switch-preset-column-width-back; }
+    Alt+R { switch-preset-column-width; }
+    Alt+Shift+R { switch-preset-column-width-back; }
 
-    Mod+Ctrl+Shift+R { switch-preset-window-height; }
-    Mod+Ctrl+R { reset-window-height; }
+    Alt+Ctrl+Shift+R { switch-preset-window-height; }
+    Alt+Ctrl+R { reset-window-height; }
 
-    Mod+F { maximize-column; }
-    Mod+Shift+F { fullscreen-window; }
+    Alt+F { maximize-column; }
+    Alt+Shift+F { fullscreen-window; }
 
-    Mod+M { maximize-window-to-edges; }
+    Alt+M { maximize-window-to-edges; }
 
-    Mod+Ctrl+F { expand-column-to-available-width; }
+    Alt+Ctrl+F { expand-column-to-available-width; }
 
-    Mod+C { center-column; }
+    Alt+C { center-column; }
 
-    Mod+Ctrl+C { center-visible-columns; }
+    Alt+Ctrl+C { center-visible-columns; }
 
-    Mod+Minus { set-column-width "-10%"; }
-    Mod+Equal { set-column-width "+10%"; }
+    Alt+Minus { set-column-width "-10%"; }
+    Alt+Equal { set-column-width "+10%"; }
 
-    Mod+Shift+Minus { set-window-height "-10%"; }
-    Mod+Shift+Equal { set-window-height "+10%"; }
+    Alt+Shift+Minus { set-window-height "-10%"; }
+    Alt+Shift+Equal { set-window-height "+10%"; }
 
-    Mod+V       { toggle-window-floating; }
-    Mod+Shift+V { switch-focus-between-floating-and-tiling; }
+    Alt+V       { toggle-window-floating; }
+    Alt+Shift+V { switch-focus-between-floating-and-tiling; }
 
     Print { screenshot; }
     Ctrl+Print { screenshot-screen; }
     Alt+Print { screenshot-window; }
-    Mod+Shift+S { screenshot; }
-    Mod+Ctrl+Shift+S { screenshot-screen; }
-    Mod+Alt+Shift+S { screenshot-window; }
+    Alt+Shift+S { screenshot; }
+    Alt+Ctrl+Shift+S { screenshot-screen; }
+    Alt+Ctrl+Shift+W { screenshot-window; }
 
-    Mod+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
+    Alt+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
 
-    Mod+Shift+E { quit; }
+    Alt+Shift+E { quit; }
     Ctrl+Alt+Delete { quit; }
 
-    Mod+Shift+P { power-off-monitors; }
+    Alt+Shift+P { power-off-monitors; }
   '';
 
   niriConfig = lib.concatStringsSep "\n\n" [
     ''
       input {
-        focus-follows-mouse off
-
         keyboard {
           xkb {}
           numlock
