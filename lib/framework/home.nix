@@ -1,0 +1,3 @@
+{
+  mkHome = home: home;
+}

@@ -4,13 +4,40 @@
   pkgs,
   ...
 }: let
+  projectLib = import ../../lib;
+  inherit (projectLib) symbols;
+  keys = projectLib.framework.keys {inherit symbols;};
+  actions = projectLib.framework.actions {inherit symbols;};
+  niriFramework = projectLib.framework.niri;
+  renderCommand = projectLib.render.command.render;
+  renderBind = projectLib.render.kdl.renderBind renderCommand;
+  inherit (projectLib.render.kdl) renderLines;
+
+  mkSpawn = command: ''spawn-at-startup "${command}"'';
+  mkBuiltinBind = key: actionName:
+    renderBind (niriFramework.bind key (actions.builtin actionName));
+  mkBindWithAttrs = key: attrs: action:
+    renderBind (niriFramework.bindWith key attrs action);
+  mkScrollBind = key: actionName:
+    mkBindWithAttrs key {cooldown-ms = 150;} (actions.builtin actionName);
+  mkWorkspaceBind = n:
+    map renderBind (niriFramework.workspaceBindTriplet {
+      focusKey = keys.alt (keys.workspace n);
+      moveColumnKey = keys.altCtrl (keys.workspace n);
+      moveWindowKey = keys.altShift (keys.workspace n);
+      workspace = n;
+      inherit actions symbols;
+    });
+  mkWlogoutEntry = label: action: text: keybind: {
+    inherit label action text keybind;
+  };
   lockCommand = "sh -c '${pkgs.swaylock-effects}/bin/swaylock --screenshots --clock --indicator --indicator-radius 110 --indicator-thickness 8 --effect-blur 7x5 --effect-vignette 0.25:0.6 --fade-in 0.2 --font Inter --font-size 24 --timestr %H:%M --datestr %a,\ %d\ %b --text-color f7f4ffff --text-clear-color f7f4ffff --text-ver-color fff1cfff --text-wrong-color ffd7eaff --inside-color 16162688 --inside-clear-color 322347cc --inside-ver-color 5c4b2acc --inside-wrong-color 4d2234cc --ring-color e7a6cbcc --ring-clear-color adc2ffcc --ring-ver-color f2d58acc --ring-wrong-color ff8db6cc --line-color 00000000 --separator-color 00000000 --key-hl-color ffd6ecff --bs-hl-color adc2ffff --show-failed-attempts --daemonize'";
   startupCommands = lib.concatStringsSep "\n" [
-    ''spawn-at-startup "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"''
-    ''spawn-at-startup "${pkgs.waybar}/bin/waybar"''
-    ''spawn-at-startup "${pkgs.awww}/bin/awww-daemon"''
+    (mkSpawn "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1")
+    (mkSpawn "${pkgs.waybar}/bin/waybar")
+    (mkSpawn "${pkgs.awww}/bin/awww-daemon")
     ''spawn-at-startup "sh" "-lc" "sleep 0.4 && ${pkgs.awww}/bin/awww img --resize crop --filter Lanczos3 --transition-type grow --transition-pos top-right --transition-step 90 --transition-duration 1.2 --transition-fps 60 ${config.home.sessionVariables.WALLPAPER}"''
-    ''spawn-at-startup "${pkgs.xwayland-satellite}/bin/xwayland-satellite"''
+    (mkSpawn "${pkgs.xwayland-satellite}/bin/xwayland-satellite")
   ];
 
   windowRules = lib.concatStringsSep "\n\n" [
@@ -34,25 +61,14 @@
     ''
   ];
 
-  workspaceBinds =
-    lib.concatMapStringsSep "\n"
-    (
-      n: let
-        id = toString n;
-      in ''
-        Alt+${id} { focus-workspace ${id}; }
-        Alt+Ctrl+${id} { move-column-to-workspace ${id}; }
-        Alt+Shift+${id} { move-window-to-workspace ${id}; }
-      ''
-    )
-    (lib.range 1 9);
+  workspaceBinds = renderLines (builtins.concatLists (map mkWorkspaceBind (lib.range 1 9)));
 
   staticBinds = ''
-    Alt+Shift+Slash { show-hotkey-overlay; }
+    ${mkBuiltinBind (keys.altShift symbols.keys.slash) "show-hotkey-overlay"}
 
-    Alt+Return hotkey-overlay-title="Open a Terminal: alacritty" { spawn "alacritty"; }
-    Alt+D hotkey-overlay-title="Run an Application: fuzzel" { spawn "fuzzel"; }
-    Alt+Ctrl+Escape hotkey-overlay-title="Lock the Screen: swaylock" { spawn-sh "${lockCommand}"; }
+    ${mkBindWithAttrs (keys.alt symbols.keys.enter) {hotkey-overlay-title = "Open a Terminal: alacritty";} (actions.spawn [symbols.apps.alacritty])}
+    ${mkBindWithAttrs (keys.alt "D") {hotkey-overlay-title = "Run an Application: fuzzel";} (actions.spawn [symbols.apps.fuzzel])}
+    ${mkBindWithAttrs (keys.altCtrl symbols.keys.escape) {hotkey-overlay-title = "Lock the Screen: swaylock";} (actions.shell lockCommand)}
 
     XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1+ -l 1.0"; }
     XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1-"; }
@@ -67,9 +83,8 @@
     XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+10%"; }
     XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "10%-"; }
 
-    Alt+O repeat=false { toggle-overview; }
-
-    Alt+W repeat=false { close-window; }
+    ${mkBindWithAttrs (keys.alt "O") {repeat = false;} actions.named.toggleOverview}
+    ${mkBindWithAttrs (keys.alt "W") {repeat = false;} actions.named.closeWindow}
 
     Alt+Left  { focus-column-left; }
     Alt+Down  { focus-window-down; }
@@ -112,8 +127,8 @@
     Alt+Shift+Ctrl+K     { move-column-to-monitor-up; }
     Alt+Shift+Ctrl+L     { move-column-to-monitor-right; }
 
-    Alt+Page_Down      { focus-workspace-down; }
-    Alt+Page_Up        { focus-workspace-up; }
+    Alt+Page_Down { focus-workspace-down; }
+    Alt+Page_Up   { focus-workspace-up; }
     Alt+U              { focus-workspace-down; }
     Alt+I              { focus-workspace-up; }
     Alt+Ctrl+Page_Down { move-column-to-workspace-down; }
@@ -126,10 +141,10 @@
     Alt+Shift+U         { move-workspace-down; }
     Alt+Shift+I         { move-workspace-up; }
 
-    Alt+WheelScrollDown      cooldown-ms=150 { focus-workspace-down; }
-    Alt+WheelScrollUp        cooldown-ms=150 { focus-workspace-up; }
-    Alt+Ctrl+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
-    Alt+Ctrl+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
+    ${mkScrollBind "Alt+WheelScrollDown" "focus-workspace-down"}
+    ${mkScrollBind "Alt+WheelScrollUp" "focus-workspace-up"}
+    ${mkScrollBind "Alt+Ctrl+WheelScrollDown" "move-column-to-workspace-down"}
+    ${mkScrollBind "Alt+Ctrl+WheelScrollUp" "move-column-to-workspace-up"}
 
     Alt+WheelScrollRight      { focus-column-right; }
     Alt+WheelScrollLeft       { focus-column-left; }
@@ -143,28 +158,28 @@
   '';
 
   trailingBinds = ''
-    Alt+BracketLeft  { consume-or-expel-window-left; }
-    Alt+BracketRight { consume-or-expel-window-right; }
+    ${mkBuiltinBind "Alt+BracketLeft" "consume-or-expel-window-left"}
+    ${mkBuiltinBind "Alt+BracketRight" "consume-or-expel-window-right"}
 
-    Alt+Comma  { consume-window-into-column; }
-    Alt+Period { expel-window-from-column; }
+    ${mkBuiltinBind "Alt+Comma" "consume-window-into-column"}
+    ${mkBuiltinBind "Alt+Period" "expel-window-from-column"}
 
-    Alt+R { switch-preset-column-width; }
-    Alt+Shift+R { switch-preset-column-width-back; }
+    ${mkBuiltinBind "Alt+R" "switch-preset-column-width"}
+    ${mkBuiltinBind "Alt+Shift+R" "switch-preset-column-width-back"}
 
-    Alt+Ctrl+Shift+R { switch-preset-window-height; }
-    Alt+Ctrl+R { reset-window-height; }
+    ${mkBuiltinBind "Alt+Ctrl+Shift+R" "switch-preset-window-height"}
+    ${mkBuiltinBind "Alt+Ctrl+R" "reset-window-height"}
 
-    Alt+F { maximize-column; }
-    Alt+Shift+F { fullscreen-window; }
+    ${mkBuiltinBind "Alt+F" "maximize-column"}
+    ${mkBuiltinBind "Alt+Shift+F" "fullscreen-window"}
 
-    Alt+M { maximize-window-to-edges; }
+    ${mkBuiltinBind "Alt+M" "maximize-window-to-edges"}
 
-    Alt+Ctrl+F { expand-column-to-available-width; }
+    ${mkBuiltinBind "Alt+Ctrl+F" "expand-column-to-available-width"}
 
-    Alt+C { center-column; }
+    ${mkBuiltinBind "Alt+C" "center-column"}
 
-    Alt+Ctrl+C { center-visible-columns; }
+    ${mkBuiltinBind "Alt+Ctrl+C" "center-visible-columns"}
 
     Alt+Minus { set-column-width "-10%"; }
     Alt+Equal { set-column-width "+10%"; }
@@ -172,8 +187,8 @@
     Alt+Shift+Minus { set-window-height "-10%"; }
     Alt+Shift+Equal { set-window-height "+10%"; }
 
-    Alt+V       { toggle-window-floating; }
-    Alt+Shift+V { switch-focus-between-floating-and-tiling; }
+    ${mkBuiltinBind "Alt+V" "toggle-window-floating"}
+    ${mkBuiltinBind "Alt+Shift+V" "switch-focus-between-floating-and-tiling"}
 
     Print { screenshot; }
     Ctrl+Print { screenshot-screen; }
@@ -184,10 +199,10 @@
 
     Alt+Escape allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
 
-    Alt+Shift+E { quit; }
+    ${mkBuiltinBind "Alt+Shift+E" symbols.actions.quit}
     Ctrl+Alt+Delete { quit; }
 
-    Alt+Shift+P { power-off-monitors; }
+    ${mkBuiltinBind "Alt+Shift+P" symbols.actions.powerOffMonitors}
   '';
 
   niriConfig = lib.concatStringsSep "\n\n" [
@@ -292,36 +307,11 @@ in {
       '';
     };
     xdg.configFile."wlogout/layout".source = pkgs.writeText "layout" (builtins.toJSON [
-      {
-        label = "lock";
-        action = lockCommand;
-        text = "Lock";
-        keybind = "l";
-      }
-      {
-        label = "logout";
-        action = "loginctl kill-user $USER";
-        text = "Logout";
-        keybind = "e";
-      }
-      {
-        label = "suspend";
-        action = "systemctl suspend";
-        text = "Sleep";
-        keybind = "u";
-      }
-      {
-        label = "reboot";
-        action = "systemctl reboot";
-        text = "Restart";
-        keybind = "r";
-      }
-      {
-        label = "shutdown";
-        action = "systemctl poweroff";
-        text = "Shutdown";
-        keybind = "s";
-      }
+      (mkWlogoutEntry "lock" lockCommand "Lock" "l")
+      (mkWlogoutEntry "logout" "loginctl kill-user $USER" "Logout" "e")
+      (mkWlogoutEntry "suspend" "systemctl suspend" "Sleep" "u")
+      (mkWlogoutEntry "reboot" "systemctl reboot" "Restart" "r")
+      (mkWlogoutEntry "shutdown" "systemctl poweroff" "Shutdown" "s")
     ]);
     xdg.configFile."wlogout/style.css".source = pkgs.writeText "style.css" (lib.concatStringsSep "\n" [
       "* {"
