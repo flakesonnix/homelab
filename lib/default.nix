@@ -6,6 +6,7 @@ let
   coreToggles = import ./core/toggles.nix;
   coreRegistry = import ./core/registry.nix;
   corePackageRouting = import ./core/package-routing.nix;
+  coreComposition = import ./core/composition.nix;
 
   renderCommand = import ./render/command.nix;
   renderKdl = import ./render/kdl.nix;
@@ -51,6 +52,7 @@ in
       lists = coreLists;
       toggles = coreToggles;
       registry = coreRegistry;
+      composition = coreComposition;
       "package-routing" = corePackageRouting;
     };
 
