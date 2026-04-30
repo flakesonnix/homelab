@@ -22,8 +22,14 @@ let
     names,
   }:
     map (name: import (root + "/${name}.nix")) names;
+
+  loadRoles = {
+    root,
+    names,
+  }:
+    map (name: import (root + "/${name}.nix")) names;
 in {
-  inherit loadPresets;
+  inherit loadPresets loadRoles;
 
   loadHostDirectory = {
     lib,
@@ -38,6 +44,12 @@ in {
   in {
     presets = importData {
       path = root + "/presets.nix";
+      args = importedArgs;
+      fallback = [];
+    };
+
+    roles = importData {
+      path = root + "/roles.nix";
       args = importedArgs;
       fallback = [];
     };
@@ -84,22 +96,33 @@ in {
     host,
     presets ? [],
     presetRoot ? null,
+    roleRoot ? null,
     packageRegistry ? null,
     packagePath,
     basePackagePath,
     systemPackagePath ? null,
     fontPackagePath ? null,
   }: let
+    resolvedRoles = lib.optionals (roleRoot != null) (loadRoles {
+      root = roleRoot;
+      names = host.roles or [];
+    });
+
+    resolvedPresetNames = lib.unique (
+      (host.presets or [])
+      ++ builtins.concatLists (map (role: role.presets or []) resolvedRoles)
+    );
+
     resolvedPresets =
       presets
       ++ lib.optionals (presetRoot != null) (loadPresets {
         root = presetRoot;
-        names = host.presets or [];
+        names = resolvedPresetNames;
       });
 
     mergedHost = composition.mergeDefinitions {
       inherit lib;
-      parts = resolvedPresets ++ [host];
+      parts = resolvedRoles ++ resolvedPresets ++ [host];
       attrFields = ["moduleFlags" "settings"];
       listFields = ["packageToggles" "packageTags" "basePackages" "systemPackages" "fontPackages"];
     };

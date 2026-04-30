@@ -16,6 +16,7 @@ in {
     inherit lib;
     host = hostData;
     presetRoot = ../../data/presets;
+    roleRoot = ../../data/roles/host;
     inherit packageRegistry;
     packagePath = ["lucy"];
     basePackagePath = ["lucy" "basePackages"];
