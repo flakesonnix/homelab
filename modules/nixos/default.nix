@@ -12,7 +12,9 @@ _: {
     ./network.nix
     ./niri.nix
     ./nvidia.nix
+    ./nvidia-resume.nix
     ./packages.nix
+    ./serial-getty.nix
     ./sops.nix
     ./waybar.nix
   ];
