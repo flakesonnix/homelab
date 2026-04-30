@@ -23,15 +23,14 @@
       enable = true;
       enableDefaultConfig = false;
 
+      controlMaster = "auto";
+      controlPath = "~/.ssh/sockets/%r@%h-%p";
+      controlPersist = "10m";
+      serverAliveInterval = 60;
+      serverAliveCountMax = 3;
+
       matchBlocks =
         {
-          "*" = {
-            controlMaster = "auto";
-            controlPath = "~/.ssh/sockets/%r@%h-%p";
-            controlPersist = "10m";
-            serverAliveInterval = 60;
-            serverAliveCountMax = 3;
-          };
 
           "github.com" = {
             hostname = "github.com";
