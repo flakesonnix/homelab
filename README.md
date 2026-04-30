@@ -22,7 +22,7 @@ nixos-rebuild switch --flake .#omen
 .
 ├── flake.nix
 ├── lib/                 # Framework helpers, renderers, symbols
-├── data/                # Package and bundle registries
+├── data/                # Package, bundle, host, and preset registries
 ├── modules/
 │   ├── nixos/           # Reusable NixOS modules
 │   └── home/            # Reusable Home Manager modules
@@ -36,11 +36,12 @@ nixos-rebuild switch --flake .#omen
 The repo is being reshaped around four layers:
 
 - `lib/`: reusable functions and renderers
-- `data/`: declarative registries for packages and bundles
+- `data/`: declarative registries for packages, bundles, hosts, and presets
 - `modules/`: NixOS and Home Manager modules that consume the registries
 - `hosts/` and `home/`: concrete host and user composition
 
 See `docs/framework.md` for the current framework notes.
+See `docs/gaming-omen.md` for the current `omen` gaming setup.
 
 ## Host
 
