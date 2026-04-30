@@ -1,0 +1,4 @@
+[
+  "gaming-base"
+  "gaming-steam"
+]
