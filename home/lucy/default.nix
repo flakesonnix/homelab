@@ -1,8 +1,18 @@
-{osConfig, ...}: {
+{
+  lib,
+  osConfig,
+  pkgs,
+  ...
+}: let
+  projectLib = import ../../lib;
+  packageRegistry = import ../../data/packages/home.nix {inherit pkgs;};
+  homeData = projectLib.framework.home.loadHomeDirectory {
+    inherit lib;
+    root = ../../data/home/lucy;
+    args = {inherit osConfig pkgs;};
+  };
+in {
   imports = [
-    ./bundles/core.nix
-    ./bundles/desktop.nix
-    ./bundles/dev.nix
     ./shell.nix
     ./git.nix
     ./editor.nix
@@ -22,5 +32,12 @@
     ../../modules/home
   ];
 
-  programs.nh.osFlake = "/home/lucy/Documents/dotfiles#${osConfig.networking.hostName}";
+  config = projectLib.framework.home.applyHome {
+    inherit lib;
+    home = homeData;
+    roleRoot = ../../data/roles/home;
+    bundleRoot = ../../data/bundles;
+    inherit packageRegistry;
+    packagePath = ["lucy" "programs"];
+  };
 }
