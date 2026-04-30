@@ -1,6 +1,22 @@
 let
   projectLib = import ../default.nix;
   inherit (projectLib.core) composition;
+  inherit (projectLib.core) registry;
+
+  importData = {
+    path,
+    args,
+    fallback ? {},
+  }: let
+    value =
+      if builtins.pathExists path
+      then import path
+      else fallback;
+  in
+    if builtins.isFunction value
+    then value args
+    else value;
+
   loadPresets = {
     root,
     names,
@@ -9,6 +25,50 @@ let
 in {
   inherit loadPresets;
 
+  loadHostDirectory = {
+    lib,
+    root,
+    args ? {},
+  }: let
+    importedArgs = args // {inherit lib;};
+    packageData = importData {
+      path = root + "/packages.nix";
+      args = importedArgs;
+    };
+  in {
+    presets = importData {
+      path = root + "/presets.nix";
+      args = importedArgs;
+      fallback = [];
+    };
+
+    moduleFlags = importData {
+      path = root + "/module-flags.nix";
+      args = importedArgs;
+    };
+
+    packageToggles = packageData.packageToggles or [];
+    packageTags = packageData.packageTags or [];
+    basePackages = packageData.basePackages or [];
+    systemPackages = packageData.systemPackages or [];
+    fontPackages = packageData.fontPackages or [];
+
+    settings = lib.foldl' lib.recursiveUpdate {} [
+      (importData {
+        path = root + "/settings.nix";
+        args = importedArgs;
+      })
+      (importData {
+        path = root + "/power.nix";
+        args = importedArgs;
+      })
+      (importData {
+        path = root + "/services.nix";
+        args = importedArgs;
+      })
+    ];
+  };
+
   mergeHostParts = {
     lib,
     parts,
@@ -16,7 +76,7 @@ in {
     composition.mergeDefinitions {
       inherit lib parts;
       attrFields = ["moduleFlags" "settings"];
-      listFields = ["packageToggles" "basePackages" "systemPackages" "fontPackages"];
+      listFields = ["packageToggles" "packageTags" "basePackages" "systemPackages" "fontPackages"];
     };
 
   applyHost = {
@@ -24,6 +84,7 @@ in {
     host,
     presets ? [],
     presetRoot ? null,
+    packageRegistry ? null,
     packagePath,
     basePackagePath,
     systemPackagePath ? null,
@@ -40,15 +101,20 @@ in {
       inherit lib;
       parts = resolvedPresets ++ [host];
       attrFields = ["moduleFlags" "settings"];
-      listFields = ["packageToggles" "basePackages" "systemPackages" "fontPackages"];
+      listFields = ["packageToggles" "packageTags" "basePackages" "systemPackages" "fontPackages"];
     };
+
+    selectedPackageNames = lib.unique (
+      (mergedHost.packageToggles or [])
+      ++ lib.optionals (packageRegistry != null) (registry.registryNamesByTags (mergedHost.packageTags or []) packageRegistry)
+    );
   in
     (mergedHost.moduleFlags or {})
-    // lib.optionalAttrs (mergedHost ? packageToggles) (
+    // lib.optionalAttrs (selectedPackageNames != []) (
       composition.renderEnabledAttrs {
         inherit lib;
         path = packagePath;
-        names = mergedHost.packageToggles;
+        names = selectedPackageNames;
       }
     )
     // composition.renderOptionalPath {
