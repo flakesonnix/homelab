@@ -34,6 +34,11 @@ in {
         default = true;
         description = "Enable Gamescope.";
       };
+      capSysNice = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Allow Gamescope to raise thread priority for lower-latency scheduling.";
+      };
     };
     mangohud = {
       enable = lib.mkOption {
@@ -64,6 +69,23 @@ in {
         description = "Nominal PipeWire sample rate.";
       };
     };
+    performance = {
+      enable = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Enable performance-biased tuning for dedicated gaming hosts.";
+      };
+      cpuFreqGovernor = lib.mkOption {
+        type = lib.types.str;
+        default = "performance";
+        description = "CPU frequency governor to apply when performance tuning is enabled.";
+      };
+      disablePowerProfilesDaemon = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Disable power-profiles-daemon when an explicit governor is managed declaratively.";
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -71,8 +93,13 @@ in {
     programs.steam.enable = cfg.steam.enable;
     programs.steam.platformOptimizations.enable = cfg.platformOptimizations;
     programs.gamemode.enable = cfg.gamemode.enable;
-    programs.gamescope.enable = cfg.gamescope.enable;
+    programs.gamescope = {
+      inherit (cfg.gamescope) enable;
+      inherit (cfg.gamescope) capSysNice;
+    };
     environment.systemPackages = lib.optionals cfg.mangohud.enable [pkgs.mangohud];
+    powerManagement.cpuFreqGovernor = lib.mkIf cfg.performance.enable (lib.mkDefault cfg.performance.cpuFreqGovernor);
+    services.power-profiles-daemon.enable = lib.mkIf cfg.performance.disablePowerProfilesDaemon (lib.mkForce false);
 
     services.pipewire.lowLatency = lib.mkIf cfg.lowLatency.enable {
       enable = true;

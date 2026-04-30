@@ -8,6 +8,7 @@
   hostData = import ../../data/hosts/omen {inherit pkgs;};
   presetRegistry = {
     gaming-base = import ../../data/presets/gaming-base.nix;
+    gaming-performance = import ../../data/presets/gaming-performance.nix;
     gaming-steam = import ../../data/presets/gaming-steam.nix;
   };
   presets = map (name: presetRegistry.${name}) hostData.presets;
