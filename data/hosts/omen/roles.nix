@@ -1,0 +1,6 @@
+[
+  "desktop"
+  "dev"
+  "llm"
+  "gaming"
+]

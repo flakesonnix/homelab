@@ -1,5 +1,0 @@
-[
-  "gaming-base"
-  "gaming-performance"
-  "gaming-steam"
-]

@@ -11,14 +11,6 @@
     };
   };
 in {
-  packageTags = [
-    "desktop"
-    "dev"
-    "llm"
-    "monitoring"
-    "network"
-  ];
-
   basePackages = with pkgs; [
     alacritty
     zathura

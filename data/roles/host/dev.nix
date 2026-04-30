@@ -1,0 +1,7 @@
+{
+  packageTags = [
+    "dev"
+    "network"
+    "monitoring"
+  ];
+}
