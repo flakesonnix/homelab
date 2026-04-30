@@ -26,10 +26,6 @@
     username = "lucy";
     homeDirectory = "/home/lucy";
     stateVersion = "26.05";
-    packages = [
-      "nvd"
-      "nix-tree"
-    ];
     pointerCursor = {
       gtk.enable = true;
       x11.enable = true;
