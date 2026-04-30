@@ -1,7 +1,18 @@
 {
   lib,
   pkgs,
+  wrappers,
 }: {
+  systemPackages = let
+    hyfetch-wrapped = wrappers.lib.wrapPackage {
+      inherit pkgs;
+      package = pkgs.hyfetch;
+      flags = {
+        "-p" = "transgender";
+      };
+    };
+  in [hyfetch-wrapped];
+
   presets = import ./presets.nix;
   moduleFlags = import ./module-flags.nix;
 
@@ -11,5 +22,8 @@
     (import ./settings.nix)
     (import ./power.nix)
     (import ./services.nix)
+    {
+      hardware.nvidia.powerManagement.enable = lib.mkForce false;
+    }
   ];
 }
