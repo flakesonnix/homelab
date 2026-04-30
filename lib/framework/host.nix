@@ -1,7 +1,14 @@
 let
   projectLib = import ../default.nix;
   inherit (projectLib.core) composition;
+  loadPresets = {
+    root,
+    names,
+  }:
+    map (name: import (root + "/${name}.nix")) names;
 in {
+  inherit loadPresets;
+
   mergeHostParts = {
     lib,
     parts,
@@ -16,14 +23,22 @@ in {
     lib,
     host,
     presets ? [],
+    presetRoot ? null,
     packagePath,
     basePackagePath,
     systemPackagePath ? null,
     fontPackagePath ? null,
   }: let
+    resolvedPresets =
+      presets
+      ++ lib.optionals (presetRoot != null) (loadPresets {
+        root = presetRoot;
+        names = host.presets or [];
+      });
+
     mergedHost = composition.mergeDefinitions {
       inherit lib;
-      parts = presets ++ [host];
+      parts = resolvedPresets ++ [host];
       attrFields = ["moduleFlags" "settings"];
       listFields = ["packageToggles" "basePackages" "systemPackages" "fontPackages"];
     };

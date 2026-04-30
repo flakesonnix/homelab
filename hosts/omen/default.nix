@@ -2,8 +2,6 @@
   imports = [
     ./hardware-configuration.nix
     ./host.nix
-    ./power.nix
-    ./services.nix
     # Exact 15-dh1xxx profile not in nixos-hardware; keep to generic laptop bits.
     nixos-hardware.nixosModules.common-cpu-intel
     nixos-hardware.nixosModules.common-pc-laptop
