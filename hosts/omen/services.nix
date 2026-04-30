@@ -5,11 +5,11 @@ _: {
     phones = {
       desk1 = {
         extension = "1001";
-        password = "secret123";
+        passwordSopsKey = "asterisk-desk1-password";
       };
       desk2 = {
         extension = "1002";
-        password = "secret456";
+        passwordSopsKey = "asterisk-desk2-password";
       };
     };
     extraExtensions = ''
