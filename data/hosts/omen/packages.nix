@@ -1,17 +1,22 @@
-{pkgs}: {
-  packageToggles = [
-    "firefox"
-    "discord"
-    "clion"
-    "ollama"
-    "lmstudio"
-    "swaybg"
-    "devBase"
-    "pwvucontrol"
-    "scrcpy"
-    "nload"
-    "iotop"
-    "iftop"
+{
+  pkgs,
+  wrappers,
+  ...
+}: let
+  hyfetch-wrapped = wrappers.lib.wrapPackage {
+    inherit pkgs;
+    package = pkgs.hyfetch;
+    flags = {
+      "-p" = "transgender";
+    };
+  };
+in {
+  packageTags = [
+    "desktop"
+    "dev"
+    "llm"
+    "monitoring"
+    "network"
   ];
 
   basePackages = with pkgs; [
@@ -31,6 +36,8 @@
     ani-cli
     scdl
   ];
+
+  systemPackages = [hyfetch-wrapped];
 
   fontPackages = with pkgs; [
     hack-font

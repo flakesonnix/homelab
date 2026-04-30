@@ -5,14 +5,18 @@
   ...
 }: let
   projectLib = import ../../lib;
-  hostData = import ../../data/hosts/omen {
-    inherit lib pkgs wrappers;
+  packageRegistry = import ../../data/packages/system.nix {inherit pkgs;};
+  hostData = projectLib.framework.host.loadHostDirectory {
+    inherit lib;
+    root = ../../data/hosts/omen;
+    args = {inherit pkgs wrappers;};
   };
 in {
   config = projectLib.framework.host.applyHost {
     inherit lib;
     host = hostData;
     presetRoot = ../../data/presets;
+    inherit packageRegistry;
     packagePath = ["lucy"];
     basePackagePath = ["lucy" "basePackages"];
     systemPackagePath = ["environment" "systemPackages"];
