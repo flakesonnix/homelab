@@ -23,16 +23,18 @@
       enable = true;
       enableDefaultConfig = false;
 
+      controlMaster = "auto";
+      controlPath = "~/.ssh/sockets/%r@%h-%p";
+      controlPersist = "10m";
+      serverAliveInterval = 60;
+      serverAliveCountMax = 3;
+
       matchBlocks =
         {
+
           "github.com" = {
             hostname = "github.com";
             identityFile = "~/.ssh/lucy_git";
-            controlMaster = "auto";
-            controlPath = "~/.ssh/sockets/%r@%h-%p";
-            controlPersist = "10m";
-            serverAliveInterval = 60;
-            serverAliveCountMax = 3;
             hashKnownHosts = true;
             addKeysToAgent = "yes";
           };
