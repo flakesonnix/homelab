@@ -25,14 +25,17 @@
 
       matchBlocks =
         {
-          "github.com" = {
-            hostname = "github.com";
-            identityFile = "~/.ssh/lucy_git";
+          "*" = {
             controlMaster = "auto";
             controlPath = "~/.ssh/sockets/%r@%h-%p";
             controlPersist = "10m";
             serverAliveInterval = 60;
             serverAliveCountMax = 3;
+          };
+
+          "github.com" = {
+            hostname = "github.com";
+            identityFile = "~/.ssh/lucy_git";
             hashKnownHosts = true;
             addKeysToAgent = "yes";
           };
