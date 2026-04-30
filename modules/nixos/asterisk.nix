@@ -25,51 +25,6 @@
   ...
 }: let
   cfg = config.services.asteriskLocal;
-  hasPhonePassword = phone: phone.password != null || phone.passwordFile != null || phone.passwordSopsKey != null;
-
-  phonesWithRuntimeSecrets = lib.filterAttrs (_: phone: phone.passwordFile != null || phone.passwordSopsKey != null) cfg.phones;
-
-  phonePasswordPath = phone:
-    if phone.passwordFile != null
-    then phone.passwordFile
-    else config.sops.secrets.${phone.passwordSopsKey}.path;
-
-  sopsSecretDefinitions = builtins.listToAttrs (
-    lib.concatMap (
-      name: let
-        phone = cfg.phones.${name};
-      in
-        lib.optional (phone.passwordSopsKey != null) {
-          name = phone.passwordSopsKey;
-          value = {};
-        }
-    ) (builtins.attrNames cfg.phones)
-  );
-
-  writeRuntimeAuthStanza = name: phone: let
-    passwordPath = lib.escapeShellArg (toString (phonePasswordPath phone));
-  in ''
-    password="$(tr -d '\n' < ${passwordPath})"
-    cat >> /run/asterisk-local/pjsip.auth.conf <<EOF
-    [${name}](auth_userpass)
-    password = $password
-    username = ${name}
-
-    EOF
-  '';
-
-  runtimeAuthPreStart = ''
-    install -d -m 0750 -o asterisk -g asterisk /run/asterisk-local
-    cat > /run/asterisk-local/pjsip.auth.conf <<'EOF'
-    ; ----------------------------------------------------------------
-    ; PHONE AUTHENTICATION
-    ; Generated at service start so passwords stay out of the Nix store.
-    ; ----------------------------------------------------------------
-    EOF
-    chown asterisk:asterisk /run/asterisk-local/pjsip.auth.conf
-    chmod 0640 /run/asterisk-local/pjsip.auth.conf
-    ${lib.concatStringsSep "\n" (lib.mapAttrsToList writeRuntimeAuthStanza phonesWithRuntimeSecrets)}
-  '';
 
   /*
   * Generate pjsip.conf content
@@ -129,8 +84,6 @@
     type = auth
     auth_type = userpass
 
-    #include /run/asterisk-local/pjsip.auth.conf
-
     ; ----------------------------------------------------------------
     ; AOR TEMPLATE
     ; Address of Record - controls registration behavior
@@ -172,14 +125,11 @@
 
     # Build the auth stanza - inherits from auth_userpass template
     # Contains the SIP password (plaintext - see security warning above)
-    auth =
-      if phone.password != null
-      then ''
-        [${name}](auth_userpass)
-        password = ${phone.password}
-        username = ${name}
-      ''
-      else "";
+    auth = ''
+      [${name}](auth_userpass)
+      password = ${phone.password}
+      username = ${name}
+    '';
 
     # Build the AOR stanza - inherits from aor_dynamic template
     # Controls registration behavior (max_contacts limits simultaneous devices)
@@ -363,8 +313,7 @@ in {
           };
 
           password = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
+            type = lib.types.str;
             description = lib.mdDoc ''
               SIP account password (plaintext).
 
@@ -372,26 +321,6 @@ in {
               in /etc/asterisk/pjsip.conf in the Nix store. For production
               use, integrate with a secrets manager (agenix, sops-nix) to
               inject passwords at runtime.
-            '';
-          };
-
-          passwordFile = lib.mkOption {
-            type = lib.types.nullOr lib.types.path;
-            default = null;
-            description = lib.mdDoc ''
-              Path to a file containing the SIP account password.
-
-              The file is read when Asterisk starts so the password stays out
-              of the Nix store.
-            '';
-          };
-
-          passwordSopsKey = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            description = lib.mdDoc ''
-              Name of a sops-nix secret whose content becomes this phone's SIP
-              password at service start.
             '';
           };
 
@@ -426,8 +355,8 @@ in {
 
         Example:
           phones = {
-            saal1 = { extension = "1001"; passwordSopsKey = "asterisk-saal1-password"; };
-            backoffice = { extension = "1600"; passwordSopsKey = "asterisk-backoffice-password"; };
+            saal1 = { extension = "1001"; password = "secret1"; };
+            backoffice = { extension = "1600"; password = "secret2"; };
           };
       '';
     };
@@ -504,37 +433,11 @@ in {
     assertions =
       configAssertions
       ++ [
-        {
-          assertion = lib.all hasPhonePassword (lib.attrValues cfg.phones);
-          message = "asteriskLocal: each phone must set one of password, passwordFile, or passwordSopsKey.";
-        }
-        {
-          assertion = lib.all (
-            phone:
-              lib.length (
-                lib.filter (value: value != null) [
-                  phone.password
-                  phone.passwordFile
-                  phone.passwordSopsKey
-                ]
-              )
-              == 1
-          ) (lib.attrValues cfg.phones);
-          message = "asteriskLocal: each phone must set exactly one of password, passwordFile, or passwordSopsKey.";
-        }
-        {
-          assertion = phonesWithRuntimeSecrets == {} || config.lucy.secrets.enable;
-          message = "asteriskLocal: passwordFile/passwordSopsKey requires lucy.secrets.enable so runtime secret paths are managed declaratively.";
-        }
         # Warn about weak credentials
         {
           assertion = lib.length credentialWarnings == 0;
           message = "asteriskLocal: ${credentialWarnings}";
         }
       ];
-
-    sops.secrets = sopsSecretDefinitions;
-
-    systemd.services.asterisk.preStart = lib.mkAfter runtimeAuthPreStart;
   };
 }
