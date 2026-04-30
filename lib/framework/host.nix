@@ -1,17 +1,16 @@
 let
-  mergeHostParts = parts: let
-    mergeList = key:
-      builtins.concatLists (map (part: part.${key} or []) parts);
-    mergeAttrs = key:
-      builtins.foldl' (acc: part: acc // (part.${key} or {})) {} parts;
-  in {
-    moduleFlags = mergeAttrs "moduleFlags";
-    packageToggles = mergeList "packageToggles";
-    basePackages = mergeList "basePackages";
-    settings = mergeAttrs "settings";
-  };
+  projectLib = import ../default.nix;
+  inherit (projectLib.core) composition;
 in {
-  inherit mergeHostParts;
+  mergeHostParts = {
+    lib,
+    parts,
+  }:
+    composition.mergeDefinitions {
+      inherit lib parts;
+      attrFields = ["moduleFlags" "settings"];
+      listFields = ["packageToggles" "basePackages" "systemPackages" "fontPackages"];
+    };
 
   applyHost = {
     lib,
@@ -19,20 +18,45 @@ in {
     presets ? [],
     packagePath,
     basePackagePath,
+    systemPackagePath ? null,
+    fontPackagePath ? null,
   }: let
-    mergedHost = mergeHostParts (presets ++ [host]);
+    mergedHost = composition.mergeDefinitions {
+      inherit lib;
+      parts = presets ++ [host];
+      attrFields = ["moduleFlags" "settings"];
+      listFields = ["packageToggles" "basePackages" "systemPackages" "fontPackages"];
+    };
   in
     (mergedHost.moduleFlags or {})
     // lib.optionalAttrs (mergedHost ? packageToggles) (
-      lib.setAttrByPath packagePath (builtins.listToAttrs (
-        map (name: {
-          inherit name;
-          value = true;
-        })
-        mergedHost.packageToggles
-      ))
+      composition.renderEnabledAttrs {
+        inherit lib;
+        path = packagePath;
+        names = mergedHost.packageToggles;
+      }
     )
-    // lib.optionalAttrs (mergedHost ? basePackages) (lib.setAttrByPath basePackagePath mergedHost.basePackages)
+    // composition.renderOptionalPath {
+      inherit lib;
+      path = basePackagePath;
+      value = mergedHost.basePackages or null;
+    }
+    // composition.renderOptionalPath {
+      inherit lib;
+      path = systemPackagePath;
+      value =
+        if systemPackagePath == null
+        then null
+        else mergedHost.systemPackages or [];
+    }
+    // composition.renderOptionalPath {
+      inherit lib;
+      path = fontPackagePath;
+      value =
+        if fontPackagePath == null
+        then null
+        else mergedHost.fontPackages or [];
+    }
     // (mergedHost.settings or {});
 
   mkHost = host: host;
