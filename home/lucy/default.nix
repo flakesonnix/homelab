@@ -35,7 +35,7 @@ in {
   config = projectLib.framework.home.applyHome {
     inherit lib;
     home = homeData;
-    roleRoot = ../../data/roles/home;
+    roleRoot = ../../data/roles;
     bundleRoot = ../../data/bundles;
     inherit packageRegistry;
     packagePath = ["lucy" "programs"];

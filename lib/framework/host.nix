@@ -26,8 +26,17 @@ let
   loadRoles = {
     root,
     names,
+    target ? null,
   }:
-    map (name: import (root + "/${name}.nix")) names;
+    map (
+      name: let
+        role = import (root + "/${name}.nix");
+      in
+        if target != null && builtins.isAttrs role && builtins.hasAttr target role
+        then role.${target} or {}
+        else role
+    )
+    names;
 in {
   inherit loadPresets loadRoles;
 
@@ -106,6 +115,7 @@ in {
     resolvedRoles = lib.optionals (roleRoot != null) (loadRoles {
       root = roleRoot;
       names = host.roles or [];
+      target = "host";
     });
 
     resolvedPresetNames = lib.unique (

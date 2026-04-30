@@ -1,0 +1,5 @@
+{
+  home = {
+    bundles = ["core"];
+  };
+}
