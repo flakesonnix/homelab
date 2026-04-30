@@ -8,6 +8,22 @@
     inherit key attrs action;
   };
 
+  startupSpawn = argv: {
+    kind = "spawn";
+    inherit argv;
+  };
+
+  startupShell = script: {
+    kind = "spawn-sh";
+    inherit script;
+  };
+
+  windowRule = lines: {inherit lines;};
+
+  leaf = name: value: {
+    inherit name value;
+  };
+
   workspaceBindTriplet = {
     focusKey,
     moveColumnKey,

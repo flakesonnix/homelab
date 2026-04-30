@@ -1,10 +1,23 @@
 let
+  renderValue = value:
+    if builtins.isBool value
+    then
+      if value
+      then "true"
+      else "false"
+    else if builtins.isInt value || builtins.isFloat value
+    then toString value
+    else builtins.toJSON value;
+
   renderAttrs = attrs:
     builtins.concatStringsSep " " (
-      map (name: "${name}=${builtins.toJSON attrs.${name}}") (builtins.attrNames attrs)
+      map (name: "${name}=${renderValue attrs.${name}}") (builtins.attrNames attrs)
     );
+
+  renderLines = lines:
+    builtins.concatStringsSep "\n" lines;
 in {
-  inherit renderAttrs;
+  inherit renderValue renderAttrs renderLines;
 
   renderBind = renderCommand: bind: let
     attrText =
@@ -15,6 +28,13 @@ in {
 
   renderSection = name: lines: "${name} {\n${builtins.concatStringsSep "\n" lines}\n}";
 
-  renderLines = lines:
-    builtins.concatStringsSep "\n" lines;
+  renderLeaf = name: value:
+    if value == null
+    then name
+    else "${name} ${renderValue value}";
+
+  renderCommandBlock = name: argv: "${name} ${builtins.concatStringsSep " " (map builtins.toJSON argv)}";
+
+  renderPropsBlock = name: props:
+    renderSection name (map (prop: renderLeaf prop.name prop.value) props);
 }

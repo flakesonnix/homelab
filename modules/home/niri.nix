@@ -11,9 +11,8 @@
   niriFramework = projectLib.framework.niri;
   renderCommand = projectLib.render.command.render;
   renderBind = projectLib.render.kdl.renderBind renderCommand;
-  inherit (projectLib.render.kdl) renderLines;
+  inherit (projectLib.render.kdl) renderCommandBlock renderLeaf renderLines renderPropsBlock renderSection;
 
-  mkSpawn = command: ''spawn-at-startup "${command}"'';
   mkBuiltinBind = key: actionName:
     renderBind (niriFramework.bind key (actions.builtin actionName));
   mkBindWithAttrs = key: attrs: action:
@@ -31,34 +30,68 @@
   mkWlogoutEntry = label: action: text: keybind: {
     inherit label action text keybind;
   };
+  renderStartup = command:
+    if command.kind == "spawn"
+    then renderCommandBlock "spawn-at-startup" command.argv
+    else if command.kind == "spawn-sh"
+    then ''spawn-at-startup "sh" "-lc" ${builtins.toJSON command.script}''
+    else throw "Unsupported startup command kind";
+  renderWindowRule = rule: renderSection "window-rule" rule.lines;
   lockCommand = "sh -c '${pkgs.swaylock-effects}/bin/swaylock --screenshots --clock --indicator --indicator-radius 110 --indicator-thickness 8 --effect-blur 7x5 --effect-vignette 0.25:0.6 --fade-in 0.2 --font Inter --font-size 24 --timestr %H:%M --datestr %a,\ %d\ %b --text-color f7f4ffff --text-clear-color f7f4ffff --text-ver-color fff1cfff --text-wrong-color ffd7eaff --inside-color 16162688 --inside-clear-color 322347cc --inside-ver-color 5c4b2acc --inside-wrong-color 4d2234cc --ring-color e7a6cbcc --ring-clear-color adc2ffcc --ring-ver-color f2d58acc --ring-wrong-color ff8db6cc --line-color 00000000 --separator-color 00000000 --key-hl-color ffd6ecff --bs-hl-color adc2ffff --show-failed-attempts --daemonize'";
-  startupCommands = lib.concatStringsSep "\n" [
-    (mkSpawn "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1")
-    (mkSpawn "${pkgs.waybar}/bin/waybar")
-    (mkSpawn "${pkgs.awww}/bin/awww-daemon")
-    ''spawn-at-startup "sh" "-lc" "sleep 0.4 && ${pkgs.awww}/bin/awww img --resize crop --filter Lanczos3 --transition-type grow --transition-pos top-right --transition-step 90 --transition-duration 1.2 --transition-fps 60 ${config.home.sessionVariables.WALLPAPER}"''
-    (mkSpawn "${pkgs.xwayland-satellite}/bin/xwayland-satellite")
+  startupCommands = renderLines (map renderStartup [
+    (niriFramework.startupSpawn ["${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"])
+    (niriFramework.startupSpawn ["${pkgs.waybar}/bin/waybar"])
+    (niriFramework.startupSpawn ["${pkgs.awww}/bin/awww-daemon"])
+    (niriFramework.startupShell "sleep 0.4 && ${pkgs.awww}/bin/awww img --resize crop --filter Lanczos3 --transition-type grow --transition-pos top-right --transition-step 90 --transition-duration 1.2 --transition-fps 60 ${config.home.sessionVariables.WALLPAPER}")
+    (niriFramework.startupSpawn ["${pkgs.xwayland-satellite}/bin/xwayland-satellite"])
+  ]);
+
+  windowRules = renderLines (map renderWindowRule [
+    (niriFramework.windowRule [
+      ''match app-id=r#"^org\.wezfurlong\.wezterm$"#''
+      "default-column-width {}"
+    ])
+    (niriFramework.windowRule [
+      ''match app-id=r#"firefox$"# title="^Picture-in-Picture$"''
+      "open-floating true"
+    ])
+    (niriFramework.windowRule [
+      "geometry-corner-radius 16"
+      "clip-to-geometry true"
+    ])
+  ]);
+
+  inputSection = renderSection "input" [
+    (renderPropsBlock "keyboard" [
+      "xkb {}"
+      (niriFramework.leaf "numlock" null)
+    ])
+    (renderPropsBlock "touchpad" [
+      (niriFramework.leaf "tap" null)
+      (niriFramework.leaf "natural-scroll" null)
+    ])
   ];
 
-  windowRules = lib.concatStringsSep "\n\n" [
-    ''
-      window-rule {
-        match app-id=r#"^org\.wezfurlong\.wezterm$"#
-        default-column-width {}
-      }
-    ''
-    ''
-      window-rule {
-        match app-id=r#"firefox$"# title="^Picture-in-Picture$"
-        open-floating true
-      }
-    ''
-    ''
-      window-rule {
-        geometry-corner-radius 16
-        clip-to-geometry true
-      }
-    ''
+  layoutSection = renderSection "layout" [
+    (renderLeaf "gaps" 18)
+    (renderLeaf "center-focused-column" "on-overflow")
+    "default-column-width { proportion 0.5; }"
+    (renderPropsBlock "focus-ring" [
+      (niriFramework.leaf "off" null)
+    ])
+    (renderPropsBlock "border" [
+      (niriFramework.leaf "width" 2)
+      (niriFramework.leaf "active-color" "#e7a6cb")
+      (niriFramework.leaf "inactive-color" "#322a43")
+    ])
+    (renderPropsBlock "shadow" [
+      (niriFramework.leaf "on" null)
+      (niriFramework.leaf "softness" 40)
+      (niriFramework.leaf "spread" 0)
+      "offset x=0 y=10"
+      (niriFramework.leaf "color" "#120f1f52")
+    ])
+    (renderLeaf "background-color" "transparent")
   ];
 
   workspaceBinds = renderLines (builtins.concatLists (map mkWorkspaceBind (lib.range 1 9)));
@@ -206,45 +239,8 @@
   '';
 
   niriConfig = lib.concatStringsSep "\n\n" [
-    ''
-      input {
-        keyboard {
-          xkb {}
-          numlock
-        }
-        touchpad {
-          tap
-          natural-scroll
-        }
-      }
-    ''
-    ''
-      layout {
-        gaps 18
-        center-focused-column "on-overflow"
-        default-column-width { proportion 0.5; }
-
-        focus-ring {
-          off
-        }
-
-        border {
-          width 2
-          active-color "#e7a6cb"
-          inactive-color "#322a43"
-        }
-
-        shadow {
-          on
-          softness 40
-          spread 0
-          offset x=0 y=10
-          color "#120f1f52"
-        }
-
-        background-color "transparent"
-      }
-    ''
+    inputSection
+    layoutSection
     startupCommands
     ''prefer-no-csd''
     ''screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"''

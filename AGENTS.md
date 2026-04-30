@@ -109,3 +109,13 @@ Enabled on omen:
 - Home-manager imports in flake.nix `home-manager.users.lucy.imports`
 - Option naming: `users.users.lucy.isNormalUser = true`
 - nixpkgs: `nixos-unstable` branch
+
+## Plans and Notes
+
+- Continue refining role-based system for host and home configurations
+- Explore integrating sops-nix for secret management (Asterisk credentials)
+- Investigate additional gaming performance tweaks (CPU scheduler, I/O settings)
+- Consider adding more granular role subdivisions (e.g., gaming/streaming, gaming/competitive)
+- Document framework helper functions for easier onboarding
+- Periodically review and update package options in modules/nixos/packages.nix
+- Consider adding health checks or validation scripts for configuration
