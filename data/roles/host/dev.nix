@@ -1,7 +1,0 @@
-{
-  packageTags = [
-    "dev"
-    "network"
-    "monitoring"
-  ];
-}

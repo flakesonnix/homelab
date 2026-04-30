@@ -19,8 +19,17 @@ let
   loadRoles = {
     root,
     names,
+    target ? null,
   }:
-    map (name: import (root + "/${name}.nix")) names;
+    map (
+      name: let
+        role = import (root + "/${name}.nix");
+      in
+        if target != null && builtins.isAttrs role && builtins.hasAttr target role
+        then role.${target} or {}
+        else role
+    )
+    names;
 
   loadBundles = {
     root,
@@ -74,6 +83,7 @@ in {
     resolvedRoles = lib.optionals (roleRoot != null) (loadRoles {
       root = roleRoot;
       names = home.roles or [];
+      target = "home";
     });
 
     resolvedBundleNames = lib.unique (builtins.concatLists (map (role: role.bundles or []) resolvedRoles));
