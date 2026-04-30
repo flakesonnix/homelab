@@ -1,14 +1,14 @@
 {pkgs}: {
+  presets = [
+    "gaming-base"
+    "gaming-steam"
+  ];
+
   moduleFlags = {
     lucy.base.enable = true;
     lucy.nvidia.enable = true;
     lucy.gnome.enable = false;
     lucy.gnomeExtensions.enable = false;
-    lucy.gaming.enable = true;
-    lucy.gaming.steam.enable = true;
-    lucy.gaming.gamemode.enable = true;
-    lucy.gaming.gamescope.enable = true;
-    lucy.gaming.mangohud.enable = true;
     lucy.fonts.inter = true;
     lucy.niri.enable = true;
     lucy.waybar.installFonts = true;
