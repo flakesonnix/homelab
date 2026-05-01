@@ -31,7 +31,6 @@
 
       matchBlocks =
         {
-
           "github.com" = {
             hostname = "github.com";
             identityFile = "~/.ssh/lucy_git";
