@@ -125,7 +125,7 @@ let
       )
     );
 
-  existingRoleDefs = {
+  existingDataDefs = {
     root,
     names,
   }:
@@ -142,6 +142,8 @@ let
       names
     );
 
+  existingRoleDefs = existingDataDefs;
+
   allRoleNames = roleRoot:
     map (
       name: builtins.replaceStrings [".nix"] [""] name
@@ -149,14 +151,11 @@ let
       name: builtins.match ".*\\.nix" name != null
     ) (builtins.attrNames (builtins.readDir roleRoot)));
 
-  roleMetadataErrors = {
-    roleDefs,
+  metadataShapeErrors = {
+    defs,
     target,
-    selectedNames,
-    knownNames,
   }: let
-    missingMeta = builtins.filter (entry: !(builtins.isAttrs (entry.value.meta or null))) roleDefs;
-
+    missingMeta = builtins.filter (entry: !(builtins.isAttrs (entry.value.meta or null))) defs;
     invalidDescriptions =
       builtins.filter (
         entry: let
@@ -164,8 +163,7 @@ let
         in
           !(builtins.isString desc && desc != "")
       )
-      roleDefs;
-
+      defs;
     invalidTargets =
       builtins.filter (
         entry: let
@@ -173,7 +171,23 @@ let
         in
           !(builtins.isList targets && builtins.elem target targets)
       )
-      roleDefs;
+      defs;
+  in {
+    missingMetadata = map (entry: entry.name) missingMeta;
+    invalidDescriptions = map (entry: entry.name) invalidDescriptions;
+    invalidTargets = map (entry: entry.name) invalidTargets;
+  };
+
+  roleMetadataErrors = {
+    roleDefs,
+    target,
+    selectedNames,
+    knownNames,
+  }: let
+    shapeErrors = metadataShapeErrors {
+      defs = roleDefs;
+      inherit target;
+    };
 
     unknownRoleRequires = builtins.concatLists (map (
         entry:
@@ -233,9 +247,9 @@ let
       )
       roleDefs);
   in {
-    missingRoleMetadata = map (entry: entry.name) missingMeta;
-    invalidRoleDescriptions = map (entry: entry.name) invalidDescriptions;
-    invalidRoleTargets = map (entry: entry.name) invalidTargets;
+    missingRoleMetadata = shapeErrors.missingMetadata;
+    invalidRoleDescriptions = shapeErrors.invalidDescriptions;
+    invalidRoleTargets = shapeErrors.invalidTargets;
     inherit
       unknownRoleRequires
       unknownRoleConflicts
@@ -311,6 +325,14 @@ in {
         }
       else [];
     allPresetNames = lib.unique (hostPresets ++ rolePresetNames);
+    presetDefs =
+      if presetRoot != null
+      then
+        existingDataDefs {
+          root = presetRoot;
+          names = allPresetNames;
+        }
+      else [];
     knownPackageNames =
       if packageRegistry != null
       then builtins.attrNames packageRegistry
@@ -324,6 +346,10 @@ in {
       target = "host";
       selectedNames = roles;
       knownNames = knownRoleNames;
+    };
+    presetMetaErrors = metadataShapeErrors {
+      defs = presetDefs;
+      target = "host";
     };
   in {
     missingRoles =
@@ -369,6 +395,9 @@ in {
       missingRequiredRoles
       conflictingRoles
       ;
+    missingPresetMetadata = presetMetaErrors.missingMetadata;
+    invalidPresetDescriptions = presetMetaErrors.invalidDescriptions;
+    invalidPresetTargets = presetMetaErrors.invalidTargets;
   };
 
   validateHome = {
@@ -482,6 +511,9 @@ in {
     missingRoleMetadata ? [],
     invalidRoleDescriptions ? [],
     invalidRoleTargets ? [],
+    missingPresetMetadata ? [],
+    invalidPresetDescriptions ? [],
+    invalidPresetTargets ? [],
     unknownRoleRequires ? [],
     unknownRoleConflicts ? [],
     missingRequiredRoles ? [],
@@ -501,6 +533,9 @@ in {
       ++ lib.optional (missingRoleMetadata != []) "  Roles missing meta blocks: ${builtins.concatStringsSep ", " missingRoleMetadata}"
       ++ lib.optional (invalidRoleDescriptions != []) "  Roles with invalid descriptions: ${builtins.concatStringsSep ", " invalidRoleDescriptions}"
       ++ lib.optional (invalidRoleTargets != []) "  Roles with invalid targets for this context: ${builtins.concatStringsSep ", " invalidRoleTargets}"
+      ++ lib.optional (missingPresetMetadata != []) "  Presets missing meta blocks: ${builtins.concatStringsSep ", " missingPresetMetadata}"
+      ++ lib.optional (invalidPresetDescriptions != []) "  Presets with invalid descriptions: ${builtins.concatStringsSep ", " invalidPresetDescriptions}"
+      ++ lib.optional (invalidPresetTargets != []) "  Presets with invalid targets for this context: ${builtins.concatStringsSep ", " invalidPresetTargets}"
       ++ lib.optional (unknownRoleRequires != []) "  Unknown role requirements: ${builtins.concatStringsSep ", " unknownRoleRequires}"
       ++ lib.optional (unknownRoleConflicts != []) "  Unknown role conflicts: ${builtins.concatStringsSep ", " unknownRoleConflicts}"
       ++ lib.optional (missingRequiredRoles != []) "  Missing required roles: ${builtins.concatStringsSep ", " missingRequiredRoles}"

@@ -1,27 +1,3 @@
-pub struct RoleDef { pub name: String, pub desc: String }
-impl RoleDef { pub fn new(n: &str, d: &str) -> Self { Self { name: n.into(), desc: d.into() } } }
-
-pub fn known_roles() -> Vec<RoleDef> {
-    vec![
-        RoleDef::new("desktop", "Compositor, terminal, browser, chat"),
-        RoleDef::new("dev", "Compilers, IDEs, monitoring"),
-        RoleDef::new("gaming", "Steam, GameMode, Gamescope"),
-        RoleDef::new("llm", "LM Studio, Ollama"),
-        RoleDef::new("core", "Shell, git, nvim, essentials"),
-    ]
-}
-
-pub fn role_desc(name: &str) -> &'static str {
-    match name {
-        "desktop" => "Compositor, terminal, browser, chat",
-        "dev" => "Compilers, IDEs, monitoring",
-        "gaming" => "Steam, GameMode, Gamescope",
-        "llm" => "LM Studio, Ollama",
-        "core" => "Shell, git, nvim, essentials",
-        _ => "",
-    }
-}
-
 pub fn tag_desc(tag: &str) -> &'static str {
     match tag {
         "desktop" => "Firefox, Discord, LM Studio",
@@ -56,31 +32,6 @@ pub fn home_pkg_desc(name: &str) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn known_roles_count() {
-        let roles = known_roles();
-        assert_eq!(roles.len(), 5);
-    }
-
-    #[test]
-    fn known_roles_have_descriptions() {
-        for role in known_roles() {
-            assert!(!role.desc.is_empty(), "role '{}' has empty desc", role.name);
-        }
-    }
-
-    #[test]
-    fn role_desc_known() {
-        assert_eq!(role_desc("desktop"), "Compositor, terminal, browser, chat");
-        assert_eq!(role_desc("gaming"), "Steam, GameMode, Gamescope");
-        assert_eq!(role_desc("llm"), "LM Studio, Ollama");
-    }
-
-    #[test]
-    fn role_desc_unknown() {
-        assert_eq!(role_desc("nonexistent"), "");
-    }
 
     #[test]
     fn tag_desc_all_known_tags() {
