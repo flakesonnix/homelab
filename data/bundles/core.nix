@@ -1,14 +1,18 @@
 {
-  moduleFlags = {
-    lucy.shell.enable = true;
-    lucy.git.enable = true;
-    lucy.editor.enable = true;
-    lucy.htop.enable = true;
-    lucy.btop.enable = true;
-    lucy.bat.enable = true;
-    lucy.fzf.enable = true;
-    lucy.ssh.enable = true;
-    lucy.opencode.enable = true;
+  programs = {
+    bash.enable = true;
+    git.enable = true;
+    neovim.enable = true;
+    htop.enable = true;
+    btop.enable = true;
+    bat.enable = true;
+    fzf.enable = true;
+    ssh.enable = true;
+    opencode.enable = true;
+    nh = {
+      enable = true;
+      flake = /home/lucy/Documents/dotfiles;
+    };
   };
 
   packageToggles = [
@@ -16,11 +20,6 @@
     "manix"
     "nix-output-monitor"
   ];
-
-  programs.nh = {
-    enable = true;
-    flake = /home/lucy/Documents/dotfiles;
-  };
 
   home = {
     username = "lucy";

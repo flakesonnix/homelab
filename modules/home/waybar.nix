@@ -193,12 +193,9 @@
     };
   };
 in {
-  options.lucy.waybar.enable = lib.mkEnableOption "Waybar status bar";
-
-  config = lib.mkIf config.lucy.waybar.enable {
+  config = lib.mkIf config.programs.waybar.enable {
     home.packages = [pkgs.siji];
     programs.waybar = {
-      enable = true;
       package = pkgs.waybar;
       settings = [mainBar];
     };

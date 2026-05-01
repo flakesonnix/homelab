@@ -3,13 +3,8 @@
   lib,
   ...
 }: {
-  options.lucy.alacritty = {
-    enable = lib.mkEnableOption "Alacritty configuration";
-  };
-
-  config = lib.mkIf config.lucy.alacritty.enable {
+  config = lib.mkIf config.programs.alacritty.enable {
     programs.alacritty = {
-      enable = true;
       settings = lib.mkForce {
         font = {
           normal = {

@@ -3,13 +3,8 @@
   lib,
   ...
 }: {
-  options.lucy.fzf = {
-    enable = lib.mkEnableOption "fzf configuration";
-  };
-
-  config = lib.mkIf config.lucy.fzf.enable {
+  config = lib.mkIf config.programs.fzf.enable {
     programs.fzf = {
-      enable = true;
       enableBashIntegration = true;
       defaultCommand = "fd --type f --hidden --strip-cwd-prefix --exclude .git";
       changeDirWidgetCommand = "fd --type d --hidden --strip-cwd-prefix --exclude .git";

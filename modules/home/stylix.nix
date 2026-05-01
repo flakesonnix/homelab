@@ -3,13 +3,9 @@
   config,
   ...
 }: {
-  options.lucy.stylix = {
-    enable = lib.mkEnableOption "Stylix theming";
-  };
-
-  config = lib.mkIf config.lucy.stylix.enable {
+  config = lib.mkIf config.stylix.enable {
     stylix = {
-      enable = true;
+      polarity = lib.mkDefault "dark";
       base16Scheme = {
         scheme = "Custom";
         base00 = "11111e";
@@ -34,7 +30,6 @@
         alacritty.enable = true;
         gtk.enable = true;
       };
-      image = null;
     };
 
     gtk = {

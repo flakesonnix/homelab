@@ -4,11 +4,9 @@
   lib,
   ...
 }: {
-  options.lucy.gnomeTheme = {
-    enable = lib.mkEnableOption "Clean macOS dark GNOME theme";
-  };
+  options.programs.gnomeTheme.enable = lib.mkEnableOption "Clean macOS dark GNOME theme";
 
-  config = lib.mkIf config.lucy.gnomeTheme.enable {
+  config = lib.mkIf config.programs.gnomeTheme.enable {
     gtk = {
       enable = true;
       font = {
