@@ -3,57 +3,36 @@
   lib,
   ...
 }: {
-  options.lucy.ssh = {
-    enable = lib.mkEnableOption "SSH configuration";
-    extraHosts = lib.mkOption {
-      type = lib.types.attrsOf (lib.types.submodule {
-        options = {
-          host = lib.mkOption {type = lib.types.str;};
-          user = lib.mkOption {type = lib.types.str;};
-          identityFile = lib.mkOption {type = lib.types.str;};
-        };
-      });
-      default = {};
-      description = "Additional SSH hosts to configure";
-    };
-  };
-
-  config = lib.mkIf config.lucy.ssh.enable {
+  config = lib.mkIf config.programs.ssh.enable {
     programs.ssh = {
-      enable = true;
       enableDefaultConfig = false;
 
-      controlMaster = "auto";
-      controlPath = "~/.ssh/sockets/%r@%h-%p";
-      controlPersist = "10m";
-      serverAliveInterval = 60;
-      serverAliveCountMax = 3;
+      matchBlocks = {
+        "*" = {
+          controlMaster = lib.mkDefault "auto";
+          controlPath = lib.mkDefault "~/.ssh/sockets/%r@%h-%p";
+          controlPersist = lib.mkDefault "10m";
+          serverAliveInterval = lib.mkDefault 60;
+          serverAliveCountMax = lib.mkDefault 3;
+        };
 
-      matchBlocks =
-        {
-          "github.com" = {
-            hostname = "github.com";
-            identityFile = "~/.ssh/lucy_git";
-            hashKnownHosts = true;
-            addKeysToAgent = "yes";
-          };
+        "github.com" = {
+          hostname = lib.mkDefault "github.com";
+          identityFile = lib.mkDefault "~/.ssh/lucy_git";
+          hashKnownHosts = lib.mkDefault true;
+          addKeysToAgent = lib.mkDefault "yes";
+        };
 
-          "gitlab.com" = {
-            hostname = "gitlab.com";
-            identityFile = "~/.ssh/lucy_git";
-          };
+        "gitlab.com" = {
+          hostname = lib.mkDefault "gitlab.com";
+          identityFile = lib.mkDefault "~/.ssh/lucy_git";
+        };
 
-          "sr.ht" = {
-            hostname = "sr.ht";
-            identityFile = "~/.ssh/lucy_git";
-          };
-        }
-        // lib.mapAttrs (_n: v: {
-          inherit (v) host;
-          inherit (v) user;
-          inherit (v) identityFile;
-        })
-        config.lucy.ssh.extraHosts;
+        "sr.ht" = {
+          hostname = lib.mkDefault "sr.ht";
+          identityFile = lib.mkDefault "~/.ssh/lucy_git";
+        };
+      };
     };
   };
 }

@@ -16,7 +16,7 @@ let
 
   renderLines = lines:
     builtins.concatStringsSep "\n" lines;
-in {
+in rec {
   inherit renderValue renderAttrs renderLines;
 
   renderBind = renderCommand: bind: let

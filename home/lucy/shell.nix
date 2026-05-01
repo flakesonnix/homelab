@@ -30,13 +30,8 @@
     PROMPT_COMMAND=__lucy_prompt
   '';
 in {
-  options.lucy.shell = {
-    enable = lib.mkEnableOption "lucy's shell configuration";
-  };
-
-  config = lib.mkIf config.lucy.shell.enable {
+  config = lib.mkIf config.programs.bash.enable {
     programs.bash = {
-      enable = true;
       enableCompletion = true;
       historyControl = ["ignoreboth" "erasedups"];
       historyFileSize = 50000;

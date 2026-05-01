@@ -3,13 +3,8 @@
   lib,
   ...
 }: {
-  options.lucy.htop = {
-    enable = lib.mkEnableOption "lucy's htop configuration";
-  };
-
-  config = lib.mkIf config.lucy.htop.enable {
+  config = lib.mkIf config.programs.htop.enable {
     programs.htop = {
-      enable = true;
       settings = {
         update_processes = true;
         detailed_cpu_time = false;

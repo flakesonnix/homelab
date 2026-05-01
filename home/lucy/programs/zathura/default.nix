@@ -3,13 +3,8 @@
   lib,
   ...
 }: {
-  options.lucy.zathura = {
-    enable = lib.mkEnableOption "zathura configuration";
-  };
-
-  config = lib.mkIf config.lucy.zathura.enable {
+  config = lib.mkIf config.programs.zathura.enable {
     programs.zathura = {
-      enable = true;
       options = {
         adjust-open = "best-fit";
         font = "JetBrainsMono Nerd Font 12";
