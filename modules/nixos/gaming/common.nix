@@ -76,6 +76,12 @@
         description = "Enable performance-biased tuning for dedicated gaming hosts.";
       };
 
+      enableIrqbalance = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Enable irqbalance when performance tuning is enabled.";
+      };
+
       cpuFreqGovernor = lib.mkOption {
         type = lib.types.str;
         default = "performance";

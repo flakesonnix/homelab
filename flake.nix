@@ -251,6 +251,10 @@
                 deadnix.enable = true;
               };
             };
+
+            # Force evaluation of full NixOS+HM config (no system build).
+            # Discard string context so we don't pull huge build deps into this check.
+            omen-eval = pkgs.writeText "omen-eval" (builtins.unsafeDiscardStringContext (builtins.toString omen-config.config.system.build.toplevel));
           };
         };
       }

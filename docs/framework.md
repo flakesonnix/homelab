@@ -12,11 +12,12 @@ This repo is moving toward a self-hosted Nix framework.
 
 ## Current Registries
 
-- `data/packages/system.nix`: NixOS-side package toggle registry
-- `data/packages/home.nix`: Home Manager package toggle registry
-- `data/bundles/*.nix`: bundle data consumed by thin Home Manager wrappers
-- `data/hosts/omen.nix`: host declaration data for the main machine
-- `data/presets/*.nix`: reusable preset fragments layered into host data
+- `data/packages/system.nix`: system package registry (toggles + tags)
+- `data/packages/home.nix`: home package registry (toggles + tags)
+- `data/bundles/*.nix`: home bundles (data-first)
+- `data/hosts/<host>/*.nix`: host declarations split by concern
+- `data/presets/*.nix`: reusable preset fragments
+- `data/roles/*.nix`: shared role vocabulary (each role may have `host` and/or `home` sections)
 
 ## Renderer Direction
 
@@ -41,12 +42,12 @@ Current foundation:
 
 ## Host Flow
 
-Current host composition is split across two layers:
+Current host composition:
 
-- `data/hosts/omen.nix`: declarative host data
-- `hosts/omen/host.nix`: thin host wrapper that applies host data through `lib/framework/host.nix`
+- `data/hosts/omen/`: declarative host data (roles, flags, packages, services, power, settings)
+- `hosts/omen/host.nix`: thin wrapper that applies host data through `lib/framework/host.nix`
 
-Gaming-specific defaults are now layered through preset data rather than being defined only inline in the host wrapper.
+Roles expand to presets/module flags/package tags, then host-local data overlays.
 
 ## Next Steps
 

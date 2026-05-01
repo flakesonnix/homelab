@@ -54,25 +54,31 @@ Bundle shape:
 }
 ```
 
-Thin wrappers in `home/lucy/bundles/` apply these through `lib/framework/bundle.nix`.
+Home composition applies these through `lib/framework/home.nix` + `lib/framework/bundle.nix`.
 
 ## Host Data
 
 Host declarations live under `data/hosts/`.
 
-Current files:
+Current layout:
 
-- `data/hosts/omen.nix`
+- `data/hosts/<host>/roles.nix` (list of role names)
+- `data/hosts/<host>/module-flags.nix`
+- `data/hosts/<host>/packages.nix`
+- `data/hosts/<host>/services.nix`
+- `data/hosts/<host>/power.nix`
+- `data/hosts/<host>/settings.nix`
 
 Host shape:
 
 ```nix
 {
-  presets = ["gaming-base" "gaming-steam"];
+  roles = ["desktop" "dev" "gaming"];
   moduleFlags = { ... };
+  packageTags = [ ... ];
   packageToggles = [ ... ];
-  basePackages = [ ... ];
   settings = { ... };
+  services = { ... };
 }
 ```
 
@@ -86,6 +92,7 @@ Current files:
 
 - `data/presets/gaming-base.nix`
 - `data/presets/gaming-steam.nix`
+- `data/presets/gaming-performance.nix`
 
 Preset shape:
 
@@ -98,6 +105,19 @@ Preset shape:
 ```
 
 Presets are merged before host-local settings so a host can build up larger behavior from smaller fragments.
+
+## Roles
+
+Role declarations live under `data/roles/`.
+
+Each role file may expose `host` and/or `home` sections:
+
+```nix
+{
+  host = { presets = [ ... ]; moduleFlags = { ... }; packageTags = [ ... ]; };
+  home = { bundles = [ ... ]; packageToggles = [ ... ]; };
+}
+```
 
 ## Renderers
 
