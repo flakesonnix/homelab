@@ -51,3 +51,7 @@ Example:
 ```
 
 In `hosts/omen/secrets.yaml`, add key `asterisk/phones/desk1`.
+
+## Repo Checks
+
+`nix flake check` includes `no-plaintext-host-passwords` which fails if it finds `password = "..."` in `data/hosts/**`.
