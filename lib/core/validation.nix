@@ -31,6 +31,19 @@ let
   in
     builtins.filter (name: counts.${name} > 1) (builtins.attrNames counts);
 
+  roleTargetList = {
+    meta,
+    field,
+    target,
+  }: let
+    value = meta.${field} or [];
+  in
+    if builtins.isList value
+    then value
+    else if builtins.isAttrs value
+    then value.${target} or []
+    else [];
+
   valueFingerprint = value:
     builtins.toJSON value;
 
@@ -112,6 +125,125 @@ let
       )
     );
 
+  existingRoleDefs = {
+    root,
+    names,
+  }:
+    builtins.filter (entry: entry != null) (
+      map (
+        name:
+          if builtins.pathExists (root + "/${name}.nix")
+          then {
+            inherit name;
+            value = import (root + "/${name}.nix");
+          }
+          else null
+      )
+      names
+    );
+
+  allRoleNames = roleRoot:
+    map (
+      name: builtins.replaceStrings [".nix"] [""] name
+    ) (builtins.filter (
+      name: builtins.match ".*\\.nix" name != null
+    ) (builtins.attrNames (builtins.readDir roleRoot)));
+
+  roleMetadataErrors = {
+    roleDefs,
+    target,
+    selectedNames,
+    knownNames,
+  }: let
+    missingMeta = builtins.filter (entry: !(builtins.isAttrs (entry.value.meta or null))) roleDefs;
+
+    invalidDescriptions =
+      builtins.filter (
+        entry: let
+          desc = entry.value.meta.description or null;
+        in
+          !(builtins.isString desc && desc != "")
+      )
+      roleDefs;
+
+    invalidTargets =
+      builtins.filter (
+        entry: let
+          targets = entry.value.meta.targets or [];
+        in
+          !(builtins.isList targets && builtins.elem target targets)
+      )
+      roleDefs;
+
+    unknownRoleRequires = builtins.concatLists (map (
+        entry:
+          map (dep: "${entry.name} -> ${dep}") (
+            findMissingNames {
+              known = knownNames;
+              names = roleTargetList {
+                meta = entry.value.meta or {};
+                field = "requires";
+                inherit target;
+              };
+            }
+          )
+      )
+      roleDefs);
+
+    unknownRoleConflicts = builtins.concatLists (map (
+        entry:
+          map (dep: "${entry.name} x ${dep}") (
+            findMissingNames {
+              known = knownNames;
+              names = roleTargetList {
+                meta = entry.value.meta or {};
+                field = "conflicts";
+                inherit target;
+              };
+            }
+          )
+      )
+      roleDefs);
+
+    missingRequiredRoles = builtins.concatLists (map (
+        entry:
+          map (dep: "${entry.name} requires ${dep}") (
+            builtins.filter (dep: !(builtins.elem dep selectedNames)) (
+              roleTargetList {
+                meta = entry.value.meta or {};
+                field = "requires";
+                inherit target;
+              }
+            )
+          )
+      )
+      roleDefs);
+
+    conflictingRoles = builtins.concatLists (map (
+        entry:
+          map (dep: "${entry.name} conflicts with ${dep}") (
+            builtins.filter (dep: builtins.elem dep selectedNames) (
+              roleTargetList {
+                meta = entry.value.meta or {};
+                field = "conflicts";
+                inherit target;
+              }
+            )
+          )
+      )
+      roleDefs);
+  in {
+    missingRoleMetadata = map (entry: entry.name) missingMeta;
+    invalidRoleDescriptions = map (entry: entry.name) invalidDescriptions;
+    invalidRoleTargets = map (entry: entry.name) invalidTargets;
+    inherit
+      unknownRoleRequires
+      unknownRoleConflicts
+      missingRequiredRoles
+      conflictingRoles
+      ;
+  };
+
   collectRolePresetNames = {
     lib,
     roles,
@@ -158,6 +290,18 @@ in {
       if packageData != null
       then packageData
       else {};
+    roleDefs =
+      if roleRoot != null
+      then
+        existingRoleDefs {
+          root = roleRoot;
+          names = roles;
+        }
+      else [];
+    knownRoleNames =
+      if roleRoot != null
+      then allRoleNames roleRoot
+      else [];
     rolePresetNames =
       if roleRoot != null
       then
@@ -175,6 +319,12 @@ in {
       if packageRegistry != null
       then registryTags packageRegistry
       else [];
+    metaErrors = roleMetadataErrors {
+      inherit roleDefs;
+      target = "host";
+      selectedNames = roles;
+      knownNames = knownRoleNames;
+    };
   in {
     missingRoles =
       if roleRoot != null
@@ -209,6 +359,16 @@ in {
           names = packageInfo.packageTags or [];
         }
       else [];
+    inherit
+      (metaErrors)
+      missingRoleMetadata
+      invalidRoleDescriptions
+      invalidRoleTargets
+      unknownRoleRequires
+      unknownRoleConflicts
+      missingRequiredRoles
+      conflictingRoles
+      ;
   };
 
   validateHome = {
@@ -229,6 +389,18 @@ in {
       if packageData != null
       then packageData
       else {};
+    roleDefs =
+      if roleRoot != null
+      then
+        existingRoleDefs {
+          root = roleRoot;
+          names = roles;
+        }
+      else [];
+    knownRoleNames =
+      if roleRoot != null
+      then allRoleNames roleRoot
+      else [];
     resolvedRoles =
       if roleRoot != null
       then map (name: import (roleRoot + "/${name}.nix")) roles
@@ -242,6 +414,12 @@ in {
       if packageRegistry != null
       then registryTags packageRegistry
       else [];
+    metaErrors = roleMetadataErrors {
+      inherit roleDefs;
+      target = "home";
+      selectedNames = roles;
+      knownNames = knownRoleNames;
+    };
   in {
     missingRoles =
       if roleRoot != null
@@ -276,6 +454,16 @@ in {
           names = packageInfo.packageTags or [];
         }
       else [];
+    inherit
+      (metaErrors)
+      missingRoleMetadata
+      invalidRoleDescriptions
+      invalidRoleTargets
+      unknownRoleRequires
+      unknownRoleConflicts
+      missingRequiredRoles
+      conflictingRoles
+      ;
   };
 
   assertValid = {
@@ -291,6 +479,13 @@ in {
     duplicateBundles ? [],
     conflictingModuleFlags ? [],
     invalidModuleFlags ? [],
+    missingRoleMetadata ? [],
+    invalidRoleDescriptions ? [],
+    invalidRoleTargets ? [],
+    unknownRoleRequires ? [],
+    unknownRoleConflicts ? [],
+    missingRequiredRoles ? [],
+    conflictingRoles ? [],
   }: let
     messages =
       lib.optional (missingRoles != []) "  Missing role files: ${builtins.concatStringsSep ", " (map (n: "data/roles/${n}.nix") missingRoles)}"
@@ -302,7 +497,14 @@ in {
       ++ lib.optional (duplicatePresets != []) "  Duplicate presets: ${builtins.concatStringsSep ", " duplicatePresets}"
       ++ lib.optional (duplicateBundles != []) "  Duplicate bundles: ${builtins.concatStringsSep ", " duplicateBundles}"
       ++ lib.optional (conflictingModuleFlags != []) "  Conflicting module flags: ${builtins.concatStringsSep ", " conflictingModuleFlags}"
-      ++ lib.optional (invalidModuleFlags != []) "  Invalid module flag paths: ${builtins.concatStringsSep ", " invalidModuleFlags}";
+      ++ lib.optional (invalidModuleFlags != []) "  Invalid module flag paths: ${builtins.concatStringsSep ", " invalidModuleFlags}"
+      ++ lib.optional (missingRoleMetadata != []) "  Roles missing meta blocks: ${builtins.concatStringsSep ", " missingRoleMetadata}"
+      ++ lib.optional (invalidRoleDescriptions != []) "  Roles with invalid descriptions: ${builtins.concatStringsSep ", " invalidRoleDescriptions}"
+      ++ lib.optional (invalidRoleTargets != []) "  Roles with invalid targets for this context: ${builtins.concatStringsSep ", " invalidRoleTargets}"
+      ++ lib.optional (unknownRoleRequires != []) "  Unknown role requirements: ${builtins.concatStringsSep ", " unknownRoleRequires}"
+      ++ lib.optional (unknownRoleConflicts != []) "  Unknown role conflicts: ${builtins.concatStringsSep ", " unknownRoleConflicts}"
+      ++ lib.optional (missingRequiredRoles != []) "  Missing required roles: ${builtins.concatStringsSep ", " missingRequiredRoles}"
+      ++ lib.optional (conflictingRoles != []) "  Conflicting selected roles: ${builtins.concatStringsSep ", " conflictingRoles}";
   in
     if messages != []
     then builtins.throw "${kind} validation failed:\n${builtins.concatStringsSep "\n" messages}"
@@ -311,6 +513,7 @@ in {
   inherit
     collectModuleFlagConflicts
     findDuplicateNames
+    flattenModuleFlags
     invalidModuleFlagKeys
     normalizeRoleList
     ;

@@ -12,6 +12,8 @@ pub struct AppData {
     pub rebuild_running: bool,
     pub rebuild_ok: bool,
     pub rebuild_log: String,
+    pub framework_validation_ok: bool,
+    pub framework_validation_errors: Vec<String>,
     pub dotfiles_root: PathBuf,
 }
 
@@ -23,10 +25,12 @@ impl AppData {
         let home_packages = read_home_packages(&root.join("data/packages/home.nix"), root);
         let module_flags = read_flags(&root.join("data/hosts/omen/module-flags.nix"));
         let available = list_roles(&root.join("data/roles"));
+        let (framework_validation_ok, framework_validation_errors) = read_framework_validation(root);
         Self {
             host_name: "omen".into(), host_roles, home_roles, system_tags, home_packages,
             module_flags, available_roles: available,
             rebuild_running: false, rebuild_ok: true, rebuild_log: String::new(),
+            framework_validation_ok, framework_validation_errors,
             dotfiles_root: root.to_path_buf(),
         }
     }
@@ -34,10 +38,14 @@ impl AppData {
     pub fn save_host_roles(&mut self, roles: &[String]) {
         let path = self.dotfiles_root.join("data/hosts/omen/roles.nix");
         let _ = std::fs::write(&path, format_role_list(roles));
+        self.host_roles = roles.to_vec();
+        self.refresh_framework_validation();
     }
     pub fn save_home_roles(&mut self, roles: &[String]) {
         let path = self.dotfiles_root.join("data/home/lucy/roles.nix");
         let _ = std::fs::write(&path, format_role_list(roles));
+        self.home_roles = roles.to_vec();
+        self.refresh_framework_validation();
     }
     pub fn save_system_tag(&mut self, tag: &str, enabled: bool) {
         let path = self.dotfiles_root.join("data/hosts/omen/services.nix");
@@ -67,6 +75,7 @@ impl AppData {
             let _ = std::fs::write(&path, lines.join("\n"));
         }
         self.system_tags = read_system_tags(&self.dotfiles_root.join("data/packages/system.nix"), &self.dotfiles_root);
+        self.refresh_framework_validation();
     }
     pub fn save_home_package(&mut self, name: &str, enabled: bool) {
         let dir = self.dotfiles_root.join("data/bundles");
@@ -78,6 +87,7 @@ impl AppData {
             }
         }
         self.home_packages = read_home_packages(&self.dotfiles_root.join("data/packages/home.nix"), &self.dotfiles_root);
+        self.refresh_framework_validation();
     }
     pub fn save_flag(&mut self, path: &str, value: &str) {
         let file = self.dotfiles_root.join("data/hosts/omen/module-flags.nix");
@@ -96,6 +106,7 @@ impl AppData {
             let _ = std::fs::write(&file, lines.join("\n"));
         }
         self.module_flags = read_flags(&self.dotfiles_root.join("data/hosts/omen/module-flags.nix"));
+        self.refresh_framework_validation();
     }
     pub fn reload(&mut self) {
         self.host_roles = read_roles(&self.dotfiles_root.join("data/hosts/omen/roles.nix"));
@@ -103,11 +114,57 @@ impl AppData {
         self.system_tags = read_system_tags(&self.dotfiles_root.join("data/packages/system.nix"), &self.dotfiles_root);
         self.home_packages = read_home_packages(&self.dotfiles_root.join("data/packages/home.nix"), &self.dotfiles_root);
         self.module_flags = read_flags(&self.dotfiles_root.join("data/hosts/omen/module-flags.nix"));
+        self.refresh_framework_validation();
     }
     pub fn rebuild_status_html(&self) -> String {
         if self.rebuild_running { "<span class=\"rb-running\">building…</span>".into() }
         else if self.rebuild_ok { "<span class=\"rb-ok\">success</span>".into() }
         else { "<span class=\"rb-fail\">failed</span>".into() }
+    }
+    pub fn framework_validation_status_html(&self) -> String {
+        if self.framework_validation_ok {
+            "<span class=\"rb-ok\">framework ok</span>".into()
+        } else {
+            format!("<span class=\"rb-fail\">{} issue(s)</span>", self.framework_validation_errors.len())
+        }
+    }
+    pub fn refresh_framework_validation(&mut self) {
+        let (ok, errors) = read_framework_validation(&self.dotfiles_root);
+        self.framework_validation_ok = ok;
+        self.framework_validation_errors = errors;
+    }
+}
+
+fn read_framework_validation(root: &Path) -> (bool, Vec<String>) {
+    let output = std::process::Command::new("nix")
+        .args(["build", ".#checks.x86_64-linux.framework-validation", "--no-link"])
+        .current_dir(root)
+        .output();
+    match output {
+        Ok(o) if o.status.success() => (true, vec![]),
+        Ok(o) => {
+            let stderr = String::from_utf8_lossy(&o.stderr);
+            let mut errors = vec![];
+            let mut capture = false;
+            for line in stderr.lines() {
+                let trimmed = line.trim();
+                if trimmed.contains("validation failed:") {
+                    capture = true;
+                    continue;
+                }
+                if capture && !trimmed.is_empty() {
+                    let msg = trimmed.trim_start_matches('>').trim().trim_start_matches('-').trim();
+                    if !msg.is_empty() {
+                        errors.push(msg.to_string());
+                    }
+                }
+            }
+            if errors.is_empty() {
+                errors.push(stderr.lines().last().unwrap_or("framework validation failed").trim().to_string());
+            }
+            (false, errors)
+        }
+        Err(e) => (false, vec![e.to_string()]),
     }
 }
 

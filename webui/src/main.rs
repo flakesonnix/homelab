@@ -89,6 +89,11 @@ fn route(state: Arc<Mutex<ServerState>>, req: &Request) -> Response {
                 Err(e) => Response::html(format!("<span class=\"rb-fail\">{}</span>", esc(&e.to_string()))),
             }
         }
+        (Method::Post, "/validate/framework") => {
+            let mut s = state.lock().unwrap();
+            s.data.refresh_framework_validation();
+            Response::html(views::html::render_framework_validation_section(&s.data))
+        }
         (Method::Get, "/rebuild/status") => {
             let s = state.lock().unwrap();
             Response::html(s.data.rebuild_status_html())
