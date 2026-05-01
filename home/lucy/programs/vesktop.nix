@@ -3,11 +3,7 @@
   lib,
   ...
 }: {
-  options.lucy.vesktop = {
-    enable = lib.mkEnableOption "Vesktop settings";
-  };
-
-  config = lib.mkIf config.lucy.vesktop.enable {
+  config = lib.mkIf config.programs.vesktop.enable {
     xdg.configFile."vesktop/settings.json" = {
       force = true;
       text = builtins.toJSON {

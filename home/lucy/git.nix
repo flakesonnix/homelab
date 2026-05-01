@@ -3,13 +3,8 @@
   lib,
   ...
 }: {
-  options.lucy.git = {
-    enable = lib.mkEnableOption "lucy's git configuration";
-  };
-
-  config = lib.mkIf config.lucy.git.enable {
+  config = lib.mkIf config.programs.git.enable {
     programs.git = {
-      enable = true;
       settings = {
         user = {
           name = "Lucy";

@@ -253,11 +253,9 @@
     ''
   ];
 in {
-  options.lucy.niri = {
-    enable = lib.mkEnableOption "Niri compositor config";
-  };
+  options.programs.niri.enable = lib.mkEnableOption "Niri compositor config";
 
-  config = lib.mkIf config.lucy.niri.enable {
+  config = lib.mkIf config.programs.niri.enable {
     xdg.configFile."niri/config.kdl".force = true;
     xdg.configFile."niri/config.kdl".text = niriConfig;
     services.mako = {

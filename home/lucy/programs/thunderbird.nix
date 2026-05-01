@@ -3,14 +3,9 @@
   lib,
   ...
 }: {
-  options.lucy.thunderbirdUi = {
-    enable = lib.mkEnableOption "Thunderbird UI customization";
-  };
-
-  config = lib.mkIf config.lucy.thunderbirdUi.enable {
+  config = lib.mkIf config.programs.thunderbird.enable {
     programs.thunderbird = {
-      enable = true;
-      profiles.lucy = {
+      profiles.${config.home.username} = {
         isDefault = true;
         settings = {
           "mail.tabs.autoHide" = false;
