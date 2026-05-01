@@ -2,29 +2,39 @@
   osConfig,
   pkgs,
   ...
-}: {
-  # Keep wallpaper source in one place.
-  # Using a Nix path copies it into store (fully declarative), but the file
-  # still lives outside repo; move into repo later if you want portability.
-  stylix.image = let
-    wallpaper = /home/lucy/Pictures/s-l1600.jpg;
-  in
-    if builtins.pathExists wallpaper
-    then wallpaper
-    else null;
+}: let
+  wallpaper = /home/lucy/Pictures/s-l1600.jpg;
+  hasWallpaper = builtins.pathExists wallpaper;
+in
+  {
+    # Keep wallpaper source in one place.
+    # Using a Nix path copies it into store (fully declarative), but the file
+    # still lives outside repo; move into repo later if you want portability.
 
-  stylix.polarity = "dark";
+    stylix.polarity = "dark";
 
-  home.packages = with pkgs; [
-    nvd
-    nix-tree
-  ];
+    home.packages = with pkgs; [
+      nvd
+      nix-tree
+    ];
 
-  home.pointerCursor.package = pkgs.callPackage ../../../home/lucy/cursors/default.nix {};
+    home.pointerCursor.package = pkgs.callPackage ../../../home/lucy/cursors/default.nix {};
 
-  home.sessionVariables = {
-    WALLPAPER = "/home/lucy/Pictures/s-l1600.jpg";
-  };
+    home.sessionVariables =
+      if hasWallpaper
+      then {
+        WALLPAPER = toString wallpaper;
+      }
+      else {};
 
-  programs.nh.osFlake = "/home/lucy/Documents/dotfiles#${osConfig.networking.hostName}";
-}
+    programs.nh.osFlake = "/home/lucy/Documents/dotfiles#${osConfig.networking.hostName}";
+  }
+  // (
+    if hasWallpaper
+    then {
+      stylix.image = wallpaper;
+    }
+    else {
+      stylix.base16Scheme = "${pkgs."base16-schemes"}/share/themes/catppuccin-mocha.yaml";
+    }
+  )

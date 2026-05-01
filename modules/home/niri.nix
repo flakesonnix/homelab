@@ -5,6 +5,9 @@
   ...
 }: let
   projectLib = import ../../lib;
+  colors = config.lib.stylix.colors.withHashtag;
+  hex = color: lib.removePrefix "#" color;
+  rgba = color: alpha: "${hex color}${alpha}";
   inherit (projectLib) symbols;
   keys = projectLib.framework.keys {inherit symbols;};
   actions = projectLib.framework.actions {inherit symbols;};
@@ -37,7 +40,7 @@
     then ''spawn-at-startup "sh" "-lc" ${builtins.toJSON command.script}''
     else throw "Unsupported startup command kind";
   renderWindowRule = rule: renderSection "window-rule" rule.lines;
-  lockCommand = "sh -c '${pkgs.swaylock-effects}/bin/swaylock --screenshots --clock --indicator --indicator-radius 110 --indicator-thickness 8 --effect-blur 7x5 --effect-vignette 0.25:0.6 --fade-in 0.2 --font Inter --font-size 24 --timestr %H:%M --datestr %a,\ %d\ %b --text-color f7f4ffff --text-clear-color f7f4ffff --text-ver-color fff1cfff --text-wrong-color ffd7eaff --inside-color 16162688 --inside-clear-color 322347cc --inside-ver-color 5c4b2acc --inside-wrong-color 4d2234cc --ring-color e7a6cbcc --ring-clear-color adc2ffcc --ring-ver-color f2d58acc --ring-wrong-color ff8db6cc --line-color 00000000 --separator-color 00000000 --key-hl-color ffd6ecff --bs-hl-color adc2ffff --show-failed-attempts --daemonize'";
+  lockCommand = "sh -c '${pkgs.swaylock-effects}/bin/swaylock --screenshots --clock --indicator --indicator-radius 110 --indicator-thickness 8 --effect-blur 7x5 --effect-vignette 0.25:0.6 --fade-in 0.2 --font Inter --font-size 24 --timestr %H:%M --datestr %a,\ %d\ %b --text-color ${rgba colors.base07 "ff"} --text-clear-color ${rgba colors.base07 "ff"} --text-ver-color ${rgba colors.base0A "ff"} --text-wrong-color ${rgba colors.base08 "ff"} --inside-color ${rgba colors.base00 "88"} --inside-clear-color ${rgba colors.base01 "cc"} --inside-ver-color ${rgba colors.base02 "cc"} --inside-wrong-color ${rgba colors.base01 "cc"} --ring-color ${rgba colors.base0D "cc"} --ring-clear-color ${rgba colors.base0C "cc"} --ring-ver-color ${rgba colors.base0A "cc"} --ring-wrong-color ${rgba colors.base08 "cc"} --line-color 00000000 --separator-color 00000000 --key-hl-color ${rgba colors.base0E "ff"} --bs-hl-color ${rgba colors.base0C "ff"} --show-failed-attempts --daemonize'";
   startupCommands = renderLines (map renderStartup [
     (niriFramework.startupSpawn ["${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"])
     (niriFramework.startupSpawn ["${pkgs.waybar}/bin/waybar"])
@@ -81,15 +84,15 @@
     ])
     (renderPropsBlock "border" [
       (niriFramework.leaf "width" 2)
-      (niriFramework.leaf "active-color" "#e7a6cb")
-      (niriFramework.leaf "inactive-color" "#322a43")
+      (niriFramework.leaf "active-color" colors.base0D)
+      (niriFramework.leaf "inactive-color" colors.base02)
     ])
     (renderPropsBlock "shadow" [
       (niriFramework.leaf "on" null)
       (niriFramework.leaf "softness" 40)
       (niriFramework.leaf "spread" 0)
       "offset x=0 y=10"
-      (niriFramework.leaf "color" "#120f1f52")
+      (niriFramework.leaf "color" "#${rgba colors.base00 "52"}")
     ])
     (renderLeaf "background-color" "transparent")
   ];

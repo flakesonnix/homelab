@@ -5,6 +5,7 @@
   ...
 }: let
   projectLib = import ../../lib;
+  colors = config.lib.stylix.colors.withHashtag;
   waybarFramework = projectLib.framework.waybar;
   renderCss = projectLib.render.css.renderSheet;
 
@@ -15,101 +16,100 @@
       min_height = "0";
     })
     (waybarFramework.rule "window#waybar" {
-      background = "linear-gradient(90deg, rgba(18, 18, 34, 0.88), rgba(32, 24, 44, 0.84), rgba(26, 28, 58, 0.84))";
-      color = "#f7f4ff";
-      border = "1px solid rgba(255, 214, 236, 0.18)";
+      background = "linear-gradient(90deg, ${colors.base00}, ${colors.base01}, ${colors.base02})";
+      color = colors.base07;
+      border = "1px solid ${colors.base03}";
       border_radius = "18px";
-      box_shadow = "0 14px 34px rgba(8, 8, 18, 0.34)";
+      box_shadow = "0 14px 34px ${colors.base00}";
     })
     (waybarFramework.rule "window#waybar.dock" {
-      background = "linear-gradient(90deg, rgba(18, 18, 34, 0.88), rgba(32, 24, 44, 0.84), rgba(26, 28, 58, 0.84))";
-      color = "#f7f4ff";
-      border = "1px solid rgba(255, 214, 236, 0.18)";
+      background = "linear-gradient(90deg, ${colors.base00}, ${colors.base01}, ${colors.base02})";
+      color = colors.base07;
+      border = "1px solid ${colors.base03}";
       border_radius = "18px";
-      box_shadow = "0 14px 34px rgba(8, 8, 18, 0.34)";
+      box_shadow = "0 14px 34px ${colors.base00}";
     })
     (waybarFramework.rule "#workspaces" {
       margin_left = "0";
       padding = "0 6px";
     })
     (waybarFramework.rule "#workspaces button" {
-      color = "#d8cce8";
+      color = colors.base05;
       padding = "4px 12px";
       margin = "3px 2px";
       border_radius = "12px";
-      border = "1px solid transparent";
-      text_shadow = "0 1px 3px rgba(0, 0, 0, 0.2)";
+      border = "1px solid ${colors.base01}";
       transition = "all 150ms ease";
     })
     (waybarFramework.rule "#workspaces button:hover" {
-      color = "#ffffff";
-      background = "rgba(255, 214, 236, 0.12)";
-      border = "1px solid rgba(255, 214, 236, 0.12)";
+      color = colors.base07;
+      background = colors.base01;
+      border = "1px solid ${colors.base03}";
     })
     (waybarFramework.rule "#workspaces button.active" {
-      color = "#ffffff";
-      background = "linear-gradient(90deg, rgba(236, 160, 204, 0.35), rgba(173, 190, 255, 0.26))";
-      border = "1px solid rgba(255, 226, 241, 0.24)";
-      box_shadow = "0 6px 18px rgba(12, 12, 24, 0.24)";
+      color = colors.base07;
+      background = "linear-gradient(90deg, ${colors.base0D}, ${colors.base0C})";
+      border = "1px solid ${colors.base06}";
+      box_shadow = "0 6px 18px ${colors.base01}";
     })
     (waybarFramework.rule "#workspaces button.urgent" {
-      background = "rgba(255, 122, 122, 0.2)";
-      color = "#fff4f4";
+      background = colors.base08;
+      color = colors.base07;
     })
     (waybarFramework.rule "#clock" {
-      color = "#ffffff";
+      color = colors.base07;
       font_weight = "700";
       padding = "0 18px";
       letter_spacing = "0.08em";
     })
     (waybarFramework.rule "#mpris" {
-      color = "#fff3fb";
+      color = colors.base06;
       font_weight = "600";
       min_width = "220px";
     })
     (waybarFramework.rule "#mpris.paused, #mpris.stopped" {
-      color = "#a99fbb";
+      color = colors.base04;
     })
-    (waybarFramework.rule "#battery" {color = "#fff1cf";})
-    (waybarFramework.rule "#battery.charging" {color = "#80ff80";})
-    (waybarFramework.rule "#battery.warning" {color = "#ffb86c";})
-    (waybarFramework.rule "#battery.critical" {color = "#ff5555";})
-    (waybarFramework.rule "#cpu, #memory" {color = "#c9d7ff";})
-    (waybarFramework.rule "#cpu.warning, #memory.warning" {color = "#ffb86c";})
-    (waybarFramework.rule "#cpu.critical, #memory.critical" {color = "#ff5555";})
+    (waybarFramework.rule "#battery" {color = colors.base0A;})
+    (waybarFramework.rule "#battery.charging" {color = colors.base0B;})
+    (waybarFramework.rule "#battery.warning" {color = colors.base09;})
+    (waybarFramework.rule "#battery.critical" {color = colors.base08;})
+    (waybarFramework.rule "#cpu, #memory" {color = colors.base0D;})
+    (waybarFramework.rule "#cpu.warning, #memory.warning" {color = colors.base09;})
+    (waybarFramework.rule "#cpu.critical, #memory.critical" {color = colors.base08;})
     (waybarFramework.rule "#custom-power" {
-      color = "#ffcedf";
+      color = colors.base0E;
       min_width = "20px";
       padding = "0 10px";
     })
     (waybarFramework.rule "#custom-power:hover" {
-      color = "#ff5555";
-      background = "rgba(255, 85, 85, 0.1)";
+      color = colors.base08;
+      background = colors.base01;
     })
-    (waybarFramework.rule "#network" {color = "#dff1ff";})
-    (waybarFramework.rule "#network.disconnected" {color = "#ff5555";})
-    (waybarFramework.rule "#pulseaudio" {color = "#ffd9ee";})
-    (waybarFramework.rule "#pulseaudio.muted" {color = "#7a7088";})
-    (waybarFramework.rule "#tray" {color = "#d9d0f2";})
-    (waybarFramework.rule "#idle_inhibitor" {color = "#d9d0f2";})
-    (waybarFramework.rule "#idle_inhibitor.activated" {color = "#fff1cf";})
+    (waybarFramework.rule "#network" {color = colors.base0C;})
+    (waybarFramework.rule "#network.disconnected" {color = colors.base08;})
+    (waybarFramework.rule "#pulseaudio" {color = colors.base0E;})
+    (waybarFramework.rule "#pulseaudio.muted" {color = colors.base04;})
+    (waybarFramework.rule "#tray" {color = colors.base05;})
+    (waybarFramework.rule "#idle_inhibitor" {color = colors.base05;})
+    (waybarFramework.rule "#idle_inhibitor.activated" {color = colors.base0A;})
     (waybarFramework.rule "#mpris, #clock, #network, #pulseaudio, #battery, #cpu, #memory, #custom-power, #idle_inhibitor, #tray" {
-      background = "rgba(255, 255, 255, 0.07)";
+      background = colors.base01;
       margin = "6px 4px";
       padding = "0 13px";
-      border = "1px solid rgba(255, 255, 255, 0.07)";
+      border = "1px solid ${colors.base03}";
       border_radius = "12px";
-      box_shadow = "inset 0 1px 0 rgba(255, 255, 255, 0.05)";
+      box_shadow = "inset 0 1px 0 ${colors.base02}";
     })
     (waybarFramework.rule "tooltip" {
-      background = "rgba(20, 18, 36, 0.95)";
-      color = "#efeaff";
-      border = "1px solid rgba(255, 214, 236, 0.14)";
+      background = colors.base00;
+      color = colors.base07;
+      border = "1px solid ${colors.base03}";
       border_radius = "14px";
       padding = "6px 10px";
-      box_shadow = "0 12px 28px rgba(0, 0, 0, 0.32)";
+      box_shadow = "0 12px 28px ${colors.base00}";
     })
-    (waybarFramework.rule "tooltip label" {color = "#d9d0f2";})
+    (waybarFramework.rule "tooltip label" {color = colors.base06;})
   ];
 
   mainBar = waybarFramework.bar {
