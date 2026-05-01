@@ -5,5 +5,6 @@ _: {
     ./gaming/audio.nix
     ./gaming/performance.nix
     ./gaming/sysctl.nix
+    ./gaming/systemd.nix
   ];
 }
