@@ -18,6 +18,85 @@ let
   }:
     builtins.filter (name: !(builtins.elem name known)) names;
 
+  findDuplicateNames = names: let
+    counts =
+      builtins.foldl' (
+        acc: name:
+          acc
+          // {
+            ${name} = (acc.${name} or 0) + 1;
+          }
+      ) {}
+      names;
+  in
+    builtins.filter (name: counts.${name} > 1) (builtins.attrNames counts);
+
+  valueFingerprint = value:
+    builtins.toJSON value;
+
+  flattenModuleFlags = moduleFlags: let
+    go = prefix: value:
+      if builtins.isAttrs value
+      then
+        builtins.concatLists (
+          map (
+            name:
+              go
+              (prefix ++ [name])
+              value.${name}
+          ) (builtins.attrNames value)
+        )
+      else [
+        {
+          name = builtins.concatStringsSep "." prefix;
+          inherit value;
+        }
+      ];
+  in
+    builtins.listToAttrs (go [] moduleFlags);
+
+  collectModuleFlagConflicts = parts: let
+    fingerprintsByKey =
+      builtins.foldl' (
+        acc: part: let
+          flags = flattenModuleFlags (part.moduleFlags or {});
+        in
+          builtins.foldl' (
+            inner: key: let
+              fingerprint = valueFingerprint flags.${key};
+              known = inner.${key} or {};
+            in
+              inner
+              // {
+                ${key} = known // {${fingerprint} = true;};
+              }
+          )
+          acc (builtins.attrNames flags)
+      ) {}
+      parts;
+  in
+    builtins.filter (
+      key: builtins.length (builtins.attrNames fingerprintsByKey.${key}) > 1
+    ) (builtins.attrNames fingerprintsByKey);
+
+  invalidModuleFlagKeys = {
+    moduleFlags,
+    allowedRoots,
+  }:
+    builtins.filter (
+      key: let
+        rootMatch = builtins.match "([A-Za-z_][A-Za-z0-9_-]*).*" key;
+        root =
+          if rootMatch == null
+          then ""
+          else builtins.head rootMatch;
+      in
+        key
+        == ""
+        || builtins.match "[A-Za-z_][A-Za-z0-9_-]*(\\.[A-Za-z_][A-Za-z0-9_-]*)+" key == null
+        || !(builtins.elem root allowedRoots)
+    ) (builtins.attrNames (flattenModuleFlags moduleFlags));
+
   registryTags = registry:
     builtins.attrNames (
       builtins.listToAttrs (
@@ -207,15 +286,32 @@ in {
     missingBundles ? [],
     missingPackageToggles ? [],
     missingPackageTags ? [],
+    duplicateRoles ? [],
+    duplicatePresets ? [],
+    duplicateBundles ? [],
+    conflictingModuleFlags ? [],
+    invalidModuleFlags ? [],
   }: let
     messages =
       lib.optional (missingRoles != []) "  Missing role files: ${builtins.concatStringsSep ", " (map (n: "data/roles/${n}.nix") missingRoles)}"
       ++ lib.optional (missingPresets != []) "  Missing preset files: ${builtins.concatStringsSep ", " (map (n: "data/presets/${n}.nix") missingPresets)}"
       ++ lib.optional (missingBundles != []) "  Missing bundle files: ${builtins.concatStringsSep ", " (map (n: "data/bundles/${n}.nix") missingBundles)}"
       ++ lib.optional (missingPackageToggles != []) "  Unknown package toggles: ${builtins.concatStringsSep ", " missingPackageToggles}"
-      ++ lib.optional (missingPackageTags != []) "  Unknown package tags: ${builtins.concatStringsSep ", " missingPackageTags}";
+      ++ lib.optional (missingPackageTags != []) "  Unknown package tags: ${builtins.concatStringsSep ", " missingPackageTags}"
+      ++ lib.optional (duplicateRoles != []) "  Duplicate roles: ${builtins.concatStringsSep ", " duplicateRoles}"
+      ++ lib.optional (duplicatePresets != []) "  Duplicate presets: ${builtins.concatStringsSep ", " duplicatePresets}"
+      ++ lib.optional (duplicateBundles != []) "  Duplicate bundles: ${builtins.concatStringsSep ", " duplicateBundles}"
+      ++ lib.optional (conflictingModuleFlags != []) "  Conflicting module flags: ${builtins.concatStringsSep ", " conflictingModuleFlags}"
+      ++ lib.optional (invalidModuleFlags != []) "  Invalid module flag paths: ${builtins.concatStringsSep ", " invalidModuleFlags}";
   in
     if messages != []
     then builtins.throw "${kind} validation failed:\n${builtins.concatStringsSep "\n" messages}"
     else null;
+
+  inherit
+    collectModuleFlagConflicts
+    findDuplicateNames
+    invalidModuleFlagKeys
+    normalizeRoleList
+    ;
 }

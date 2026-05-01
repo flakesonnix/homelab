@@ -1,4 +1,18 @@
 {
+  selectNames = {
+    lib,
+    packageRegistry ? null,
+    packageToggles ? [],
+    packageTags ? [],
+  }: let
+    projectLib = import ../default.nix;
+    inherit (projectLib.core) registry;
+  in
+    lib.unique (
+      packageToggles
+      ++ lib.optionals (packageRegistry != null) (registry.registryNamesByTags packageTags packageRegistry)
+    );
+
   mkRegistryModule = {
     lib,
     registry,

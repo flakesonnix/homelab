@@ -1,6 +1,7 @@
 let
   projectLib = import ../default.nix;
-  inherit (projectLib.core) composition registry validation;
+  inherit (projectLib.core) composition validation;
+  packageFramework = projectLib.framework.package;
 
   importData = {
     path,
@@ -113,6 +114,7 @@ in {
     systemPackagePath ? null,
     fontPackagePath ? null,
   }: let
+    roleNames = host.roles or [];
     validationResult = validation.validateHost {
       inherit lib packageRegistry;
       hostRoot = host.__root;
@@ -123,22 +125,17 @@ in {
       };
     };
 
-    validationAssertion = validation.assertValid ({
-        inherit lib;
-        kind = "host configuration";
-      }
-      // validationResult);
-
     resolvedRoles = lib.optionals (roleRoot != null) (loadRoles {
       root = roleRoot;
-      names = host.roles or [];
+      names = roleNames;
       target = "host";
     });
 
-    resolvedPresetNames = lib.unique (
+    resolvedPresetRefs =
       (host.presets or [])
-      ++ builtins.concatLists (map (role: role.presets or []) resolvedRoles)
-    );
+      ++ builtins.concatLists (map (role: role.presets or []) resolvedRoles);
+
+    resolvedPresetNames = lib.unique resolvedPresetRefs;
 
     resolvedPresets =
       presets
@@ -154,10 +151,26 @@ in {
       listFields = ["packageToggles" "packageTags" "basePackages" "systemPackages" "fontPackages"];
     };
 
-    selectedPackageNames = lib.unique (
-      (mergedHost.packageToggles or [])
-      ++ lib.optionals (packageRegistry != null) (registry.registryNamesByTags (mergedHost.packageTags or []) packageRegistry)
-    );
+    validationAssertion = validation.assertValid ({
+        inherit lib;
+        kind = "host configuration";
+      }
+      // validationResult
+      // {
+        duplicateRoles = validation.findDuplicateNames roleNames;
+        duplicatePresets = validation.findDuplicateNames resolvedPresetRefs;
+        conflictingModuleFlags = validation.collectModuleFlagConflicts (resolvedRoles ++ resolvedPresets ++ [host]);
+        invalidModuleFlags = validation.invalidModuleFlagKeys {
+          moduleFlags = mergedHost.moduleFlags or {};
+          allowedRoots = ["lucy" "programs" "services" "hq"];
+        };
+      });
+
+    selectedPackageNames = packageFramework.selectNames {
+      inherit lib packageRegistry;
+      packageToggles = mergedHost.packageToggles or [];
+      packageTags = mergedHost.packageTags or [];
+    };
   in
     builtins.seq validationAssertion (
       (mergedHost.moduleFlags or {})
