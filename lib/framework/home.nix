@@ -1,6 +1,7 @@
 let
   projectLib = import ../default.nix;
-  inherit (projectLib.core) composition registry validation;
+  inherit (projectLib.core) composition validation;
+  packageFramework = projectLib.framework.package;
 
   importData = {
     path,
@@ -91,6 +92,7 @@ in {
     packageRegistry ? null,
     packagePath,
   }: let
+    roleNames = home.roles or [];
     validationResult = validation.validateHome {
       inherit lib packageRegistry;
       homeRoot = home.__root;
@@ -101,19 +103,14 @@ in {
       };
     };
 
-    validationAssertion = validation.assertValid ({
-        inherit lib;
-        kind = "home configuration";
-      }
-      // validationResult);
-
     resolvedRoles = lib.optionals (roleRoot != null) (loadRoles {
       root = roleRoot;
-      names = home.roles or [];
+      names = roleNames;
       target = "home";
     });
 
-    resolvedBundleNames = lib.unique (builtins.concatLists (map (role: role.bundles or []) resolvedRoles));
+    resolvedBundleRefs = builtins.concatLists (map (role: role.bundles or []) resolvedRoles);
+    resolvedBundleNames = lib.unique resolvedBundleRefs;
     resolvedBundles = loadBundles {
       root = bundleRoot;
       names = resolvedBundleNames;
@@ -127,10 +124,26 @@ in {
       listFields = ["packageToggles" "packageTags"];
     };
 
-    selectedPackageNames = lib.unique (
-      (mergedHome.packageToggles or [])
-      ++ lib.optionals (packageRegistry != null) (registry.registryNamesByTags (mergedHome.packageTags or []) packageRegistry)
-    );
+    validationAssertion = validation.assertValid ({
+        inherit lib;
+        kind = "home configuration";
+      }
+      // validationResult
+      // {
+        duplicateRoles = validation.findDuplicateNames roleNames;
+        duplicateBundles = validation.findDuplicateNames resolvedBundleRefs;
+        conflictingModuleFlags = validation.collectModuleFlagConflicts (resolvedRoles ++ resolvedBundles ++ [home]);
+        invalidModuleFlags = validation.invalidModuleFlagKeys {
+          moduleFlags = mergedHome.moduleFlags or {};
+          allowedRoots = ["programs" "services" "xdg" "home" "stylix" "gtk" "dconf" "nix"];
+        };
+      });
+
+    selectedPackageNames = packageFramework.selectNames {
+      inherit lib packageRegistry;
+      packageToggles = mergedHome.packageToggles or [];
+      packageTags = mergedHome.packageTags or [];
+    };
 
     baseConfig =
       (mergedHome.moduleFlags or {})
