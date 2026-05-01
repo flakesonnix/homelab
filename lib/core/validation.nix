@@ -435,6 +435,14 @@ in {
       then map (name: import (roleRoot + "/${name}.nix")) roles
       else [];
     bundleNames = lib.unique (builtins.concatLists (map (role: role.home.bundles or []) resolvedRoles));
+    bundleDefs =
+      if bundleRoot != null
+      then
+        existingDataDefs {
+          root = bundleRoot;
+          names = bundleNames;
+        }
+      else [];
     knownPackageNames =
       if packageRegistry != null
       then builtins.attrNames packageRegistry
@@ -448,6 +456,10 @@ in {
       target = "home";
       selectedNames = roles;
       knownNames = knownRoleNames;
+    };
+    bundleMetaErrors = metadataShapeErrors {
+      defs = bundleDefs;
+      target = "home";
     };
   in {
     missingRoles =
@@ -493,6 +505,9 @@ in {
       missingRequiredRoles
       conflictingRoles
       ;
+    missingBundleMetadata = bundleMetaErrors.missingMetadata;
+    invalidBundleDescriptions = bundleMetaErrors.invalidDescriptions;
+    invalidBundleTargets = bundleMetaErrors.invalidTargets;
   };
 
   assertValid = {
@@ -514,6 +529,9 @@ in {
     missingPresetMetadata ? [],
     invalidPresetDescriptions ? [],
     invalidPresetTargets ? [],
+    missingBundleMetadata ? [],
+    invalidBundleDescriptions ? [],
+    invalidBundleTargets ? [],
     unknownRoleRequires ? [],
     unknownRoleConflicts ? [],
     missingRequiredRoles ? [],
@@ -536,6 +554,9 @@ in {
       ++ lib.optional (missingPresetMetadata != []) "  Presets missing meta blocks: ${builtins.concatStringsSep ", " missingPresetMetadata}"
       ++ lib.optional (invalidPresetDescriptions != []) "  Presets with invalid descriptions: ${builtins.concatStringsSep ", " invalidPresetDescriptions}"
       ++ lib.optional (invalidPresetTargets != []) "  Presets with invalid targets for this context: ${builtins.concatStringsSep ", " invalidPresetTargets}"
+      ++ lib.optional (missingBundleMetadata != []) "  Bundles missing meta blocks: ${builtins.concatStringsSep ", " missingBundleMetadata}"
+      ++ lib.optional (invalidBundleDescriptions != []) "  Bundles with invalid descriptions: ${builtins.concatStringsSep ", " invalidBundleDescriptions}"
+      ++ lib.optional (invalidBundleTargets != []) "  Bundles with invalid targets for this context: ${builtins.concatStringsSep ", " invalidBundleTargets}"
       ++ lib.optional (unknownRoleRequires != []) "  Unknown role requirements: ${builtins.concatStringsSep ", " unknownRoleRequires}"
       ++ lib.optional (unknownRoleConflicts != []) "  Unknown role conflicts: ${builtins.concatStringsSep ", " unknownRoleConflicts}"
       ++ lib.optional (missingRequiredRoles != []) "  Missing required roles: ${builtins.concatStringsSep ", " missingRequiredRoles}"

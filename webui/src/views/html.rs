@@ -182,6 +182,8 @@ fn overview(h: &mut H, data: &AppData) {
             });
         });
     });
+    named_metadata_block(h, "Active Presets", &data.preset_names_for_host_roles(), &data.preset_info);
+    named_bundle_block(h, "Active Bundles", &data.bundle_names_for_home_roles(), &data.bundle_info);
 }
 
 fn status_cell(h: &mut H, label: &str, value: &str) {
@@ -246,6 +248,50 @@ fn role_hints(h: &mut H, role: &crate::state::RoleInfo, kind: &str, active: &[St
     for hint in hints {
         h.elem("div", &[("class", "chk-desc")], |h| h.raw(&hint));
     }
+}
+
+fn named_metadata_block(h: &mut H, title: &str, names: &[String], items: &[crate::state::PresetInfo]) {
+    if names.is_empty() { return; }
+    h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw(title)));
+        h.elem("div", &[("class", "card-body")], |h| {
+            h.elem("div", &[("class", "chk-grid")], |h| {
+                for name in names {
+                    if let Some(item) = items.iter().find(|item| &item.name == name) {
+                        h.elem("div", &[("class", "chk-item"), ("style", "cursor:default")], |h| {
+                            h.raw("<span style=\"color:var(--green)\">●</span>");
+                            h.elem("div", &[], |h| {
+                                h.elem("div", &[("class", "chk-name")], |h| h.raw(&item.name));
+                                h.elem("div", &[("class", "chk-desc")], |h| h.raw(&item.description));
+                            });
+                        });
+                    }
+                }
+            });
+        });
+    });
+}
+
+fn named_bundle_block(h: &mut H, title: &str, names: &[String], items: &[crate::state::BundleInfo]) {
+    if names.is_empty() { return; }
+    h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw(title)));
+        h.elem("div", &[("class", "card-body")], |h| {
+            h.elem("div", &[("class", "chk-grid")], |h| {
+                for name in names {
+                    if let Some(item) = items.iter().find(|item| &item.name == name) {
+                        h.elem("div", &[("class", "chk-item"), ("style", "cursor:default")], |h| {
+                            h.raw("<span style=\"color:var(--green)\">●</span>");
+                            h.elem("div", &[], |h| {
+                                h.elem("div", &[("class", "chk-name")], |h| h.raw(&item.name));
+                                h.elem("div", &[("class", "chk-desc")], |h| h.raw(&item.description));
+                            });
+                        });
+                    }
+                }
+            });
+        });
+    });
 }
 
 fn packages_section(h: &mut H, data: &AppData) {
@@ -420,12 +466,21 @@ mod tests {
             ],
             available_roles: vec!["core".into(), "desktop".into(), "dev".into(), "gaming".into()],
             role_info: vec![
-                crate::state::RoleInfo { name: "core".into(), description: "Base shell, editor, git, and Nix tooling".into(), targets: vec!["home".into()], requires_host: vec![], requires_home: vec![], conflicts_host: vec![], conflicts_home: vec![] },
-                crate::state::RoleInfo { name: "desktop".into(), description: "Desktop environment, GUI apps, and compositor integration".into(), targets: vec!["host".into(), "home".into()], requires_host: vec![], requires_home: vec!["core".into()], conflicts_host: vec![], conflicts_home: vec![] },
-                crate::state::RoleInfo { name: "dev".into(), description: "Development tools, IDEs, and device tooling".into(), targets: vec!["host".into(), "home".into()], requires_host: vec![], requires_home: vec!["core".into()], conflicts_host: vec![], conflicts_home: vec![] },
-                crate::state::RoleInfo { name: "gaming".into(), description: "Gaming stack with Steam, GameMode, and performance presets".into(), targets: vec!["host".into()], requires_host: vec!["desktop".into()], requires_home: vec![], conflicts_host: vec![], conflicts_home: vec![] },
+                crate::state::RoleInfo { name: "core".into(), description: "Base shell, editor, git, and Nix tooling".into(), targets: vec!["home".into()], presets: vec![], bundles: vec!["core".into()], requires_host: vec![], requires_home: vec![], conflicts_host: vec![], conflicts_home: vec![] },
+                crate::state::RoleInfo { name: "desktop".into(), description: "Desktop environment, GUI apps, and compositor integration".into(), targets: vec!["host".into(), "home".into()], presets: vec![], bundles: vec!["desktop".into()], requires_host: vec![], requires_home: vec!["core".into()], conflicts_host: vec![], conflicts_home: vec![] },
+                crate::state::RoleInfo { name: "dev".into(), description: "Development tools, IDEs, and device tooling".into(), targets: vec!["host".into(), "home".into()], presets: vec![], bundles: vec!["dev".into()], requires_host: vec![], requires_home: vec!["core".into()], conflicts_host: vec![], conflicts_home: vec![] },
+                crate::state::RoleInfo { name: "gaming".into(), description: "Gaming stack with Steam, GameMode, and performance presets".into(), targets: vec!["host".into()], presets: vec!["gaming-base".into(), "gaming-performance".into(), "gaming-steam".into()], bundles: vec![], requires_host: vec!["desktop".into()], requires_home: vec![], conflicts_host: vec![], conflicts_home: vec![] },
             ],
-            preset_info: vec![],
+            preset_info: vec![
+                crate::state::PresetInfo { name: "gaming-base".into(), description: "Enable the shared gaming module baseline".into(), targets: vec!["host".into()] },
+                crate::state::PresetInfo { name: "gaming-performance".into(), description: "Apply gaming performance tuning and low-latency sysctl settings".into(), targets: vec!["host".into()] },
+                crate::state::PresetInfo { name: "gaming-steam".into(), description: "Enable Steam, GameMode, Gamescope, and MangoHud".into(), targets: vec!["host".into()] },
+            ],
+            bundle_info: vec![
+                crate::state::BundleInfo { name: "core".into(), description: "Base shell, editor, SSH, and Nix workflow configuration".into(), targets: vec!["home".into()] },
+                crate::state::BundleInfo { name: "desktop".into(), description: "Desktop GUI apps, stylix, and flatpak desktop integrations".into(), targets: vec!["home".into()] },
+                crate::state::BundleInfo { name: "dev".into(), description: "Extra development applications for the home profile".into(), targets: vec!["home".into()] },
+            ],
             rebuild_running: false,
             rebuild_ok: true,
             rebuild_log: String::new(),
@@ -450,6 +505,8 @@ mod tests {
         assert!(html.contains("User Profile"));
         assert!(html.contains("Rebuild & Check"));
         assert!(html.contains("framework validation"));
+        assert!(html.contains("Active Presets"));
+        assert!(html.contains("Active Bundles"));
         assert!(html.contains("/style.css"));
     }
 
