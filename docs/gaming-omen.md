@@ -4,7 +4,7 @@
 
 ## Current Stack
 
-Gaming defaults are enabled through `lucy.gaming` in `data/hosts/omen.nix`.
+Gaming defaults are enabled via `gaming` role + presets.
 
 Current features:
 
@@ -17,9 +17,11 @@ Current features:
 
 ## Where It Lives
 
-- Host declaration: `data/hosts/omen.nix`
+- Host declaration: `data/hosts/omen/` (roles + host-local overlays)
+- Roles: `data/roles/gaming.nix`
+- Presets: `data/presets/gaming-*.nix`
 - Host application: `hosts/omen/host.nix`
-- Gaming module: `modules/nixos/gaming.nix`
+- Gaming modules: `modules/nixos/gaming/*.nix`
 
 ## Tuning Defaults
 
@@ -39,5 +41,5 @@ These are applied through `services.pipewire.lowLatency` when `lucy.gaming.enabl
 ## Follow-Up Ideas
 
 - Add a streaming subfeature for Sunshine or OBS.
-- Move gaming toggles into preset data under `data/presets/`.
+- Add streaming subfeature (Sunshine / OBS) as role or preset.
 - Add game-specific launch helpers if needed.

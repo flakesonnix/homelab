@@ -36,5 +36,14 @@ in {
   renderCommandBlock = name: argv: "${name} ${builtins.concatStringsSep " " (map builtins.toJSON argv)}";
 
   renderPropsBlock = name: props:
-    renderSection name (map (prop: renderLeaf prop.name prop.value) props);
+  # Allow mixing pre-rendered KDL lines with structured { name, value } leaves.
+    renderSection name (
+      map (
+        prop:
+          if builtins.isString prop
+          then prop
+          else renderLeaf prop.name prop.value
+      )
+      props
+    );
 }
