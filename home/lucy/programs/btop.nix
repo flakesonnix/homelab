@@ -3,13 +3,8 @@
   lib,
   ...
 }: {
-  options.lucy.btop = {
-    enable = lib.mkEnableOption "lucy's btop configuration";
-  };
-
-  config = lib.mkIf config.lucy.btop.enable {
+  config = lib.mkIf config.programs.btop.enable {
     programs.btop = {
-      enable = true;
       settings = {
         proc_gradient = false;
         proc_tree = true;

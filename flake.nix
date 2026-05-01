@@ -223,6 +223,22 @@
 
           formatter = pkgs.alejandra;
 
+          packages.webui = pkgs.stdenv.mkDerivation {
+            pname = "nixfiles-webui";
+            version = "0.1.0";
+            src = ./webui;
+            nativeBuildInputs = with pkgs; [meson ninja rustc cargo];
+            configurePhase = ''
+              meson setup build --prefix=$out
+            '';
+            buildPhase = ''
+              ninja -C build
+            '';
+            installPhase = ''
+              ninja -C build install
+            '';
+          };
+
           apps = {
             rebuild = {
               type = "app";
@@ -260,6 +276,58 @@
                 # Catch obvious plaintext creds in declarative host data.
                 # Limit scope to data/hosts to avoid false positives in module docs.
                 rg -n --hidden --no-ignore-vcs 'password\s*=\s*"' "$src/data/hosts" && exit 1
+                mkdir -p "$out"
+              '';
+
+            webui-unit =
+              pkgs.runCommand "webui-unit" {
+                nativeBuildInputs = [pkgs.rustc pkgs.stdenv.cc];
+                src = self;
+              } ''
+                rustc --test "$src/webui/src/http.rs" -o http-tests
+                ./http-tests
+                rustc --test "$src/webui/src/model.rs" -o model-tests
+                ./model-tests
+                rustc --test "$src/webui/src/state.rs" -o state-tests
+                ./state-tests
+                rustc --test "$src/webui/src/tests.rs" -o webui-tests
+                ./webui-tests
+                mkdir -p "$out"
+              '';
+
+            framework-validation =
+              pkgs.runCommand "framework-validation" {
+                nativeBuildInputs = [pkgs.nix];
+                src = self;
+              } ''
+                export HOME="$TMPDIR"
+                export XDG_STATE_HOME="$TMPDIR/state"
+                cat > validation-test.nix <<EOF
+                let
+                  pkgs = import ${pkgs.path} {};
+                  lib = pkgs.lib;
+                  dot = import $src/lib;
+                  validation = dot.core.validation;
+                  host = validation.validateHost {
+                    inherit lib;
+                    hostRoot = $src/data/hosts/omen;
+                    roleRoot = $src/data/roles;
+                    presetRoot = $src/data/presets;
+                  };
+                  home = validation.validateHome {
+                    inherit lib;
+                    homeRoot = $src/data/home/lucy;
+                    roleRoot = $src/data/roles;
+                    bundleRoot = $src/data/bundles;
+                  };
+                in
+                  assert host.missingRoles == [];
+                  assert host.missingPresets == [];
+                  assert home.missingRoles == [];
+                  assert home.missingBundles == [];
+                  true
+                EOF
+                nix-instantiate --eval --expr "import ./validation-test.nix"
                 mkdir -p "$out"
               '';
 

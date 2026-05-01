@@ -4,13 +4,8 @@
   pkgs,
   ...
 }: {
-  options.lucy.fuzzel = {
-    enable = lib.mkEnableOption "Fuzzel launcher configuration";
-  };
-
-  config = lib.mkIf config.lucy.fuzzel.enable {
+  config = lib.mkIf config.programs.fuzzel.enable {
     programs.fuzzel = {
-      enable = true;
       settings = lib.mkForce {
         main = {
           terminal = "alacritty";

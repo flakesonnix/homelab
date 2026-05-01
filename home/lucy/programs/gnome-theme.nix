@@ -3,12 +3,16 @@
   pkgs,
   lib,
   ...
-}: {
-  options.lucy.gnomeTheme = {
-    enable = lib.mkEnableOption "Clean macOS dark GNOME theme";
-  };
+}: let
+  colors = config.lib.stylix.colors.withHashtag;
+  wallpaperUri =
+    if config.stylix.image != null
+    then "file://${toString config.stylix.image}"
+    else "file:///run/current-system/sw/share/backgrounds/gnome/adwaita-dark.svg";
+in {
+  options.programs.gnomeTheme.enable = lib.mkEnableOption "Clean macOS dark GNOME theme";
 
-  config = lib.mkIf config.lucy.gnomeTheme.enable {
+  config = lib.mkIf config.programs.gnomeTheme.enable {
     gtk = {
       enable = true;
       font = {
@@ -37,14 +41,14 @@
       };
 
       "org/gnome/desktop/background" = {
-        picture-uri = "file:///run/current-system/sw/share/backgrounds/gnome/adwaita-dark.svg";
-        picture-uri-dark = "file:///run/current-system/sw/share/backgrounds/gnome/adwaita-dark.svg";
+        picture-uri = wallpaperUri;
+        picture-uri-dark = wallpaperUri;
         color-shading-type = "solid";
-        primary-color = "#11111e";
+        primary-color = colors.base00;
       };
 
       "org/gnome/desktop/screensaver" = {
-        picture-uri = "file:///run/current-system/sw/share/backgrounds/gnome/adwaita-dark.svg";
+        picture-uri = wallpaperUri;
       };
 
       "org/gnome/desktop/wm/preferences" = {

@@ -3,14 +3,9 @@
   lib,
   ...
 }: {
-  options.lucy.firefoxUi = {
-    enable = lib.mkEnableOption "Firefox UI customization";
-  };
-
-  config = lib.mkIf config.lucy.firefoxUi.enable {
+  config = lib.mkIf config.programs.firefox.enable {
     programs.firefox = {
-      enable = true;
-      profiles.lucy = {
+      profiles.${config.home.username} = {
         isDefault = true;
         settings = {
           "browser.compactmode.show" = true;
@@ -66,6 +61,6 @@
       };
     };
 
-    stylix.targets.firefox.profileNames = ["lucy"];
+    stylix.targets.firefox.profileNames = [config.home.username];
   };
 }
