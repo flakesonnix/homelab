@@ -252,6 +252,17 @@
               };
             };
 
+            no-plaintext-host-passwords =
+              pkgs.runCommand "no-plaintext-host-passwords" {
+                nativeBuildInputs = [pkgs.ripgrep];
+                src = self;
+              } ''
+                # Catch obvious plaintext creds in declarative host data.
+                # Limit scope to data/hosts to avoid false positives in module docs.
+                rg -n --hidden --no-ignore-vcs 'password\s*=\s*"' "$src/data/hosts" && exit 1
+                mkdir -p "$out"
+              '';
+
             # Force evaluation of full NixOS+HM config (no system build).
             # Discard string context so we don't pull huge build deps into this check.
             omen-eval = pkgs.writeText "omen-eval" (builtins.unsafeDiscardStringContext (builtins.toString omen-config.config.system.build.toplevel));
