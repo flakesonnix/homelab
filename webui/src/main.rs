@@ -50,6 +50,13 @@ fn route(state: Arc<Mutex<ServerState>>, req: &Request) -> Response {
             }
             Response::html(views::html::render_roles_section(&state.lock().unwrap().data, "home"))
         }
+        (Method::Post, "/presets/host") => {
+            if let Some(presets) = req.form_value("presets") {
+                let list: Vec<String> = presets.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+                state.lock().unwrap().data.save_host_presets(&list);
+            }
+            Response::html(views::html::render_host_presets_section(&state.lock().unwrap().data))
+        }
         (Method::Post, "/tags/system") => {
             let tag = req.form_value("tag").unwrap_or_default();
             let enabled = req.form_value("enabled") == Some("true".into());

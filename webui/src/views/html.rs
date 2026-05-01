@@ -35,7 +35,7 @@ pub fn page(data: &AppData) -> String {
     h.raw(r#"<body x-data="{mode:localStorage.getItem('uiMode')||'user',page:'overview'}" x-init="$watch('mode',v=>{localStorage.setItem('uiMode',v);document.body.classList.toggle('expert-mode',v==='expert')})">"#);
     sidebar(&mut h, data);
     main_content(&mut h, data);
-    h.raw(r#"<script>function submitRoleForm(e,k){var f=document.getElementById(k+'-role-form'),c=f.closest('.card-body'),x=c.querySelectorAll('input[type=checkbox]:checked');f.querySelector('[name=roles]').value=Array.from(x).map(function(a){return a.value}).join(',');htmx.trigger(f,'submit')}</script>"#);
+    h.raw(r#"<script>function submitRoleForm(e,k){var f=document.getElementById(k+'-role-form'),c=f.closest('.card-body'),x=c.querySelectorAll('input[type=checkbox]:checked');f.querySelector('[name=roles]').value=Array.from(x).map(function(a){return a.value}).join(',');htmx.trigger(f,'submit')}function submitPresetForm(){var f=document.getElementById('host-preset-form'),c=f.closest('.card-body'),x=c.querySelectorAll('input[name=preset]:checked');f.querySelector('[name=presets]').value=Array.from(x).map(function(a){return a.value}).join(',');htmx.trigger(f,'submit')}</script>"#);
     h.raw("</body></html>");
     h.finish()
 }
@@ -103,6 +103,7 @@ fn main_content(h: &mut H, data: &AppData) {
             page_block(h, "host", false, |h| {
                 page_header(h, "Host Roles", "Define what this machine does");
                 role_card(h, data, &data.host_roles, "host roles", "/roles/host", "host");
+                host_presets_card(h, data);
             });
             page_block(h, "home", false, |h| {
                 page_header(h, "User Profile", "Apps and tools for your user");
@@ -222,6 +223,28 @@ fn role_card(h: &mut H, data: &AppData, active: &[String], title: &str, endpoint
     });
     h.raw(&format!("<form id=\"{}-role-form\" hx-post=\"{}\" hx-target=\"#{}-roles\" hx-swap=\"innerHTML\" style=\"display:none\"><input type=\"hidden\" name=\"roles\"></form>", kind, endpoint, kind));
     h.raw(&format!("<div id=\"{}-roles\"></div>", kind));
+}
+
+fn host_presets_card(h: &mut H, data: &AppData) {
+    h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw("host presets")));
+        h.elem("div", &[("class", "card-body")], |h| {
+            h.elem("div", &[("class", "chk-grid")], |h| {
+                for preset in data.preset_info.iter().filter(|preset| preset.targets.iter().any(|t| t == "host")) {
+                    let checked = if data.host_presets.contains(&preset.name) { " checked" } else { "" };
+                    let onchange = "x-on:change=\"submitPresetForm()\"";
+                    h.elem("label", &[("class", "chk-item")], |h| {
+                        h.void("input", &[("type", "checkbox"), ("name", "preset"), ("value", &preset.name), ("checked", checked), ("onchange", onchange)]);
+                        h.elem("div", &[], |h| {
+                            h.elem("div", &[("class", "chk-name")], |h| h.raw(&preset.name));
+                            h.elem("div", &[("class", "chk-desc")], |h| h.raw(&preset.description));
+                        });
+                    });
+                }
+            });
+            h.raw(r##"<form id="host-preset-form" hx-post="/presets/host" hx-target="#host-presets" hx-swap="innerHTML" style="display:none"><input type="hidden" name="presets"></form><div id="host-presets"></div>"##);
+        });
+    });
 }
 
 fn role_hints(h: &mut H, role: &crate::state::RoleInfo, kind: &str, active: &[String]) {
@@ -436,6 +459,12 @@ pub fn render_roles_section(data: &AppData, kind: &str) -> String {
     h.finish()
 }
 
+pub fn render_host_presets_section(data: &AppData) -> String {
+    let mut h = H::new();
+    host_presets_card(&mut h, data);
+    h.finish()
+}
+
 pub fn render_packages_section(data: &AppData) -> String {
     let mut h = H::new();
     packages_section(&mut h, data);
@@ -457,6 +486,7 @@ mod tests {
         AppData {
             host_name: "omen".into(),
             host_roles: vec!["desktop".into(), "gaming".into()],
+            host_presets: vec!["gaming-base".into()],
             home_roles: vec!["core".into(), "dev".into()],
             system_tags: vec![("desktop".into(), true), ("chat".into(), false)],
             home_packages: vec![("nautilus".into(), true), ("comma".into(), false)],
@@ -481,6 +511,12 @@ mod tests {
                 crate::state::BundleInfo { name: "desktop".into(), description: "Desktop GUI apps, stylix, and flatpak desktop integrations".into(), targets: vec!["home".into()] },
                 crate::state::BundleInfo { name: "dev".into(), description: "Extra development applications for the home profile".into(), targets: vec!["home".into()] },
             ],
+            preview: crate::state::PreviewData {
+                host_roles: vec!["desktop".into(), "gaming".into()],
+                host_presets: vec!["gaming-base".into(), "gaming-performance".into(), "gaming-steam".into()],
+                home_roles: vec!["core".into(), "dev".into()],
+                home_bundles: vec!["core".into(), "dev".into()],
+            },
             rebuild_running: false,
             rebuild_ok: true,
             rebuild_log: String::new(),
@@ -536,6 +572,13 @@ mod tests {
         let home = render_roles_section(&data, "home");
         assert!(host.contains("requires desktop"));
         assert!(home.contains("requires core"));
+    }
+
+    #[test]
+    fn render_host_presets_section_contains_presets() {
+        let html = render_host_presets_section(&sample_data());
+        assert!(html.contains("host presets"));
+        assert!(html.contains("gaming-performance"));
     }
 
     #[test]

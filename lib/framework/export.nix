@@ -1,4 +1,13 @@
 let
+  unique = list:
+    builtins.foldl' (
+      acc: item:
+        if builtins.elem item acc
+        then acc
+        else acc ++ [item]
+    ) []
+    list;
+
   readNamedNixFiles = root:
     map (
       name: builtins.replaceStrings [".nix"] [""] name
@@ -74,4 +83,29 @@ in {
       ++ (map (renderSimple "preset") presets)
       ++ (map (renderSimple "bundle") bundles)
     );
+
+  exportPreview = root: let
+    roleRoot = root + "/data/roles";
+    hostRoot = root + "/data/hosts/omen";
+    homeRoot = root + "/data/home/lucy";
+    hostRoles = import (hostRoot + "/roles.nix");
+    homeRoles = import (homeRoot + "/roles.nix");
+    hostPresetFile = hostRoot + "/presets.nix";
+    directHostPresets =
+      if builtins.pathExists hostPresetFile
+      then import hostPresetFile
+      else [];
+    rolesFor = names: map (name: import (roleRoot + "/${name}.nix")) names;
+    hostRoleDefs = rolesFor hostRoles;
+    homeRoleDefs = rolesFor homeRoles;
+    resolvedHostPresets = unique (directHostPresets ++ builtins.concatLists (map (role: role.host.presets or []) hostRoleDefs));
+    resolvedHomeBundles = unique (builtins.concatLists (map (role: role.home.bundles or []) homeRoleDefs));
+    render = kind: values: builtins.concatStringsSep "\t" [kind (builtins.concatStringsSep "," values)];
+  in
+    builtins.concatStringsSep "\n" [
+      (render "preview-host-roles" hostRoles)
+      (render "preview-host-presets" resolvedHostPresets)
+      (render "preview-home-roles" homeRoles)
+      (render "preview-home-bundles" resolvedHomeBundles)
+    ];
 }
