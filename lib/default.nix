@@ -7,6 +7,7 @@ let
   coreRegistry = import ./core/registry.nix;
   corePackageRouting = import ./core/package-routing.nix;
   coreComposition = import ./core/composition.nix;
+  coreValidation = import ./core/validation.nix;
 
   renderCommand = import ./render/command.nix;
   renderKdl = import ./render/kdl.nix;
@@ -54,6 +55,7 @@ in
       registry = coreRegistry;
       composition = coreComposition;
       "package-routing" = corePackageRouting;
+      validation = coreValidation;
     };
 
     render = {
