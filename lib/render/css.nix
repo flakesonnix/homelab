@@ -8,7 +8,7 @@ let
     else toString value;
 
   renderDeclaration = name: value: "  ${dashify name}: ${renderValue value};";
-in {
+in rec {
   inherit dashify renderValue renderDeclaration;
 
   renderRule = rule: let
