@@ -1,6 +1,6 @@
 let
   projectLib = import ../default.nix;
-  inherit (projectLib.core) composition registry;
+  inherit (projectLib.core) composition registry validation;
 
   importData = {
     path,
@@ -61,6 +61,8 @@ in {
       args = importedArgs;
     };
   in {
+    __root = root;
+
     roles = importData {
       path = root + "/roles.nix";
       args = importedArgs;
@@ -89,6 +91,22 @@ in {
     packageRegistry ? null,
     packagePath,
   }: let
+    validationResult = validation.validateHome {
+      inherit lib packageRegistry;
+      homeRoot = home.__root;
+      inherit roleRoot bundleRoot;
+      packageData = {
+        packageToggles = home.packageToggles or [];
+        packageTags = home.packageTags or [];
+      };
+    };
+
+    validationAssertion = validation.assertValid ({
+        inherit lib;
+        kind = "home configuration";
+      }
+      // validationResult);
+
     resolvedRoles = lib.optionals (roleRoot != null) (loadRoles {
       root = roleRoot;
       names = home.roles or [];
@@ -129,5 +147,5 @@ in {
       // lib.optionalAttrs (mergedHome ? xdg) {inherit (mergedHome) xdg;}
       // lib.optionalAttrs (mergedHome ? nix) {inherit (mergedHome) nix;};
   in
-    lib.recursiveUpdate baseConfig (mergedHome.settings or {});
+    builtins.seq validationAssertion (lib.recursiveUpdate baseConfig (mergedHome.settings or {}));
 }
