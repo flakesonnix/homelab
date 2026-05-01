@@ -1,7 +1,6 @@
 let
   projectLib = import ../default.nix;
-  inherit (projectLib.core) composition;
-  inherit (projectLib.core) registry;
+  inherit (projectLib.core) composition registry validation;
 
   importData = {
     path,
@@ -51,6 +50,8 @@ in {
       args = importedArgs;
     };
   in {
+    __root = root;
+
     presets = importData {
       path = root + "/presets.nix";
       args = importedArgs;
@@ -112,6 +113,22 @@ in {
     systemPackagePath ? null,
     fontPackagePath ? null,
   }: let
+    validationResult = validation.validateHost {
+      inherit lib packageRegistry;
+      hostRoot = host.__root;
+      inherit roleRoot presetRoot;
+      packageData = {
+        packageToggles = host.packageToggles or [];
+        packageTags = host.packageTags or [];
+      };
+    };
+
+    validationAssertion = validation.assertValid ({
+        inherit lib;
+        kind = "host configuration";
+      }
+      // validationResult);
+
     resolvedRoles = lib.optionals (roleRoot != null) (loadRoles {
       root = roleRoot;
       names = host.roles or [];
@@ -142,36 +159,38 @@ in {
       ++ lib.optionals (packageRegistry != null) (registry.registryNamesByTags (mergedHost.packageTags or []) packageRegistry)
     );
   in
-    (mergedHost.moduleFlags or {})
-    // lib.optionalAttrs (selectedPackageNames != []) (
-      composition.renderEnabledAttrs {
+    builtins.seq validationAssertion (
+      (mergedHost.moduleFlags or {})
+      // lib.optionalAttrs (selectedPackageNames != []) (
+        composition.renderEnabledAttrs {
+          inherit lib;
+          path = packagePath;
+          names = selectedPackageNames;
+        }
+      )
+      // composition.renderOptionalPath {
         inherit lib;
-        path = packagePath;
-        names = selectedPackageNames;
+        path = basePackagePath;
+        value = mergedHost.basePackages or null;
       }
-    )
-    // composition.renderOptionalPath {
-      inherit lib;
-      path = basePackagePath;
-      value = mergedHost.basePackages or null;
-    }
-    // composition.renderOptionalPath {
-      inherit lib;
-      path = systemPackagePath;
-      value =
-        if systemPackagePath == null
-        then null
-        else mergedHost.systemPackages or [];
-    }
-    // composition.renderOptionalPath {
-      inherit lib;
-      path = fontPackagePath;
-      value =
-        if fontPackagePath == null
-        then null
-        else mergedHost.fontPackages or [];
-    }
-    // (mergedHost.settings or {});
+      // composition.renderOptionalPath {
+        inherit lib;
+        path = systemPackagePath;
+        value =
+          if systemPackagePath == null
+          then null
+          else mergedHost.systemPackages or [];
+      }
+      // composition.renderOptionalPath {
+        inherit lib;
+        path = fontPackagePath;
+        value =
+          if fontPackagePath == null
+          then null
+          else mergedHost.fontPackages or [];
+      }
+      // (mergedHost.settings or {})
+    );
 
   mkHost = host: host;
 }
