@@ -147,7 +147,9 @@ fn overview(h: &mut H, data: &AppData) {
         let n = data.home_packages.iter().filter(|(_, e)| *e).count();
         status_cell(h, "User Packages", &format!("{} enabled", n));
         status_cell_html(h, "Build Status", &data.rebuild_status_html());
+        status_cell_html(h, "Framework", &data.framework_validation_status_html());
     });
+    framework_validation_block(h, data);
     h.elem("div", &[("class", "card")], |h| {
         h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw("Active Host Roles")));
         h.elem("div", &[("class", "card-body")], |h| {
@@ -305,13 +307,52 @@ fn actions_section(h: &mut H) {
         });
     });
     h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| { h.elem("h3", &[], |h| h.raw("framework validate")); h.elem("span", &[("class", "tag")], |h| h.raw("framework rules")); });
+        h.elem("div", &[("class", "card-body")], |h| {
+            h.elem("p", &[("style", "font-size:0.82rem;color:var(--text-dim);margin-bottom:0.8rem")], |h| h.raw("Role metadata, requires/conflicts, package refs, and module flag rules."));
+            h.elem("div", &[("class", "btn-group")], |h| h.raw(r##"<button class="btn" hx-post="/validate/framework" hx-target="#framework-validation-output" hx-swap="innerHTML">⋄ Framework</button>"##));
+        });
+    });
+    h.elem("div", &[("class", "card")], |h| {
         h.elem("div", &[("class", "card-header")], |h| { h.elem("h3", &[], |h| h.raw("validate")); h.elem("span", &[("class", "tag")], |h| h.raw("nix flake check")); });
         h.elem("div", &[("class", "card-body")], |h| {
             h.elem("p", &[("style", "font-size:0.82rem;color:var(--text-dim);margin-bottom:0.8rem")], |h| h.raw("Evaluation, formatting, and pre-commit checks."));
             h.elem("div", &[("class", "btn-group")], |h| h.raw(r##"<button class="btn" hx-post="/validate" hx-target="#validate-output" hx-swap="innerHTML">◇ Check</button>"##));
         });
     });
-    h.raw("<div id=\"rebuild-output\" style=\"margin-top:1rem\"></div><div id=\"validate-output\" style=\"margin-top:1rem\"></div>");
+    h.raw("<div id=\"rebuild-output\" style=\"margin-top:1rem\"></div><div id=\"framework-validation-output\" style=\"margin-top:1rem\"></div><div id=\"validate-output\" style=\"margin-top:1rem\"></div>");
+}
+
+fn framework_validation_block(h: &mut H, data: &AppData) {
+    h.raw(&render_framework_validation_section(data));
+}
+
+pub fn render_framework_validation_section(data: &AppData) -> String {
+    let mut h = H::new();
+    h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| {
+            h.elem("h3", &[], |h| h.raw("framework validation"));
+            h.elem("span", &[("class", "tag")], |h| h.raw(if data.framework_validation_ok { "ok" } else { "issues" }));
+        });
+        h.elem("div", &[("class", "card-body")], |h| {
+            if data.framework_validation_ok {
+                h.elem("div", &[("class", "chk-desc")], |h| h.raw("Role metadata, dependencies, conflicts, package refs, and module flags are valid."));
+            } else {
+                h.elem("div", &[("class", "chk-grid")], |h| {
+                    for msg in &data.framework_validation_errors {
+                        h.elem("div", &[("class", "chk-item"), ("style", "cursor:default")], |h| {
+                            h.raw("<span style=\"color:var(--red)\">●</span>");
+                            h.elem("div", &[], |h| {
+                                h.elem("div", &[("class", "chk-name")], |h| h.raw("Validation error"));
+                                h.elem("div", &[("class", "chk-desc")], |h| h.esc(msg));
+                            });
+                        });
+                    }
+                });
+            }
+        });
+    });
+    h.finish()
 }
 
 pub fn render_roles_section(data: &AppData, kind: &str) -> String {
@@ -355,6 +396,8 @@ mod tests {
             rebuild_running: false,
             rebuild_ok: true,
             rebuild_log: String::new(),
+            framework_validation_ok: true,
+            framework_validation_errors: vec![],
             dotfiles_root: PathBuf::from("/tmp/dotfiles"),
         }
     }
@@ -373,6 +416,7 @@ mod tests {
         assert!(html.contains("Host Roles"));
         assert!(html.contains("User Profile"));
         assert!(html.contains("Rebuild & Check"));
+        assert!(html.contains("framework validation"));
         assert!(html.contains("/style.css"));
     }
 
