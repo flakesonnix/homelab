@@ -343,6 +343,16 @@ in {
       "}"
     ]);
 
-    home.packages = [pkgs.wl-clipboard pkgs.swaylock-effects pkgs.wlogout];
+    home.packages = with pkgs; [
+      blueman
+      brightnessctl
+      grim
+      networkmanagerapplet
+      playerctl
+      slurp
+      swaylock-effects
+      wl-clipboard
+      wlogout
+    ];
   };
 }
