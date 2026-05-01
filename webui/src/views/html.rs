@@ -102,11 +102,11 @@ fn main_content(h: &mut H, data: &AppData) {
             page_block(h, "overview", false, |h| overview(h, data));
             page_block(h, "host", false, |h| {
                 page_header(h, "Host Roles", "Define what this machine does");
-                role_card(h, &data.host_roles, "host roles", "/roles/host", "host");
+                role_card(h, data, &data.host_roles, "host roles", "/roles/host", "host");
             });
             page_block(h, "home", false, |h| {
                 page_header(h, "User Profile", "Apps and tools for your user");
-                role_card(h, &data.home_roles, "user profile", "/roles/home", "home");
+                role_card(h, data, &data.home_roles, "user profile", "/roles/home", "home");
             });
             page_block(h, "packages", true, |h| {
                 page_header(h, "Packages", "System tags and user packages");
@@ -159,7 +159,7 @@ fn overview(h: &mut H, data: &AppData) {
                         h.raw("<span style=\"color:var(--green)\">●</span>");
                         h.elem("div", &[], |h| {
                             h.elem("div", &[("class", "chk-name")], |h| h.raw(r));
-                            h.elem("div", &[("class", "chk-desc")], |h| h.raw(model::role_desc(r)));
+                            h.elem("div", &[("class", "chk-desc")], |h| h.raw(data.role_info(r).map(|info| info.description.as_str()).unwrap_or("")));
                         });
                     });
                 }
@@ -198,20 +198,20 @@ fn status_cell_html(h: &mut H, label: &str, value: &str) {
     });
 }
 
-fn role_card(h: &mut H, active: &[String], title: &str, endpoint: &str, kind: &str) {
+fn role_card(h: &mut H, data: &AppData, active: &[String], title: &str, endpoint: &str, kind: &str) {
     h.elem("div", &[("class", "card")], |h| {
         h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw(title)));
         h.elem("div", &[("class", "card-body")], |h| {
             h.elem("div", &[("class", "chk-grid")], |h| {
-                for role in model::known_roles() {
-                    if model::role_desc(&role.name).is_empty() { continue; }
+                for role in data.role_infos_for(kind) {
                     let checked = if active.contains(&role.name) { " checked" } else { "" };
                     let onchange = format!("x-on:change=\"submitRoleForm('{}','{}')\"", endpoint, kind);
                     h.elem("label", &[("class", "chk-item")], |h| {
                         h.void("input", &[("type", "checkbox"), ("name", "role"), ("value", &role.name), ("checked", checked), ("onchange", &onchange)]);
                         h.elem("div", &[], |h| {
                             h.elem("div", &[("class", "chk-name")], |h| h.raw(&role.name));
-                            h.elem("div", &[("class", "chk-desc")], |h| h.raw(model::role_desc(&role.name)));
+                            h.elem("div", &[("class", "chk-desc")], |h| h.raw(&role.description));
+                            role_hints(h, role, kind, active);
                         });
                     });
                 }
@@ -220,6 +220,32 @@ fn role_card(h: &mut H, active: &[String], title: &str, endpoint: &str, kind: &s
     });
     h.raw(&format!("<form id=\"{}-role-form\" hx-post=\"{}\" hx-target=\"#{}-roles\" hx-swap=\"innerHTML\" style=\"display:none\"><input type=\"hidden\" name=\"roles\"></form>", kind, endpoint, kind));
     h.raw(&format!("<div id=\"{}-roles\"></div>", kind));
+}
+
+fn role_hints(h: &mut H, role: &crate::state::RoleInfo, kind: &str, active: &[String]) {
+    let requires = if kind == "host" { &role.requires_host } else { &role.requires_home };
+    let conflicts = if kind == "host" { &role.conflicts_host } else { &role.conflicts_home };
+    if requires.is_empty() && conflicts.is_empty() { return; }
+    let mut hints = vec![];
+    if !requires.is_empty() {
+        let missing: Vec<&String> = requires.iter().filter(|name| !active.contains(name)).collect();
+        if missing.is_empty() {
+            hints.push(format!("requires {}", requires.join(", ")));
+        } else {
+            hints.push(format!("needs {}", missing.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")));
+        }
+    }
+    if !conflicts.is_empty() {
+        let selected: Vec<&String> = conflicts.iter().filter(|name| active.contains(name)).collect();
+        if selected.is_empty() {
+            hints.push(format!("conflicts {}", conflicts.join(", ")));
+        } else {
+            hints.push(format!("conflicts with {}", selected.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")));
+        }
+    }
+    for hint in hints {
+        h.elem("div", &[("class", "chk-desc")], |h| h.raw(&hint));
+    }
 }
 
 fn packages_section(h: &mut H, data: &AppData) {
@@ -360,7 +386,7 @@ pub fn render_roles_section(data: &AppData, kind: &str) -> String {
     let active = if kind == "host" { &data.host_roles } else { &data.home_roles };
     let title = if kind == "host" { "host roles" } else { "user profile" };
     let endpoint = if kind == "host" { "/roles/host" } else { "/roles/home" };
-    role_card(&mut h, active, title, endpoint, kind);
+    role_card(&mut h, data, active, title, endpoint, kind);
     h.finish()
 }
 
@@ -393,6 +419,13 @@ mod tests {
                 ("programs.foo.enable".into(), "false".into()),
             ],
             available_roles: vec!["core".into(), "desktop".into(), "dev".into(), "gaming".into()],
+            role_info: vec![
+                crate::state::RoleInfo { name: "core".into(), description: "Base shell, editor, git, and Nix tooling".into(), targets: vec!["home".into()], requires_host: vec![], requires_home: vec![], conflicts_host: vec![], conflicts_home: vec![] },
+                crate::state::RoleInfo { name: "desktop".into(), description: "Desktop environment, GUI apps, and compositor integration".into(), targets: vec!["host".into(), "home".into()], requires_host: vec![], requires_home: vec!["core".into()], conflicts_host: vec![], conflicts_home: vec![] },
+                crate::state::RoleInfo { name: "dev".into(), description: "Development tools, IDEs, and device tooling".into(), targets: vec!["host".into(), "home".into()], requires_host: vec![], requires_home: vec!["core".into()], conflicts_host: vec![], conflicts_home: vec![] },
+                crate::state::RoleInfo { name: "gaming".into(), description: "Gaming stack with Steam, GameMode, and performance presets".into(), targets: vec!["host".into()], requires_host: vec!["desktop".into()], requires_home: vec![], conflicts_host: vec![], conflicts_home: vec![] },
+            ],
+            preset_info: vec![],
             rebuild_running: false,
             rebuild_ok: true,
             rebuild_log: String::new(),
@@ -425,7 +458,7 @@ mod tests {
         let html = page(&sample_data());
         assert!(html.contains("desktop"));
         assert!(html.contains("gaming"));
-        assert!(html.contains("Compositor, terminal, browser, chat"));
+        assert!(html.contains("Desktop environment, GUI apps, and compositor integration"));
     }
 
     #[test]
@@ -437,6 +470,15 @@ mod tests {
         assert!(host.contains("id=\"host-role-form\""));
         assert!(home.contains("hx-post=\"/roles/home\""));
         assert!(home.contains("id=\"home-role-form\""));
+    }
+
+    #[test]
+    fn render_roles_section_shows_dependency_hints() {
+        let data = sample_data();
+        let host = render_roles_section(&data, "host");
+        let home = render_roles_section(&data, "home");
+        assert!(host.contains("requires desktop"));
+        assert!(home.contains("requires core"));
     }
 
     #[test]

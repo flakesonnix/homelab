@@ -1,6 +1,22 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
+pub struct RoleInfo {
+    pub name: String,
+    pub description: String,
+    pub targets: Vec<String>,
+    pub requires_host: Vec<String>,
+    pub requires_home: Vec<String>,
+    pub conflicts_host: Vec<String>,
+    pub conflicts_home: Vec<String>,
+}
+
+pub struct PresetInfo {
+    pub name: String,
+    pub description: String,
+    pub targets: Vec<String>,
+}
+
 pub struct AppData {
     pub host_name: String,
     pub host_roles: Vec<String>,
@@ -9,6 +25,8 @@ pub struct AppData {
     pub home_packages: Vec<(String, bool)>,
     pub module_flags: Vec<(String, String)>,
     pub available_roles: Vec<String>,
+    pub role_info: Vec<RoleInfo>,
+    pub preset_info: Vec<PresetInfo>,
     pub rebuild_running: bool,
     pub rebuild_ok: bool,
     pub rebuild_log: String,
@@ -25,10 +43,12 @@ impl AppData {
         let home_packages = read_home_packages(&root.join("data/packages/home.nix"), root);
         let module_flags = read_flags(&root.join("data/hosts/omen/module-flags.nix"));
         let available = list_roles(&root.join("data/roles"));
+        let role_info = read_role_info(root);
+        let preset_info = read_preset_info(root);
         let (framework_validation_ok, framework_validation_errors) = read_framework_validation(root);
         Self {
             host_name: "omen".into(), host_roles, home_roles, system_tags, home_packages,
-            module_flags, available_roles: available,
+            module_flags, available_roles: available, role_info, preset_info,
             rebuild_running: false, rebuild_ok: true, rebuild_log: String::new(),
             framework_validation_ok, framework_validation_errors,
             dotfiles_root: root.to_path_buf(),
@@ -106,6 +126,8 @@ impl AppData {
             let _ = std::fs::write(&file, lines.join("\n"));
         }
         self.module_flags = read_flags(&self.dotfiles_root.join("data/hosts/omen/module-flags.nix"));
+        self.role_info = read_role_info(&self.dotfiles_root);
+        self.preset_info = read_preset_info(&self.dotfiles_root);
         self.refresh_framework_validation();
     }
     pub fn reload(&mut self) {
@@ -133,6 +155,110 @@ impl AppData {
         self.framework_validation_ok = ok;
         self.framework_validation_errors = errors;
     }
+    pub fn role_infos_for(&self, target: &str) -> Vec<&RoleInfo> {
+        let mut roles: Vec<&RoleInfo> = self.role_info.iter()
+            .filter(|role| role.targets.iter().any(|t| t == target))
+            .collect();
+        roles.sort_by(|a, b| a.name.cmp(&b.name));
+        roles
+    }
+    pub fn role_info(&self, name: &str) -> Option<&RoleInfo> {
+        self.role_info.iter().find(|role| role.name == name)
+    }
+}
+
+fn read_role_info(root: &Path) -> Vec<RoleInfo> {
+    let expr = format!(r#"
+let
+  root = {root};
+  roleDir = root + "/data/roles";
+  roleNames = map (name: builtins.replaceStrings [".nix"] [""] name)
+    (builtins.filter (name: builtins.match ".*\\.nix" name != null) (builtins.attrNames (builtins.readDir roleDir)));
+  field = meta: attr: target:
+    let value = meta.${{attr}} or [];
+    in if builtins.isList value then value else if builtins.isAttrs value then value.${{target}} or [] else [];
+  join = xs: builtins.concatStringsSep "," xs;
+  render = name:
+    let
+      role = import (roleDir + "/${{name}}.nix");
+      meta = role.meta or {{}};
+    in builtins.concatStringsSep "\t" [
+      name
+      (meta.description or "")
+      (join (meta.targets or []))
+      (join (field meta "requires" "host"))
+      (join (field meta "requires" "home"))
+      (join (field meta "conflicts" "host"))
+      (join (field meta "conflicts" "home"))
+    ];
+in builtins.concatStringsSep "\n" (map render roleNames)
+"#, root = root.display());
+    match std::process::Command::new("nix").args(["eval", "--raw", "--impure", "--expr", &expr]).current_dir(root).output() {
+        Ok(o) if o.status.success() => {
+            String::from_utf8_lossy(&o.stdout)
+                .lines()
+                .filter(|line| !line.trim().is_empty())
+                .filter_map(|line| {
+                    let parts: Vec<&str> = line.split('\t').collect();
+                    if parts.len() != 7 { return None; }
+                    Some(RoleInfo {
+                        name: parts[0].to_string(),
+                        description: parts[1].to_string(),
+                        targets: parse_csv(parts[2]),
+                        requires_host: parse_csv(parts[3]),
+                        requires_home: parse_csv(parts[4]),
+                        conflicts_host: parse_csv(parts[5]),
+                        conflicts_home: parse_csv(parts[6]),
+                    })
+                })
+                .collect()
+        }
+        _ => vec![],
+    }
+}
+
+fn read_preset_info(root: &Path) -> Vec<PresetInfo> {
+    let expr = format!(r#"
+let
+  root = {root};
+  presetDir = root + "/data/presets";
+  presetNames = map (name: builtins.replaceStrings [".nix"] [""] name)
+    (builtins.filter (name: builtins.match ".*\\.nix" name != null) (builtins.attrNames (builtins.readDir presetDir)));
+  join = xs: builtins.concatStringsSep "," xs;
+  render = name:
+    let
+      preset = import (presetDir + "/${{name}}.nix");
+      meta = preset.meta or {{}};
+    in builtins.concatStringsSep "\t" [
+      name
+      (meta.description or "")
+      (join (meta.targets or []))
+    ];
+in builtins.concatStringsSep "\n" (map render presetNames)
+"#, root = root.display());
+    match std::process::Command::new("nix").args(["eval", "--raw", "--impure", "--expr", &expr]).current_dir(root).output() {
+        Ok(o) if o.status.success() => {
+            String::from_utf8_lossy(&o.stdout)
+                .lines()
+                .filter(|line| !line.trim().is_empty())
+                .filter_map(|line| {
+                    let parts: Vec<&str> = line.split('\t').collect();
+                    if parts.len() != 3 { return None; }
+                    Some(PresetInfo {
+                        name: parts[0].to_string(),
+                        description: parts[1].to_string(),
+                        targets: parse_csv(parts[2]),
+                    })
+                })
+                .collect()
+        }
+        _ => vec![],
+    }
+}
+
+fn parse_csv(input: &str) -> Vec<String> {
+    if input.trim().is_empty() { return vec![]; }
+    input.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
 }
 
 fn read_framework_validation(root: &Path) -> (bool, Vec<String>) {

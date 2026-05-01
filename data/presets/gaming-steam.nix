@@ -1,4 +1,9 @@
 {
+  meta = {
+    description = "Enable Steam, GameMode, Gamescope, and MangoHud";
+    targets = ["host"];
+  };
+
   moduleFlags = {
     lucy.gaming.steam.enable = true;
     lucy.gaming.gamemode.enable = true;
