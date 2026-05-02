@@ -1,7 +1,7 @@
 let
   projectLib = import ../default.nix;
-  inherit (projectLib.core) composition;
-  inherit (projectLib.core) registry;
+  inherit (projectLib.core) composition validation;
+  packageFramework = projectLib.framework.package;
 
   importData = {
     path,
@@ -51,6 +51,8 @@ in {
       args = importedArgs;
     };
   in {
+    __root = root;
+
     presets = importData {
       path = root + "/presets.nix";
       args = importedArgs;
@@ -112,16 +114,28 @@ in {
     systemPackagePath ? null,
     fontPackagePath ? null,
   }: let
+    roleNames = host.roles or [];
+    validationResult = validation.validateHost {
+      inherit lib packageRegistry;
+      hostRoot = host.__root;
+      inherit roleRoot presetRoot;
+      packageData = {
+        packageToggles = host.packageToggles or [];
+        packageTags = host.packageTags or [];
+      };
+    };
+
     resolvedRoles = lib.optionals (roleRoot != null) (loadRoles {
       root = roleRoot;
-      names = host.roles or [];
+      names = roleNames;
       target = "host";
     });
 
-    resolvedPresetNames = lib.unique (
+    resolvedPresetRefs =
       (host.presets or [])
-      ++ builtins.concatLists (map (role: role.presets or []) resolvedRoles)
-    );
+      ++ builtins.concatLists (map (role: role.presets or []) resolvedRoles);
+
+    resolvedPresetNames = lib.unique resolvedPresetRefs;
 
     resolvedPresets =
       presets
@@ -137,41 +151,59 @@ in {
       listFields = ["packageToggles" "packageTags" "basePackages" "systemPackages" "fontPackages"];
     };
 
-    selectedPackageNames = lib.unique (
-      (mergedHost.packageToggles or [])
-      ++ lib.optionals (packageRegistry != null) (registry.registryNamesByTags (mergedHost.packageTags or []) packageRegistry)
-    );
-  in
-    (mergedHost.moduleFlags or {})
-    // lib.optionalAttrs (selectedPackageNames != []) (
-      composition.renderEnabledAttrs {
+    validationAssertion = validation.assertValid ({
         inherit lib;
-        path = packagePath;
-        names = selectedPackageNames;
+        kind = "host configuration";
       }
-    )
-    // composition.renderOptionalPath {
-      inherit lib;
-      path = basePackagePath;
-      value = mergedHost.basePackages or null;
-    }
-    // composition.renderOptionalPath {
-      inherit lib;
-      path = systemPackagePath;
-      value =
-        if systemPackagePath == null
-        then null
-        else mergedHost.systemPackages or [];
-    }
-    // composition.renderOptionalPath {
-      inherit lib;
-      path = fontPackagePath;
-      value =
-        if fontPackagePath == null
-        then null
-        else mergedHost.fontPackages or [];
-    }
-    // (mergedHost.settings or {});
+      // validationResult
+      // {
+        duplicateRoles = validation.findDuplicateNames roleNames;
+        duplicatePresets = validation.findDuplicateNames resolvedPresetRefs;
+        conflictingModuleFlags = validation.collectModuleFlagConflicts (resolvedRoles ++ resolvedPresets ++ [host]);
+        invalidModuleFlags = validation.invalidModuleFlagKeys {
+          moduleFlags = mergedHost.moduleFlags or {};
+          allowedRoots = ["lucy" "programs" "services" "hq"];
+        };
+      });
+
+    selectedPackageNames = packageFramework.selectNames {
+      inherit lib packageRegistry;
+      packageToggles = mergedHost.packageToggles or [];
+      packageTags = mergedHost.packageTags or [];
+    };
+  in
+    builtins.seq validationAssertion (
+      (mergedHost.moduleFlags or {})
+      // lib.optionalAttrs (selectedPackageNames != []) (
+        composition.renderEnabledAttrs {
+          inherit lib;
+          path = packagePath;
+          names = selectedPackageNames;
+        }
+      )
+      // composition.renderOptionalPath {
+        inherit lib;
+        path = basePackagePath;
+        value = mergedHost.basePackages or null;
+      }
+      // composition.renderOptionalPath {
+        inherit lib;
+        path = systemPackagePath;
+        value =
+          if systemPackagePath == null
+          then null
+          else mergedHost.systemPackages or [];
+      }
+      // composition.renderOptionalPath {
+        inherit lib;
+        path = fontPackagePath;
+        value =
+          if fontPackagePath == null
+          then null
+          else mergedHost.fontPackages or [];
+      }
+      // (mergedHost.settings or {})
+    );
 
   mkHost = host: host;
 }

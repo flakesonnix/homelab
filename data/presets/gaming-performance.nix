@@ -1,4 +1,9 @@
 {
+  meta = {
+    description = "Apply gaming performance tuning and low-latency sysctl settings";
+    targets = ["host"];
+  };
+
   moduleFlags = {
     lucy.gaming.performance.enable = true;
     lucy.gaming.performance.cpuFreqGovernor = "performance";

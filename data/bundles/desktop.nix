@@ -1,4 +1,9 @@
 {
+  meta = {
+    description = "Desktop GUI apps, stylix, and flatpak desktop integrations";
+    targets = ["home"];
+  };
+
   programs = {
     alacritty.enable = true;
     easyeffects.enable = true;

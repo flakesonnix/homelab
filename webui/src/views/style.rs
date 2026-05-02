@@ -44,6 +44,11 @@ body{font-family:var(--sans);background:var(--bg-deep);color:var(--text);min-hei
 .status-cell-label{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:.4rem}
 .status-cell-value{font-family:var(--mono);font-size:.88rem;color:var(--accent)}
 .status-cell-value.mono{font-size:.8rem;color:var(--text)}
+.preview-compare{padding:.6rem .7rem}
+.preview-compare + .preview-compare{border-top:1px solid var(--border)}
+.preview-compare-head{margin-bottom:.6rem}
+.preview-selection{background:var(--bg-deep);border:1px solid var(--border);border-radius:6px;padding:.75rem}
+.preview-pill-row{display:flex;flex-wrap:wrap;gap:.4rem}
 .flag-row{display:flex;align-items:center;justify-content:space-between;padding:.45rem .7rem;border-radius:4px;transition:background .12s}
 .flag-row:hover{background:var(--bg-hover)}
 .flag-path{font-family:var(--mono);font-size:.76rem;color:var(--accent-dim)}

@@ -35,7 +35,7 @@ pub fn page(data: &AppData) -> String {
     h.raw(r#"<body x-data="{mode:localStorage.getItem('uiMode')||'user',page:'overview'}" x-init="$watch('mode',v=>{localStorage.setItem('uiMode',v);document.body.classList.toggle('expert-mode',v==='expert')})">"#);
     sidebar(&mut h, data);
     main_content(&mut h, data);
-    h.raw(r#"<script>function submitRoleForm(e,k){var f=document.getElementById(k+'-role-form'),c=f.closest('.card-body'),x=c.querySelectorAll('input[type=checkbox]:checked');f.querySelector('[name=roles]').value=Array.from(x).map(function(a){return a.value}).join(',');htmx.trigger(f,'submit')}</script>"#);
+    h.raw(r#"<script>function submitRoleForm(e,k){var f=document.getElementById(k+'-role-form'),c=f.closest('.card-body'),x=c.querySelectorAll('input[type=checkbox]:checked');f.querySelector('[name=roles]').value=Array.from(x).map(function(a){return a.value}).join(',');htmx.trigger(f,'submit')}function submitPresetForm(){var f=document.getElementById('host-preset-form'),c=f.closest('.card-body'),x=c.querySelectorAll('input[name=preset]:checked');f.querySelector('[name=presets]').value=Array.from(x).map(function(a){return a.value}).join(',');htmx.trigger(f,'submit')}function submitBundleForm(){var f=document.getElementById('home-bundle-form'),c=f.closest('.card-body'),x=c.querySelectorAll('input[name=bundle]:checked');f.querySelector('[name=bundles]').value=Array.from(x).map(function(a){return a.value}).join(',');htmx.trigger(f,'submit')}</script>"#);
     h.raw("</body></html>");
     h.finish()
 }
@@ -55,7 +55,7 @@ fn sidebar(h: &mut H, data: &AppData) {
         });
         h.elem("nav", &[("class", "sidebar-nav")], |h| {
             nav_section(h, "System", &[("◉", "overview", "Overview")]);
-            nav_section(h, "Configuration", &[("⌘", "host", "Host Roles"), ("⌂", "home", "User Profile"), ("◆", "packages", "Packages"), ("⚑", "flags", "Module Flags")]);
+            nav_section(h, "Configuration", &[("⌘", "host", "Host Roles"), ("⌂", "home", "User Profile"), ("◆", "packages", "Packages"), ("⚑", "flags", "Module Flags"), ("◇", "preview", "Preview")]);
             nav_section(h, "Operations", &[("▶", "actions", "Rebuild & Check")]);
         });
         h.elem("div", &[("class", "sidebar-footer")], |h| {
@@ -71,7 +71,7 @@ fn nav_section(h: &mut H, title: &str, items: &[(&str, &str, &str)]) {
     h.elem("div", &[("class", "nav-section")], |h| {
         h.elem("div", &[("class", "nav-section-title")], |h| h.raw(title));
         for (icon, page, label) in items {
-            let expert = if *page == "packages" || *page == "flags" { " expert-only" } else { "" };
+            let expert = if *page == "packages" || *page == "flags" || *page == "preview" { " expert-only" } else { "" };
             let cls = format!("nav-item{}", expert);
             let cls_active = format!(":class={{active:page==='{}'}}", page);
             let onclick = format!("@click=\"page='{}'\"", page);
@@ -102,11 +102,13 @@ fn main_content(h: &mut H, data: &AppData) {
             page_block(h, "overview", false, |h| overview(h, data));
             page_block(h, "host", false, |h| {
                 page_header(h, "Host Roles", "Define what this machine does");
-                role_card(h, &data.host_roles, "host roles", "/roles/host", "host");
+                role_card(h, data, &data.host_roles, "host roles", "/roles/host", "host");
+                host_presets_card(h, data);
             });
             page_block(h, "home", false, |h| {
                 page_header(h, "User Profile", "Apps and tools for your user");
-                role_card(h, &data.home_roles, "user profile", "/roles/home", "home");
+                role_card(h, data, &data.home_roles, "user profile", "/roles/home", "home");
+                bundle_card(h, data);
             });
             page_block(h, "packages", true, |h| {
                 page_header(h, "Packages", "System tags and user packages");
@@ -115,6 +117,10 @@ fn main_content(h: &mut H, data: &AppData) {
             page_block(h, "flags", true, |h| {
                 page_header(h, "Module Flags", "Raw NixOS module toggles");
                 flags_section(h, data);
+            });
+            page_block(h, "preview", true, |h| {
+                page_header(h, "Preview", "Resolved roles, presets, and bundles before rebuild");
+                preview_section(h, data);
             });
             page_block(h, "actions", false, |h| {
                 page_header(h, "Rebuild & Check", "Apply changes and validate");
@@ -147,7 +153,9 @@ fn overview(h: &mut H, data: &AppData) {
         let n = data.home_packages.iter().filter(|(_, e)| *e).count();
         status_cell(h, "User Packages", &format!("{} enabled", n));
         status_cell_html(h, "Build Status", &data.rebuild_status_html());
+        status_cell_html(h, "Framework", &data.framework_validation_status_html());
     });
+    framework_validation_block(h, data);
     h.elem("div", &[("class", "card")], |h| {
         h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw("Active Host Roles")));
         h.elem("div", &[("class", "card-body")], |h| {
@@ -157,7 +165,7 @@ fn overview(h: &mut H, data: &AppData) {
                         h.raw("<span style=\"color:var(--green)\">●</span>");
                         h.elem("div", &[], |h| {
                             h.elem("div", &[("class", "chk-name")], |h| h.raw(r));
-                            h.elem("div", &[("class", "chk-desc")], |h| h.raw(model::role_desc(r)));
+                            h.elem("div", &[("class", "chk-desc")], |h| h.raw(data.role_info(r).map(|info| info.description.as_str()).unwrap_or("")));
                         });
                     });
                 }
@@ -180,6 +188,8 @@ fn overview(h: &mut H, data: &AppData) {
             });
         });
     });
+    named_metadata_block(h, "Active Presets", &data.preset_names_for_host_roles(), &data.preset_info);
+    named_bundle_block(h, "Active Bundles", &data.bundle_names_for_home_roles(), &data.bundle_info);
 }
 
 fn status_cell(h: &mut H, label: &str, value: &str) {
@@ -196,20 +206,20 @@ fn status_cell_html(h: &mut H, label: &str, value: &str) {
     });
 }
 
-fn role_card(h: &mut H, active: &[String], title: &str, endpoint: &str, kind: &str) {
+fn role_card(h: &mut H, data: &AppData, active: &[String], title: &str, endpoint: &str, kind: &str) {
     h.elem("div", &[("class", "card")], |h| {
         h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw(title)));
         h.elem("div", &[("class", "card-body")], |h| {
             h.elem("div", &[("class", "chk-grid")], |h| {
-                for role in model::known_roles() {
-                    if model::role_desc(&role.name).is_empty() { continue; }
+                for role in data.role_infos_for(kind) {
                     let checked = if active.contains(&role.name) { " checked" } else { "" };
                     let onchange = format!("x-on:change=\"submitRoleForm('{}','{}')\"", endpoint, kind);
                     h.elem("label", &[("class", "chk-item")], |h| {
                         h.void("input", &[("type", "checkbox"), ("name", "role"), ("value", &role.name), ("checked", checked), ("onchange", &onchange)]);
                         h.elem("div", &[], |h| {
                             h.elem("div", &[("class", "chk-name")], |h| h.raw(&role.name));
-                            h.elem("div", &[("class", "chk-desc")], |h| h.raw(model::role_desc(&role.name)));
+                            h.elem("div", &[("class", "chk-desc")], |h| h.raw(&role.description));
+                            role_hints(h, role, kind, active);
                         });
                     });
                 }
@@ -218,6 +228,120 @@ fn role_card(h: &mut H, active: &[String], title: &str, endpoint: &str, kind: &s
     });
     h.raw(&format!("<form id=\"{}-role-form\" hx-post=\"{}\" hx-target=\"#{}-roles\" hx-swap=\"innerHTML\" style=\"display:none\"><input type=\"hidden\" name=\"roles\"></form>", kind, endpoint, kind));
     h.raw(&format!("<div id=\"{}-roles\"></div>", kind));
+}
+
+fn host_presets_card(h: &mut H, data: &AppData) {
+    h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw("host presets")));
+        h.elem("div", &[("class", "card-body")], |h| {
+            h.elem("div", &[("class", "chk-grid")], |h| {
+                for preset in data.preset_info.iter().filter(|preset| preset.targets.iter().any(|t| t == "host")) {
+                    let checked = if data.host_presets.contains(&preset.name) { " checked" } else { "" };
+                    let onchange = "x-on:change=\"submitPresetForm()\"";
+                    h.elem("label", &[("class", "chk-item")], |h| {
+                        h.void("input", &[("type", "checkbox"), ("name", "preset"), ("value", &preset.name), ("checked", checked), ("onchange", onchange)]);
+                        h.elem("div", &[], |h| {
+                            h.elem("div", &[("class", "chk-name")], |h| h.raw(&preset.name));
+                            h.elem("div", &[("class", "chk-desc")], |h| h.raw(&preset.description));
+                        });
+                    });
+                }
+            });
+            h.raw(r##"<form id="host-preset-form" hx-post="/presets/host" hx-target="#host-presets" hx-swap="innerHTML" style="display:none"><input type="hidden" name="presets"></form><div id="host-presets"></div>"##);
+        });
+    });
+}
+
+fn bundle_card(h: &mut H, data: &AppData) {
+    h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw("user bundles")));
+        h.elem("div", &[("class", "card-body")], |h| {
+            h.elem("div", &[("class", "chk-grid")], |h| {
+                for bundle in data.bundle_info.iter().filter(|b| b.targets.iter().any(|t| t == "home")) {
+                    let checked = if data.home_bundles.contains(&bundle.name) { " checked" } else { "" };
+                    let onchange = "x-on:change=\"submitBundleForm()\"";
+                    h.elem("label", &[("class", "chk-item")], |h| {
+                        h.void("input", &[("type", "checkbox"), ("name", "bundle"), ("value", &bundle.name), ("checked", checked), ("onchange", onchange)]);
+                        h.elem("div", &[], |h| {
+                            h.elem("div", &[("class", "chk-name")], |h| h.raw(&bundle.name));
+                            h.elem("div", &[("class", "chk-desc")], |h| h.raw(&bundle.description));
+                        });
+                    });
+                }
+            });
+            h.raw(r##"<form id="home-bundle-form" hx-post="/bundles/home" hx-target="#home-bundles" hx-swap="innerHTML" style="display:none"><input type="hidden" name="bundles"></form><div id="home-bundles"></div>"##);
+        });
+    });
+}
+
+fn role_hints(h: &mut H, role: &crate::state::RoleInfo, kind: &str, active: &[String]) {
+    let requires = if kind == "host" { &role.requires_host } else { &role.requires_home };
+    let conflicts = if kind == "host" { &role.conflicts_host } else { &role.conflicts_home };
+    if requires.is_empty() && conflicts.is_empty() { return; }
+    let mut hints = vec![];
+    if !requires.is_empty() {
+        let missing: Vec<&String> = requires.iter().filter(|name| !active.contains(name)).collect();
+        if missing.is_empty() {
+            hints.push(format!("requires {}", requires.join(", ")));
+        } else {
+            hints.push(format!("needs {}", missing.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")));
+        }
+    }
+    if !conflicts.is_empty() {
+        let selected: Vec<&String> = conflicts.iter().filter(|name| active.contains(name)).collect();
+        if selected.is_empty() {
+            hints.push(format!("conflicts {}", conflicts.join(", ")));
+        } else {
+            hints.push(format!("conflicts with {}", selected.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ")));
+        }
+    }
+    for hint in hints {
+        h.elem("div", &[("class", "chk-desc")], |h| h.raw(&hint));
+    }
+}
+
+fn named_metadata_block(h: &mut H, title: &str, names: &[String], items: &[crate::state::PresetInfo]) {
+    if names.is_empty() { return; }
+    h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw(title)));
+        h.elem("div", &[("class", "card-body")], |h| {
+            h.elem("div", &[("class", "chk-grid")], |h| {
+                for name in names {
+                    if let Some(item) = items.iter().find(|item| &item.name == name) {
+                        h.elem("div", &[("class", "chk-item"), ("style", "cursor:default")], |h| {
+                            h.raw("<span style=\"color:var(--green)\">●</span>");
+                            h.elem("div", &[], |h| {
+                                h.elem("div", &[("class", "chk-name")], |h| h.raw(&item.name));
+                                h.elem("div", &[("class", "chk-desc")], |h| h.raw(&item.description));
+                            });
+                        });
+                    }
+                }
+            });
+        });
+    });
+}
+
+fn named_bundle_block(h: &mut H, title: &str, names: &[String], items: &[crate::state::BundleInfo]) {
+    if names.is_empty() { return; }
+    h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw(title)));
+        h.elem("div", &[("class", "card-body")], |h| {
+            h.elem("div", &[("class", "chk-grid")], |h| {
+                for name in names {
+                    if let Some(item) = items.iter().find(|item| &item.name == name) {
+                        h.elem("div", &[("class", "chk-item"), ("style", "cursor:default")], |h| {
+                            h.raw("<span style=\"color:var(--green)\">●</span>");
+                            h.elem("div", &[], |h| {
+                                h.elem("div", &[("class", "chk-name")], |h| h.raw(&item.name));
+                                h.elem("div", &[("class", "chk-desc")], |h| h.raw(&item.description));
+                            });
+                        });
+                    }
+                }
+            });
+        });
+    });
 }
 
 fn packages_section(h: &mut H, data: &AppData) {
@@ -305,13 +429,98 @@ fn actions_section(h: &mut H) {
         });
     });
     h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| { h.elem("h3", &[], |h| h.raw("framework validate")); h.elem("span", &[("class", "tag")], |h| h.raw("framework rules")); });
+        h.elem("div", &[("class", "card-body")], |h| {
+            h.elem("p", &[("style", "font-size:0.82rem;color:var(--text-dim);margin-bottom:0.8rem")], |h| h.raw("Role metadata, requires/conflicts, package refs, and module flag rules."));
+            h.elem("div", &[("class", "btn-group")], |h| h.raw(r##"<button class="btn" hx-post="/validate/framework" hx-target="#framework-validation-output" hx-swap="innerHTML">⋄ Framework</button>"##));
+        });
+    });
+    h.elem("div", &[("class", "card")], |h| {
         h.elem("div", &[("class", "card-header")], |h| { h.elem("h3", &[], |h| h.raw("validate")); h.elem("span", &[("class", "tag")], |h| h.raw("nix flake check")); });
         h.elem("div", &[("class", "card-body")], |h| {
             h.elem("p", &[("style", "font-size:0.82rem;color:var(--text-dim);margin-bottom:0.8rem")], |h| h.raw("Evaluation, formatting, and pre-commit checks."));
             h.elem("div", &[("class", "btn-group")], |h| h.raw(r##"<button class="btn" hx-post="/validate" hx-target="#validate-output" hx-swap="innerHTML">◇ Check</button>"##));
         });
     });
-    h.raw("<div id=\"rebuild-output\" style=\"margin-top:1rem\"></div><div id=\"validate-output\" style=\"margin-top:1rem\"></div>");
+    h.raw("<div id=\"rebuild-output\" style=\"margin-top:1rem\"></div><div id=\"framework-validation-output\" style=\"margin-top:1rem\"></div><div id=\"validate-output\" style=\"margin-top:1rem\"></div>");
+}
+
+fn preview_section(h: &mut H, data: &AppData) {
+    h.elem("div", &[("class", "status-grid")], |h| {
+        status_cell(h, "Host Roles", &data.preview.host_roles.join(" "));
+        status_cell(h, "Host Presets", &data.preview.host_presets.join(" "));
+        status_cell(h, "Home Roles", &data.preview.home_roles.join(" "));
+        status_cell(h, "Home Bundles", &data.preview.home_bundles.join(" "));
+    });
+    h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw("resolution details")));
+        h.elem("div", &[("class", "card-body")], |h| {
+            preview_compare_block(h, "Host presets", &data.host_presets, &data.preview.host_presets, "Direct host preset picks merge with role-derived presets.");
+            preview_compare_block(h, "Home bundles", &data.home_bundles, &data.preview.home_bundles, "Explicit home bundles override role-derived bundle resolution when set.");
+        });
+    });
+    named_metadata_block(h, "Resolved Host Presets", &data.preview.host_presets, &data.preset_info);
+    named_bundle_block(h, "Resolved Home Bundles", &data.preview.home_bundles, &data.bundle_info);
+}
+
+fn preview_compare_block(h: &mut H, title: &str, direct: &[String], resolved: &[String], note: &str) {
+    h.elem("div", &[("class", "preview-compare")], |h| {
+        h.elem("div", &[("class", "preview-compare-head")], |h| {
+            h.elem("div", &[("class", "chk-name")], |h| h.raw(title));
+            h.elem("div", &[("class", "chk-desc")], |h| h.raw(note));
+        });
+        h.elem("div", &[("class", "chk-grid")], |h| {
+            preview_selection_card(h, "direct", direct);
+            preview_selection_card(h, "resolved", resolved);
+        });
+    });
+}
+
+fn preview_selection_card(h: &mut H, label: &str, values: &[String]) {
+    h.elem("div", &[("class", "preview-selection")], |h| {
+        h.elem("div", &[("class", "status-cell-label")], |h| h.raw(label));
+        if values.is_empty() {
+            h.elem("div", &[("class", "status-cell-value mono")], |h| h.raw("none"));
+        } else {
+            h.elem("div", &[("class", "preview-pill-row")], |h| {
+                for value in values {
+                    h.elem("span", &[("class", "tag")], |h| h.raw(value));
+                }
+            });
+        }
+    });
+}
+
+fn framework_validation_block(h: &mut H, data: &AppData) {
+    h.raw(&render_framework_validation_section(data));
+}
+
+pub fn render_framework_validation_section(data: &AppData) -> String {
+    let mut h = H::new();
+    h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| {
+            h.elem("h3", &[], |h| h.raw("framework validation"));
+            h.elem("span", &[("class", "tag")], |h| h.raw(if data.framework_validation_ok { "ok" } else { "issues" }));
+        });
+        h.elem("div", &[("class", "card-body")], |h| {
+            if data.framework_validation_ok {
+                h.elem("div", &[("class", "chk-desc")], |h| h.raw("Role metadata, dependencies, conflicts, package refs, and module flags are valid."));
+            } else {
+                h.elem("div", &[("class", "chk-grid")], |h| {
+                    for msg in &data.framework_validation_errors {
+                        h.elem("div", &[("class", "chk-item"), ("style", "cursor:default")], |h| {
+                            h.raw("<span style=\"color:var(--red)\">●</span>");
+                            h.elem("div", &[], |h| {
+                                h.elem("div", &[("class", "chk-name")], |h| h.raw("Validation error"));
+                                h.elem("div", &[("class", "chk-desc")], |h| h.esc(msg));
+                            });
+                        });
+                    }
+                });
+            }
+        });
+    });
+    h.finish()
 }
 
 pub fn render_roles_section(data: &AppData, kind: &str) -> String {
@@ -319,7 +528,19 @@ pub fn render_roles_section(data: &AppData, kind: &str) -> String {
     let active = if kind == "host" { &data.host_roles } else { &data.home_roles };
     let title = if kind == "host" { "host roles" } else { "user profile" };
     let endpoint = if kind == "host" { "/roles/host" } else { "/roles/home" };
-    role_card(&mut h, active, title, endpoint, kind);
+    role_card(&mut h, data, active, title, endpoint, kind);
+    h.finish()
+}
+
+pub fn render_host_presets_section(data: &AppData) -> String {
+    let mut h = H::new();
+    host_presets_card(&mut h, data);
+    h.finish()
+}
+
+pub fn render_bundle_section(data: &AppData) -> String {
+    let mut h = H::new();
+    bundle_card(&mut h, data);
     h.finish()
 }
 
@@ -335,6 +556,12 @@ pub fn render_flags_section(data: &AppData) -> String {
     h.finish()
 }
 
+pub fn render_preview_section(data: &AppData) -> String {
+    let mut h = H::new();
+    preview_section(&mut h, data);
+    h.finish()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -344,7 +571,9 @@ mod tests {
         AppData {
             host_name: "omen".into(),
             host_roles: vec!["desktop".into(), "gaming".into()],
+            host_presets: vec!["gaming-base".into()],
             home_roles: vec!["core".into(), "dev".into()],
+            home_bundles: vec!["core".into(), "dev".into()],
             system_tags: vec![("desktop".into(), true), ("chat".into(), false)],
             home_packages: vec![("nautilus".into(), true), ("comma".into(), false)],
             module_flags: vec![
@@ -352,9 +581,33 @@ mod tests {
                 ("programs.foo.enable".into(), "false".into()),
             ],
             available_roles: vec!["core".into(), "desktop".into(), "dev".into(), "gaming".into()],
+            role_info: vec![
+                crate::state::RoleInfo { name: "core".into(), description: "Base shell, editor, git, and Nix tooling".into(), targets: vec!["home".into()], presets: vec![], bundles: vec!["core".into()], requires_host: vec![], requires_home: vec![], conflicts_host: vec![], conflicts_home: vec![] },
+                crate::state::RoleInfo { name: "desktop".into(), description: "Desktop environment, GUI apps, and compositor integration".into(), targets: vec!["host".into(), "home".into()], presets: vec![], bundles: vec!["desktop".into()], requires_host: vec![], requires_home: vec!["core".into()], conflicts_host: vec![], conflicts_home: vec![] },
+                crate::state::RoleInfo { name: "dev".into(), description: "Development tools, IDEs, and device tooling".into(), targets: vec!["host".into(), "home".into()], presets: vec![], bundles: vec!["dev".into()], requires_host: vec![], requires_home: vec!["core".into()], conflicts_host: vec![], conflicts_home: vec![] },
+                crate::state::RoleInfo { name: "gaming".into(), description: "Gaming stack with Steam, GameMode, and performance presets".into(), targets: vec!["host".into()], presets: vec!["gaming-base".into(), "gaming-performance".into(), "gaming-steam".into()], bundles: vec![], requires_host: vec!["desktop".into()], requires_home: vec![], conflicts_host: vec![], conflicts_home: vec![] },
+            ],
+            preset_info: vec![
+                crate::state::PresetInfo { name: "gaming-base".into(), description: "Enable the shared gaming module baseline".into(), targets: vec!["host".into()] },
+                crate::state::PresetInfo { name: "gaming-performance".into(), description: "Apply gaming performance tuning and low-latency sysctl settings".into(), targets: vec!["host".into()] },
+                crate::state::PresetInfo { name: "gaming-steam".into(), description: "Enable Steam, GameMode, Gamescope, and MangoHud".into(), targets: vec!["host".into()] },
+            ],
+            bundle_info: vec![
+                crate::state::BundleInfo { name: "core".into(), description: "Base shell, editor, SSH, and Nix workflow configuration".into(), targets: vec!["home".into()] },
+                crate::state::BundleInfo { name: "desktop".into(), description: "Desktop GUI apps, stylix, and flatpak desktop integrations".into(), targets: vec!["home".into()] },
+                crate::state::BundleInfo { name: "dev".into(), description: "Extra development applications for the home profile".into(), targets: vec!["home".into()] },
+            ],
+            preview: crate::state::PreviewData {
+                host_roles: vec!["desktop".into(), "gaming".into()],
+                host_presets: vec!["gaming-base".into(), "gaming-performance".into(), "gaming-steam".into()],
+                home_roles: vec!["core".into(), "dev".into()],
+                home_bundles: vec!["core".into(), "dev".into()],
+            },
             rebuild_running: false,
             rebuild_ok: true,
             rebuild_log: String::new(),
+            framework_validation_ok: true,
+            framework_validation_errors: vec![],
             dotfiles_root: PathBuf::from("/tmp/dotfiles"),
         }
     }
@@ -373,6 +626,9 @@ mod tests {
         assert!(html.contains("Host Roles"));
         assert!(html.contains("User Profile"));
         assert!(html.contains("Rebuild & Check"));
+        assert!(html.contains("framework validation"));
+        assert!(html.contains("Active Presets"));
+        assert!(html.contains("Active Bundles"));
         assert!(html.contains("/style.css"));
     }
 
@@ -381,7 +637,7 @@ mod tests {
         let html = page(&sample_data());
         assert!(html.contains("desktop"));
         assert!(html.contains("gaming"));
-        assert!(html.contains("Compositor, terminal, browser, chat"));
+        assert!(html.contains("Desktop environment, GUI apps, and compositor integration"));
     }
 
     #[test]
@@ -393,6 +649,30 @@ mod tests {
         assert!(host.contains("id=\"host-role-form\""));
         assert!(home.contains("hx-post=\"/roles/home\""));
         assert!(home.contains("id=\"home-role-form\""));
+    }
+
+    #[test]
+    fn render_roles_section_shows_dependency_hints() {
+        let data = sample_data();
+        let host = render_roles_section(&data, "host");
+        let home = render_roles_section(&data, "home");
+        assert!(host.contains("requires desktop"));
+        assert!(home.contains("requires core"));
+    }
+
+    #[test]
+    fn render_host_presets_section_contains_presets() {
+        let html = render_host_presets_section(&sample_data());
+        assert!(html.contains("host presets"));
+        assert!(html.contains("gaming-performance"));
+    }
+
+    #[test]
+    fn render_bundle_section_contains_bundles() {
+        let html = render_bundle_section(&sample_data());
+        assert!(html.contains("user bundles"));
+        assert!(html.contains("hx-post=\"/bundles/home\""));
+        assert!(html.contains("Desktop GUI apps"));
     }
 
     #[test]
@@ -411,5 +691,16 @@ mod tests {
         assert!(html.contains("hx-post=\"/flags\""));
         assert!(html.contains("bool-true"));
         assert!(html.contains("bool-false"));
+    }
+
+    #[test]
+    fn render_preview_section_contains_resolved_state() {
+        let html = render_preview_section(&sample_data());
+        assert!(html.contains("Resolved Host Presets"));
+        assert!(html.contains("Resolved Home Bundles"));
+        assert!(html.contains("resolution details"));
+        assert!(html.contains("Direct host preset picks merge with role-derived presets."));
+        assert!(html.contains("gaming-performance"));
+        assert!(html.contains("core"));
     }
 }

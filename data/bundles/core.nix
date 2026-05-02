@@ -1,4 +1,9 @@
 {
+  meta = {
+    description = "Base shell, editor, SSH, and Nix workflow configuration";
+    targets = ["home"];
+  };
+
   programs = {
     bash.enable = true;
     git.enable = true;

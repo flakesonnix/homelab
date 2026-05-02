@@ -1,6 +1,7 @@
 let
   projectLib = import ../default.nix;
-  inherit (projectLib.core) composition registry;
+  inherit (projectLib.core) composition validation;
+  packageFramework = projectLib.framework.package;
 
   importData = {
     path,
@@ -61,8 +62,16 @@ in {
       args = importedArgs;
     };
   in {
+    __root = root;
+
     roles = importData {
       path = root + "/roles.nix";
+      args = importedArgs;
+      fallback = [];
+    };
+
+    bundles = importData {
+      path = root + "/bundles.nix";
       args = importedArgs;
       fallback = [];
     };
@@ -89,13 +98,30 @@ in {
     packageRegistry ? null,
     packagePath,
   }: let
+    roleNames = home.roles or [];
+    validationResult = validation.validateHome {
+      inherit lib packageRegistry;
+      homeRoot = home.__root;
+      inherit roleRoot bundleRoot;
+      packageData = {
+        packageToggles = home.packageToggles or [];
+        packageTags = home.packageTags or [];
+      };
+    };
+
     resolvedRoles = lib.optionals (roleRoot != null) (loadRoles {
       root = roleRoot;
-      names = home.roles or [];
+      names = roleNames;
       target = "home";
     });
 
-    resolvedBundleNames = lib.unique (builtins.concatLists (map (role: role.bundles or []) resolvedRoles));
+    explicitBundles = home.bundles or [];
+    roleBundleRefs = builtins.concatLists (map (role: role.bundles or []) resolvedRoles);
+    resolvedBundleNames = lib.unique (
+      if explicitBundles != []
+      then explicitBundles
+      else roleBundleRefs
+    );
     resolvedBundles = loadBundles {
       root = bundleRoot;
       names = resolvedBundleNames;
@@ -109,10 +135,30 @@ in {
       listFields = ["packageToggles" "packageTags"];
     };
 
-    selectedPackageNames = lib.unique (
-      (mergedHome.packageToggles or [])
-      ++ lib.optionals (packageRegistry != null) (registry.registryNamesByTags (mergedHome.packageTags or []) packageRegistry)
-    );
+    validationAssertion = validation.assertValid ({
+        inherit lib;
+        kind = "home configuration";
+      }
+      // validationResult
+      // {
+        duplicateRoles = validation.findDuplicateNames roleNames;
+        duplicateBundles = validation.findDuplicateNames (
+          if explicitBundles != []
+          then explicitBundles
+          else roleBundleRefs
+        );
+        conflictingModuleFlags = validation.collectModuleFlagConflicts (resolvedRoles ++ resolvedBundles ++ [home]);
+        invalidModuleFlags = validation.invalidModuleFlagKeys {
+          moduleFlags = mergedHome.moduleFlags or {};
+          allowedRoots = ["programs" "services" "xdg" "home" "stylix" "gtk" "dconf" "nix"];
+        };
+      });
+
+    selectedPackageNames = packageFramework.selectNames {
+      inherit lib packageRegistry;
+      packageToggles = mergedHome.packageToggles or [];
+      packageTags = mergedHome.packageTags or [];
+    };
 
     baseConfig =
       (mergedHome.moduleFlags or {})
@@ -129,5 +175,5 @@ in {
       // lib.optionalAttrs (mergedHome ? xdg) {inherit (mergedHome) xdg;}
       // lib.optionalAttrs (mergedHome ? nix) {inherit (mergedHome) nix;};
   in
-    lib.recursiveUpdate baseConfig (mergedHome.settings or {});
+    builtins.seq validationAssertion (lib.recursiveUpdate baseConfig (mergedHome.settings or {}));
 }
