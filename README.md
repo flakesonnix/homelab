@@ -75,6 +75,8 @@ See `docs/secrets.md` for the full setup and rotation workflow.
   Framework architecture, data flow, exported library entrypoints, and validation model.
 - `docs/data-model.md`
   Role, preset, bundle, package registry, host, and home data shapes.
+- `docs/adoption-guide.md`
+  Guide for reusing this framework in a new or already existing project.
 - `docs/gaming-omen.md`
   Gaming-specific notes for `omen`.
 - `docs/secrets.md`
