@@ -1,12 +1,5 @@
 let
-  unique = list:
-    builtins.foldl' (
-      acc: item:
-        if builtins.elem item acc
-        then acc
-        else acc ++ [item]
-    ) []
-    list;
+  resolveFramework = import ./resolve.nix;
 
   readNamedNixFiles = root:
     map (
@@ -98,7 +91,10 @@ in {
     rolesFor = names: map (name: import (roleRoot + "/${name}.nix")) names;
     hostRoleDefs = rolesFor hostRoles;
     homeRoleDefs = rolesFor homeRoles;
-    resolvedHostPresets = unique (directHostPresets ++ builtins.concatLists (map (role: role.host.presets or []) hostRoleDefs));
+    resolvedHostPresets = resolveFramework.resolveHostPresets {
+      directPresets = directHostPresets;
+      roles = map (role: role.host or {}) hostRoleDefs;
+    };
     resolvedHomeBundles = let
       bundleFile = homeRoot + "/bundles.nix";
       directBundles =
@@ -106,11 +102,10 @@ in {
         then import bundleFile
         else [];
     in
-      unique (
-        if directBundles != []
-        then directBundles
-        else builtins.concatLists (map (role: role.home.bundles or []) homeRoleDefs)
-      );
+      resolveFramework.resolveHomeBundles {
+        inherit directBundles;
+        roles = map (role: role.home or {}) homeRoleDefs;
+      };
     render = kind: values: builtins.concatStringsSep "\t" [kind (builtins.concatStringsSep "," values)];
   in
     builtins.concatStringsSep "\n" [

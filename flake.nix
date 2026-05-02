@@ -481,6 +481,7 @@
                   dot = import $src/lib;
                   validation = dot.core.validation;
                   export = dot.framework.export;
+                  resolve = dot.framework.resolve;
                   fixture = $fixture;
 
                   metadata = export.exportMetadata fixture;
@@ -539,6 +540,22 @@
                     {moduleFlags.programs.foo.enable = false;}
                     {moduleFlags.services.bar.enable = true;}
                   ];
+
+                  resolvedHostPresets = resolve.resolveHostPresets {
+                    directPresets = ["manual-host"];
+                    roles = [
+                      {presets = ["base" "desktop"];}
+                      {presets = ["desktop"];}
+                    ];
+                  };
+
+                  resolvedHomeBundles = resolve.resolveHomeBundles {
+                    directBundles = ["manual"];
+                    roles = [
+                      {bundles = ["core"];}
+                      {bundles = ["desktop"];}
+                    ];
+                  };
                 in
                   assert validation.normalizeRoleList ["base"] == ["base"];
                   assert validation.normalizeRoleList {roles = ["base" "desktop"];} == ["base" "desktop"];
@@ -546,6 +563,8 @@
                   assert flattened."lucy.desktop.enable" == true;
                   assert flattened."programs.foo.enable" == false;
                   assert conflicts == ["programs.foo.enable"];
+                  assert resolvedHostPresets == ["manual-host" "base" "desktop"];
+                  assert resolvedHomeBundles == ["manual"];
                   assert invalidFlags == ["bad-root.enable" "foo"];
                   assert failingAssertion.success == false;
                   assert hostValidation.missingRoles == [];

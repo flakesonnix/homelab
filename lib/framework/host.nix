@@ -2,6 +2,7 @@ let
   projectLib = import ../default.nix;
   inherit (projectLib.core) composition validation;
   packageFramework = projectLib.framework.package;
+  resolveFramework = import ./resolve.nix;
 
   importData = {
     path,
@@ -131,11 +132,16 @@ in {
       target = "host";
     });
 
-    resolvedPresetRefs =
+    resolvedPresetRefsRaw =
       (host.presets or [])
-      ++ builtins.concatLists (map (role: role.presets or []) resolvedRoles);
+      ++ resolveFramework.collectRoleRefs "presets" resolvedRoles;
 
-    resolvedPresetNames = lib.unique resolvedPresetRefs;
+    resolvedPresetRefs = resolveFramework.resolveHostPresets {
+      directPresets = host.presets or [];
+      roles = resolvedRoles;
+    };
+
+    resolvedPresetNames = resolvedPresetRefs;
 
     resolvedPresets =
       presets
@@ -158,7 +164,7 @@ in {
       // validationResult
       // {
         duplicateRoles = validation.findDuplicateNames roleNames;
-        duplicatePresets = validation.findDuplicateNames resolvedPresetRefs;
+        duplicatePresets = validation.findDuplicateNames resolvedPresetRefsRaw;
         conflictingModuleFlags = validation.collectModuleFlagConflicts (resolvedRoles ++ resolvedPresets ++ [host]);
         invalidModuleFlags = validation.invalidModuleFlagKeys {
           moduleFlags = mergedHost.moduleFlags or {};

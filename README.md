@@ -40,7 +40,8 @@ The repo is being reshaped around four layers:
 - `modules/`: NixOS and Home Manager modules that consume the registries
 - `hosts/` and `home/`: concrete host and user composition
 
-See `docs/framework.md` for the current framework notes.
+See `docs/framework.md` for the framework reference.
+See `docs/data-model.md` for the data schema reference.
 See `docs/gaming-omen.md` for the current `omen` gaming setup.
 
 ## Host
