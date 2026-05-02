@@ -37,6 +37,7 @@ pub struct AppData {
     pub host_roles: Vec<String>,
     pub host_presets: Vec<String>,
     pub home_roles: Vec<String>,
+    pub home_bundles: Vec<String>,
     pub system_tags: Vec<(String, bool)>,
     pub home_packages: Vec<(String, bool)>,
     pub module_flags: Vec<(String, String)>,
@@ -63,10 +64,11 @@ impl AppData {
         let available = list_roles(&root.join("data/roles"));
         let metadata = read_framework_metadata(root);
         let host_presets = read_string_list_file(&root.join("data/hosts/omen/presets.nix"));
+        let home_bundles = read_string_list_file(&root.join("data/home/lucy/bundles.nix"));
         let preview = read_framework_preview(root);
         let (framework_validation_ok, framework_validation_errors) = read_framework_validation(root);
         Self {
-            host_name: "omen".into(), host_roles, host_presets, home_roles, system_tags, home_packages,
+            host_name: "omen".into(), host_roles, host_presets, home_roles, home_bundles, system_tags, home_packages,
             module_flags, available_roles: available, role_info: metadata.roles, preset_info: metadata.presets, bundle_info: metadata.bundles, preview,
             rebuild_running: false, rebuild_ok: true, rebuild_log: String::new(),
             framework_validation_ok, framework_validation_errors,
@@ -90,6 +92,12 @@ impl AppData {
         let path = self.dotfiles_root.join("data/hosts/omen/presets.nix");
         let _ = std::fs::write(&path, format_role_list(presets));
         self.host_presets = presets.to_vec();
+        self.refresh_framework_validation();
+    }
+    pub fn save_home_bundles(&mut self, bundles: &[String]) {
+        let path = self.dotfiles_root.join("data/home/lucy/bundles.nix");
+        let _ = std::fs::write(&path, format_role_list(bundles));
+        self.home_bundles = bundles.to_vec();
         self.refresh_framework_validation();
     }
     pub fn save_system_tag(&mut self, tag: &str, enabled: bool) {
@@ -609,14 +617,17 @@ mod tests {
 
     #[test]
     fn parse_framework_metadata_role_preset_bundle_lines() {
-        let input = "role\tdesktop\tDesktop env\thost,home\tgaming-base\tdesktop-bundle\tdev\tcore\tnone\npreset\tgaming-base\tGaming base\thost\nbundle\tcore\tCore bundle\thome\n";
+        let input = "role\tdesktop\tDesktop env\thost,home\tgaming-base\tdesktop-bundle\tdev\tcore\tnone\t\npreset\tgaming-base\tGaming base\thost\nbundle\tcore\tCore bundle\thome\n";
         let meta = parse_framework_metadata(input);
         assert_eq!(meta.roles.len(), 1);
         assert_eq!(meta.roles[0].name, "desktop");
         assert_eq!(meta.roles[0].targets, vec!["host", "home"]);
         assert_eq!(meta.roles[0].presets, vec!["gaming-base"]);
         assert_eq!(meta.roles[0].bundles, vec!["desktop-bundle"]);
+        assert_eq!(meta.roles[0].requires_host, vec!["dev"]);
         assert_eq!(meta.roles[0].requires_home, vec!["core"]);
+        assert_eq!(meta.roles[0].conflicts_host, vec!["none"]);
+        assert_eq!(meta.roles[0].conflicts_home, Vec::<String>::new());
         assert_eq!(meta.presets.len(), 1);
         assert_eq!(meta.presets[0].name, "gaming-base");
         assert_eq!(meta.bundles.len(), 1);
