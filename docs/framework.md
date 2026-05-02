@@ -159,5 +159,6 @@ This keeps the UI driven by Nix as the source of truth instead of duplicating me
 ## Related pages
 
 - `docs/data-model.md`
+- `docs/adoption-guide.md`
 - `docs/secrets.md`
 - `docs/gaming-omen.md`

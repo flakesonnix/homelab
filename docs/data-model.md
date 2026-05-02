@@ -243,4 +243,5 @@ Rule of thumb:
 ## Related pages
 
 - `docs/framework.md`
+- `docs/adoption-guide.md`
 - `README.md`
