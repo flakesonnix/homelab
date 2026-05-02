@@ -17,6 +17,7 @@ let
   frameworkActions = import ./framework/actions.nix;
   frameworkPackage = import ./framework/package.nix;
   frameworkBundle = import ./framework/bundle.nix;
+  frameworkExport = import ./framework/export.nix;
   frameworkPreset = import ./framework/preset.nix;
   frameworkHost = import ./framework/host.nix;
   frameworkHome = import ./framework/home.nix;
@@ -69,6 +70,7 @@ in
       actions = frameworkActions;
       package = frameworkPackage;
       bundle = frameworkBundle;
+      export = frameworkExport;
       preset = frameworkPreset;
       host = frameworkHost;
       home = frameworkHome;

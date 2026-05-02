@@ -29,13 +29,11 @@ in {
     };
 
     # One-flag setup: NixOS compositor + HM config file.
-    home-manager.users = lib.mkIf hasHm (
-      lib.mkMerge (
-        map (name: {
-          ${name}.programs.niri.enable = lib.mkDefault true;
-        })
-        hmUserNames
-      )
-    );
+    home-manager.users = lib.mkIf hasHm (lib.mkMerge (
+      map (name: {
+        ${name}.programs.niri.enable = lib.mkDefault true;
+      })
+      hmUserNames
+    ));
   };
 }

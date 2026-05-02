@@ -50,6 +50,20 @@ fn route(state: Arc<Mutex<ServerState>>, req: &Request) -> Response {
             }
             Response::html(views::html::render_roles_section(&state.lock().unwrap().data, "home"))
         }
+        (Method::Post, "/presets/host") => {
+            if let Some(presets) = req.form_value("presets") {
+                let list: Vec<String> = presets.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+                state.lock().unwrap().data.save_host_presets(&list);
+            }
+            Response::html(views::html::render_host_presets_section(&state.lock().unwrap().data))
+        }
+        (Method::Post, "/bundles/home") => {
+            if let Some(bundles) = req.form_value("bundles") {
+                let list: Vec<String> = bundles.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+                state.lock().unwrap().data.save_home_bundles(&list);
+            }
+            Response::html(views::html::render_bundle_section(&state.lock().unwrap().data))
+        }
         (Method::Post, "/tags/system") => {
             let tag = req.form_value("tag").unwrap_or_default();
             let enabled = req.form_value("enabled") == Some("true".into());
@@ -88,6 +102,11 @@ fn route(state: Arc<Mutex<ServerState>>, req: &Request) -> Response {
                 Ok(o) => Response::html(format!("<pre>{}</pre>", esc(&String::from_utf8_lossy(&o.stderr)))),
                 Err(e) => Response::html(format!("<span class=\"rb-fail\">{}</span>", esc(&e.to_string()))),
             }
+        }
+        (Method::Post, "/validate/framework") => {
+            let mut s = state.lock().unwrap();
+            s.data.refresh_framework_validation();
+            Response::html(views::html::render_framework_validation_section(&s.data))
         }
         (Method::Get, "/rebuild/status") => {
             let s = state.lock().unwrap();
