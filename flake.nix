@@ -401,6 +401,8 @@
                     description = "Base preset";
                     targets = ["host"];
                   };
+
+                  basePackages = ["base-tool"];
                 }
                 EOF
 
@@ -410,6 +412,14 @@
                     description = "Desktop preset";
                     targets = ["host"];
                   };
+
+                  moduleFlags = {
+                    lucy.desktop.enable = true;
+                  };
+
+                  packageTags = ["browser"];
+
+                  systemPackages = ["desktop-tool"];
                 }
                 EOF
 
@@ -418,6 +428,10 @@
                   meta = {
                     description = "Manual host preset";
                     targets = ["host"];
+                  };
+
+                  settings = {
+                    test.manualHost = true;
                   };
                 }
                 EOF
@@ -428,6 +442,8 @@
                     description = "Core bundle";
                     targets = ["home"];
                   };
+
+                  programs.core.enable = true;
                 }
                 EOF
 
@@ -437,6 +453,8 @@
                     description = "Desktop bundle";
                     targets = ["home"];
                   };
+
+                  programs.desktop.enable = true;
                 }
                 EOF
 
@@ -446,6 +464,10 @@
                     description = "Manual bundle override";
                     targets = ["home"];
                   };
+
+                  packageToggles = ["comma"];
+
+                  programs.manual.enable = true;
                 }
                 EOF
 
@@ -481,6 +503,8 @@
                   dot = import $src/lib;
                   validation = dot.core.validation;
                   export = dot.framework.export;
+                  hostFramework = dot.framework.host;
+                  homeFramework = dot.framework.home;
                   resolve = dot.framework.resolve;
                   fixture = $fixture;
 
@@ -556,6 +580,67 @@
                       {bundles = ["desktop"];}
                     ];
                   };
+
+                  appliedHost = hostFramework.applyHost {
+                    inherit lib;
+                    host = {
+                      __root = fixture + "/data/hosts/omen";
+                      roles = ["base" "desktop"];
+                      presets = ["manual-host"];
+                    };
+                    roleRoot = fixture + "/data/roles";
+                    presetRoot = fixture + "/data/presets";
+                    packageRegistry = {
+                      firefox = {
+                        tags = ["browser"];
+                      };
+                    };
+                    packagePath = ["testPkgs"];
+                    basePackagePath = ["testBase"];
+                    systemPackagePath = ["testSystem"];
+                  };
+
+                  appliedHome = homeFramework.applyHome {
+                    inherit lib;
+                    home = {
+                      __root = fixture + "/data/home/lucy";
+                      roles = ["desktop"];
+                      bundles = ["manual"];
+                    };
+                    roleRoot = fixture + "/data/roles";
+                    bundleRoot = fixture + "/data/bundles";
+                    packageRegistry = {
+                      comma = {
+                        tags = ["cli"];
+                      };
+                    };
+                    packagePath = ["testHomePkgs"];
+                  };
+
+                  duplicateHostPresetFailure = builtins.tryEval (hostFramework.applyHost {
+                    inherit lib;
+                    host = {
+                      __root = fixture + "/data/hosts/omen";
+                      roles = ["base"];
+                      presets = ["manual-host" "manual-host"];
+                    };
+                    roleRoot = fixture + "/data/roles";
+                    presetRoot = fixture + "/data/presets";
+                    packagePath = ["testPkgs"];
+                    basePackagePath = ["testBase"];
+                  });
+
+                  duplicateHomeBundleFailure = builtins.tryEval (homeFramework.applyHome {
+                    inherit lib;
+                    home = {
+                      __root = fixture + "/data/home/lucy";
+                      roles = ["desktop"];
+                      bundles = ["manual" "manual"];
+                    };
+                    roleRoot = fixture + "/data/roles";
+                    bundleRoot = fixture + "/data/bundles";
+                    packagePath = ["testHomePkgs"];
+                  });
                 in
                   assert validation.normalizeRoleList ["base"] == ["base"];
                   assert validation.normalizeRoleList {roles = ["base" "desktop"];} == ["base" "desktop"];
@@ -567,6 +652,16 @@
                   assert resolvedHomeBundles == ["manual"];
                   assert invalidFlags == ["bad-root.enable" "foo"];
                   assert failingAssertion.success == false;
+                  assert appliedHost.lucy.desktop.enable == true;
+                  assert appliedHost.testPkgs.firefox == true;
+                  assert appliedHost.testBase == ["base-tool"];
+                  assert appliedHost.testSystem == ["desktop-tool"];
+                  assert appliedHost.test.manualHost == true;
+                  assert appliedHome.testHomePkgs.comma == true;
+                  assert appliedHome.programs.manual.enable == true;
+                  assert builtins.hasAttrByPath ["programs" "desktop" "enable"] appliedHome == false;
+                  assert duplicateHostPresetFailure.success == false;
+                  assert duplicateHomeBundleFailure.success == false;
                   assert hostValidation.missingRoles == [];
                   assert hostValidation.missingPresets == [];
                   assert hostValidation.missingRequiredRoles == [];
