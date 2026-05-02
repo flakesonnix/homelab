@@ -1,8 +1,38 @@
 # NixOS Dotfiles
 
-NixOS and Home Manager config for `omen`, with an increasing focus on a self-hosted Nix framework.
+NixOS and Home Manager config for `omen`, built around a small self-hosted Nix framework.
 
-## Quick Start
+## Overview
+
+The repository is split into four main layers:
+
+- `lib/`
+  Reusable helpers, validation, renderers, and framework entrypoints.
+- `data/`
+  Declarative roles, presets, bundles, package registries, and host/home selections.
+- `modules/`
+  Reusable NixOS and Home Manager modules.
+- `hosts/` and `home/`
+  Concrete host and user composition.
+
+## Layout
+
+```text
+.
+├── flake.nix
+├── lib/                 # Framework helpers, validation, renderers
+├── data/                # Roles, presets, bundles, package registries, host/home data
+├── modules/
+│   ├── nixos/           # Reusable NixOS modules
+│   └── home/            # Reusable Home Manager modules
+├── hosts/omen/          # Host wrapper and hardware imports
+├── home/lucy/           # User-specific composition
+└── docs/                # Framework and host reference docs
+```
+
+## Common Commands
+
+Quick entrypoints:
 
 ```bash
 nix run .#rebuild
@@ -10,64 +40,49 @@ nix run .#check
 nix run .#update
 ```
 
-Direct rebuild still works:
+Direct commands:
 
 ```bash
 nixos-rebuild switch --flake .#omen
-```
-
-## Current Structure
-
-```text
-.
-├── flake.nix
-├── lib/                 # Framework helpers, renderers, symbols
-├── data/                # Package, bundle, host, and preset registries
-├── modules/
-│   ├── nixos/           # Reusable NixOS modules
-│   └── home/            # Reusable Home Manager modules
-├── hosts/omen/          # Host-specific composition
-├── home/lucy/           # User-specific composition
-└── docs/                # Framework notes
-```
-
-## Framework Direction
-
-The repo is being reshaped around four layers:
-
-- `lib/`: reusable functions and renderers
-- `data/`: declarative registries for packages, bundles, hosts, and presets
-- `modules/`: NixOS and Home Manager modules that consume the registries
-- `hosts/` and `home/`: concrete host and user composition
-
-See `docs/framework.md` for the framework reference.
-See `docs/data-model.md` for the data schema reference.
-See `docs/gaming-omen.md` for the current `omen` gaming setup.
-
-## Host
-
-| Host | Type | GPU | Notes |
-|------|------|-----|-------|
-| omen | Laptop | NVIDIA RTX 2070 | Niri, gaming presets, suspend fix |
-
-## Secrets Management
-
-```bash
-./setup-sops.sh
-SOPS_AGE_KEY_FILE=~/.sops/keys.txt nvim hosts/omen/secrets.yaml
-```
-
-## Common Commands
-
-```bash
 nix flake check
 nix flake update
 nix fmt
 ```
 
-## Current Focus
+## Host
 
-- move more config into registries under `data/`
-- reduce raw config text in modules
-- expand `omen` gaming setup through reusable presets
+| Host | Type | GPU | Notes |
+|------|------|-----|-------|
+| omen | Laptop | NVIDIA RTX 2070 | Niri, gaming presets, Stylix-driven theme |
+
+Host-specific declarative data lives under `data/hosts/omen/`.
+The NixOS wrapper that applies it lives in `hosts/omen/host.nix`.
+
+## Secrets
+
+Initial setup:
+
+```bash
+./setup-sops.sh omen
+SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/omen/secrets.yaml
+```
+
+See `docs/secrets.md` for the full setup and rotation workflow.
+
+## Documentation
+
+- `docs/framework.md`
+  Framework architecture, data flow, exported library entrypoints, and validation model.
+- `docs/data-model.md`
+  Role, preset, bundle, package registry, host, and home data shapes.
+- `docs/gaming-omen.md`
+  Gaming-specific notes for `omen`.
+- `docs/secrets.md`
+  `sops-nix` setup and Asterisk secret handling.
+
+## Current Direction
+
+- move more user configuration into structured bundle data
+- keep validation wired into real host and home apply paths
+- reduce handwritten string config where render helpers are a better fit
 - keep `nix flake check` green after every refactor

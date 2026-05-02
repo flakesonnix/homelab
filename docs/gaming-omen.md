@@ -40,6 +40,5 @@ These are applied through `services.pipewire.lowLatency` when `lucy.gaming.enabl
 
 ## Follow-Up Ideas
 
-- Add a streaming subfeature for Sunshine or OBS.
 - Add streaming subfeature (Sunshine / OBS) as role or preset.
 - Add game-specific launch helpers if needed.
