@@ -331,6 +331,245 @@
                 mkdir -p "$out"
               '';
 
+            framework-unit =
+              pkgs.runCommand "framework-unit" {
+                nativeBuildInputs = [pkgs.nix];
+                src = self;
+              } ''
+                export HOME="$TMPDIR"
+                export XDG_STATE_HOME="$TMPDIR/state"
+                fixture="$TMPDIR/framework-fixture"
+                mkdir -p "$fixture/data/roles" "$fixture/data/presets" "$fixture/data/bundles" "$fixture/data/hosts/omen" "$fixture/data/home/lucy"
+
+                cat > "$fixture/data/roles/base.nix" <<'EOF'
+                {
+                  meta = {
+                    description = "Base role";
+                    targets = ["host" "home"];
+                  };
+
+                  host = {
+                    presets = ["base"];
+                  };
+
+                  home = {
+                    bundles = ["core"];
+                  };
+                }
+                EOF
+
+                cat > "$fixture/data/roles/desktop.nix" <<'EOF'
+                {
+                  meta = {
+                    description = "Desktop role";
+                    targets = ["host" "home"];
+                    requires = {
+                      host = ["base"];
+                      home = ["base"];
+                    };
+                    conflicts = {
+                      host = ["server"];
+                    };
+                  };
+
+                  host = {
+                    presets = ["desktop"];
+                  };
+
+                  home = {
+                    bundles = ["desktop"];
+                  };
+                }
+                EOF
+
+                cat > "$fixture/data/roles/server.nix" <<'EOF'
+                {
+                  meta = {
+                    description = "Server role";
+                    targets = ["host"];
+                  };
+
+                  host = {
+                    presets = [];
+                  };
+                }
+                EOF
+
+                cat > "$fixture/data/presets/base.nix" <<'EOF'
+                {
+                  meta = {
+                    description = "Base preset";
+                    targets = ["host"];
+                  };
+                }
+                EOF
+
+                cat > "$fixture/data/presets/desktop.nix" <<'EOF'
+                {
+                  meta = {
+                    description = "Desktop preset";
+                    targets = ["host"];
+                  };
+                }
+                EOF
+
+                cat > "$fixture/data/presets/manual-host.nix" <<'EOF'
+                {
+                  meta = {
+                    description = "Manual host preset";
+                    targets = ["host"];
+                  };
+                }
+                EOF
+
+                cat > "$fixture/data/bundles/core.nix" <<'EOF'
+                {
+                  meta = {
+                    description = "Core bundle";
+                    targets = ["home"];
+                  };
+                }
+                EOF
+
+                cat > "$fixture/data/bundles/desktop.nix" <<'EOF'
+                {
+                  meta = {
+                    description = "Desktop bundle";
+                    targets = ["home"];
+                  };
+                }
+                EOF
+
+                cat > "$fixture/data/bundles/manual.nix" <<'EOF'
+                {
+                  meta = {
+                    description = "Manual bundle override";
+                    targets = ["home"];
+                  };
+                }
+                EOF
+
+                cat > "$fixture/data/hosts/omen/roles.nix" <<'EOF'
+                [
+                  "base"
+                  "desktop"
+                ]
+                EOF
+
+                cat > "$fixture/data/hosts/omen/presets.nix" <<'EOF'
+                [
+                  "manual-host"
+                ]
+                EOF
+
+                cat > "$fixture/data/home/lucy/roles.nix" <<'EOF'
+                [
+                  "desktop"
+                ]
+                EOF
+
+                cat > "$fixture/data/home/lucy/bundles.nix" <<'EOF'
+                [
+                  "manual"
+                ]
+                EOF
+
+                cat > framework-unit-test.nix <<EOF
+                let
+                  pkgs = import ${pkgs.path} {};
+                  lib = pkgs.lib;
+                  dot = import $src/lib;
+                  validation = dot.core.validation;
+                  export = dot.framework.export;
+                  fixture = $fixture;
+
+                  metadata = export.exportMetadata fixture;
+                  preview = export.exportPreview fixture;
+
+                  hostValidation = validation.validateHost {
+                    inherit lib;
+                    hostRoot = fixture + "/data/hosts/omen";
+                    roleRoot = fixture + "/data/roles";
+                    presetRoot = fixture + "/data/presets";
+                    packageRegistry = {
+                      firefox = {tags = ["browser"];};
+                    };
+                    packageData = {
+                      packageToggles = ["firefox"];
+                      packageTags = ["browser"];
+                    };
+                  };
+
+                  homeValidation = validation.validateHome {
+                    inherit lib;
+                    homeRoot = fixture + "/data/home/lucy";
+                    roleRoot = fixture + "/data/roles";
+                    bundleRoot = fixture + "/data/bundles";
+                    packageRegistry = {
+                      comma = {tags = ["cli"];};
+                    };
+                    packageData = {
+                      packageToggles = ["comma"];
+                    };
+                  };
+
+                  failingAssertion = builtins.tryEval (validation.assertValid {
+                    inherit lib;
+                    missingBundles = ["manual"];
+                  });
+
+                  flattened = validation.flattenModuleFlags {
+                    lucy.desktop.enable = true;
+                    programs.foo.enable = false;
+                  };
+
+                  invalidFlags = validation.invalidModuleFlagKeys {
+                    moduleFlags = {
+                      foo = true;
+                      "bad-root" = {
+                        enable = true;
+                      };
+                      programs.good.enable = true;
+                    };
+                    allowedRoots = ["programs" "services" "home" "lucy"];
+                  };
+
+                  conflicts = validation.collectModuleFlagConflicts [
+                    {moduleFlags.programs.foo.enable = true;}
+                    {moduleFlags.programs.foo.enable = false;}
+                    {moduleFlags.services.bar.enable = true;}
+                  ];
+                in
+                  assert validation.normalizeRoleList ["base"] == ["base"];
+                  assert validation.normalizeRoleList {roles = ["base" "desktop"];} == ["base" "desktop"];
+                  assert builtins.attrNames flattened == ["lucy.desktop.enable" "programs.foo.enable"];
+                  assert flattened."lucy.desktop.enable" == true;
+                  assert flattened."programs.foo.enable" == false;
+                  assert conflicts == ["programs.foo.enable"];
+                  assert invalidFlags == ["bad-root.enable" "foo"];
+                  assert failingAssertion.success == false;
+                  assert hostValidation.missingRoles == [];
+                  assert hostValidation.missingPresets == [];
+                  assert hostValidation.missingRequiredRoles == [];
+                  assert hostValidation.conflictingRoles == [];
+                  assert hostValidation.missingPackageToggles == [];
+                  assert hostValidation.missingPackageTags == [];
+                  assert homeValidation.missingRoles == [];
+                  assert homeValidation.missingBundles == [];
+                  assert homeValidation.missingRequiredRoles == ["desktop requires base"];
+                  assert lib.hasInfix "role\tdesktop\tDesktop role\thost,home\tdesktop\tdesktop\tbase\tbase\tserver\t" metadata;
+                  assert lib.hasInfix "preset\tmanual-host\tManual host preset\thost" metadata;
+                  assert lib.hasInfix "bundle\tmanual\tManual bundle override\thome" metadata;
+                  assert lib.hasInfix "preview-host-roles\tbase,desktop" preview;
+                  assert lib.hasInfix "preview-host-presets\tmanual-host,base,desktop" preview;
+                  assert lib.hasInfix "preview-home-roles\tdesktop" preview;
+                  assert lib.hasInfix "preview-home-bundles\tmanual" preview;
+                  true
+                EOF
+                nix-instantiate --eval --expr "import ./framework-unit-test.nix"
+                mkdir -p "$out"
+              '';
+
             # Force evaluation of full NixOS+HM config (no system build).
             # Discard string context so we don't pull huge build deps into this check.
             omen-eval = pkgs.writeText "omen-eval" (builtins.unsafeDiscardStringContext (builtins.toString omen-config.config.system.build.toplevel));
