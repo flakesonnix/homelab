@@ -28,11 +28,9 @@
     '';
   };
 in {
-  options.lucy.easyeffects = {
-    enable = lib.mkEnableOption "EasyEffects with presets";
-  };
+  options.programs.easyeffects.enable = lib.mkEnableOption "EasyEffects with presets";
 
-  config = lib.mkIf config.lucy.easyeffects.enable {
+  config = lib.mkIf config.programs.easyeffects.enable {
     home.packages = [pkgs.easyeffects];
 
     xdg.configFile."easyeffects/output" = {

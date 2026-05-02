@@ -2,56 +2,87 @@
 
 Repo uses `sops-nix` for runtime-decrypted secrets.
 
-## Setup
-
-1. Generate age key:
+## One-time Setup
 
 ```bash
-./setup-sops.sh
+./setup-sops.sh omen          # Generate age key pair in .sops/keys.txt
 ```
 
-2. Create host secrets file (encrypted):
+This generates an age key pair and prints the public key.
+Update `.sops.yaml` with that public key if it differs from the existing one.
 
-- Example path: `hosts/omen/secrets.yaml`
+## Creating Secrets
 
-3. Point config at file:
+1. Generate a blank file:
 
-- Set `lucy.secrets.enable = true;`
-- Set `lucy.secrets.sopsFile = ./hosts/omen/secrets.yaml;` (path from flake root)
+```bash
+touch hosts/omen/secrets.yaml
+```
 
-## Notes
+2. Encrypt and edit it:
 
-- Keep secrets out of Nix store: use `sops.secrets.<name>` files or `sops.templates` for config files.
-- If `lucy.secrets.enable=true` and `lucy.secrets.sopsFile=null`, eval fails with clear assertion.
+```bash
+SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/omen/secrets.yaml
+```
 
-## Asterisk
+3. Use the Asterisk template from `modules/nixos/secrets.yaml.example` as reference.
 
-`services.asteriskLocal` supports sops-nix templated config to avoid storing SIP passwords in the Nix store.
+## Activating in Host Config
 
-Example:
+In your host data file (e.g. `data/hosts/omen/services.nix`):
 
 ```nix
 {
   lucy.secrets = {
     enable = true;
-    sopsFile = ./hosts/omen/secrets.yaml;
-  };
-
-  services.asteriskLocal = {
-    enable = true;
-    secrets.enable = true;
-    phones = {
-      desk1 = {
-        extension = "1001";
-        passwordSecret = "asterisk/phones/desk1";
-      };
-    };
+    sopsFile = ../../../hosts/omen/secrets.yaml;
   };
 }
 ```
 
-In `hosts/omen/secrets.yaml`, add key `asterisk/phones/desk1`.
+## Asterisk SIP Passwords
 
-## Repo Checks
+`services.asteriskLocal` supports sops-nix templated config. When `secrets.enable = true`,
+config files are rendered at runtime via `sops.templates` — passwords never touch the Nix store.
 
-`nix flake check` includes `no-plaintext-host-passwords` which fails if it finds `password = "..."` in `data/hosts/**`.
+```nix
+services.asteriskLocal = {
+  enable = true;
+  secrets.enable = true;
+  phones = {
+    desk1 = {
+      extension = "1001";
+      passwordSecret = "asterisk/phones/desk1";  # References key in secrets.yaml
+    };
+  };
+};
+```
+
+Corresponding entry in `hosts/omen/secrets.yaml` (encrypted):
+
+```yaml
+asterisk:
+  phones:
+    desk1: "s3cret-p4ssw0rd"
+```
+
+## Key Rotation
+
+1. Generate new key: `age-keygen -o .sops/keys.txt`
+2. Update public key in `.sops.yaml`
+3. Re-encrypt all secrets: `SOPS_AGE_KEY_FILE=.sops/keys.txt sops --rotate -i hosts/omen/secrets.yaml`
+4. Deploy new key to target host: `sudo cp .sops/keys.txt /etc/sops/age/keys.txt`
+
+## Deploying Keys to Host
+
+```bash
+sudo mkdir -p /etc/sops/age
+sudo cp .sops/keys.txt /etc/sops/age/keys.txt
+sudo chmod 600 /etc/sops/age/keys.txt
+```
+
+## Notes
+
+- `lucy.secrets.enable=true` without `lucy.secrets.sopsFile` fails with a clear assertion.
+- Plaintext passwords in `data/hosts/**` are blocked by the `no-plaintext-host-passwords` pre-commit check.
+- Use `passwordSecret` (key path) instead of `password` (plaintext) for sops-nix integration.

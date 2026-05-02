@@ -34,8 +34,17 @@ let
   loadBundles = {
     root,
     names,
+    args ? {},
   }:
-    map (name: import (root + "/${name}.nix")) names;
+    map (
+      name: let
+        value = import (root + "/${name}.nix");
+      in
+        if builtins.isFunction value
+        then value args
+        else value
+    )
+    names;
 in {
   inherit loadRoles loadBundles;
 
@@ -90,6 +99,7 @@ in {
     resolvedBundles = loadBundles {
       root = bundleRoot;
       names = resolvedBundleNames;
+      args = {inherit lib;};
     };
 
     mergedHome = composition.mergeDefinitions {
