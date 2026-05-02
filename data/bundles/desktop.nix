@@ -1,17 +1,18 @@
 {
-  moduleFlags = {
-    lucy.alacritty.enable = true;
-    lucy.easyeffects.enable = true;
-    lucy.firefoxUi.enable = true;
-    lucy.fuzzel.enable = true;
-    lucy.gnomeTheme.enable = true;
-    lucy.niri.enable = true;
-    lucy.stylix.enable = true;
-    lucy.thunderbirdUi.enable = true;
-    lucy.vesktop.enable = true;
-    lucy.waybar.enable = true;
-    lucy.zathura.enable = true;
+  programs = {
+    alacritty.enable = true;
+    easyeffects.enable = true;
+    firefox.enable = true;
+    fuzzel.enable = true;
+    gnomeTheme.enable = true;
+    niri.enable = true;
+    thunderbird.enable = true;
+    vesktop.enable = true;
+    waybar.enable = true;
+    zathura.enable = true;
   };
+
+  settings.stylix.enable = true;
 
   packageToggles = [
     "jetbrains-mono"

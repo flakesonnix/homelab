@@ -2,7 +2,7 @@
   host = {
     moduleFlags = {
       lucy.fonts.inter = true;
-      lucy.niri.enable = true;
+      programs.niri.enable = true;
       lucy.waybar.installFonts = true;
     };
 
