@@ -1,66 +1,53 @@
-# Adoption guide
+# Adoption Guide
 
-## Overview
+## Introduction
 
-This page explains how to reuse the framework patterns from this repository in:
+This document describes how to reuse the framework patterns from this repository in:
 
-- a new project
-- an existing NixOS or Home Manager project
+- a new repository
+- an existing NixOS or Home Manager repository
 
-The intended outcome is not to copy this repository exactly.
-The intended outcome is to adopt the model:
+The framework is based on four constraints:
 
-- keep logic in `lib/`
-- keep intent in `data/`
-- keep host and user wrappers thin
-- keep validation close to the apply path
+- reusable logic lives in `lib/`
+- user and host intent lives in `data/`
+- host and home entrypoints remain thin
+- validation is part of evaluation, not only CI
 
-## Before you start
+This document is intentionally conservative. It favors incremental adoption over large rewrites.
 
-This framework is a good fit when:
+## Scope
 
-- you manage more than one concern through shared roles or presets
-- you want host and home selections to be declarative data
-- you want validation for roles, bundles, presets, and package refs
-- you want to render config from structured data instead of large handwritten blobs
+The most reusable parts of this repository are:
 
-It is probably too much if:
+- `lib/core/composition.nix`
+- `lib/core/validation.nix`
+- `lib/framework/package.nix`
+- `lib/framework/resolve.nix`
+- the `data/` layout for roles, presets, bundles, and package registries
 
-- you have one host and no shared abstractions
-- your configuration is still changing faster than the abstractions
-- you do not want an opinionated `data/` tree
+The most repository-specific parts are:
 
-## Core ideas to keep
+- option namespaces such as `lucy.*`
+- application helpers such as `niri.nix` and `waybar.nix`
+- output paths passed to `applyHost` and `applyHome`
+- the web UI export contract
 
-The useful parts of this repository are:
+## Suitability
 
-### `lib/core`
+This framework is suitable when the target repository has at least one of the following properties:
 
-- composition helpers
-- validation helpers
-- small attr and list utilities
+- multiple hosts with shared concerns
+- multiple user profiles with overlapping bundles
+- package selection spread across unrelated modules
+- repeated feature clusters such as desktop, development, gaming, or server roles
+- a need for validation of role, preset, bundle, and package references
 
-### `lib/framework`
+This framework is usually unnecessary when the repository has a single host, minimal reuse, and no need for a data layer.
 
-- host loading and apply helpers
-- home loading and apply helpers
-- role preset and bundle resolution
-- export helpers for tooling and UI
+## Required Structure
 
-### `data/`
-
-- package registries
-- roles
-- presets
-- bundles
-- host data
-- home data
-
-## Option 1: New project
-
-### 1. Create the basic layout
-
-Start with:
+A minimal repository layout is:
 
 ```text
 .
@@ -80,11 +67,17 @@ Start with:
 └── home/
 ```
 
-### 2. Add a library entrypoint
+The `lib/` tree provides reusable functions.
+The `data/` tree provides selections and metadata.
+The `hosts/` and `home/` trees provide the thin evaluation entrypoints.
 
-Create a small `lib/default.nix` that exports your helpers.
+## New Repository
 
-Minimal example:
+### Library Entry Point
+
+Create a single library entrypoint.
+
+Example:
 
 ```nix
 let
@@ -92,6 +85,7 @@ let
   coreValidation = import ./core/validation.nix;
   frameworkHost = import ./framework/host.nix;
   frameworkHome = import ./framework/home.nix;
+  frameworkResolve = import ./framework/resolve.nix;
 in {
   core = {
     composition = coreComposition;
@@ -101,13 +95,14 @@ in {
   framework = {
     host = frameworkHost;
     home = frameworkHome;
+    resolve = frameworkResolve;
   };
 }
 ```
 
-### 3. Move package definitions into registries
+### Package Registries
 
-Instead of enabling packages directly inside modules, define them in `data/packages/*.nix`.
+Package definitions should move into registries before roles become large.
 
 Example:
 
@@ -122,17 +117,11 @@ Example:
 }
 ```
 
-### 4. Define roles first, not hosts first
+### Roles
 
-A good first role split is:
+Roles should describe reusable intent, not host-specific state.
 
-- `core`
-- `desktop`
-- `dev`
-- `gaming`
-- `server`
-
-Example role:
+Example:
 
 ```nix
 {
@@ -152,11 +141,19 @@ Example role:
 }
 ```
 
-### 5. Keep host data thin
+Recommended initial role vocabulary:
 
-Your host data should mostly select roles, plus host-local overrides.
+- `core`
+- `desktop`
+- `dev`
+- `gaming`
+- `server`
 
-Example `data/hosts/my-host/roles.nix`:
+### Host Entry Point
+
+Host data should primarily select roles and carry local overrides.
+
+Example host role selection:
 
 ```nix
 [
@@ -194,7 +191,9 @@ in {
 }
 ```
 
-### 6. Keep home data thin
+### Home Entry Point
+
+Home data should primarily select roles and, optionally, explicit bundle overrides.
 
 Example home wrapper:
 
@@ -223,60 +222,59 @@ in {
 }
 ```
 
-### 7. Add validation early
+### Validation
 
-Do not wait until the framework is large.
+Validation should be added before the repository accumulates many roles or bundles.
 
-At minimum, validate:
+The minimum useful checks are:
 
 - missing role files
 - missing preset files
 - missing bundle files
-- invalid metadata
 - duplicate references
+- invalid metadata
 - invalid module flag paths
 - unknown package toggles and tags
 
-### 8. Add checks in `flake.nix`
+### Flake Checks
 
-Start with:
+At minimum, define the following checks:
 
 - formatting
-- one framework validation check
-- one framework unit check
-- one host evaluation check
+- framework validation
+- framework unit tests
+- host evaluation
 
-## Option 2: Existing project
+## Existing Repository
 
-The safest migration is incremental.
+### Migration Strategy
 
-### 1. Do not rewrite everything at once
+Existing repositories should adopt the framework incrementally.
 
-Start by wrapping existing behavior instead of replacing it.
+The recommended order is:
 
-Good first moves:
+1. add `lib/`
+2. add package registries
+3. add role selection for one host
+4. add role selection for one user
+5. add validation
+6. migrate one bundle or preset family at a time
 
-- add `lib/`
-- add `data/packages/`
-- move one host to `data/hosts/<name>/roles.nix`
-- move one cluster of user config into one bundle
+### Package Selection First
 
-### 2. Move package selection before module structure
+Package registries are the least disruptive entry point.
 
-This is usually the easiest migration step.
+They usually remove duplication immediately and establish the data model needed by later role and bundle work.
 
-Replace scattered package lists with a registry plus toggles and tags.
+### Roles as Selectors
 
-That gives you immediate wins:
+Roles do not need to replace existing modules.
 
-- less duplication
-- easier validation
-- easier role reuse
+In an existing repository, roles may act only as selectors for:
 
-### 3. Introduce roles as selectors, not as full rewrites
-
-If your repo already has big modules, keep them.
-Make roles point at them through presets, package tags, and module flags.
+- presets
+- package tags
+- module flags
 
 Example:
 
@@ -296,119 +294,85 @@ Example:
 }
 ```
 
-This lets you layer the framework on top of the old module layout.
+This allows the framework to sit on top of an existing module structure.
 
-### 4. Migrate one home bundle at a time
+### Bundle Migration
 
-Do not convert every Home Manager module into bundle data at once.
+Home Manager bundles should be migrated gradually.
 
-A safe migration order is:
+Recommended order:
 
 1. shell and CLI tools
 2. editor configuration
 3. desktop applications
-4. graphical service integrations
-5. renderer-backed config like CSS or KDL
+4. graphical integrations
+5. renderer-backed configuration such as CSS or KDL
 
-### 5. Keep old wrappers, change their internals
+### Stable Entry Points
 
-If your repo already has `hosts/<name>/default.nix` or `home/<user>/default.nix`, keep those entrypoints stable.
+Existing `hosts/<name>/default.nix` and `home/<user>/default.nix` entrypoints should usually remain stable.
 
-Only switch their implementation to call the framework helpers.
+Only their internals should change to call the framework helpers.
 
-That reduces blast radius and makes review easier.
+This reduces review noise and keeps the migration localized.
 
-### 6. Add validation before aggressive refactors
+### Explicit Bundle Overrides
 
-Once roles, presets, or bundles exist, add validation immediately.
+`data/home/<user>/bundles.nix` is useful as a migration bridge.
 
-This prevents subtle drift like:
+It is appropriate when:
 
-- role names that no longer exist
-- bundle names that were renamed
-- bad module flag paths
-- invalid metadata targets
+- a user profile should temporarily differ from role-derived bundle resolution
+- only part of the repository has been migrated to role-driven bundles
 
-### 7. Use explicit bundle overrides sparingly
+It should not replace role design entirely.
 
-`data/home/<user>/bundles.nix` is useful for temporary overrides or curated home profiles.
+## Minimal Adoption Path
 
-Use it when:
+For a repository that only needs the smallest useful subset, the following is sufficient:
 
-- you want a smaller or larger user profile than roles would derive
-- you are migrating gradually and need a manual bridge
+1. `lib/core/composition.nix`
+2. `lib/core/validation.nix`
+3. package registries
+4. `data/roles/`
+5. one host role selection
+6. one home role selection
+7. flake checks
 
-Avoid leaning on it for everything, or the roles stop being useful.
+This is enough to get validation and structured selection without adopting every helper in this repository.
 
-## Minimal migration path
+## Copy Versus Adapt
 
-If you want the shortest useful path in an existing project, do this:
-
-1. add `lib/core/composition.nix`
-2. add `lib/core/validation.nix`
-3. add package registries
-4. add `data/roles/`
-5. make one host read `data/hosts/<name>/roles.nix`
-6. make one user read `data/home/<user>/roles.nix`
-7. add `flake check` coverage
-
-That is enough to get value without committing to every helper in this repository.
-
-## What to copy directly
-
-Usually worth copying with only light renaming:
+The following files are usually suitable for direct reuse with minimal renaming:
 
 - `lib/core/composition.nix`
 - `lib/core/validation.nix`
 - `lib/framework/resolve.nix`
 - `lib/framework/package.nix`
 
-Copy more carefully:
+The following files usually require adaptation to local paths and output namespaces:
 
 - `lib/framework/host.nix`
 - `lib/framework/home.nix`
 
-These are more tied to this repository's data shape and output paths.
+The following pieces should remain project-specific:
 
-## What to adapt, not copy
+- option namespaces such as `lucy.*`
+- output paths such as `["lucy" "programs"]`
+- application helpers such as `niri.nix` and `waybar.nix`
+- export formats intended for the web UI
 
-Project-specific details should stay project-specific:
+## Common Errors
 
-- option namespaces like `lucy.*`
-- output paths like `["lucy" "programs"]`
-- app-specific helpers like `niri.nix` and `waybar.nix`
-- web UI export shape if you do not need the UI
+Common migration errors include:
 
-## Common mistakes
-
-- moving everything into roles before package registries exist
-- storing too much handwritten text in roles and bundles
-- hiding important differences inside giant bundle files
-- deduplicating too early and losing duplicate-reference validation
+- introducing roles before package registries exist
+- storing large handwritten text blocks in roles and bundles
+- placing host-specific behavior into shared roles without a preset boundary
+- deduplicating too early and hiding duplicate-reference validation
 - validating only in CI and not in the actual apply path
 
-## Suggested adoption order
-
-For a new project:
-
-1. package registries
-2. roles
-3. presets and bundles
-4. host/home apply helpers
-5. validation
-6. renderer cleanup
-7. optional UI or export tooling
-
-For an existing project:
-
-1. package registries
-2. one host role selection
-3. one home role selection
-4. validation
-5. gradual bundle migration
-6. gradual preset migration
-
-## Related pages
+## Related Pages
 
 - `docs/framework.md`
 - `docs/data-model.md`
