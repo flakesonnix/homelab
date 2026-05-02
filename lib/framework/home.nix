@@ -2,6 +2,7 @@ let
   projectLib = import ../default.nix;
   inherit (projectLib.core) composition validation;
   packageFramework = projectLib.framework.package;
+  resolveFramework = import ./resolve.nix;
 
   importData = {
     path,
@@ -116,12 +117,11 @@ in {
     });
 
     explicitBundles = home.bundles or [];
-    roleBundleRefs = builtins.concatLists (map (role: role.bundles or []) resolvedRoles);
-    resolvedBundleNames = lib.unique (
-      if explicitBundles != []
-      then explicitBundles
-      else roleBundleRefs
-    );
+    roleBundleRefs = resolveFramework.collectRoleRefs "bundles" resolvedRoles;
+    resolvedBundleNames = resolveFramework.resolveHomeBundles {
+      directBundles = explicitBundles;
+      roles = resolvedRoles;
+    };
     resolvedBundles = loadBundles {
       root = bundleRoot;
       names = resolvedBundleNames;

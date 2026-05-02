@@ -19,6 +19,7 @@ let
   frameworkBundle = import ./framework/bundle.nix;
   frameworkExport = import ./framework/export.nix;
   frameworkPreset = import ./framework/preset.nix;
+  frameworkResolve = import ./framework/resolve.nix;
   frameworkHost = import ./framework/host.nix;
   frameworkHome = import ./framework/home.nix;
   frameworkNiri = import ./framework/niri.nix;
@@ -72,6 +73,7 @@ in
       bundle = frameworkBundle;
       export = frameworkExport;
       preset = frameworkPreset;
+      resolve = frameworkResolve;
       host = frameworkHost;
       home = frameworkHome;
       niri = frameworkNiri;
