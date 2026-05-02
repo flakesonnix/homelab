@@ -70,6 +70,12 @@ in {
       fallback = [];
     };
 
+    bundles = importData {
+      path = root + "/bundles.nix";
+      args = importedArgs;
+      fallback = [];
+    };
+
     moduleFlags = importData {
       path = root + "/module-flags.nix";
       args = importedArgs;
@@ -109,8 +115,13 @@ in {
       target = "home";
     });
 
-    resolvedBundleRefs = builtins.concatLists (map (role: role.bundles or []) resolvedRoles);
-    resolvedBundleNames = lib.unique resolvedBundleRefs;
+    explicitBundles = home.bundles or [];
+    roleBundleRefs = builtins.concatLists (map (role: role.bundles or []) resolvedRoles);
+    resolvedBundleNames = lib.unique (
+      if explicitBundles != []
+      then explicitBundles
+      else roleBundleRefs
+    );
     resolvedBundles = loadBundles {
       root = bundleRoot;
       names = resolvedBundleNames;
@@ -131,7 +142,11 @@ in {
       // validationResult
       // {
         duplicateRoles = validation.findDuplicateNames roleNames;
-        duplicateBundles = validation.findDuplicateNames resolvedBundleRefs;
+        duplicateBundles = validation.findDuplicateNames (
+          if explicitBundles != []
+          then explicitBundles
+          else roleBundleRefs
+        );
         conflictingModuleFlags = validation.collectModuleFlagConflicts (resolvedRoles ++ resolvedBundles ++ [home]);
         invalidModuleFlags = validation.invalidModuleFlagKeys {
           moduleFlags = mergedHome.moduleFlags or {};

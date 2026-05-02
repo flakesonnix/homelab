@@ -99,7 +99,18 @@ in {
     hostRoleDefs = rolesFor hostRoles;
     homeRoleDefs = rolesFor homeRoles;
     resolvedHostPresets = unique (directHostPresets ++ builtins.concatLists (map (role: role.host.presets or []) hostRoleDefs));
-    resolvedHomeBundles = unique (builtins.concatLists (map (role: role.home.bundles or []) homeRoleDefs));
+    resolvedHomeBundles = let
+      bundleFile = homeRoot + "/bundles.nix";
+      directBundles =
+        if builtins.pathExists bundleFile
+        then import bundleFile
+        else [];
+    in
+      unique (
+        if directBundles != []
+        then directBundles
+        else builtins.concatLists (map (role: role.home.bundles or []) homeRoleDefs)
+      );
     render = kind: values: builtins.concatStringsSep "\t" [kind (builtins.concatStringsSep "," values)];
   in
     builtins.concatStringsSep "\n" [

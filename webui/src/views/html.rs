@@ -35,7 +35,7 @@ pub fn page(data: &AppData) -> String {
     h.raw(r#"<body x-data="{mode:localStorage.getItem('uiMode')||'user',page:'overview'}" x-init="$watch('mode',v=>{localStorage.setItem('uiMode',v);document.body.classList.toggle('expert-mode',v==='expert')})">"#);
     sidebar(&mut h, data);
     main_content(&mut h, data);
-    h.raw(r#"<script>function submitRoleForm(e,k){var f=document.getElementById(k+'-role-form'),c=f.closest('.card-body'),x=c.querySelectorAll('input[type=checkbox]:checked');f.querySelector('[name=roles]').value=Array.from(x).map(function(a){return a.value}).join(',');htmx.trigger(f,'submit')}function submitPresetForm(){var f=document.getElementById('host-preset-form'),c=f.closest('.card-body'),x=c.querySelectorAll('input[name=preset]:checked');f.querySelector('[name=presets]').value=Array.from(x).map(function(a){return a.value}).join(',');htmx.trigger(f,'submit')}</script>"#);
+    h.raw(r#"<script>function submitRoleForm(e,k){var f=document.getElementById(k+'-role-form'),c=f.closest('.card-body'),x=c.querySelectorAll('input[type=checkbox]:checked');f.querySelector('[name=roles]').value=Array.from(x).map(function(a){return a.value}).join(',');htmx.trigger(f,'submit')}function submitPresetForm(){var f=document.getElementById('host-preset-form'),c=f.closest('.card-body'),x=c.querySelectorAll('input[name=preset]:checked');f.querySelector('[name=presets]').value=Array.from(x).map(function(a){return a.value}).join(',');htmx.trigger(f,'submit')}function submitBundleForm(){var f=document.getElementById('home-bundle-form'),c=f.closest('.card-body'),x=c.querySelectorAll('input[name=bundle]:checked');f.querySelector('[name=bundles]').value=Array.from(x).map(function(a){return a.value}).join(',');htmx.trigger(f,'submit')}</script>"#);
     h.raw("</body></html>");
     h.finish()
 }
@@ -55,7 +55,7 @@ fn sidebar(h: &mut H, data: &AppData) {
         });
         h.elem("nav", &[("class", "sidebar-nav")], |h| {
             nav_section(h, "System", &[("◉", "overview", "Overview")]);
-            nav_section(h, "Configuration", &[("⌘", "host", "Host Roles"), ("⌂", "home", "User Profile"), ("◆", "packages", "Packages"), ("⚑", "flags", "Module Flags")]);
+            nav_section(h, "Configuration", &[("⌘", "host", "Host Roles"), ("⌂", "home", "User Profile"), ("◆", "packages", "Packages"), ("⚑", "flags", "Module Flags"), ("◇", "preview", "Preview")]);
             nav_section(h, "Operations", &[("▶", "actions", "Rebuild & Check")]);
         });
         h.elem("div", &[("class", "sidebar-footer")], |h| {
@@ -71,7 +71,7 @@ fn nav_section(h: &mut H, title: &str, items: &[(&str, &str, &str)]) {
     h.elem("div", &[("class", "nav-section")], |h| {
         h.elem("div", &[("class", "nav-section-title")], |h| h.raw(title));
         for (icon, page, label) in items {
-            let expert = if *page == "packages" || *page == "flags" { " expert-only" } else { "" };
+            let expert = if *page == "packages" || *page == "flags" || *page == "preview" { " expert-only" } else { "" };
             let cls = format!("nav-item{}", expert);
             let cls_active = format!(":class={{active:page==='{}'}}", page);
             let onclick = format!("@click=\"page='{}'\"", page);
@@ -108,6 +108,7 @@ fn main_content(h: &mut H, data: &AppData) {
             page_block(h, "home", false, |h| {
                 page_header(h, "User Profile", "Apps and tools for your user");
                 role_card(h, data, &data.home_roles, "user profile", "/roles/home", "home");
+                bundle_card(h, data);
             });
             page_block(h, "packages", true, |h| {
                 page_header(h, "Packages", "System tags and user packages");
@@ -116,6 +117,10 @@ fn main_content(h: &mut H, data: &AppData) {
             page_block(h, "flags", true, |h| {
                 page_header(h, "Module Flags", "Raw NixOS module toggles");
                 flags_section(h, data);
+            });
+            page_block(h, "preview", true, |h| {
+                page_header(h, "Preview", "Resolved roles, presets, and bundles before rebuild");
+                preview_section(h, data);
             });
             page_block(h, "actions", false, |h| {
                 page_header(h, "Rebuild & Check", "Apply changes and validate");
@@ -243,6 +248,28 @@ fn host_presets_card(h: &mut H, data: &AppData) {
                 }
             });
             h.raw(r##"<form id="host-preset-form" hx-post="/presets/host" hx-target="#host-presets" hx-swap="innerHTML" style="display:none"><input type="hidden" name="presets"></form><div id="host-presets"></div>"##);
+        });
+    });
+}
+
+fn bundle_card(h: &mut H, data: &AppData) {
+    h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw("user bundles")));
+        h.elem("div", &[("class", "card-body")], |h| {
+            h.elem("div", &[("class", "chk-grid")], |h| {
+                for bundle in data.bundle_info.iter().filter(|b| b.targets.iter().any(|t| t == "home")) {
+                    let checked = if data.home_bundles.contains(&bundle.name) { " checked" } else { "" };
+                    let onchange = "x-on:change=\"submitBundleForm()\"";
+                    h.elem("label", &[("class", "chk-item")], |h| {
+                        h.void("input", &[("type", "checkbox"), ("name", "bundle"), ("value", &bundle.name), ("checked", checked), ("onchange", onchange)]);
+                        h.elem("div", &[], |h| {
+                            h.elem("div", &[("class", "chk-name")], |h| h.raw(&bundle.name));
+                            h.elem("div", &[("class", "chk-desc")], |h| h.raw(&bundle.description));
+                        });
+                    });
+                }
+            });
+            h.raw(r##"<form id="home-bundle-form" hx-post="/bundles/home" hx-target="#home-bundles" hx-swap="innerHTML" style="display:none"><input type="hidden" name="bundles"></form><div id="home-bundles"></div>"##);
         });
     });
 }
@@ -418,6 +445,52 @@ fn actions_section(h: &mut H) {
     h.raw("<div id=\"rebuild-output\" style=\"margin-top:1rem\"></div><div id=\"framework-validation-output\" style=\"margin-top:1rem\"></div><div id=\"validate-output\" style=\"margin-top:1rem\"></div>");
 }
 
+fn preview_section(h: &mut H, data: &AppData) {
+    h.elem("div", &[("class", "status-grid")], |h| {
+        status_cell(h, "Host Roles", &data.preview.host_roles.join(" "));
+        status_cell(h, "Host Presets", &data.preview.host_presets.join(" "));
+        status_cell(h, "Home Roles", &data.preview.home_roles.join(" "));
+        status_cell(h, "Home Bundles", &data.preview.home_bundles.join(" "));
+    });
+    h.elem("div", &[("class", "card")], |h| {
+        h.elem("div", &[("class", "card-header")], |h| h.elem("h3", &[], |h| h.raw("resolution details")));
+        h.elem("div", &[("class", "card-body")], |h| {
+            preview_compare_block(h, "Host presets", &data.host_presets, &data.preview.host_presets, "Direct host preset picks merge with role-derived presets.");
+            preview_compare_block(h, "Home bundles", &data.home_bundles, &data.preview.home_bundles, "Explicit home bundles override role-derived bundle resolution when set.");
+        });
+    });
+    named_metadata_block(h, "Resolved Host Presets", &data.preview.host_presets, &data.preset_info);
+    named_bundle_block(h, "Resolved Home Bundles", &data.preview.home_bundles, &data.bundle_info);
+}
+
+fn preview_compare_block(h: &mut H, title: &str, direct: &[String], resolved: &[String], note: &str) {
+    h.elem("div", &[("class", "preview-compare")], |h| {
+        h.elem("div", &[("class", "preview-compare-head")], |h| {
+            h.elem("div", &[("class", "chk-name")], |h| h.raw(title));
+            h.elem("div", &[("class", "chk-desc")], |h| h.raw(note));
+        });
+        h.elem("div", &[("class", "chk-grid")], |h| {
+            preview_selection_card(h, "direct", direct);
+            preview_selection_card(h, "resolved", resolved);
+        });
+    });
+}
+
+fn preview_selection_card(h: &mut H, label: &str, values: &[String]) {
+    h.elem("div", &[("class", "preview-selection")], |h| {
+        h.elem("div", &[("class", "status-cell-label")], |h| h.raw(label));
+        if values.is_empty() {
+            h.elem("div", &[("class", "status-cell-value mono")], |h| h.raw("none"));
+        } else {
+            h.elem("div", &[("class", "preview-pill-row")], |h| {
+                for value in values {
+                    h.elem("span", &[("class", "tag")], |h| h.raw(value));
+                }
+            });
+        }
+    });
+}
+
 fn framework_validation_block(h: &mut H, data: &AppData) {
     h.raw(&render_framework_validation_section(data));
 }
@@ -465,6 +538,12 @@ pub fn render_host_presets_section(data: &AppData) -> String {
     h.finish()
 }
 
+pub fn render_bundle_section(data: &AppData) -> String {
+    let mut h = H::new();
+    bundle_card(&mut h, data);
+    h.finish()
+}
+
 pub fn render_packages_section(data: &AppData) -> String {
     let mut h = H::new();
     packages_section(&mut h, data);
@@ -474,6 +553,12 @@ pub fn render_packages_section(data: &AppData) -> String {
 pub fn render_flags_section(data: &AppData) -> String {
     let mut h = H::new();
     flags_section(&mut h, data);
+    h.finish()
+}
+
+pub fn render_preview_section(data: &AppData) -> String {
+    let mut h = H::new();
+    preview_section(&mut h, data);
     h.finish()
 }
 
@@ -488,6 +573,7 @@ mod tests {
             host_roles: vec!["desktop".into(), "gaming".into()],
             host_presets: vec!["gaming-base".into()],
             home_roles: vec!["core".into(), "dev".into()],
+            home_bundles: vec!["core".into(), "dev".into()],
             system_tags: vec![("desktop".into(), true), ("chat".into(), false)],
             home_packages: vec![("nautilus".into(), true), ("comma".into(), false)],
             module_flags: vec![
@@ -582,6 +668,14 @@ mod tests {
     }
 
     #[test]
+    fn render_bundle_section_contains_bundles() {
+        let html = render_bundle_section(&sample_data());
+        assert!(html.contains("user bundles"));
+        assert!(html.contains("hx-post=\"/bundles/home\""));
+        assert!(html.contains("Desktop GUI apps"));
+    }
+
+    #[test]
     fn render_packages_section_contains_toggle_endpoints() {
         let html = render_packages_section(&sample_data());
         assert!(html.contains("hx-post=\"/tags/system\""));
@@ -597,5 +691,16 @@ mod tests {
         assert!(html.contains("hx-post=\"/flags\""));
         assert!(html.contains("bool-true"));
         assert!(html.contains("bool-false"));
+    }
+
+    #[test]
+    fn render_preview_section_contains_resolved_state() {
+        let html = render_preview_section(&sample_data());
+        assert!(html.contains("Resolved Host Presets"));
+        assert!(html.contains("Resolved Home Bundles"));
+        assert!(html.contains("resolution details"));
+        assert!(html.contains("Direct host preset picks merge with role-derived presets."));
+        assert!(html.contains("gaming-performance"));
+        assert!(html.contains("core"));
     }
 }
