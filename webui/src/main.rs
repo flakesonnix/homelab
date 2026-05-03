@@ -112,7 +112,10 @@ fn route(state: Arc<Mutex<ServerState>>, req: &Request) -> Response {
             let s = state.lock().unwrap();
             Response::html(s.data.rebuild_status_html())
         }
-        (Method::Get, "/style.css") => Response::css(views::style::CSS),
+        (Method::Get, "/style.css") => {
+            let s = state.lock().unwrap();
+            Response::css(s.data.style_css.clone())
+        }
         _ => Response::not_found(),
     }
 }

@@ -2,9 +2,10 @@
   lib,
   config,
   pkgs,
+  frameworkLib,
   ...
 }: let
-  projectLib = import ../../lib;
+  projectLib = frameworkLib;
   colors = config.lib.stylix.colors.withHashtag;
   waybarFramework = projectLib.framework.waybar;
   renderCss = projectLib.render.css.renderSheet;

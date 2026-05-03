@@ -2,6 +2,7 @@
   stylix,
   nix-flatpak,
   nix-index-database,
+  frameworkLib,
   ...
 }: {
   home-manager.backupFileExtension = "backup";
@@ -20,5 +21,9 @@
       nix-index-database.homeModules.default
     ];
     nixpkgs.config.allowUnfree = true;
+  };
+
+  home-manager.extraSpecialArgs = {
+    inherit frameworkLib;
   };
 }

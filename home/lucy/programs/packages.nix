@@ -2,9 +2,10 @@
   config,
   pkgs,
   lib,
+  frameworkLib,
   ...
 }: let
-  projectLib = import ../../../lib;
+  projectLib = frameworkLib;
   packageFramework = projectLib.framework.package;
   packageRegistry = import ../../../data/packages/home.nix {inherit pkgs;};
 in {

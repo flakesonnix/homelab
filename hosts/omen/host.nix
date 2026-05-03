@@ -2,9 +2,10 @@
   lib,
   pkgs,
   wrappers,
+  frameworkLib,
   ...
 }: let
-  projectLib = import ../../lib;
+  projectLib = frameworkLib;
   packageRegistry = import ../../data/packages/system.nix {inherit pkgs;};
   hostData = projectLib.framework.host.loadHostDirectory {
     inherit lib;
