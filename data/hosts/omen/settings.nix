@@ -21,6 +21,8 @@
   };
   nix.optimise.automatic = true;
 
+  niri.users = ["lucy"];
+
   security.run0-sudo-shim.enable = true;
   services.openssh.settings.PermitRootLogin = "prohibit-password";
 

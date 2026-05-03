@@ -2,9 +2,10 @@
   lib,
   osConfig,
   pkgs,
+  frameworkLib,
   ...
 }: let
-  projectLib = import ../../lib;
+  projectLib = frameworkLib;
   packageRegistry = import ../../data/packages/home.nix {inherit pkgs;};
   homeData = projectLib.framework.home.loadHomeDirectory {
     inherit lib;

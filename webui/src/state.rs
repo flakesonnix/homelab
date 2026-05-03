@@ -32,6 +32,30 @@ pub struct PreviewData {
     pub home_bundles: Vec<String>,
 }
 
+pub struct NavItem {
+    pub section: String,
+    pub page: String,
+    pub expert: bool,
+    pub icon: String,
+    pub label: String,
+}
+
+pub struct PageInfo {
+    pub name: String,
+    pub title: String,
+    pub description: String,
+}
+
+pub struct ActionInfo {
+    pub title: String,
+    pub tag: String,
+    pub description: String,
+    pub endpoint: String,
+    pub target: String,
+    pub button_class: String,
+    pub button_label: String,
+}
+
 pub struct AppData {
     pub host_name: String,
     pub host_roles: Vec<String>,
@@ -45,6 +69,10 @@ pub struct AppData {
     pub role_info: Vec<RoleInfo>,
     pub preset_info: Vec<PresetInfo>,
     pub bundle_info: Vec<BundleInfo>,
+    pub nav_items: Vec<NavItem>,
+    pub page_info: Vec<PageInfo>,
+    pub action_info: Vec<ActionInfo>,
+    pub style_css: String,
     pub preview: PreviewData,
     pub rebuild_running: bool,
     pub rebuild_ok: bool,
@@ -63,13 +91,15 @@ impl AppData {
         let module_flags = read_flags(&root.join("data/hosts/omen/module-flags.nix"));
         let available = list_roles(&root.join("data/roles"));
         let metadata = read_framework_metadata(root);
+        let chrome = read_webui_chrome(root);
         let host_presets = read_string_list_file(&root.join("data/hosts/omen/presets.nix"));
         let home_bundles = read_string_list_file(&root.join("data/home/lucy/bundles.nix"));
         let preview = read_framework_preview(root);
         let (framework_validation_ok, framework_validation_errors) = read_framework_validation(root);
         Self {
             host_name: "omen".into(), host_roles, host_presets, home_roles, home_bundles, system_tags, home_packages,
-            module_flags, available_roles: available, role_info: metadata.roles, preset_info: metadata.presets, bundle_info: metadata.bundles, preview,
+            module_flags, available_roles: available, role_info: metadata.roles, preset_info: metadata.presets, bundle_info: metadata.bundles,
+            nav_items: chrome.nav_items, page_info: chrome.page_info, action_info: chrome.action_info, style_css: chrome.style_css, preview,
             rebuild_running: false, rebuild_ok: true, rebuild_log: String::new(),
             framework_validation_ok, framework_validation_errors,
             dotfiles_root: root.to_path_buf(),
@@ -201,6 +231,21 @@ impl AppData {
     pub fn role_info(&self, name: &str) -> Option<&RoleInfo> {
         self.role_info.iter().find(|role| role.name == name)
     }
+    pub fn nav_sections(&self) -> Vec<String> {
+        let mut sections = vec![];
+        for item in &self.nav_items {
+            if !sections.contains(&item.section) {
+                sections.push(item.section.clone());
+            }
+        }
+        sections
+    }
+    pub fn nav_items_for_section(&self, section: &str) -> Vec<&NavItem> {
+        self.nav_items.iter().filter(|item| item.section == section).collect()
+    }
+    pub fn page_info_for(&self, name: &str) -> Option<&PageInfo> {
+        self.page_info.iter().find(|page| page.name == name)
+    }
     pub fn preset_names_for_host_roles(&self) -> Vec<String> {
         self.preview.host_presets.clone()
     }
@@ -215,11 +260,18 @@ struct FrameworkMetadata {
     bundles: Vec<BundleInfo>,
 }
 
+struct WebUiChrome {
+    nav_items: Vec<NavItem>,
+    page_info: Vec<PageInfo>,
+    action_info: Vec<ActionInfo>,
+    style_css: String,
+}
+
 fn read_framework_metadata(root: &Path) -> FrameworkMetadata {
     let expr = format!(r#"
 let
   root = {root};
-  dot = import (root + "/lib");
+  dot = (builtins.getFlake (toString root)).lib;
 in dot.framework.export.exportMetadata root
 "#, root = root.display());
     match std::process::Command::new("nix").args(["eval", "--raw", "--impure", "--expr", &expr]).current_dir(root).output() {
@@ -234,13 +286,40 @@ fn read_framework_preview(root: &Path) -> PreviewData {
     let expr = format!(r#"
 let
   root = {root};
-  dot = import (root + "/lib");
+  dot = (builtins.getFlake (toString root)).lib;
 in dot.framework.export.exportPreview root
 "#, root = root.display());
     match std::process::Command::new("nix").args(["eval", "--raw", "--impure", "--expr", &expr]).current_dir(root).output() {
         Ok(o) if o.status.success() => parse_framework_preview(&String::from_utf8_lossy(&o.stdout)),
         _ => PreviewData { host_roles: vec![], host_presets: vec![], home_roles: vec![], home_bundles: vec![] },
     }
+}
+
+fn read_webui_chrome(root: &Path) -> WebUiChrome {
+    let chrome_expr = format!(r#"
+let
+  root = {root};
+  dot = (builtins.getFlake (toString root)).lib;
+in dot.framework.webui.exportChrome root
+"#, root = root.display());
+    let style_expr = format!(r#"
+let
+  root = {root};
+  dot = (builtins.getFlake (toString root)).lib;
+in dot.framework.webui.exportStyle root
+"#, root = root.display());
+
+    let nav_and_pages = match std::process::Command::new("nix").args(["eval", "--raw", "--impure", "--expr", &chrome_expr]).current_dir(root).output() {
+        Ok(o) if o.status.success() => parse_webui_chrome(&String::from_utf8_lossy(&o.stdout)),
+        _ => (vec![], vec![], vec![]),
+    };
+
+    let style_css = match std::process::Command::new("nix").args(["eval", "--raw", "--impure", "--expr", &style_expr]).current_dir(root).output() {
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).to_string(),
+        _ => String::new(),
+    };
+
+    WebUiChrome { nav_items: nav_and_pages.0, page_info: nav_and_pages.1, action_info: nav_and_pages.2, style_css }
 }
 
 fn parse_framework_metadata(input: &str) -> FrameworkMetadata {
@@ -300,6 +379,49 @@ fn parse_framework_preview(input: &str) -> PreviewData {
         }
     }
     preview
+}
+
+fn parse_webui_chrome(input: &str) -> (Vec<NavItem>, Vec<PageInfo>, Vec<ActionInfo>) {
+    let mut nav_items = vec![];
+    let mut page_info = vec![];
+    let mut action_info = vec![];
+    for line in input.lines() {
+        if let Some(rest) = line.strip_prefix("nav\t") {
+            let parts: Vec<&str> = rest.split('\t').collect();
+            if parts.len() == 5 {
+                nav_items.push(NavItem {
+                    section: parts[0].to_string(),
+                    page: parts[1].to_string(),
+                    expert: parts[2] == "true",
+                    icon: parts[3].to_string(),
+                    label: parts[4].to_string(),
+                });
+            }
+        } else if let Some(rest) = line.strip_prefix("page\t") {
+            let parts: Vec<&str> = rest.split('\t').collect();
+            if parts.len() == 3 {
+                page_info.push(PageInfo {
+                    name: parts[0].to_string(),
+                    title: parts[1].to_string(),
+                    description: parts[2].to_string(),
+                });
+            }
+        } else if let Some(rest) = line.strip_prefix("action\t") {
+            let parts: Vec<&str> = rest.split('\t').collect();
+            if parts.len() == 7 {
+                action_info.push(ActionInfo {
+                    title: parts[0].to_string(),
+                    tag: parts[1].to_string(),
+                    description: parts[2].to_string(),
+                    endpoint: parts[3].to_string(),
+                    target: parts[4].to_string(),
+                    button_class: parts[5].to_string(),
+                    button_label: parts[6].to_string(),
+                });
+            }
+        }
+    }
+    (nav_items, page_info, action_info)
 }
 
 fn parse_csv(input: &str) -> Vec<String> {
@@ -642,6 +764,24 @@ mod tests {
         assert_eq!(preview.host_presets, vec!["gaming-base", "gaming-steam"]);
         assert_eq!(preview.home_roles, vec!["core", "dev"]);
         assert_eq!(preview.home_bundles, vec!["core", "dev"]);
+    }
+
+    #[test]
+    fn parse_webui_chrome_lines() {
+        let input = "nav\tSystem\toverview\tfalse\t◉\tOverview\npage\toverview\tOverview\tSystem state\naction\trebuild\tnh os switch\tEvaluate\t/rebuild\t#rebuild-output\tbtn btn-accent\t▶ Rebuild\n";
+        let (nav, pages, actions) = parse_webui_chrome(input);
+        assert_eq!(nav.len(), 1);
+        assert_eq!(nav[0].section, "System");
+        assert_eq!(nav[0].page, "overview");
+        assert!(!nav[0].expert);
+        assert_eq!(nav[0].label, "Overview");
+        assert_eq!(pages.len(), 1);
+        assert_eq!(pages[0].name, "overview");
+        assert_eq!(pages[0].title, "Overview");
+        assert_eq!(pages[0].description, "System state");
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].endpoint, "/rebuild");
+        assert_eq!(actions[0].button_label, "▶ Rebuild");
     }
 
     #[test]

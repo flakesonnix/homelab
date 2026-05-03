@@ -54,9 +54,9 @@ fn sidebar(h: &mut H, data: &AppData) {
             h.elem("div", &[("class", "host")], |h| { h.esc(&data.host_name); h.raw(" · x86_64-linux"); });
         });
         h.elem("nav", &[("class", "sidebar-nav")], |h| {
-            nav_section(h, "System", &[("◉", "overview", "Overview")]);
-            nav_section(h, "Configuration", &[("⌘", "host", "Host Roles"), ("⌂", "home", "User Profile"), ("◆", "packages", "Packages"), ("⚑", "flags", "Module Flags"), ("◇", "preview", "Preview")]);
-            nav_section(h, "Operations", &[("▶", "actions", "Rebuild & Check")]);
+            for section in data.nav_sections() {
+                nav_section(h, &section, &data.nav_items_for_section(&section));
+            }
         });
         h.elem("div", &[("class", "sidebar-footer")], |h| {
             h.elem("div", &[("class", "mode-toggle")], |h| {
@@ -67,18 +67,18 @@ fn sidebar(h: &mut H, data: &AppData) {
     });
 }
 
-fn nav_section(h: &mut H, title: &str, items: &[(&str, &str, &str)]) {
+fn nav_section(h: &mut H, title: &str, items: &[&crate::state::NavItem]) {
     h.elem("div", &[("class", "nav-section")], |h| {
         h.elem("div", &[("class", "nav-section-title")], |h| h.raw(title));
-        for (icon, page, label) in items {
-            let expert = if *page == "packages" || *page == "flags" || *page == "preview" { " expert-only" } else { "" };
+        for item in items {
+            let expert = if item.expert { " expert-only" } else { "" };
             let cls = format!("nav-item{}", expert);
-            let cls_active = format!(":class={{active:page==='{}'}}", page);
-            let onclick = format!("@click=\"page='{}'\"", page);
+            let cls_active = format!(":class={{active:page==='{}'}}", item.page);
+            let onclick = format!("@click=\"page='{}'\"", item.page);
             h.raw(&format!("<a class=\"{}\" {} {}>", cls, cls_active, onclick));
-            h.elem("span", &[("class", "nav-icon")], |h| h.raw(icon));
+            h.elem("span", &[("class", "nav-icon")], |h| h.raw(&item.icon));
             h.raw(" ");
-            h.raw(label);
+            h.raw(&item.label);
             h.raw("</a>");
         }
     });
@@ -101,30 +101,30 @@ fn main_content(h: &mut H, data: &AppData) {
         h.elem("div", &[("class", "content")], |h| {
             page_block(h, "overview", false, |h| overview(h, data));
             page_block(h, "host", false, |h| {
-                page_header(h, "Host Roles", "Define what this machine does");
+                dynamic_page_header(h, data, "host");
                 role_card(h, data, &data.host_roles, "host roles", "/roles/host", "host");
                 host_presets_card(h, data);
             });
             page_block(h, "home", false, |h| {
-                page_header(h, "User Profile", "Apps and tools for your user");
+                dynamic_page_header(h, data, "home");
                 role_card(h, data, &data.home_roles, "user profile", "/roles/home", "home");
                 bundle_card(h, data);
             });
             page_block(h, "packages", true, |h| {
-                page_header(h, "Packages", "System tags and user packages");
+                dynamic_page_header(h, data, "packages");
                 packages_section(h, data);
             });
             page_block(h, "flags", true, |h| {
-                page_header(h, "Module Flags", "Raw NixOS module toggles");
+                dynamic_page_header(h, data, "flags");
                 flags_section(h, data);
             });
             page_block(h, "preview", true, |h| {
-                page_header(h, "Preview", "Resolved roles, presets, and bundles before rebuild");
+                dynamic_page_header(h, data, "preview");
                 preview_section(h, data);
             });
             page_block(h, "actions", false, |h| {
-                page_header(h, "Rebuild & Check", "Apply changes and validate");
-                actions_section(h);
+                dynamic_page_header(h, data, "actions");
+                actions_section(h, data);
             });
         });
     });
@@ -139,6 +139,14 @@ fn page_header(h: &mut H, title: &str, desc: &str) {
         h.elem("h2", &[], |h| h.raw(title));
         h.elem("p", &[], |h| h.raw(desc));
     });
+}
+
+fn dynamic_page_header(h: &mut H, data: &AppData, name: &str) {
+    if let Some(info) = data.page_info_for(name) {
+        page_header(h, &info.title, &info.description);
+    } else {
+        page_header(h, name, "");
+    }
 }
 
 fn overview(h: &mut H, data: &AppData) {
@@ -420,28 +428,19 @@ fn flags_section(h: &mut H, data: &AppData) {
     h.raw("<div id=\"flags\"></div>");
 }
 
-fn actions_section(h: &mut H) {
-    h.elem("div", &[("class", "card")], |h| {
-        h.elem("div", &[("class", "card-header")], |h| { h.elem("h3", &[], |h| h.raw("rebuild")); h.elem("span", &[("class", "tag")], |h| h.raw("nh os switch")); });
-        h.elem("div", &[("class", "card-body")], |h| {
-            h.elem("p", &[("style", "font-size:0.82rem;color:var(--text-dim);margin-bottom:0.8rem")], |h| h.raw("Evaluate, build, and activate."));
-            h.elem("div", &[("class", "btn-group")], |h| h.raw(r##"<button class="btn btn-accent" hx-post="/rebuild" hx-target="#rebuild-output" hx-swap="innerHTML">▶ Rebuild</button>"##));
+fn actions_section(h: &mut H, data: &AppData) {
+    for action in &data.action_info {
+        h.elem("div", &[("class", "card")], |h| {
+            h.elem("div", &[("class", "card-header")], |h| {
+                h.elem("h3", &[], |h| h.raw(&action.title));
+                h.elem("span", &[("class", "tag")], |h| h.raw(&action.tag));
+            });
+            h.elem("div", &[("class", "card-body")], |h| {
+                h.elem("p", &[("style", "font-size:0.82rem;color:var(--text-dim);margin-bottom:0.8rem")], |h| h.raw(&action.description));
+                h.elem("div", &[("class", "btn-group")], |h| h.raw(&format!(r#"<button class="{}" hx-post="{}" hx-target="{}" hx-swap="innerHTML">{}</button>"#, action.button_class, action.endpoint, action.target, action.button_label)));
+            });
         });
-    });
-    h.elem("div", &[("class", "card")], |h| {
-        h.elem("div", &[("class", "card-header")], |h| { h.elem("h3", &[], |h| h.raw("framework validate")); h.elem("span", &[("class", "tag")], |h| h.raw("framework rules")); });
-        h.elem("div", &[("class", "card-body")], |h| {
-            h.elem("p", &[("style", "font-size:0.82rem;color:var(--text-dim);margin-bottom:0.8rem")], |h| h.raw("Role metadata, requires/conflicts, package refs, and module flag rules."));
-            h.elem("div", &[("class", "btn-group")], |h| h.raw(r##"<button class="btn" hx-post="/validate/framework" hx-target="#framework-validation-output" hx-swap="innerHTML">⋄ Framework</button>"##));
-        });
-    });
-    h.elem("div", &[("class", "card")], |h| {
-        h.elem("div", &[("class", "card-header")], |h| { h.elem("h3", &[], |h| h.raw("validate")); h.elem("span", &[("class", "tag")], |h| h.raw("nix flake check")); });
-        h.elem("div", &[("class", "card-body")], |h| {
-            h.elem("p", &[("style", "font-size:0.82rem;color:var(--text-dim);margin-bottom:0.8rem")], |h| h.raw("Evaluation, formatting, and pre-commit checks."));
-            h.elem("div", &[("class", "btn-group")], |h| h.raw(r##"<button class="btn" hx-post="/validate" hx-target="#validate-output" hx-swap="innerHTML">◇ Check</button>"##));
-        });
-    });
+    }
     h.raw("<div id=\"rebuild-output\" style=\"margin-top:1rem\"></div><div id=\"framework-validation-output\" style=\"margin-top:1rem\"></div><div id=\"validate-output\" style=\"margin-top:1rem\"></div>");
 }
 
@@ -597,6 +596,29 @@ mod tests {
                 crate::state::BundleInfo { name: "desktop".into(), description: "Desktop GUI apps, stylix, and flatpak desktop integrations".into(), targets: vec!["home".into()] },
                 crate::state::BundleInfo { name: "dev".into(), description: "Extra development applications for the home profile".into(), targets: vec!["home".into()] },
             ],
+            nav_items: vec![
+                crate::state::NavItem { section: "System".into(), page: "overview".into(), expert: false, icon: "◉".into(), label: "Overview".into() },
+                crate::state::NavItem { section: "Configuration".into(), page: "host".into(), expert: false, icon: "⌘".into(), label: "Host Roles".into() },
+                crate::state::NavItem { section: "Configuration".into(), page: "home".into(), expert: false, icon: "⌂".into(), label: "User Profile".into() },
+                crate::state::NavItem { section: "Configuration".into(), page: "packages".into(), expert: true, icon: "◆".into(), label: "Packages".into() },
+                crate::state::NavItem { section: "Configuration".into(), page: "flags".into(), expert: true, icon: "⚑".into(), label: "Module Flags".into() },
+                crate::state::NavItem { section: "Configuration".into(), page: "preview".into(), expert: true, icon: "◇".into(), label: "Preview".into() },
+                crate::state::NavItem { section: "Operations".into(), page: "actions".into(), expert: false, icon: "▶".into(), label: "Rebuild & Check".into() },
+            ],
+            page_info: vec![
+                crate::state::PageInfo { name: "host".into(), title: "Host Roles".into(), description: "Define what this machine does".into() },
+                crate::state::PageInfo { name: "home".into(), title: "User Profile".into(), description: "Apps and tools for your user".into() },
+                crate::state::PageInfo { name: "packages".into(), title: "Packages".into(), description: "System tags and user packages".into() },
+                crate::state::PageInfo { name: "flags".into(), title: "Module Flags".into(), description: "Raw NixOS module toggles".into() },
+                crate::state::PageInfo { name: "preview".into(), title: "Preview".into(), description: "Resolved roles, presets, and bundles before rebuild".into() },
+                crate::state::PageInfo { name: "actions".into(), title: "Rebuild & Check".into(), description: "Apply changes and validate".into() },
+            ],
+            action_info: vec![
+                crate::state::ActionInfo { title: "rebuild".into(), tag: "nh os switch".into(), description: "Evaluate, build, and activate.".into(), endpoint: "/rebuild".into(), target: "#rebuild-output".into(), button_class: "btn btn-accent".into(), button_label: "▶ Rebuild".into() },
+                crate::state::ActionInfo { title: "framework validate".into(), tag: "framework rules".into(), description: "Role metadata, requires/conflicts, package refs, and module flag rules.".into(), endpoint: "/validate/framework".into(), target: "#framework-validation-output".into(), button_class: "btn".into(), button_label: "⋄ Framework".into() },
+                crate::state::ActionInfo { title: "validate".into(), tag: "nix flake check".into(), description: "Evaluation, formatting, and pre-commit checks.".into(), endpoint: "/validate".into(), target: "#validate-output".into(), button_class: "btn".into(), button_label: "◇ Check".into() },
+            ],
+            style_css: "body{}".into(),
             preview: crate::state::PreviewData {
                 host_roles: vec!["desktop".into(), "gaming".into()],
                 host_presets: vec!["gaming-base".into(), "gaming-performance".into(), "gaming-steam".into()],

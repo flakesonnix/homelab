@@ -415,6 +415,23 @@
         "type": "github"
       }
     },
+    "framework": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1777800533,
+        "narHash": "sha256-pq7QBwoHltOWZE6usJXhkOg8gV9UsmqjMP5bKyYpgww=",
+        "path": "/home/lucy/Documents/dotfiles-framework",
+        "type": "path"
+      },
+      "original": {
+        "path": "/home/lucy/Documents/dotfiles-framework",
+        "type": "path"
+      }
+    },
     "fromYaml": {
       "flake": false,
       "locked": {
@@ -988,6 +1005,7 @@
         "devshell": "devshell",
         "flake-parts": "flake-parts_2",
         "flake-root": "flake-root",
+        "framework": "framework",
         "haumea": "haumea",
         "home-manager": "home-manager",
         "lanzaboote": "lanzaboote",

@@ -104,6 +104,11 @@
       url = "github:numtide/devshell";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    framework = {
+      url = "path:/home/lucy/Documents/dotfiles-framework";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs @ {
@@ -124,11 +129,15 @@
     nixos-hardware,
     nixGaming,
     nur,
+    framework,
     ...
   }: let
     omen-config = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
-      specialArgs = {inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database nixos-hardware nixGaming;};
+      specialArgs = {
+        inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database nixos-hardware nixGaming;
+        frameworkLib = framework.lib;
+      };
       modules = [
         ./nix-settings.nix
         ./profiles/desktop.nix
@@ -306,7 +315,7 @@
                 let
                   pkgs = import ${pkgs.path} {};
                   lib = pkgs.lib;
-                  dot = import $src/lib;
+                  dot = import ${framework.outPath}/lib;
                   validation = dot.core.validation;
                   host = validation.validateHost {
                     inherit lib;
@@ -339,7 +348,7 @@
                 export HOME="$TMPDIR"
                 export XDG_STATE_HOME="$TMPDIR/state"
                 fixture="$TMPDIR/framework-fixture"
-                mkdir -p "$fixture/data/roles" "$fixture/data/presets" "$fixture/data/bundles" "$fixture/data/hosts/omen" "$fixture/data/home/lucy"
+                mkdir -p "$fixture/data/roles" "$fixture/data/presets" "$fixture/data/bundles" "$fixture/data/hosts/omen" "$fixture/data/home/lucy" "$fixture/data/home/broken"
 
                 cat > "$fixture/data/roles/base.nix" <<'EOF'
                 {
@@ -486,6 +495,7 @@
 
                 cat > "$fixture/data/home/lucy/roles.nix" <<'EOF'
                 [
+                  "base"
                   "desktop"
                 ]
                 EOF
@@ -496,11 +506,17 @@
                 ]
                 EOF
 
+                cat > "$fixture/data/home/broken/roles.nix" <<'EOF'
+                [
+                  "desktop"
+                ]
+                EOF
+
                 cat > framework-unit-test.nix <<EOF
                 let
                   pkgs = import ${pkgs.path} {};
                   lib = pkgs.lib;
-                  dot = import $src/lib;
+                  dot = import ${framework.outPath}/lib;
                   validation = dot.core.validation;
                   export = dot.framework.export;
                   hostFramework = dot.framework.host;
@@ -527,7 +543,7 @@
 
                   homeValidation = validation.validateHome {
                     inherit lib;
-                    homeRoot = fixture + "/data/home/lucy";
+                    homeRoot = fixture + "/data/home/broken";
                     roleRoot = fixture + "/data/roles";
                     bundleRoot = fixture + "/data/bundles";
                     packageRegistry = {
@@ -604,7 +620,7 @@
                     inherit lib;
                     home = {
                       __root = fixture + "/data/home/lucy";
-                      roles = ["desktop"];
+                      roles = ["base" "desktop"];
                       bundles = ["manual"];
                     };
                     roleRoot = fixture + "/data/roles";
@@ -659,7 +675,7 @@
                   assert appliedHost.test.manualHost == true;
                   assert appliedHome.testHomePkgs.comma == true;
                   assert appliedHome.programs.manual.enable == true;
-                  assert builtins.hasAttrByPath ["programs" "desktop" "enable"] appliedHome == false;
+                  assert lib.hasAttrByPath ["programs" "desktop" "enable"] appliedHome == false;
                   assert duplicateHostPresetFailure.success == false;
                   assert duplicateHomeBundleFailure.success == false;
                   assert hostValidation.missingRoles == [];
@@ -676,7 +692,7 @@
                   assert lib.hasInfix "bundle\tmanual\tManual bundle override\thome" metadata;
                   assert lib.hasInfix "preview-host-roles\tbase,desktop" preview;
                   assert lib.hasInfix "preview-host-presets\tmanual-host,base,desktop" preview;
-                  assert lib.hasInfix "preview-home-roles\tdesktop" preview;
+                  assert lib.hasInfix "preview-home-roles\tbase,desktop" preview;
                   assert lib.hasInfix "preview-home-bundles\tmanual" preview;
                   true
                 EOF
@@ -692,7 +708,7 @@
       }
       // {
         flake = {
-          lib = import ./lib;
+          inherit (framework) lib;
 
           nixosConfigurations = {
             omen = omen-config;

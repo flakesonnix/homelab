@@ -2,9 +2,10 @@
   lib,
   config,
   pkgs,
+  frameworkLib,
   ...
 }: let
-  projectLib = import ../../lib;
+  projectLib = frameworkLib;
   colors = config.lib.stylix.colors.withHashtag;
   hex = color: lib.removePrefix "#" color;
   rgba = color: alpha: "${hex color}${alpha}";
