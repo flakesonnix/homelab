@@ -16,7 +16,7 @@ if [ -f "$KEY_FILE" ]; then
 fi
 
 mkdir -p "$KEY_DIR"
-age-keygen -o "$KEY_FILE" 2>&1
+nix run nixpkgs#age -- age-keygen -o "$KEY_FILE" 2>&1
 
 PUB_KEY=$(grep "public key:" "$KEY_FILE" | awk '{print $NF}')
 
