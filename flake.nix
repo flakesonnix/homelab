@@ -196,15 +196,14 @@
             pname = "nixfiles-webui";
             version = "0.1.0";
             src = ./webui;
-            nativeBuildInputs = with pkgs; [meson ninja rustc cargo];
-            configurePhase = ''
-              meson setup build --prefix=$out
-            '';
             buildPhase = ''
-              ninja -C build
+              mkdir -p $out/lib/pages $out/static
+              cp lib/pages/*.nix $out/lib/pages/ 2>/dev/null || true
+              cp -r static/* $out/static/ 2>/dev/null || true
             '';
             installPhase = ''
-              ninja -C build install
+              mkdir -p $out
+              cp -r . $out
             '';
           };
 
