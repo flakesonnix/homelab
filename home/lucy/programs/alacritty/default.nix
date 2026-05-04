@@ -16,7 +16,7 @@ in {
       padding.x = 12
       padding.y = 12
       decorations = "full"
-      opacity = 0.85
+      opacity = 0.8
       startup_mode = "maximized"
 
       [scrolling]
