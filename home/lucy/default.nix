@@ -30,7 +30,10 @@ in {
     ./programs/thunderbird.nix
     ./programs/vesktop.nix
     ./programs/zathura
+    ./programs/eww.nix
+    ./programs/rofi.nix
     ../../modules/home
+    ../../modules/home/dunst.nix
   ];
 
   config = projectLib.framework.home.applyHome {

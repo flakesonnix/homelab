@@ -8,6 +8,7 @@ pub enum Method { Get, Post }
 pub struct Request {
     method: Method,
     path: String,
+    query: HashMap<String, String>,
     form: HashMap<String, String>,
 }
 
@@ -23,7 +24,7 @@ impl Request {
             "POST" => Method::Post,
             other => return Err(format!("unsupported: {}", other)),
         };
-        let path = parts[1].split('?').next().unwrap_or("/").to_string();
+        let (path, query) = split_path_and_query(parts[1]);
 
         loop {
             line.clear();
@@ -41,12 +42,34 @@ impl Request {
                 }
             }
         }
-        Ok(Self { method, path, form })
+        Ok(Self { method, path, query, form })
     }
 
     pub fn method(&self) -> &Method { &self.method }
     pub fn path(&self) -> &str { &self.path }
     pub fn form_value(&self, key: &str) -> Option<String> { self.form.get(key).cloned() }
+    pub fn query_value(&self, key: &str) -> Option<String> { self.query.get(key).cloned() }
+}
+
+fn split_path_and_query(raw: &str) -> (String, HashMap<String, String>) {
+    let mut query = HashMap::new();
+    let (path, qs) = match raw.split_once('?') {
+        Some((p, q)) => (p, Some(q)),
+        None => (raw, None),
+    };
+
+    if let Some(qs) = qs {
+        for pair in qs.split('&') {
+            if pair.is_empty() { continue; }
+            if let Some((k, v)) = pair.split_once('=') {
+                query.insert(url_decode(k), url_decode(v));
+            } else {
+                query.insert(url_decode(pair), String::new());
+            }
+        }
+    }
+
+    (path.to_string(), query)
 }
 
 fn url_decode(s: &str) -> String {
@@ -119,6 +142,14 @@ mod tests {
     fn parse_get_ignores_query() {
         let req = make_get("/rebuild?foo=bar");
         assert_eq!(req.path(), "/rebuild");
+        assert_eq!(req.query_value("foo"), Some("bar".into()));
+    }
+
+    #[test]
+    fn parse_get_query_empty_value() {
+        let req = make_get("/search?q=");
+        assert_eq!(req.path(), "/search");
+        assert_eq!(req.query_value("q"), Some("".into()));
     }
 
     #[test]

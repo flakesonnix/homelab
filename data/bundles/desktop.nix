@@ -6,11 +6,15 @@
 
   programs = {
     alacritty.enable = true;
+    dunst.enable = true;
     easyeffects.enable = true;
+    eww.enable = true;
     firefox.enable = true;
     fuzzel.enable = true;
     gnomeTheme.enable = true;
     niri.enable = true;
+    rofi.enable = true;
+    starship.enable = true;
     thunderbird.enable = true;
     vesktop.enable = true;
     waybar.enable = true;

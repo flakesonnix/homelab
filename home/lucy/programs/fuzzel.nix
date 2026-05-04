@@ -2,8 +2,81 @@
   config,
   lib,
   pkgs,
+  frameworkLib,
   ...
-}: {
+}: let
+  colors = config.lib.stylix.colors.withHashtag;
+  css = frameworkLib.render.css;
+  rules = [
+    {
+      selector = "main";
+      declarations = {
+        background_color = "${colors.base00}ee";
+        text_color = colors.base05;
+        border = "1px solid ${colors.base02}";
+        border_radius = "22px";
+        padding = "18px";
+        font = ''"Inter" 13'';
+      };
+    }
+    {
+      selector = "prompt";
+      declarations = {
+        padding = "0 8px 0 0";
+        text_color = colors.base0D;
+      };
+    }
+    {
+      selector = "entry";
+      declarations = {
+        padding = "0";
+        text_color = colors.base05;
+      };
+    }
+    {
+      selector = "item";
+      declarations = {
+        padding = "10px 14px";
+        border_radius = "10px";
+      };
+    }
+    {
+      selector = "item selected";
+      declarations = {
+        background_color = colors.base0D;
+        text_color = colors.base00;
+      };
+    }
+    {
+      selector = "item urgent";
+      declarations = {
+        background_color = colors.base08;
+        text_color = colors.base00;
+      };
+    }
+    {
+      selector = "icon";
+      declarations = {
+        size = "24px";
+        padding = "0 8px 0 0";
+      };
+    }
+    {
+      selector = "counter";
+      declarations = {
+        padding = "0 0 0 8px";
+        text_color = colors.base0C;
+      };
+    }
+    {
+      selector = "border";
+      declarations = {
+        background_color = colors.base02;
+        radius = "22px";
+      };
+    }
+  ];
+in {
   config = lib.mkIf config.programs.fuzzel.enable {
     programs.fuzzel = {
       settings = lib.mkForce {
@@ -25,21 +98,10 @@
           width = 1;
           radius = 22;
         };
-        colors = {
-          background = "161626ee";
-          text = "f7f4ffff";
-          prompt = "ffd4e9ff";
-          placeholder = "9d92b4ff";
-          input = "f7f4ffff";
-          match = "ffe2a3ff";
-          selection = "3a294dff";
-          selection-text = "ffffffff";
-          selection-match = "ffd7eeff";
-          counter = "bfcfffff";
-          border = "ffd6ec33";
-        };
       };
     };
+
+    xdg.configFile."fuzzel/colors.css".text = css.renderSheet rules;
 
     home.packages = [pkgs.inter];
   };

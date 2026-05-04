@@ -2,6 +2,7 @@
   config,
   pkgs,
   lib,
+  frameworkLib,
   ...
 }: let
   bashPrompt = ''
@@ -46,6 +47,9 @@ in {
         uds = "df -h";
         umc = "free -m";
         specs = "hyfetch";
+        nix-clean = "nix-collect-garbage -d";
+        nix-update = "nix flake update";
+        nix-rebuild = "sudo nixos-rebuild switch --flake .#omen";
       };
       initExtra = ''
         shopt -s autocd checkwinsize cmdhist globstar histappend
@@ -60,6 +64,9 @@ in {
 
     home.sessionVariables = {
       SHELL = "${pkgs.bashInteractive}/bin/bash";
+      EDITOR = lib.mkForce "${pkgs.neovim}/bin/nvim";
+      VISUAL = lib.mkForce "${pkgs.neovim}/bin/nvim";
+      TERMINAL = lib.mkForce "${pkgs.alacritty}/bin/alacritty";
     };
   };
 }
