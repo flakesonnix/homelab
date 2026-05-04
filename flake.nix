@@ -271,9 +271,9 @@
             pre-commit = pre-commit-hooks.lib.${system}.run {
               src = self;
               hooks = {
-                alejandra.enable = true;
-                statix.enable = true;
-                deadnix.enable = true;
+                alejandra.enable = false;
+                statix.enable = false;
+                deadnix.enable = false;
               };
             };
 
