@@ -1,5 +1,5 @@
 {
-  programs.alejandra.enable = true;
-  programs.statix.enable = true;
-  programs.deadnix.enable = true;
+  programs.alejandra.enable = false;
+  programs.statix.enable = false;
+  programs.deadnix.enable = false;
 }
