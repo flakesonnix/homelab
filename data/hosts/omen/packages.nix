@@ -27,6 +27,7 @@ in {
     kdePackages.kdenlive
     ani-cli
     scdl
+    age
   ];
 
   systemPackages = [hyfetch-wrapped];
