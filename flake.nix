@@ -174,7 +174,6 @@
         perSystem = {
           system,
           pkgs,
-          config,
           ...
         }: let
           rebuildApp = pkgs.writeShellApplication {
@@ -191,45 +190,6 @@
             text = "nix flake update";
           };
         in {
-          devshells.default = {
-            name = "dotfiles";
-            packages = with pkgs; [
-              config.flake-root.package
-              nixpkgs-fmt
-              pkgs.alejandra
-              nil
-              git
-              pandoc
-              texliveMinimal
-              librsvg
-              statix
-              deadnix
-              nix-direnv
-            ];
-            commands = [
-              {
-                name = "rebuild";
-                command = "nh os switch";
-                help = "Rebuild omen host";
-              }
-              {
-                name = "update";
-                command = "nix flake update";
-                help = "Update flake inputs";
-              }
-              {
-                name = "fmt";
-                command = "nix fmt";
-                help = "Format the repository";
-              }
-              {
-                name = "check";
-                command = "nix flake check";
-                help = "Check the flake";
-              }
-            ];
-          };
-
           formatter = pkgs.alejandra;
 
           packages.webui = pkgs.stdenv.mkDerivation {
