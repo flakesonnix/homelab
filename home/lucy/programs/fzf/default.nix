@@ -4,8 +4,7 @@
   pkgs,
   ...
 }: {
-  config = lib.mkIf config.programs.fzf.enable {
-    programs.fzf = {
+  config.programs.fzf = {
       enable = true;
       defaultOptions = [
         "--height 40%"
@@ -26,7 +25,7 @@
         "--color fg:#cdd6f4"
         "--color border:#45475a"
       ];
-      colors = {
+      colors = lib.mkForce {
         "hl" = "#ad8aec";
         "hl+" = "#ffd6ec";
         "pointer" = "#cba6f7";
@@ -37,5 +36,4 @@
         "border" = "#45475a";
       };
     };
-  };
 }
