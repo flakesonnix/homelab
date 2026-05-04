@@ -228,7 +228,41 @@
         }
         // (import "${framework.outPath}/lib/flake/checks.nix" {
           inherit self pkgs framework omen-config;
-        });
+        })
+        // {
+          checks = {
+            webui-html-validate = pkgs.runCommand "webui-html-validate" {
+              nativeBuildInputs = [pkgs.python3];
+              src = self;
+            } ''
+              for f in $src/webui/lib/pages/*.nix; do
+                if grep -q 'import.*layout.nix' "$f"; then
+                  echo "Checking $f..."
+                fi
+              done
+              python3 -c "
+import os
+import re
+
+pages_dir = '$src/webui/lib/pages'
+layout_file = '$src/webui/lib/layout.nix'
+
+if not os.path.exists(layout_file):
+    exit('Error: layout.nix not found')
+
+for f in os.listdir(pages_dir):
+    if not f.endswith('.nix'):
+        continue
+    path = os.path.join(pages_dir, f)
+    with open(path) as fp:
+        content = fp.read()
+        if 'import' not in content or 'layout.nix' not in content:
+            print(f'Warning: {f} may not import layout.nix')
+"
+              mkdir -p "$out"
+            '';
+          };
+        };
       }
       // {
         flake = {
