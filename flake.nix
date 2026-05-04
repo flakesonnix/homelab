@@ -226,7 +226,7 @@
             };
           };
         }
-        // (import ./lib/flake/checks.nix {
+        // (import "${framework.outPath}/lib/flake/checks.nix" {
           inherit self pkgs framework omen-config;
         });
       }

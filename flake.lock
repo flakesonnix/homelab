@@ -422,11 +422,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1777901553,
-        "narHash": "sha256-npWWapoFVy4tMo1yHWVob4W91y3N3GwCWyzDwfDd1dg=",
+        "lastModified": 1777904556,
+        "narHash": "sha256-JROxu0hB2yzSR84uBbVMebpbbqVvmE+yW+Qozec5Xws=",
         "owner": "flakesonnix",
         "repo": "rivotril",
-        "rev": "b5db0e5df23b4737c9e557cf7e1d3098c3c24ac8",
+        "rev": "6dd93897d1de6cd3d0fcbb61837c546b3e6d7eef",
         "type": "github"
       },
       "original": {
