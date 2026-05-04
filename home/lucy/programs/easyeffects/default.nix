@@ -1,45 +1,30 @@
 {
   config,
-  pkgs,
   lib,
+  pkgs,
+  frameworkLib,
   ...
 }: let
-  presets = pkgs.stdenvNoCC.mkDerivation {
-    pname = "easyeffects-presets";
-    version = "1.0";
-
-    src = pkgs.fetchFromGitHub {
-      owner = "JackHack96";
-      repo = "EasyEffects-Presets";
-      rev = "master";
-      sha256 = "0kqpqil43iab2776k3k2hd5nfg3lkfwm046wvjwx4hw8c5lrhm7n";
-    };
-
-    dontBuild = true;
-    dontConfigure = true;
-
-    installPhase = ''
-      mkdir -p $out/output
-      mkdir -p $out/irs
-
-      cp output/*.json $out/output/ 2>/dev/null || true
-      cp *.json $out/output/ 2>/dev/null || true
-      cp irs/*.irs $out/irs/ 2>/dev/null || true
-    '';
-  };
+  colors = config.lib.stylix.colors.withHashtag;
+  css = frameworkLib.render.css;
 in {
-  options.programs.easyeffects.enable = lib.mkEnableOption "EasyEffects with presets";
-
   config = lib.mkIf config.programs.easyeffects.enable {
     home.packages = [pkgs.easyeffects];
 
-    xdg.configFile."easyeffects/output" = {
-      source = "${presets}/output";
-      recursive = true;
-    };
-    xdg.configFile."easyeffects/irs" = {
-      source = "${presets}/irs";
-      recursive = true;
+    xdg.configFile."easyeffects/config.json".text = builtins.toJSON {
+      input = {
+        plugins = [
+          {name = "loudness"; enabled = true;}
+          {name = "bass_enhancer"; enabled = true;}
+          {name = "equalizer"; enabled = true;}
+        ];
+      };
+      output = {
+        plugins = [
+          {name = "reverb"; enabled = false;}
+          {name = "bass_enhancer"; enabled = true;}
+        ];
+      };
     };
   };
 }
