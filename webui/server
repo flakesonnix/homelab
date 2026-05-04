@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PORT=8080
+WEBUI_ROOT="$(cd "$(dirname "$0")" && pwd)"
+
+serve() {
+    local path="$1"
+    local file="$WEBUI_ROOT/$path"
+
+    if [[ -f "$file" ]]; then
+        local content_type="text/html"
+        [[ "$path" == *.css ]] && content_type="text/css"
+        printf "HTTP/1.1 200 OK\r\nContent-Type: %s\r\n\r\n%s" "$content_type" "$(cat "$file")"
+    else
+        printf "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\nNot Found"
+    fi
+}
+
+exec socat "TCP-LISTEN:$PORT,reuseaddr,fork" "EXEC:$0,派的内斯1"
