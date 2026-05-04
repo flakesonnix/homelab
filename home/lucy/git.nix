@@ -43,16 +43,18 @@
 in {
   config = lib.mkIf config.programs.git.enable {
     programs.git = {
-      userName = "Lucy";
-      userEmail = "lucy@example.com";
-      aliases = {
-        co = "checkout";
-        st = "status";
-        ci = "commit";
-        br = "branch";
-        lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative";
-      };
-      extraConfig = {
+      settings = {
+        user = {
+          name = "Lucy";
+          email = "lucy@example.com";
+        };
+        alias = {
+          co = "checkout";
+          st = "status";
+          ci = "commit";
+          br = "branch";
+          lg = "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative";
+        };
         core = {
           editor = "nvim";
           pager = "less -FR";
