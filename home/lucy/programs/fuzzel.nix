@@ -14,23 +14,29 @@
         background_color = "${colors.base00}ee";
         text_color = colors.base05;
         border = "1px solid ${colors.base02}";
-        border_radius = "22px";
-        padding = "18px";
-        font = ''"Inter" 13'';
+        border_radius = "18px";
+        padding = "16px";
+        font = ''"Inter" 12'';
       };
     }
     {
       selector = "prompt";
       declarations = {
-        padding = "0 8px 0 0";
         text_color = colors.base0D;
+        font_weight = "bold";
       };
     }
     {
       selector = "entry";
       declarations = {
-        padding = "0";
         text_color = colors.base05;
+      };
+    }
+    {
+      selector = "list";
+      declarations = {
+        background_color = "inherit";
+        padding = "8px";
       };
     }
     {
@@ -52,27 +58,6 @@
       declarations = {
         background_color = colors.base08;
         text_color = colors.base00;
-      };
-    }
-    {
-      selector = "icon";
-      declarations = {
-        size = "24px";
-        padding = "0 8px 0 0";
-      };
-    }
-    {
-      selector = "counter";
-      declarations = {
-        padding = "0 0 0 8px";
-        text_color = colors.base0C;
-      };
-    }
-    {
-      selector = "border";
-      declarations = {
-        background_color = colors.base02;
-        radius = "22px";
       };
     }
   ];
