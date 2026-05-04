@@ -192,20 +192,7 @@
         in {
           formatter = pkgs.alejandra;
 
-          packages.webui = pkgs.stdenv.mkDerivation {
-            pname = "nixfiles-webui";
-            version = "0.1.0";
-            src = ./webui;
-            buildPhase = ''
-              mkdir -p $out/lib/pages $out/static
-              cp lib/pages/*.nix $out/lib/pages/ 2>/dev/null || true
-              cp -r static/* $out/static/ 2>/dev/null || true
-            '';
-            installPhase = ''
-              mkdir -p $out
-              cp -r . $out
-            '';
-          };
+          packages.webui = import ./webui/default.nix {inherit pkgs;};
 
           apps = {
             rebuild = {
