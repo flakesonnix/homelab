@@ -40,6 +40,8 @@ in {
     })
 
     (lib.mkIf config.programs.niri.enable {
+      environment.systemPackages = [pkgs.xwayland-satellite];
+
       services.gvfs.enable = true;
       services.udisks2.enable = true;
 

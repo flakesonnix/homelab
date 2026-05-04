@@ -13,7 +13,8 @@ in {
       "kernel.sched_latency_ns" = sysctl.scheduler.latencyNs;
 
       # Memory
-      "vm.max_map_count" = sysctl.memory.maxMapCount;
+      # Some upstream modules also set this; prefer our gaming value.
+      "vm.max_map_count" = lib.mkForce sysctl.memory.maxMapCount;
       "vm.dirty_ratio" = sysctl.memory.dirtyRatio;
 
       # Filesystem

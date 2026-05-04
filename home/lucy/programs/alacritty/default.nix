@@ -1,60 +1,61 @@
 {
   config,
   lib,
+  pkgs,
+  frameworkLib,
   ...
-}: {
+}: let
+  colors = config.lib.stylix.colors.withHashtag;
+in {
   config = lib.mkIf config.programs.alacritty.enable {
-    programs.alacritty = {
-      settings = lib.mkForce {
-        font = {
-          normal = {
-            family = "JetBrainsMono Nerd Font Mono";
-            style = "Regular";
-          };
-          bold = {
-            family = "JetBrainsMono Nerd Font Mono";
-            style = "Bold";
-          };
-          italic = {
-            family = "JetBrainsMono Nerd Font Mono";
-            style = "Italic";
-          };
-          size = 13;
-        };
+    xdg.configFile."alacritty/alacritty.toml".text = ''
+      [env]
+      TERM = "xterm-256color"
 
-        window = {
-          opacity = 0.7;
-          blur = true;
-          padding = {
-            x = 12;
-            y = 10;
-          };
-          dynamic_padding = true;
-          decorations = "Buttonless";
-        };
+      [window]
+      padding.x = 12
+      padding.y = 12
+      decorations = "none"
+      opacity = 0.7
+      blur = true
+      blur_radius = 18
+      startup_mode = "maximized"
 
-        scrolling.history = 10000;
+      [scrolling]
+      history = 10000
+      multiplier = 3
 
-        cursor = {
-          style = {
-            shape = "Block";
-            blinking = "On";
-          };
-          unfocused_hollow = true;
-        };
+      [font]
+      normal.family = "JetBrainsMono Nerd Font"
+      normal.style = "Regular"
+      bold.family = "JetBrainsMono Nerd Font"
+      bold.style = "Bold"
+      size = 13.0
+      use_thinbold = true
 
-        colors = {
-          primary = {
-            background = "#11111e";
-            foreground = "#c8c8d8";
-            dim_foreground = "#9090b0";
-          };
-          cursor = {
-            text = "#11111e";
-            cursor = "#c0c0d8";
-          };
-        };
-      };
-    };
+      [colors.primary]
+      foreground = "${colors.base05}"
+      background = "${colors.base00}"
+
+      [colors.normal]
+      black = "${colors.base00}"
+      red = "${colors.base08}"
+      green = "${colors.base0B}"
+      yellow = "${colors.base0A}"
+      blue = "${colors.base0D}"
+      magenta = "${colors.base0E}"
+      cyan = "${colors.base0C}"
+      white = "${colors.base05}"
+
+      [colors.bright]
+      black = "${colors.base03}"
+      red = "${colors.base08}"
+      green = "${colors.base0B}"
+      yellow = "${colors.base0A}"
+      blue = "${colors.base0D}"
+      magenta = "${colors.base0E}"
+      cyan = "${colors.base0C}"
+      white = "${colors.base07}"
+    '';
   };
 }

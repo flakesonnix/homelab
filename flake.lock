@@ -422,14 +422,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1777800533,
-        "narHash": "sha256-pq7QBwoHltOWZE6usJXhkOg8gV9UsmqjMP5bKyYpgww=",
-        "path": "/home/lucy/Documents/dotfiles-framework",
-        "type": "path"
+        "lastModified": 1777888605,
+        "narHash": "sha256-O5WP/S+o218XjFzMFWsena+o0eTiUlCwmmci5ApCVfQ=",
+        "owner": "flakesonnix",
+        "repo": "rivotril",
+        "rev": "59c1d91cbf440cf8d2497dce6604c147ff162a0c",
+        "type": "github"
       },
       "original": {
-        "path": "/home/lucy/Documents/dotfiles-framework",
-        "type": "path"
+        "owner": "flakesonnix",
+        "repo": "rivotril",
+        "type": "github"
       }
     },
     "fromYaml": {

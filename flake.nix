@@ -106,7 +106,7 @@
     };
 
     framework = {
-      url = "path:/home/lucy/Documents/dotfiles-framework";
+      url = "github:flakesonnix/rivotril";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

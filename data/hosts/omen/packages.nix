@@ -33,5 +33,7 @@ in {
 
   fontPackages = with pkgs; [
     hack-font
+    nerd-fonts.hack
+    font-awesome
   ];
 }
