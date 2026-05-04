@@ -1,0 +1,173 @@
+:root {
+    --bg: #1e1e2e;
+    --bg-light: #313244;
+    --fg: #cdd6f4;
+    --fg-dim: #a6adc8;
+    --accent: #cba6f7;
+    --accent-hover: #f5c2e7;
+    --border: #45475a;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 240px;
+    background: var(--bg-light);
+    border-right: 1px solid var(--border);
+    padding: 1rem;
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.sidebar-brand h1 {
+    font-size: 1.25rem;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+}
+
+.sidebar-brand .host {
+    font-size: 0.75rem;
+    color: var(--fg-dim);
+    margin-bottom: 1.5rem;
+}
+
+.nav-section {
+    margin-bottom: 1rem;
+}
+
+.nav-section-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: var(--fg);
+    text-decoration: none;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+
+.nav-item:hover, .nav-item.active {
+    background: var(--bg);
+}
+
+.nav-icon {
+    font-size: 1rem;
+}
+
+.main {
+    margin-left: 240px;
+    padding: 2rem;
+    flex: 1;
+}
+
+h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: var(--accent);
+}
+
+h3 {
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.card {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    transition: border-color 0.15s;
+}
+
+.card:hover {
+    border-color: var(--accent);
+}
+
+.card p {
+    color: var(--fg-dim);
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.btn {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: var(--accent);
+    color: var(--bg);
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: background 0.15s;
+}
+
+.btn:hover {
+    background: var(--accent-hover);
+}
+
+.btn-primary {
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.checkbox-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+
+.checkbox-card input {
+    margin-top: 0.25rem;
+    accent-color: var(--accent);
+}
+
+pre {
+    background: var(--bg-light);
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.875rem;
+}
+
+form {
+    max-width: 600px;
+}
+
+form .cards {
+    grid-template-columns: 1fr;
+}
