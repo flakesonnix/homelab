@@ -15,10 +15,8 @@ in {
       [window]
       padding.x = 12
       padding.y = 12
-      decorations = "none"
-      opacity = 0.7
-      blur = true
-      blur_radius = 18
+      decorations = "full"
+      opacity = 0.85
       startup_mode = "maximized"
 
       [scrolling]
