@@ -19,7 +19,6 @@ in {
     ./editor.nix
     ./programs/alacritty
     ./programs/packages.nix
-    ./programs/easyeffects
     ./programs/fuzzel.nix
     ./programs/htop.nix
     ./programs/btop.nix

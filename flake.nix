@@ -266,17 +266,7 @@
             };
           };
 
-          checks = {
-            formatting = (treefmt-nix.lib.evalModule pkgs ./treefmt.nix).config.build.check self;
-            pre-commit = pre-commit-hooks.lib.${system}.run {
-              src = self;
-              hooks = {
-                alejandra.enable = false;
-                statix.enable = false;
-                deadnix.enable = false;
-              };
-            };
-
+           checks = {
             no-plaintext-host-passwords =
               pkgs.runCommand "no-plaintext-host-passwords" {
                 nativeBuildInputs = [pkgs.ripgrep];

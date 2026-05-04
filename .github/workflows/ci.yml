@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          install-url: https://nixos-nix-install-tests.s3.amazonaws.com/nix-install-2.24.7.x86_64-linux.tar.xz
+
+      - run: nix flake check
+
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          install-url: https://nixos-nix-install-tests.s3.amazonaws.com/nix-install-2.24.7.x86_64-linux.tar.xz
+
+      - run: nix eval .#nixosConfigurations.omen.config.system.build.toplevel.outPath --raw
+        name: Evaluate NixOS config
