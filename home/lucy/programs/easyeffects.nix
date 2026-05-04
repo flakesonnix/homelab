@@ -2,13 +2,9 @@
   config,
   lib,
   pkgs,
-  frameworkLib,
   ...
-}: let
-  colors = config.lib.stylix.colors.withHashtag;
-  css = frameworkLib.render.css;
-in {
-  config = lib.mkIf config.programs.easyeffects.enable {
+}: {
+  config = {
     home.packages = [pkgs.easyeffects];
 
     xdg.configFile."easyeffects/config.json".text = builtins.toJSON {

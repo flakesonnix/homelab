@@ -7,7 +7,6 @@
   programs = {
     alacritty.enable = true;
     dunst.enable = true;
-    easyeffects.enable = true;
     eww.enable = true;
     firefox.enable = true;
     fuzzel.enable = true;
