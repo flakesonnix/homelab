@@ -45,8 +45,7 @@
   startupCommands = renderLines (map renderStartup [
     (niriFramework.startupSpawn ["${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"])
     (niriFramework.startupSpawn ["${pkgs.waybar}/bin/waybar"])
-    (niriFramework.startupSpawn ["${pkgs.awww}/bin/awww-daemon"])
-    (niriFramework.startupShell "sleep 0.4 && ${pkgs.awww}/bin/awww img --resize crop --filter Lanczos3 --transition-type grow --transition-pos top-right --transition-step 90 --transition-duration 1.2 --transition-fps 60 ${config.home.sessionVariables.WALLPAPER}")
+    (niriFramework.startupSpawn ["${pkgs.swaybg}/bin/swaybg -m fill -i ${config.home.sessionVariables.WALLPAPER} &"])
     (niriFramework.startupSpawn ["${pkgs.xwayland-satellite}/bin/xwayland-satellite"])
   ]);
 
