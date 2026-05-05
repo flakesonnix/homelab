@@ -72,37 +72,8 @@ in {
           "https://github.com/" = {
             insteadOf = "gh:";
           };
-        };
+};
       };
     };
-
-    xdg.configFile."git/config".text = ''
-      [user]
-      \tname = Lucy
-      \temail = lucy@example.com
-
-      [alias]
-      \tco = checkout
-      \tst = status
-      \tci = commit
-      \tbr = branch
-      \tlg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --date=relative
-
-      [core]
-      \teditor = nvim
-      \tpager = less -FR
-
-      [init]
-      \tdefaultBranch = main
-
-      [pull]
-      \trebase = true
-
-      [credential]
-      \thelper = store
-
-      [url "https://github.com/"]
-      \tinsteadOf = gh:
-    '';
   };
 }
