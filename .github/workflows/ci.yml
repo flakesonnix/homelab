@@ -1,31 +1,49 @@
-name: CI
+name: Dotfiles CI
 
 on:
+  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [master]
   pull_request:
+    branches: [master]
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  check:
+  format:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: cachix/install-nix-action@v27
-        with:
-          install-url: https://nixos-nix-install-tests.s3.amazonaws.com/nix-install-2.24.7.x86_64-linux.tar.xz
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
 
-      - run: nix flake check
+      - name: Check formatting
+        run: nix run nixpkgs#alejandra -- --check .
 
   eval:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: cachix/install-nix-action@v27
-        with:
-          install-url: https://nixos-nix-install-tests.s3.amazonaws.com/nix-install-2.24.7.x86_64-linux.tar.xz
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
 
-      - run: nix eval .#nixosConfigurations.omen.config.system.build.toplevel.outPath --raw
-        name: Evaluate NixOS config
+      - name: Evaluate NixOS config
+        run: nix eval .#nixosConfigurations.omen.config.system.build.toplevel.drvPath --raw
+
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/magic-nix-cache-action@v8
+
+      - name: Run flake checks
+        run: nix flake check --print-build-logs
