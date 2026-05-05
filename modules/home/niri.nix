@@ -6,9 +6,8 @@
   ...
 }: let
   projectLib = frameworkLib;
-  colors = config.lib.stylix.colors.withHashtag;
-  hex = color: lib.removePrefix "#" color;
-  rgba = color: alpha: "${hex color}${alpha}";
+  theme = projectLib.theme.fromStylix config;
+  inherit (theme) colors gradient hexAlpha rgba;
   inherit (projectLib) symbols;
   keys = projectLib.framework.keys {inherit symbols;};
   actions = projectLib.framework.actions {inherit symbols;};
@@ -41,19 +40,15 @@
     then ''spawn-at-startup "sh" "-lc" ${builtins.toJSON command.script}''
     else throw "Unsupported startup command kind";
   renderWindowRule = rule: renderSection "window-rule" rule.lines;
-  lockCommand = "sh -c '${pkgs.swaylock-effects}/bin/swaylock --screenshots --clock --indicator --indicator-radius 110 --indicator-thickness 8 --effect-blur 7x5 --effect-vignette 0.25:0.6 --fade-in 0.2 --font Inter --font-size 24 --timestr %H:%M --datestr %a,\ %d\ %b --text-color ${rgba colors.base07 "ff"} --text-clear-color ${rgba colors.base07 "ff"} --text-ver-color ${rgba colors.base0A "ff"} --text-wrong-color ${rgba colors.base08 "ff"} --inside-color ${rgba colors.base00 "88"} --inside-clear-color ${rgba colors.base01 "cc"} --inside-ver-color ${rgba colors.base02 "cc"} --inside-wrong-color ${rgba colors.base01 "cc"} --ring-color ${rgba colors.base0D "cc"} --ring-clear-color ${rgba colors.base0C "cc"} --ring-ver-color ${rgba colors.base0A "cc"} --ring-wrong-color ${rgba colors.base08 "cc"} --line-color 00000000 --separator-color 00000000 --key-hl-color ${rgba colors.base0E "ff"} --bs-hl-color ${rgba colors.base0C "ff"} --show-failed-attempts --daemonize'";
+  lockCommand = "sh -c '${lib.getExe' pkgs.swaylock-effects "swaylock"} --screenshots --clock --indicator --indicator-radius 110 --indicator-thickness 10 --effect-blur 7x5 --effect-vignette 0.25:0.6 --fade-in 0.2 --font Inter --font-size 24 --timestr %H:%M --datestr %a,\ %d\ %b --text-color ${hexAlpha colors.base07 "ff"} --text-clear-color ${hexAlpha colors.base07 "ff"} --text-ver-color ${hexAlpha colors.base0A "ff"} --text-wrong-color ${hexAlpha colors.base08 "ff"} --inside-color ${hexAlpha colors.base00 "96"} --inside-clear-color ${hexAlpha colors.base01 "d6"} --inside-ver-color ${hexAlpha colors.base02 "d6"} --inside-wrong-color ${hexAlpha colors.base01 "d6"} --ring-color ${hexAlpha colors.base0E "e0"} --ring-clear-color ${hexAlpha colors.base0C "d0"} --ring-ver-color ${hexAlpha colors.base0A "d0"} --ring-wrong-color ${hexAlpha colors.base08 "d0"} --line-color 00000000 --separator-color 00000000 --key-hl-color ${hexAlpha colors.base0E "ff"} --bs-hl-color ${hexAlpha colors.base0C "ff"} --show-failed-attempts --daemonize'";
   startupCommands = renderLines (map renderStartup [
     (niriFramework.startupSpawn ["${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"])
-    (niriFramework.startupSpawn ["${pkgs.waybar}/bin/waybar"])
-    (niriFramework.startupSpawn ["${pkgs.swaybg}/bin/swaybg -m fill -i ${config.home.sessionVariables.WALLPAPER} &"])
-    (niriFramework.startupSpawn ["${pkgs.xwayland-satellite}/bin/xwayland-satellite"])
+    (niriFramework.startupSpawn [(lib.getExe pkgs.waybar)])
+    (niriFramework.startupSpawn [(lib.getExe pkgs.swaybg) "-m" "fill" "-i" config.home.sessionVariables.WALLPAPER])
+    (niriFramework.startupSpawn [(lib.getExe pkgs.xwayland-satellite)])
   ]);
 
   windowRules = renderLines (map renderWindowRule [
-    (niriFramework.windowRule [
-      ''match app-id=r#"^org\.wezfurlong\.wezterm$"#''
-      "default-column-width {}"
-    ])
     (niriFramework.windowRule [
       ''match app-id=r#"firefox$"# title="^Picture-in-Picture$"''
       "open-floating true"
@@ -76,23 +71,23 @@
   ];
 
   layoutSection = renderSection "layout" [
-    (renderLeaf "gaps" 18)
+    (renderLeaf "gaps" 22)
     (renderLeaf "center-focused-column" "on-overflow")
     "default-column-width { proportion 0.5; }"
     (renderPropsBlock "focus-ring" [
       (niriFramework.leaf "off" null)
     ])
     (renderPropsBlock "border" [
-      (niriFramework.leaf "width" 2)
-      (niriFramework.leaf "active-color" colors.base0D)
-      (niriFramework.leaf "inactive-color" colors.base02)
+      (niriFramework.leaf "width" 3)
+      (niriFramework.leaf "active-color" colors.base0E)
+      (niriFramework.leaf "inactive-color" colors.base03)
     ])
     (renderPropsBlock "shadow" [
       (niriFramework.leaf "on" null)
-      (niriFramework.leaf "softness" 40)
+      (niriFramework.leaf "softness" 48)
       (niriFramework.leaf "spread" 0)
-      "offset x=0 y=10"
-      (niriFramework.leaf "color" "#${rgba colors.base00 "52"}")
+      "offset x=0 y=14"
+      (niriFramework.leaf "color" (rgba colors.base0E "26"))
     ])
     (renderLeaf "background-color" "transparent")
   ];
@@ -247,31 +242,31 @@
     startupCommands
     ''prefer-no-csd''
     ''screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"''
-    ''animations {
-      workspace-switch {
-        spring damping-ratio=0.85 stiffness=900 epsilon=0.0001
-      }
-      window-open {
-        duration-ms 200
-        curve "ease-out-expo"
-      }
-      window-close {
-        duration-ms 150
-        curve "ease-in-cubic"
-      }
-      window-movement {
-        spring damping-ratio=0.85 stiffness=900 epsilon=0.0001
-      }
-      window-resize {
-        spring damping-ratio=0.85 stiffness=900 epsilon=0.0001
-      }
-      horizontal-view-movement {
-        spring damping-ratio=0.85 stiffness=900 epsilon=0.0001
-      }
-      config-notification-open-close {
-        spring damping-ratio=0.6 stiffness=1000 epsilon=0.001
-      }
-    }''
+    ''      animations {
+            workspace-switch {
+              spring damping-ratio=0.72 stiffness=800 epsilon=0.0001
+            }
+            window-open {
+              duration-ms 380
+              curve "ease-out-expo"
+            }
+            window-close {
+              duration-ms 100
+              curve "ease-out-quad"
+            }
+            window-movement {
+              spring damping-ratio=0.68 stiffness=700 epsilon=0.0001
+            }
+            window-resize {
+              spring damping-ratio=0.92 stiffness=1400 epsilon=0.0001
+            }
+            horizontal-view-movement {
+              spring damping-ratio=0.82 stiffness=600 epsilon=0.0001
+            }
+            config-notification-open-close {
+              spring damping-ratio=0.45 stiffness=550 epsilon=0.001
+            }
+          }''
     windowRules
     ''
       binds {
@@ -295,13 +290,13 @@ in {
         height = 160;
         margin = "18,18,0";
         padding = "16";
-        border-size = 1;
+        border-size = 2;
         border-radius = 18;
         default-timeout = 5000;
-        background-color = "#161626e6";
-        text-color = "#f7f4ff";
-        border-color = "#e7a6cb99";
-        progress-color = "over #adc2ffcc";
+        background-color = rgba colors.base00 "e6";
+        text-color = colors.base07;
+        border-color = rgba colors.base0E "c8";
+        progress-color = "over ${rgba colors.base0E "cc"}";
         icons = true;
         max-icon-size = 48;
         layer = "overlay";
@@ -314,16 +309,16 @@ in {
         history=1
         text-alignment=left
         [urgency=low]
-        border-color=#adc2ff66
+        border-color=${rgba colors.base0D "66"}
         default-timeout=3000
 
         [urgency=normal]
-        border-color=#e7a6cb99
+        border-color=${rgba colors.base0E "99"}
 
         [urgency=high]
-        background-color=#2f1825ee
-        border-color=#ff8db6cc
-        text-color=#fff4f8
+        background-color=${rgba colors.base08 "ee"}
+        border-color=${rgba colors.base08 "cc"}
+        text-color=${colors.base07}
         default-timeout=0
       '';
     };
@@ -334,39 +329,40 @@ in {
       (mkWlogoutEntry "reboot" "systemctl reboot" "Restart" "r")
       (mkWlogoutEntry "shutdown" "systemctl poweroff" "Shutdown" "s")
     ]);
-    xdg.configFile."wlogout/style.css".source = pkgs.writeText "style.css" (lib.concatStringsSep "\n" [
-      "* {"
-      "  background-image: none;"
-      "  box-shadow: none;"
-      "  font-family: \"Inter\", sans-serif;"
-      "}"
-      ""
-      "window {"
-      "  background: linear-gradient(135deg, rgba(18, 18, 34, 0.9), rgba(34, 24, 50, 0.88), rgba(28, 30, 58, 0.88));"
-      "  border: 1px solid rgba(255, 214, 236, 0.18);"
-      "  border-radius: 24px;"
-      "}"
-      ""
-      "button {"
-      "  color: #f7f4ff;"
-      "  background: rgba(255, 255, 255, 0.07);"
-      "  border: 1px solid rgba(255, 214, 236, 0.12);"
-      "  border-radius: 20px;"
-      "  margin: 12px;"
-      "  padding: 20px 28px;"
-      "  font-size: 14px;"
-      "  font-weight: 600;"
-      "  letter-spacing: 0.04em;"
-      "  transition: all 150ms ease;"
-      "  backdrop-filter: blur(24px);"
-      "}"
-      ""
-      "button:hover {"
-      "  background: linear-gradient(135deg, rgba(236, 160, 204, 0.22), rgba(173, 190, 255, 0.18));"
-      "  color: #ffffff;"
-      "  border-color: rgba(255, 226, 241, 0.22);"
-      "}"
-    ]);
+    xdg.configFile."wlogout/style.css".source = pkgs.writeText "style.css" ''
+      * {
+        background-image: none;
+        box-shadow: none;
+        font-family: "Inter", sans-serif;
+      }
+
+      window {
+        background: ${gradient "145deg" [(rgba colors.base00 "f0") (rgba colors.base01 "e8") (rgba colors.base02 "de")]};
+        border: 1px solid ${rgba colors.base0E "54"};
+        border-radius: 24px;
+        box-shadow: 0 24px 64px ${rgba colors.base00 "b8"};
+      }
+
+      button {
+        color: ${colors.base05};
+        background: ${gradient "135deg" [(rgba colors.base01 "c8") (rgba colors.base02 "b8")]};
+        border: 1px solid ${rgba colors.base0E "52"};
+        border-radius: 20px;
+        margin: 12px;
+        padding: 20px 28px;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        transition: all 150ms ease;
+        backdrop-filter: blur(24px);
+      }
+
+      button:hover {
+        background: ${gradient "135deg" [(rgba colors.base0E "88") (rgba colors.base0D "74") (rgba colors.base0C "50")]};
+        color: ${colors.base07};
+        border-color: ${rgba colors.base0E "b8"};
+      }
+    '';
 
     home.packages = with pkgs; [
       blueman

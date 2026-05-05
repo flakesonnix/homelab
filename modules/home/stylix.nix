@@ -17,12 +17,19 @@
         rofi.enable = false;
         zathura.enable = false;
         firefox.enable = true;
-        thunderbird.enable = true;
       };
     };
 
     gtk = {
       enable = true;
     };
+
+    home.activation.removeLegacyKvantumSymlink = lib.hm.dag.entryBefore ["checkLinkTargets"] ''
+      kvantum_dir="$HOME/.config/Kvantum/Base16Kvantum"
+
+      if [ -L "$kvantum_dir" ]; then
+        run rm -f "$kvantum_dir"
+      fi
+    '';
   };
 }

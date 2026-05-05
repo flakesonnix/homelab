@@ -6,7 +6,8 @@
   ...
 }: let
   inherit (frameworkLib.render) css;
-  colors = config.lib.stylix.colors.withHashtag;
+  theme = frameworkLib.theme.fromStylix config;
+  inherit (theme) colors gradient;
   rules = [
     {
       selector = "*";
@@ -117,7 +118,7 @@
     {
       selector = ".power-btn";
       declarations = {
-        background = "linear-gradient(135deg, ${colors.base08}88, ${colors.base09}88)";
+        background = gradient "135deg" ["${colors.base08}88" "${colors.base09}88"];
         border = "1px solid ${colors.base08}";
         border_radius = "12px";
         padding = "14px 24px";
@@ -130,7 +131,7 @@
     {
       selector = ".power-btn:hover";
       declarations = {
-        background = "linear-gradient(135deg, ${colors.base08}, ${colors.base09})";
+        background = gradient "135deg" [colors.base08 colors.base09];
       };
     }
     {
