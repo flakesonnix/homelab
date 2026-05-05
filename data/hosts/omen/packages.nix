@@ -16,6 +16,7 @@ in {
     zathura
     fzf
     bat
+    mcp-nixos
     vesktop
     vlc
     p7zip
@@ -28,6 +29,7 @@ in {
     ani-cli
     scdl
     age
+    cloc
   ];
 
   systemPackages = [hyfetch-wrapped];

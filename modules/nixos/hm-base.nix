@@ -6,7 +6,7 @@
   frameworkLib,
   ...
 }: {
-  home-manager.backupFileExtension = "";
+  home-manager.backupFileExtension = "hm-backup";
 
   users.users.lucy = {
     isNormalUser = true;
@@ -22,8 +22,6 @@
       nix-index-database.homeModules.default
     ];
     nixpkgs.config.allowUnfree = true;
-
-
   };
 
   home-manager.extraSpecialArgs = {

@@ -189,75 +189,77 @@
             name = "update";
             text = "nix flake update";
           };
-        in {
-          formatter = pkgs.alejandra;
+        in
+          {
+            formatter = pkgs.alejandra;
 
-          devShells.default = pkgs.mkShell {
-            packages = with pkgs; [
-              alejandra
-              python3
-              statix
-              nix-tree
-            ];
-          };
-
-          packages.webui = import ./webui/default.nix {inherit pkgs;};
-
-          apps = {
-            rebuild = {
-              type = "app";
-              program = "${rebuildApp}/bin/rebuild";
-              meta.description = "Rebuild the omen host via nh";
+            devShells.default = pkgs.mkShell {
+              packages = with pkgs; [
+                alejandra
+                python3
+                statix
+                nix-tree
+              ];
             };
-            check = {
-              type = "app";
-              program = "${checkApp}/bin/check";
-              meta.description = "Run nix flake check";
+
+            packages.webui = import ./webui/default.nix {inherit pkgs;};
+
+            apps = {
+              rebuild = {
+                type = "app";
+                program = "${rebuildApp}/bin/rebuild";
+                meta.description = "Rebuild the omen host via nh";
+              };
+              check = {
+                type = "app";
+                program = "${checkApp}/bin/check";
+                meta.description = "Run nix flake check";
+              };
+              update = {
+                type = "app";
+                program = "${updateApp}/bin/update";
+                meta.description = "Update flake inputs";
+              };
             };
-            update = {
-              type = "app";
-              program = "${updateApp}/bin/update";
-              meta.description = "Update flake inputs";
+          }
+          // (import "${framework.outPath}/lib/flake/checks.nix" {
+            inherit self pkgs framework omen-config;
+          })
+          // {
+            checks = {
+              webui-html-validate =
+                pkgs.runCommand "webui-html-validate" {
+                  nativeBuildInputs = [pkgs.python3];
+                  src = self;
+                } ''
+                                for f in $src/webui/lib/pages/*.nix; do
+                                  if grep -q 'import.*layout.nix' "$f"; then
+                                    echo "Checking $f..."
+                                  fi
+                                done
+                                python3 -c "
+                  import os
+                  import re
+
+                  pages_dir = '$src/webui/lib/pages'
+                  layout_file = '$src/webui/lib/layout.nix'
+
+                  if not os.path.exists(layout_file):
+                      exit('Error: layout.nix not found')
+
+                  for f in os.listdir(pages_dir):
+                      if not f.endswith('.nix'):
+                          continue
+                      path = os.path.join(pages_dir, f)
+                      with open(path) as fp:
+                          content = fp.read()
+                          if 'import' not in content or 'layout.nix' not in content:
+                              print(f'Warning: {f} may not import layout.nix')
+                  "
+                                mkdir -p "$out"
+                '';
             };
           };
-        }
-        // (import "${framework.outPath}/lib/flake/checks.nix" {
-          inherit self pkgs framework omen-config;
-        })
-        // {
-          checks = {
-            webui-html-validate = pkgs.runCommand "webui-html-validate" {
-              nativeBuildInputs = [pkgs.python3];
-              src = self;
-            } ''
-              for f in $src/webui/lib/pages/*.nix; do
-                if grep -q 'import.*layout.nix' "$f"; then
-                  echo "Checking $f..."
-                fi
-              done
-              python3 -c "
-import os
-import re
-
-pages_dir = '$src/webui/lib/pages'
-layout_file = '$src/webui/lib/layout.nix'
-
-if not os.path.exists(layout_file):
-    exit('Error: layout.nix not found')
-
-for f in os.listdir(pages_dir):
-    if not f.endswith('.nix'):
-        continue
-    path = os.path.join(pages_dir, f)
-    with open(path) as fp:
-        content = fp.read()
-        if 'import' not in content or 'layout.nix' not in content:
-            print(f'Warning: {f} may not import layout.nix')
-"
-              mkdir -p "$out"
-            '';
-          };
-        };
       }
       // {
         flake = {

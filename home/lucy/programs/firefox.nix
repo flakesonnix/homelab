@@ -1,9 +1,11 @@
 {
   config,
   lib,
+  frameworkLib,
   ...
 }: let
-  colors = config.lib.stylix.colors.withHashtag;
+  theme = frameworkLib.theme.fromStylix config;
+  inherit (theme) colors gradient;
 in {
   config = lib.mkIf config.programs.firefox.enable {
     programs.firefox = {
@@ -44,6 +46,8 @@ in {
             --toolbar-field-color: ${colors.base05} !important;
             --tab-selected-bgcolor: ${colors.base0E} !important;
             --tab-selected-textcolor: ${colors.base00} !important;
+            --toolbarbutton-icon-fill: ${colors.base05} !important;
+            --lwt-accent-color: ${colors.base00} !important;
           }
 
           #navigator-toolbox {
@@ -66,9 +70,19 @@ in {
             margin-block: 4px 2px !important;
           }
 
+          .tabbrowser-tab[selected="true"] .tab-background {
+            background: ${gradient "90deg" [colors.base0E colors.base0D colors.base0C]} !important;
+            box-shadow: 0 0 16px ${colors.base0E}66 !important;
+          }
+
+          .tabbrowser-tab:hover .tab-background {
+            background: ${colors.base02}cc !important;
+          }
+
           #nav-bar {
             margin: 0 12px 12px !important;
             border-radius: 16px !important;
+            border: 1px solid ${colors.base0E}44 !important;
             box-shadow: 0 10px 28px ${colors.base00}40 !important;
           }
 

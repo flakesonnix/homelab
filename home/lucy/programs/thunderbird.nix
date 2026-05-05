@@ -2,9 +2,11 @@
   config,
   lib,
   pkgs,
+  frameworkLib,
   ...
 }: let
-  colors = config.lib.stylix.colors.withHashtag;
+  theme = frameworkLib.theme.fromStylix config;
+  inherit (theme) colors gradient;
 in {
   config = lib.mkIf config.programs.thunderbird.enable {
     home.packages = [pkgs.thunderbird];
@@ -30,7 +32,18 @@ in {
       :root {
         --bg-color: ${colors.base00};
         --fg-color: ${colors.base05};
-        --accent-color: ${colors.base0D};
+        --accent-color: ${colors.base0E};
+      }
+
+      #navigation-toolbox,
+      #toolbar-menubar {
+        background: ${gradient "90deg" [colors.base00 colors.base01 colors.base02]} !important;
+        color: ${colors.base05} !important;
+      }
+
+      #folderTree treechildren::-moz-tree-row(selected),
+      #threadTree treechildren::-moz-tree-row(selected) {
+        background: ${colors.base0E} !important;
       }
     '';
   };

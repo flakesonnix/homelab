@@ -6,15 +6,76 @@
   ...
 }: let
   projectLib = frameworkLib;
-  colors = config.lib.stylix.colors.withHashtag;
+  theme = projectLib.theme.fromStylix config;
+  inherit (theme) colors gradient;
   waybarFramework = projectLib.framework.waybar;
   renderCss = projectLib.render.css.renderSheet;
+  barGradient = gradient "90deg" [colors.base00 colors.base01 colors.base02];
+  panelGradient = gradient "90deg" [colors.base01 colors.base02];
+  accentGradient = gradient "90deg" [colors.base0E colors.base0D colors.base0C];
+  cardGradient = gradient "135deg" [colors.base01 colors.base02];
+
+  mediaPopupScript = pkgs.writeShellScript "waybar-media-popup" ''
+    title=$(${lib.getExe pkgs.playerctl} metadata title 2>/dev/null)
+    artist=$(${lib.getExe pkgs.playerctl} metadata artist 2>/dev/null)
+    album=$(${lib.getExe pkgs.playerctl} metadata album 2>/dev/null)
+    art_url=$(${lib.getExe pkgs.playerctl} metadata mpris:artUrl 2>/dev/null)
+    status=$(${lib.getExe pkgs.playerctl} status 2>/dev/null)
+
+    [ -z "$title" ] && exit 0
+
+    body=""
+    [ -n "$artist" ] && body="$artist"
+    [ -n "$album" ] && body="$body\n$album"
+
+    art_file=""
+    if [ -n "$art_url" ]; then
+      case "$art_url" in
+        file://*)
+          art_file="''${art_url#file://}"
+          ;;
+        http*)
+          art_file="/tmp/waybar-media-art.jpg"
+          ${lib.getExe pkgs.curl} -sf "$art_url" -o "$art_file" 2>/dev/null
+          ;;
+      esac
+    fi
+
+    icon_arg=""
+    [ -n "$art_file" ] && [ -f "$art_file" ] && icon_arg="-i $art_file"
+
+    # shellcheck disable=SC2086
+    ${pkgs.libnotify}/bin/notify-send $icon_arg \
+      -t 4000 \
+      -h string:x-canonical-private-synchronous:media-popup \
+      "$title" "$(printf '%b' "$body")"
+  '';
+
+  playerPickerScript = pkgs.writeShellScript "waybar-player-picker" ''
+    players=$(${lib.getExe pkgs.playerctl} -l 2>/dev/null)
+    count=$(printf '%s\n' "$players" | grep -c .)
+
+    if [ "$count" -le 1 ]; then
+      ${lib.getExe pkgs.playerctl} next
+    else
+      selected=$(printf '%s\n' "$players" | ${lib.getExe pkgs.fuzzel} --dmenu --prompt "Player: " --width 30)
+      [ -n "$selected" ] && ${lib.getExe pkgs.playerctl} -p "$selected" play-pause
+    fi
+  '';
 
   notifScript = pkgs.writeShellScript "waybar-notifications" ''
-    count=$(makoctl list 2>/dev/null | ${pkgs.python3}/bin/python3 -c "
+    output=$(makoctl list 2>&1)
+    if echo "$output" | grep -q "DBus\|does not exist\|Error"; then
+      printf '{"text":"󰂚","class":"inactive","tooltip":"No notifications"}\n'
+      exit 0
+    fi
+    count=$(echo "$output" | ${lib.getExe pkgs.python3} -c "
     import sys, json
-    d = json.load(sys.stdin)
-    print(sum(len(g) for g in d.get('data', [])))
+    try:
+      d = json.load(sys.stdin)
+      print(sum(len(g) for g in d.get('data', [])))
+    except Exception:
+      print(0)
     " 2>/dev/null || echo 0)
     if [ "$count" -gt 0 ]; then
       printf '{"text":"󱅫 %s","class":"active","tooltip":"%s notifications"}\n' "$count" "$count"
@@ -30,18 +91,18 @@
       min_height = "0";
     })
     (waybarFramework.rule "window#waybar" {
-      background = "linear-gradient(90deg, ${colors.base00}, ${colors.base01}, ${colors.base02})";
+      background = barGradient;
       color = colors.base07;
-      border = "1px solid ${colors.base03}";
-      border_radius = "18px";
-      box_shadow = "0 14px 34px ${colors.base00}";
+      border = "1px solid ${colors.base0E}";
+      border_radius = "20px";
+      box_shadow = "0 18px 42px ${colors.base00}";
     })
     (waybarFramework.rule "window#waybar.dock" {
-      background = "linear-gradient(90deg, ${colors.base00}, ${colors.base01}, ${colors.base02})";
+      background = barGradient;
       color = colors.base07;
-      border = "1px solid ${colors.base03}";
-      border_radius = "18px";
-      box_shadow = "0 14px 34px ${colors.base00}";
+      border = "1px solid ${colors.base0E}";
+      border_radius = "20px";
+      box_shadow = "0 18px 42px ${colors.base00}";
     })
     (waybarFramework.rule "#workspaces" {
       margin_left = "0";
@@ -52,19 +113,20 @@
       padding = "4px 12px";
       margin = "3px 2px";
       border_radius = "12px";
-      border = "1px solid ${colors.base01}";
+      background = "rgba(0, 0, 0, 0)";
+      border = "1px solid ${colors.base02}";
       transition = "all 150ms ease";
     })
     (waybarFramework.rule "#workspaces button:hover" {
       color = colors.base07;
-      background = colors.base01;
-      border = "1px solid ${colors.base03}";
+      background = panelGradient;
+      border = "1px solid ${colors.base0D}";
     })
     (waybarFramework.rule "#workspaces button.active" {
       color = colors.base07;
-      background = "linear-gradient(90deg, ${colors.base0D}, ${colors.base0C})";
+      background = accentGradient;
       border = "1px solid ${colors.base06}";
-      box_shadow = "0 6px 18px ${colors.base01}";
+      box_shadow = "0 0 16px ${colors.base0E}";
     })
     (waybarFramework.rule "#workspaces button.urgent" {
       background = colors.base08;
@@ -74,7 +136,7 @@
       color = colors.base07;
       font_weight = "700";
       padding = "0 18px";
-      letter_spacing = "0.08em";
+      letter_spacing = "0.12em";
     })
     (waybarFramework.rule "#mpris" {
       color = colors.base06;
@@ -98,7 +160,7 @@
     })
     (waybarFramework.rule "#custom-power:hover" {
       color = colors.base08;
-      background = colors.base01;
+      background = panelGradient;
     })
     (waybarFramework.rule "#network" {color = colors.base0C;})
     (waybarFramework.rule "#network.disconnected" {color = colors.base08;})
@@ -111,27 +173,26 @@
       color = colors.base06;
       font_style = "italic";
       min_width = "160px";
-      max_width = "380px";
     })
     (waybarFramework.rule "#custom-notifications" {color = colors.base05;})
     (waybarFramework.rule "#custom-notifications.active" {color = colors.base0A;})
     (waybarFramework.rule "#custom-notifications.inactive" {color = colors.base04;})
     (waybarFramework.rule "#custom-notifications:hover" {
       color = colors.base08;
-      background = colors.base01;
+      background = panelGradient;
     })
     (waybarFramework.rule "#mpris, #clock, #network, #pulseaudio, #battery, #cpu, #memory, #custom-power, #custom-notifications, #idle_inhibitor, #tray, #window" {
-      background = colors.base01;
+      background = cardGradient;
       margin = "6px 4px";
       padding = "0 13px";
       border = "1px solid ${colors.base03}";
       border_radius = "12px";
-      box_shadow = "inset 0 1px 0 ${colors.base02}";
+      box_shadow = "inset 0 1px 0 ${colors.base03}, 0 0 12px ${colors.base00}";
     })
     (waybarFramework.rule "tooltip" {
       background = colors.base00;
       color = colors.base07;
-      border = "1px solid ${colors.base03}";
+      border = "1px solid ${colors.base0E}";
       border_radius = "14px";
       padding = "6px 10px";
       box_shadow = "0 12px 28px ${colors.base00}";
@@ -159,14 +220,25 @@
     mpris = {
       format = "{player_icon}  {dynamic}";
       format-paused = "{status_icon}  {dynamic}";
-      dynamic-len = 36;
-      dynamic-order = ["artist" "title"];
-      player-icons.default = "󰎆";
-      status-icons.paused = "󰏤";
-      status-icons.stopped = "󰓛";
-      tooltip-format = "{player} - {title}\n{artist}";
+      dynamic-len = 40;
+      dynamic-order = ["title" "artist"];
+      player-icons = {
+        default = "󰎆";
+        spotify = "󰓇";
+        firefox = "󰈹";
+        chromium = "";
+        vlc = "󰕼";
+        mpv = "";
+      };
+      status-icons = {
+        paused = "󰏤";
+        stopped = "󰓛";
+        playing = "󰐊";
+      };
+      tooltip-format = "{player}\n{title}\n{artist} — {album}\n{status}";
       on-click = "playerctl play-pause";
-      on-click-right = "playerctl next";
+      on-click-middle = "${mediaPopupScript}";
+      on-click-right = "${playerPickerScript}";
       on-scroll-up = "playerctl previous";
       on-scroll-down = "playerctl next";
     };
@@ -244,7 +316,7 @@
   };
 in {
   config = lib.mkIf config.programs.waybar.enable {
-    home.packages = [pkgs.siji];
+    home.packages = [pkgs.siji pkgs.libnotify pkgs.curl];
     programs.waybar = {
       package = pkgs.waybar;
       settings = [mainBar];
