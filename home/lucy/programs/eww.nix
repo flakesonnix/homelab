@@ -34,10 +34,38 @@
       };
     }
     {
+      selector = ".topbar";
+      declarations = {
+        background = gradient "90deg" ["${colors.base00}f0" "${colors.base01}e8" "${colors.base02}de"];
+        border = "1px solid ${colors.base0E}";
+        border_radius = "20px";
+        padding = "10px 16px";
+        min_height = "46px";
+        box_shadow = "0 18px 42px rgba(0,0,0,0.45)";
+      };
+    }
+    {
       selector = ".section";
       declarations = {
         margin = "12px 0";
         spacing = "8px";
+      };
+    }
+    {
+      selector = ".row";
+      declarations = {
+        spacing = "10px";
+        align_items = "center";
+      };
+    }
+    {
+      selector = ".cluster";
+      declarations = {
+        background = gradient "135deg" [colors.base01 colors.base02];
+        border = "1px solid ${colors.base03}";
+        border_radius = "14px";
+        padding = "6px 12px";
+        spacing = "10px";
       };
     }
     {
@@ -158,18 +186,141 @@
         color = colors.base05;
       };
     }
+    {
+      selector = ".chip";
+      declarations = {
+        background = gradient "135deg" [colors.base01 colors.base02];
+        border = "1px solid ${colors.base03}";
+        border_radius = "999px";
+        padding = "6px 12px";
+        font_size = "13px";
+        font_weight = "600";
+      };
+    }
+    {
+      selector = ".chip-accent";
+      declarations = {
+        background = gradient "90deg" [colors.base0E colors.base0D colors.base0C];
+        color = colors.base00;
+      };
+    }
+    {
+      selector = ".bar-time";
+      declarations = {
+        font_size = "18px";
+        font_weight = "700";
+        letter_spacing = "0.08em";
+      };
+    }
+    {
+      selector = ".subtle";
+      declarations = {
+        color = colors.base04;
+        font_size = "12px";
+      };
+    }
+    {
+      selector = ".launch-btn";
+      declarations = {
+        background = "transparent";
+        border = "1px solid transparent";
+        border_radius = "12px";
+        padding = "8px 12px";
+        font_size = "16px";
+        color = colors.base05;
+      };
+    }
+    {
+      selector = ".launch-btn:hover";
+      declarations = {
+        background = gradient "90deg" [colors.base01 colors.base02];
+        border = "1px solid ${colors.base0D}";
+      };
+    }
+    {
+      selector = ".metric";
+      declarations = {
+        font_size = "13px";
+        font_weight = "600";
+      };
+    }
   ];
 in {
   config = lib.mkIf config.programs.eww.enable {
-    home.packages = [pkgs.eww];
+    home.packages = [pkgs.eww pkgs.curl];
 
     xdg.configFile."eww/eww.yuck".text = ''
+      (defpoll clock_time :interval "1s" "date +'%H:%M'")
+      (defpoll clock_date :interval "30s" "date +'%A, %b %d'")
+      (defpoll ram_usage :interval "5s" "sh -lc \"free | awk '/Mem:/ {printf \\\"%.0f%%%%\\\", $3/$2 * 100}'\"")
+      (defpoll cpu_usage :interval "5s" "sh -lc \"top -bn1 | awk '/Cpu\\(s\\)/ {printf \\\"%.0f%%%%\\\", $2}'\"")
+      (defpoll volume_text :interval "3s" "sh -lc \"wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{if ($3 == \\\"[MUTED]\\\") print \\\"mute\\\"; else printf \\\"%d%%\\\", $2 * 100}'\"")
+      (defpoll network_text :interval "10s" "sh -lc \"ssid=\\$(nmcli -t -f active,ssid dev wifi | awk -F: '$1==\\\"yes\\\" {print $2; exit}'); printf '%s' \\\"''${ssid:-offline}\\\"\"")
+      (defpoll media_text :interval "3s" "sh -lc \"playerctl metadata --format '{{artist}} - {{title}}' 2>/dev/null | cut -c1-40 || echo idle\"")
+      (defpoll weather_text :interval "1800s" "sh -lc \"curl -fsS 'https://wttr.in/?format=%C+%t' 2>/dev/null || echo offline\"")
+
+      (defwindow topbar
+        :anchor "top center"
+        :windowtype "dock"
+        :layer "top"
+        :exclusive true
+        :reserve (struts :distance "60px" :side "top")
+        :geometry (geometry :x "18px" :y "14px" :width "calc(100% - 36px)" :height "52px" :anchor "top center")
+        :class "eww-topbar"
+        (box
+          :class "topbar row"
+          :space-evenly false
+          :hexpand true
+          (box
+            :class "row"
+            :halign "start"
+            :hexpand true
+            (button :class "launch-btn" :onclick "fuzzel" "󰍉")
+            (button :class "launch-btn" :onclick "alacritty" "")
+            (button :class "launch-btn" :onclick "firefox" "󰈹")
+            (box :class "cluster row"
+              (label :class "metric" :text "")
+              (label :class "metric" :text cpu_usage)
+              (label :class "subtle" :text "󰠋")
+              (label :class "metric" :text ram_usage)
+            )
+          )
+          (box
+            :orientation "vertical"
+            :valign "center"
+            (label :class "bar-time" :text clock_time)
+            (label :class "subtle" :text clock_date)
+          )
+          (box
+            :class "row"
+            :halign "end"
+            :hexpand true
+            (box :class "chip row"
+              (label :text "󰖙")
+              (label :class "metric" :text weather_text)
+            )
+            (box :class "chip row"
+              (label :text "󰕾")
+              (label :class "metric" :text volume_text)
+            )
+            (box :class "chip row"
+              (label :text "󰤨")
+              (label :class "metric" :text network_text)
+            )
+            (box :class "chip chip-accent row"
+              (label :text "󰎆")
+              (label :class "metric" :text media_text)
+            )
+            (button :class "launch-btn" :onclick "wlogout" "⏻")
+          )
+        )
+      )
+
       (defwindow sidebar
         :anchor "top right"
         :windowtype "layer"
         :layer "top"
-        :exclusive true
-        :reserve "top"
+        :exclusive false
         :width 320
         :height 1080
         :class "eww-sidebar"
@@ -179,8 +330,8 @@ in {
             :class "section"
             :orientation "vertical"
             (label :text "󰌁" :class "icon")
-            (label :text "$(date +'%H:%M')" :class "time")
-            (label :text "$(date +'%A, %b %d')" :class "date")
+            (label :text clock_time :class "time")
+            (label :text clock_date :class "date")
           )
           (box :class "separator")
           (box
@@ -188,7 +339,7 @@ in {
             :orientation "vertical"
             (label :text "󰠋 RAM" :class "widget-title")
             (scale
-              :value "$(free | awk '/Mem:/ {printf \"%.0f\", $3/$2 * 100}')"
+              :value ram_usage
               :min 0
               :max 100
               :class "ram-scale"
@@ -199,7 +350,7 @@ in {
             :orientation "vertical"
             (label :text "󰐎 CPU" :class "widget-title")
             (scale
-              :value "$(top -bn1 | grep 'Cpu(s)' | awk '{print $2}' | cut -d'%' -f1 | awk '{printf \"%.0f\", $1}')"
+              :value cpu_usage
               :min 0
               :max 100
               :class "cpu-scale"
@@ -235,19 +386,6 @@ in {
               "󰗼 Logout"
             )
           )
-        )
-      )
-
-      (defwindow weather
-        :anchor "top center"
-        :windowtype "layer"
-        :layer "top"
-        :width 200
-        :height 100
-        (box
-          :class "weather"
-          (label :text "󰖞" :class "weather-icon")
-          (label :text "22°C" :class "weather-temp")
         )
       )
     '';

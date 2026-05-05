@@ -72,29 +72,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    alejandra = {
-      url = "github:Kamadorueda/alejandra";
-    };
-
-    haumea = {
-      url = "github:nix-community/haumea";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    nix-health = {
-      url = "github:juspay/nix-health";
-    };
-
-    treefmt-nix = {
-      url = "github:numtide/treefmt-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    pre-commit-hooks = {
-      url = "github:cachix/pre-commit-hooks.nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     run0-sudo-shim = {
       url = "github:lordgrimmauld/run0-sudo-shim";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -123,8 +100,6 @@
     nix-index-database,
     lanzaboote,
     comfyui-nix,
-    treefmt-nix,
-    pre-commit-hooks,
     run0-sudo-shim,
     nixos-hardware,
     nixGaming,
