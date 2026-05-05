@@ -247,7 +247,31 @@
     startupCommands
     ''prefer-no-csd''
     ''screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"''
-    ''animations {}''
+    ''animations {
+      workspace-switch {
+        spring damping-ratio=0.85 stiffness=900 epsilon=0.0001
+      }
+      window-open {
+        duration-ms 200
+        curve "ease-out-expo"
+      }
+      window-close {
+        duration-ms 150
+        curve "ease-in-cubic"
+      }
+      window-movement {
+        spring damping-ratio=0.85 stiffness=900 epsilon=0.0001
+      }
+      window-resize {
+        spring damping-ratio=0.85 stiffness=900 epsilon=0.0001
+      }
+      horizontal-view-movement {
+        spring damping-ratio=0.85 stiffness=900 epsilon=0.0001
+      }
+      config-notification-open-close {
+        spring damping-ratio=0.6 stiffness=1000 epsilon=0.001
+      }
+    }''
     windowRules
     ''
       binds {

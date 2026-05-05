@@ -18,6 +18,7 @@ in {
     ./git.nix
     ./editor.nix
     ./programs/packages.nix
+    ./programs/alacritty
     ./programs/fuzzel.nix
     ./programs/htop.nix
     ./programs/btop.nix

@@ -10,6 +10,19 @@
   waybarFramework = projectLib.framework.waybar;
   renderCss = projectLib.render.css.renderSheet;
 
+  notifScript = pkgs.writeShellScript "waybar-notifications" ''
+    count=$(makoctl list 2>/dev/null | ${pkgs.python3}/bin/python3 -c "
+    import sys, json
+    d = json.load(sys.stdin)
+    print(sum(len(g) for g in d.get('data', [])))
+    " 2>/dev/null || echo 0)
+    if [ "$count" -gt 0 ]; then
+      printf '{"text":"󱅫 %s","class":"active","tooltip":"%s notifications"}\n' "$count" "$count"
+    else
+      printf '{"text":"󰂚","class":"inactive","tooltip":"No notifications"}\n'
+    fi
+  '';
+
   waybarStyle = renderCss [
     (waybarFramework.rule "*" {
       font_family = ["Inter" "Hack Nerd Font" "sans-serif"];
@@ -94,7 +107,20 @@
     (waybarFramework.rule "#tray" {color = colors.base05;})
     (waybarFramework.rule "#idle_inhibitor" {color = colors.base05;})
     (waybarFramework.rule "#idle_inhibitor.activated" {color = colors.base0A;})
-    (waybarFramework.rule "#mpris, #clock, #network, #pulseaudio, #battery, #cpu, #memory, #custom-power, #idle_inhibitor, #tray" {
+    (waybarFramework.rule "#window" {
+      color = colors.base06;
+      font_style = "italic";
+      min_width = "160px";
+      max_width = "380px";
+    })
+    (waybarFramework.rule "#custom-notifications" {color = colors.base05;})
+    (waybarFramework.rule "#custom-notifications.active" {color = colors.base0A;})
+    (waybarFramework.rule "#custom-notifications.inactive" {color = colors.base04;})
+    (waybarFramework.rule "#custom-notifications:hover" {
+      color = colors.base08;
+      background = colors.base01;
+    })
+    (waybarFramework.rule "#mpris, #clock, #network, #pulseaudio, #battery, #cpu, #memory, #custom-power, #custom-notifications, #idle_inhibitor, #tray, #window" {
       background = colors.base01;
       margin = "6px 4px";
       padding = "0 13px";
@@ -121,9 +147,14 @@
     margin-left = 18;
     margin-right = 18;
     spacing = 6;
-    modules-left = ["niri/workspaces"];
+    modules-left = ["niri/workspaces" "niri/window"];
     modules-center = ["mpris"];
-    modules-right = ["idle_inhibitor" "clock" "network" "pulseaudio" "battery" "cpu" "memory" "tray" "custom/power"];
+    modules-right = ["custom/notifications" "idle_inhibitor" "clock" "network" "pulseaudio" "battery" "cpu" "memory" "tray" "custom/power"];
+
+    "niri/window" = {
+      format = "{title}";
+      rewrite = {"^$" = "";};
+    };
 
     mpris = {
       format = "{player_icon}  {dynamic}";
@@ -134,6 +165,10 @@
       status-icons.paused = "󰏤";
       status-icons.stopped = "󰓛";
       tooltip-format = "{player} - {title}\n{artist}";
+      on-click = "playerctl play-pause";
+      on-click-right = "playerctl next";
+      on-scroll-up = "playerctl previous";
+      on-scroll-down = "playerctl next";
     };
 
     clock = {
@@ -159,12 +194,16 @@
       tooltip-format-wifi = "{essid} ({signalStrength}%)";
       tooltip-format-ethernet = "{ifname}";
       tooltip-format-disconnected = "No network";
+      on-click = "nm-connection-editor";
     };
 
     pulseaudio = {
       format = "{icon}  {volume}%";
       format-muted = "󰝟  mute";
       format-icons.default = ["" "" ""];
+      on-click = "pwvucontrol";
+      on-scroll-up = "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ -l 1.0";
+      on-scroll-down = "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05-";
     };
 
     battery = {
@@ -178,11 +217,21 @@
     cpu = {
       format = "  {usage}%";
       tooltip = false;
+      on-click = "alacritty -e btop";
     };
 
     memory = {
       format = "󰍛  {}%";
       tooltip = false;
+      on-click = "alacritty -e btop";
+    };
+
+    "custom/notifications" = {
+      exec = "${notifScript}";
+      return-type = "json";
+      interval = 3;
+      on-click = "makoctl dismiss --all";
+      on-click-right = "makoctl mode toggle";
     };
 
     tray.spacing = 10;

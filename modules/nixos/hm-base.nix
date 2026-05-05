@@ -1,11 +1,12 @@
 {
+  lib,
   stylix,
   nix-flatpak,
   nix-index-database,
   frameworkLib,
   ...
 }: {
-  home-manager.backupFileExtension = "backup";
+  home-manager.backupFileExtension = "";
 
   users.users.lucy = {
     isNormalUser = true;
@@ -21,6 +22,8 @@
       nix-index-database.homeModules.default
     ];
     nixpkgs.config.allowUnfree = true;
+
+
   };
 
   home-manager.extraSpecialArgs = {

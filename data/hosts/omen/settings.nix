@@ -23,6 +23,7 @@
 
   niri.users = ["lucy"];
 
+  security.polkit.persistentAuthentication = true;
   security.run0-sudo-shim.enable = true;
   services.openssh.settings.PermitRootLogin = "prohibit-password";
 
