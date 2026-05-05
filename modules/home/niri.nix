@@ -41,12 +41,21 @@
     else throw "Unsupported startup command kind";
   renderWindowRule = rule: renderSection "window-rule" rule.lines;
   lockCommand = "sh -c '${lib.getExe' pkgs.swaylock-effects "swaylock"} --screenshots --clock --indicator --indicator-radius 110 --indicator-thickness 10 --effect-blur 7x5 --effect-vignette 0.25:0.6 --fade-in 0.2 --font Inter --font-size 24 --timestr %H:%M --datestr %a,\ %d\ %b --text-color ${hexAlpha colors.base07 "ff"} --text-clear-color ${hexAlpha colors.base07 "ff"} --text-ver-color ${hexAlpha colors.base0A "ff"} --text-wrong-color ${hexAlpha colors.base08 "ff"} --inside-color ${hexAlpha colors.base00 "96"} --inside-clear-color ${hexAlpha colors.base01 "d6"} --inside-ver-color ${hexAlpha colors.base02 "d6"} --inside-wrong-color ${hexAlpha colors.base01 "d6"} --ring-color ${hexAlpha colors.base0E "e0"} --ring-clear-color ${hexAlpha colors.base0C "d0"} --ring-ver-color ${hexAlpha colors.base0A "d0"} --ring-wrong-color ${hexAlpha colors.base08 "d0"} --line-color 00000000 --separator-color 00000000 --key-hl-color ${hexAlpha colors.base0E "ff"} --bs-hl-color ${hexAlpha colors.base0C "ff"} --show-failed-attempts --daemonize'";
-  startupCommands = renderLines (map renderStartup [
-    (niriFramework.startupSpawn ["${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"])
-    (niriFramework.startupSpawn [(lib.getExe pkgs.waybar)])
-    (niriFramework.startupSpawn [(lib.getExe pkgs.swaybg) "-m" "fill" "-i" config.home.sessionVariables.WALLPAPER])
-    (niriFramework.startupSpawn [(lib.getExe pkgs.xwayland-satellite)])
-  ]);
+  startupCommands = renderLines (map renderStartup (
+    [
+      (niriFramework.startupSpawn ["${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"])
+      (niriFramework.startupSpawn [(lib.getExe pkgs.swaybg) "-m" "fill" "-i" config.home.sessionVariables.WALLPAPER])
+      (niriFramework.startupSpawn [(lib.getExe pkgs.xwayland-satellite)])
+    ]
+    ++ lib.optionals config.programs.waybar.enable [
+      (niriFramework.startupSpawn [(lib.getExe pkgs.waybar)])
+    ]
+    ++ lib.optionals (config.programs.eww.enable or false) [
+      (niriFramework.startupSpawn [(lib.getExe pkgs.eww) "daemon"])
+      (niriFramework.startupSpawn [(lib.getExe pkgs.eww) "open" "topbar"])
+      (niriFramework.startupSpawn [(lib.getExe pkgs.eww) "open" "sidebar"])
+    ]
+  ));
 
   windowRules = renderLines (map renderWindowRule [
     (niriFramework.windowRule [
