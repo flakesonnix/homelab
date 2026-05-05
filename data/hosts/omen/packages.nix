@@ -12,7 +12,7 @@
   };
 in {
   basePackages = with pkgs; [
-    alacritty
+    wezterm
     zathura
     fzf
     bat
