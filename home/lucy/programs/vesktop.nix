@@ -10,8 +10,8 @@
         arRPC = true;
         discordBranch = "stable";
         minimizeToTray = true;
-        splashBackground = "#1a1423";
-        splashColor = "#f0d0f5";
+        splashBackground = config.lib.stylix.colors.withHashtag.base00;
+        splashColor = config.lib.stylix.colors.withHashtag.base05;
         staticTitle = true;
       };
     };

@@ -13,7 +13,20 @@
   configuredUsers = lib.unique config.niri.users;
   invalidUsers = builtins.filter (name: !(builtins.elem name hmUserNames)) configuredUsers;
 
-  tuigreetCmd = "${pkgs.tuigreet}/bin/tuigreet --time --time-format '%a %d %b  %H:%M' --remember --remember-session --user-menu --asterisks --width 110 --greeting 'Welcome back' --power-shutdown 'systemctl poweroff' --power-reboot 'systemctl reboot' --cmd ${pkgs.niri}/bin/niri-session";
+  tuigreetCmd = lib.concatStringsSep " " [
+    (lib.getExe pkgs.tuigreet)
+    "--time"
+    "--time-format '%a %d %b  %H:%M'"
+    "--remember"
+    "--remember-session"
+    "--user-menu"
+    "--asterisks"
+    "--width 110"
+    "--greeting 'Welcome back'"
+    "--power-shutdown 'systemctl poweroff'"
+    "--power-reboot 'systemctl reboot'"
+    "--cmd ${lib.getExe' pkgs.niri "niri-session"}"
+  ];
 in {
   options.niri.users = lib.mkOption {
     type = lib.types.listOf lib.types.str;
@@ -41,6 +54,14 @@ in {
 
     (lib.mkIf config.programs.niri.enable {
       environment.systemPackages = [pkgs.xwayland-satellite];
+
+      systemd.user.services.xdg-desktop-portal-gnome = {
+        partOf = ["graphical-session.target"];
+        serviceConfig = {
+          Restart = "on-failure";
+          RestartSec = 1;
+        };
+      };
 
       services.gvfs.enable = true;
       services.udisks2.enable = true;

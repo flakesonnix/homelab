@@ -18,7 +18,13 @@ in
       nix-tree
     ];
 
-    home.pointerCursor.package = pkgs.callPackage ../../../home/lucy/cursors/default.nix {};
+    home.pointerCursor = {
+      package = pkgs.callPackage ../../../home/lucy/cursors/default.nix {};
+      name = "HelloKittyPeachMilkDonut";
+      size = 24;
+      gtk.enable = true;
+      x11.enable = true;
+    };
 
     home.sessionVariables =
       if hasWallpaper

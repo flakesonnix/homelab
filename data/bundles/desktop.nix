@@ -20,7 +20,10 @@
     zathura.enable = true;
   };
 
-  settings.stylix.enable = true;
+  settings.stylix = {
+    enable = true;
+    targets.alacritty.enable = false;
+  };
 
   packageToggles = [
     "jetbrains-mono"

@@ -192,6 +192,15 @@
         in {
           formatter = pkgs.alejandra;
 
+          devShells.default = pkgs.mkShell {
+            packages = with pkgs; [
+              alejandra
+              python3
+              statix
+              nix-tree
+            ];
+          };
+
           packages.webui = import ./webui/default.nix {inherit pkgs;};
 
           apps = {

@@ -2,7 +2,9 @@
   config,
   lib,
   ...
-}: {
+}: let
+  colors = config.lib.stylix.colors.withHashtag;
+in {
   config = lib.mkIf config.programs.firefox.enable {
     programs.firefox = {
       profiles.${config.home.username} = {
@@ -36,12 +38,12 @@
         };
         userChrome = ''
           :root {
-            --toolbar-bgcolor: rgba(26, 20, 35, 0.88) !important;
-            --toolbar-color: #f0d0f5 !important;
-            --toolbar-field-background-color: rgba(42, 36, 54, 0.88) !important;
-            --toolbar-field-color: #f0d0f5 !important;
-            --tab-selected-bgcolor: #ff1493 !important;
-            --tab-selected-textcolor: #ffffff !important;
+            --toolbar-bgcolor: ${colors.base00}e0 !important;
+            --toolbar-color: ${colors.base05} !important;
+            --toolbar-field-background-color: ${colors.base01}e0 !important;
+            --toolbar-field-color: ${colors.base05} !important;
+            --tab-selected-bgcolor: ${colors.base0E} !important;
+            --tab-selected-textcolor: ${colors.base00} !important;
           }
 
           #navigator-toolbox {
@@ -67,7 +69,7 @@
           #nav-bar {
             margin: 0 12px 12px !important;
             border-radius: 16px !important;
-            box-shadow: 0 10px 28px rgba(12, 7, 18, 0.25) !important;
+            box-shadow: 0 10px 28px ${colors.base00}40 !important;
           }
 
           #urlbar-background,

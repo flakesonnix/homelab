@@ -2,9 +2,10 @@
   config,
   lib,
   pkgs,
-  frameworkLib,
   ...
-}: {
+}: let
+  colors = config.lib.stylix.colors.withHashtag;
+in {
   config = lib.mkIf config.programs.thunderbird.enable {
     home.packages = [pkgs.thunderbird];
 
@@ -26,11 +27,10 @@
         height: 24px !important;
       }
 
-      /* Dark theme colors */
       :root {
-        --bg-color: #1e1e2e;
-        --fg-color: #cdd6f4;
-        --accent-color: #89b4fa;
+        --bg-color: ${colors.base00};
+        --fg-color: ${colors.base05};
+        --accent-color: ${colors.base0D};
       }
     '';
   };
