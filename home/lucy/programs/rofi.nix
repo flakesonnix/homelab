@@ -190,7 +190,7 @@ in {
         icon-theme: "Papirus-Dark";
         drun-icon-theme: "Papirus-Dark";
         font: "Inter 12";
-        terminal: "wezterm";
+        terminal: "alacritty";
         location: 0;
         yoffset: 0;
         xoffset: 0;

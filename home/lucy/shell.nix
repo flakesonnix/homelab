@@ -66,7 +66,7 @@ in {
       SHELL = "${pkgs.bashInteractive}/bin/bash";
       EDITOR = lib.mkForce "${pkgs.neovim}/bin/nvim";
       VISUAL = lib.mkForce "${pkgs.neovim}/bin/nvim";
-      TERMINAL = lib.mkForce "${pkgs.wezterm}/bin/wezterm";
+      TERMINAL = lib.mkForce "${pkgs.alacritty}/bin/alacritty";
     };
   };
 }

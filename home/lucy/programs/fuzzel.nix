@@ -66,7 +66,7 @@ in {
     programs.fuzzel = {
       settings = lib.mkForce {
         main = {
-          terminal = "wezterm";
+          terminal = "alacritty";
           layer = "overlay";
           font = "Inter:size=13";
           icon-theme = "Papirus-Dark";
