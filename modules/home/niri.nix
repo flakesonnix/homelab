@@ -60,11 +60,6 @@
       "open-floating true"
     ])
     (niriFramework.windowRule [
-      ''match app-id=r#"^alacritty$"#
-      "transparent true"
-      "opacity 80"
-    ])
-    (niriFramework.windowRule [
       "geometry-corner-radius 16"
       "clip-to-geometry true"
     ])
