@@ -17,7 +17,7 @@ in {
     ./shell.nix
     ./git.nix
     ./editor.nix
-    ./programs/alacritty
+    ./programs/wezterm
     ./programs/packages.nix
     ./programs/fuzzel.nix
     ./programs/htop.nix
