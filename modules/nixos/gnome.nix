@@ -8,7 +8,7 @@
       enable = lib.mkEnableOption "GNOME desktop configuration";
       wayland = lib.mkOption {
         type = lib.types.bool;
-        default = false;
+        default = true;
         description = "Enable Wayland for GDM";
       };
     };

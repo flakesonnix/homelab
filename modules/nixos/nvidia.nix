@@ -22,6 +22,10 @@
 
   config = lib.mkIf config.lucy.nvidia.enable {
     services.xserver.videoDrivers = ["nvidia"];
+    hardware.graphics = {
+      enable = true;
+      enable32Bit = true;
+    };
     hardware.nvidia = {
       powerManagement.enable = true;
       powerManagement.finegrained = config.lucy.nvidia.prime;

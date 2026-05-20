@@ -82,8 +82,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    framework = {
-      url = "github:flakesonnix/rivotril";
+    deploy-rs = {
+      url = "github:serokell/deploy-rs";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    microvm = {
+      url = "github:microvm-nix/microvm.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -101,17 +106,19 @@
     lanzaboote,
     comfyui-nix,
     run0-sudo-shim,
+    microvm,
     nixos-hardware,
     nixGaming,
     nur,
-    framework,
+    deploy-rs,
     ...
   }: let
+    projectLib = import ./lib;
     omen-config = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
       specialArgs = {
         inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database nixos-hardware nixGaming;
-        frameworkLib = framework.lib;
+        frameworkLib = projectLib;
       };
       modules = [
         ./nix-settings.nix
@@ -121,20 +128,56 @@
         home-manager.nixosModules.home-manager
         lanzaboote.nixosModules.lanzaboote
         nur.modules.nixos.default
-        ({
-          lib,
-          pkgs,
-          ...
-        }: {
+        ({lib, ...}: {
           boot.loader.systemd-boot.enable = lib.mkForce false;
           boot.lanzaboote = {
             enable = true;
             pkiBundle = "/var/lib/sbctl";
           };
-          environment.systemPackages = [pkgs.sbctl];
         })
         ./modules/nixos/hm-base.nix
         run0-sudo-shim.nixosModules.default
+      ];
+    };
+    p50-config = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      specialArgs = {
+        inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database nixos-hardware nixGaming;
+        frameworkLib = projectLib;
+      };
+      modules = [
+        ./nix-settings.nix
+        ./profiles/desktop.nix
+        ./hosts/p50
+        sops-nix.nixosModules.sops
+        home-manager.nixosModules.home-manager
+        nur.modules.nixos.default
+        ./modules/nixos/hm-base.nix
+        run0-sudo-shim.nixosModules.default
+        ./modules/nixos/pipebert.nix
+      ];
+    };
+    mireo-config = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      specialArgs = {
+        inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database nixos-hardware nixGaming;
+        frameworkLib = projectLib;
+      };
+      modules = [
+        ./nix-settings.nix
+        ./profiles/base.nix
+        microvm.nixosModules.host
+        ./hosts/mireo
+        ./hosts/mireo/grafana-microvm.nix
+        sops-nix.nixosModules.sops
+        nur.modules.nixos.default
+        run0-sudo-shim.nixosModules.default
+      ];
+    };
+    x61-config = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        ./hosts/x61
       ];
     };
   in
@@ -155,6 +198,13 @@
             name = "rebuild";
             runtimeInputs = [pkgs.nh];
             text = "nh os switch";
+          };
+          deployApp = host: pkgs.writeShellApplication {
+            name = "deploy-${host}";
+            runtimeInputs = [deploy-rs.packages.${system}.default];
+            text = ''
+              deploy .#${host}
+            '';
           };
           checkApp = pkgs.writeShellApplication {
             name = "check";
@@ -177,7 +227,9 @@
               ];
             };
 
-            packages.webui = import ./webui/default.nix {inherit pkgs;};
+            packages = {
+              "geforce-now-web" = pkgs.callPackage ./pkgs/by-name/ge/geforce_now {};
+            };
 
             apps = {
               rebuild = {
@@ -195,53 +247,104 @@
                 program = "${updateApp}/bin/update";
                 meta.description = "Update flake inputs";
               };
+              deploy-omen = {
+                type = "app";
+                program = "${deployApp "omen"}/bin/deploy-omen";
+                meta.description = "Deploy omen via deploy-rs (localhost)";
+              };
+              deploy-p50 = {
+                type = "app";
+                program = "${deployApp "p50"}/bin/deploy-p50";
+                meta.description = "Deploy p50 via deploy-rs to 10.8.0.122";
+              };
+              deploy-mireo = {
+                type = "app";
+                program = "${deployApp "mireo"}/bin/deploy-mireo";
+                meta.description = "Deploy mireo via deploy-rs to 192.168.178.25";
+              };
+              deploy-x61 = {
+                type = "app";
+                program = "${deployApp "x61"}/bin/deploy-x61";
+                meta.description = "Deploy x61 via deploy-rs to 10.8.0.163";
+              };
             };
           }
-          // (import "${framework.outPath}/lib/flake/checks.nix" {
-            inherit self pkgs framework omen-config;
-          })
           // {
-            checks = {
-              webui-html-validate =
-                pkgs.runCommand "webui-html-validate" {
-                  nativeBuildInputs = [pkgs.python3];
-                  src = self;
-                } ''
-                                for f in $src/webui/lib/pages/*.nix; do
-                                  if grep -q 'import.*layout.nix' "$f"; then
-                                    echo "Checking $f..."
-                                  fi
-                                done
-                                python3 -c "
-                  import os
-                  import re
-
-                  pages_dir = '$src/webui/lib/pages'
-                  layout_file = '$src/webui/lib/layout.nix'
-
-                  if not os.path.exists(layout_file):
-                      exit('Error: layout.nix not found')
-
-                  for f in os.listdir(pages_dir):
-                      if not f.endswith('.nix'):
-                          continue
-                      path = os.path.join(pages_dir, f)
-                      with open(path) as fp:
-                          content = fp.read()
-                          if 'import' not in content or 'layout.nix' not in content:
-                              print(f'Warning: {f} may not import layout.nix')
-                  "
-                                mkdir -p "$out"
-                '';
-            };
+            checks =
+              (import ./lib/flake/checks.nix {
+                inherit self pkgs omen-config;
+              }).checks
+              // (import ./tests/checks.nix {
+                inherit self pkgs omen-config p50-config mireo-config x61-config;
+              }).checks
+              // deploy-rs.lib.${system}.deployChecks self.deploy;
           };
       }
       // {
         flake = {
-          inherit (framework) lib;
+          lib = projectLib;
+
+          nixosModules = {
+            pipebert = import ./modules/nixos/pipebert.nix;
+            nixos = import ./modules/nixos/default.nix;
+            home = import ./modules/home/default.nix;
+          };
 
           nixosConfigurations = {
             omen = omen-config;
+            p50 = p50-config;
+            mireo = mireo-config;
+            x61 = x61-config;
+          };
+
+          deploy.nodes = let
+            # nixos-rebuild-ng reexec step runs `nix-build '<nixpkgs/nixos>'` which
+            # needs nixos-config in NIX_PATH. Flake-only systems don't set it.
+            # Wrap switch-to-configuration with a stub nixos-config until
+            # nix-settings.nix's environment.etc entry propagates via a reboot.
+            activateNixosWithNixPath = nixosConfig: let
+              stub = nixpkgs.legacyPackages.x86_64-linux.writeText "nixos-config.nix" "{ ... }: { }";
+              nixPathEnv = "NIX_PATH=nixpkgs=flake:nixpkgs:nixos-config=${stub}";
+            in
+              (deploy-rs.lib.x86_64-linux.activate.custom // {
+                dryActivate = "${nixPathEnv} $PROFILE/bin/switch-to-configuration dry-activate";
+                boot = "${nixPathEnv} $PROFILE/bin/switch-to-configuration boot";
+              })
+              nixosConfig.config.system.build.toplevel
+              "${nixPathEnv} $PROFILE/bin/switch-to-configuration switch";
+          in {
+            omen = {
+              hostname = "localhost";
+              sshUser = "root";
+              profiles.system = {
+                user = "root";
+                path = activateNixosWithNixPath self.nixosConfigurations.omen;
+              };
+            };
+            p50 = {
+              hostname = "p50";
+              sshUser = "root";
+              profiles.system = {
+                user = "root";
+                path = activateNixosWithNixPath self.nixosConfigurations.p50;
+              };
+            };
+            mireo = {
+              hostname = "mireo";
+              sshUser = "root";
+              profiles.system = {
+                user = "root";
+                path = activateNixosWithNixPath self.nixosConfigurations.mireo;
+              };
+            };
+            x61 = {
+              hostname = "x61";
+              sshUser = "root";
+              profiles.system = {
+                user = "root";
+                path = activateNixosWithNixPath self.nixosConfigurations.x61;
+              };
+            };
           };
         };
       }
