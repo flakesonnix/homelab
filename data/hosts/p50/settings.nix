@@ -9,6 +9,16 @@
   networking.hosts."10.8.0.1" = ["mireo"];
   networking.networkmanager.enable = true;
 
+  lucy.pipebert = {
+    enable = true;
+    user = "lucy";
+    name = "P50 Speakers";
+    openFirewall = true;
+  };
+
+  lucy.gnome.enable = true;
+  programs.niri.enable = lib.mkForce false;
+
   boot.loader.systemd-boot.enable = true;
   boot.loader.grub.enable = false;
   boot.loader.efi.canTouchEfiVariables = true;

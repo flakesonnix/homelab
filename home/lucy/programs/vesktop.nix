@@ -14,16 +14,18 @@
     theme = "dark";
   };
 in {
-  options.lucy.vesktop.enable = lib.mkEnableOption "Vesktop (Discord client)";
+  config = lib.mkIf config.programs.vesktop.enable {
 
-  config = lib.mkIf config.lucy.vesktop.enable {
-    programs.vesktop.enable = true;
-
-    home.activation.vesktopWritableSettings = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    home.activation.vesktopWritableSettings = lib.hm.dag.entryBefore ["checkLinkTargets"] ''
       settings_dir="$HOME/.config/vesktop/settings"
       settings_file="$settings_dir/settings.json"
+      backup_file="$settings_file.hm-backup"
 
       run mkdir -p "$settings_dir"
+
+      if [ -e "$backup_file" ] && [ ! -L "$backup_file" ]; then
+        run rm -f "$backup_file"
+      fi
 
       if [ -L "$settings_file" ]; then
         target=$(readlink -f "$settings_file" || true)

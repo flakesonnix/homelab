@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  check:
+  check-light:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -16,7 +16,29 @@ jobs:
         with:
           install-url: https://nixos-nix-install-tests.s3.amazonaws.com/nix-install-2.24.7.x86_64-linux.tar.xz
 
-      - run: nix flake check
+      - run: nix eval .#packages.x86_64-linux.webui.drvPath --raw
+        name: Evaluate package outputs
+
+      - run: nix eval .#formatter.x86_64-linux.drvPath --raw
+        name: Evaluate formatter output
+
+      - run: nix eval .#devShells.x86_64-linux.default.drvPath --raw
+        name: Evaluate dev shell output
+
+      - run: nix eval .#apps.x86_64-linux.rebuild.type --raw
+        name: Evaluate app outputs
+
+  check-full:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          install-url: https://nixos-nix-install-tests.s3.amazonaws.com/nix-install-2.24.7.x86_64-linux.tar.xz
+
+      - run: nix build .#full-ci-checks
+        name: Run full CI checks
 
   eval:
     runs-on: ubuntu-latest

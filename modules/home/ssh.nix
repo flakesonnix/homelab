@@ -7,27 +7,32 @@
     programs.ssh = {
       enableDefaultConfig = false;
 
-      matchBlocks = {
+      settings = {
         "*" = {
-          controlMaster = lib.mkDefault "auto";
-          controlPath = lib.mkDefault "~/.ssh/sockets/%r@%h-%p";
-          controlPersist = lib.mkDefault "10m";
-          serverAliveInterval = lib.mkDefault 60;
-          serverAliveCountMax = lib.mkDefault 3;
+          ForwardAgent = false;
+          AddKeysToAgent = "no";
+          Compression = false;
+          ServerAliveInterval = 60;
+          ServerAliveCountMax = 3;
+          HashKnownHosts = false;
+          UserKnownHostsFile = "~/.ssh/known_hosts";
+          ControlMaster = "auto";
+          ControlPath = "~/.ssh/sockets/%r@%h-%p";
+          ControlPersist = "10m";
         };
         "github.com" = {
-          hostname = lib.mkDefault "github.com";
-          identityFile = lib.mkDefault "~/.ssh/lucy_git";
-          hashKnownHosts = lib.mkDefault true;
-          addKeysToAgent = lib.mkDefault "yes";
+          HostName = "github.com";
+          IdentityFile = "~/.ssh/lucy_git";
+          HashKnownHosts = true;
+          AddKeysToAgent = "yes";
         };
         "gitlab.com" = {
-          hostname = lib.mkDefault "gitlab.com";
-          identityFile = lib.mkDefault "~/.ssh/lucy_git";
+          HostName = "gitlab.com";
+          IdentityFile = "~/.ssh/lucy_git";
         };
         "sr.ht" = {
-          hostname = lib.mkDefault "sr.ht";
-          identityFile = lib.mkDefault "~/.ssh/lucy_git";
+          HostName = "sr.ht";
+          IdentityFile = "~/.ssh/lucy_git";
         };
       };
     };

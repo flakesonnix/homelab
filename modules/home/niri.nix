@@ -44,8 +44,10 @@
   startupCommands = renderLines (map renderStartup (
     [
       (niriFramework.startupSpawn ["${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"])
-      (niriFramework.startupSpawn [(lib.getExe pkgs.swaybg) "-m" "fill" "-i" config.home.sessionVariables.WALLPAPER])
       (niriFramework.startupSpawn [(lib.getExe pkgs.xwayland-satellite)])
+    ]
+    ++ lib.optionals (config.home.sessionVariables ? WALLPAPER) [
+      (niriFramework.startupSpawn [(lib.getExe pkgs.swaybg) "-m" "fill" "-i" config.home.sessionVariables.WALLPAPER])
     ]
     ++ lib.optionals config.programs.waybar.enable [
       (niriFramework.startupSpawn [(lib.getExe pkgs.waybar)])

@@ -40,10 +40,6 @@
       url = "github:hercules-ci/flake-parts";
     };
 
-    flake-root = {
-      url = "github:srid/flake-root";
-    };
-
     nix-index-database = {
       url = "github:nix-community/nix-index-database";
     };
@@ -67,18 +63,13 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    comfyui-nix = {
-      url = "github:utensils/comfyui-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     run0-sudo-shim = {
       url = "github:lordgrimmauld/run0-sudo-shim";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    devshell = {
-      url = "github:numtide/devshell";
+    framework = {
+      url = "github:flakesonnix/rivotril";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -104,26 +95,57 @@
     flake-parts,
     nix-index-database,
     lanzaboote,
-    comfyui-nix,
     run0-sudo-shim,
     microvm,
     nixos-hardware,
     nixGaming,
     nur,
+    framework,
     deploy-rs,
     ...
   }: let
-    projectLib = import ./lib;
-    omen-config = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      specialArgs = {
-        inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database nixos-hardware nixGaming;
-        frameworkLib = projectLib;
+    mkHost = {
+      modules,
+      specialArgs ? {},
+    }:
+      nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        inherit modules specialArgs;
       };
+
+    omenSpecialArgs = {
+      inherit wrappers stylix nix-flatpak nix-index-database nixos-hardware nixGaming;
+      frameworkLib = framework.lib;
+    };
+
+    desktopSpecialArgs = {
+      inherit wrappers stylix nix-flatpak nix-index-database nixos-hardware;
+      frameworkLib = framework.lib;
+    };
+
+    serverSpecialArgs = {
+      inherit wrappers;
+      frameworkLib = framework.lib;
+    };
+
+    omen-config = mkHost {
+      specialArgs = omenSpecialArgs;
       modules = [
         ./nix-settings.nix
         ./profiles/desktop.nix
         ./hosts/omen
+        ./modules/nixos/asterisk.nix
+        ./modules/nixos/audio-stream.nix
+        ./modules/nixos/fonts.nix
+        ./modules/nixos/gaming.nix
+        ./modules/nixos/gnome.nix
+        ./modules/nixos/gnome-extensions.nix
+        ./modules/nixos/niri.nix
+        ./modules/nixos/nvidia.nix
+        ./modules/nixos/nvidia-resume.nix
+        ./modules/nixos/serial-getty.nix
+        ./modules/nixos/sops.nix
+        ./modules/nixos/waybar.nix
         sops-nix.nixosModules.sops
         home-manager.nixosModules.home-manager
         lanzaboote.nixosModules.lanzaboote
@@ -139,43 +161,34 @@
         run0-sudo-shim.nixosModules.default
       ];
     };
-    p50-config = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      specialArgs = {
-        inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database nixos-hardware nixGaming;
-        frameworkLib = projectLib;
-      };
+    p50-config = mkHost {
+      specialArgs = desktopSpecialArgs;
       modules = [
         ./nix-settings.nix
         ./profiles/desktop.nix
         ./hosts/p50
-        sops-nix.nixosModules.sops
+        ./modules/nixos/gnome.nix
+        ./modules/nixos/gnome-extensions.nix
         home-manager.nixosModules.home-manager
         nur.modules.nixos.default
         ./modules/nixos/hm-base.nix
-        run0-sudo-shim.nixosModules.default
         ./modules/nixos/pipebert.nix
+        run0-sudo-shim.nixosModules.default
       ];
     };
-    mireo-config = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      specialArgs = {
-        inherit wrappers comfyui-nix stylix nix-flatpak nix-index-database nixos-hardware nixGaming;
-        frameworkLib = projectLib;
-      };
+    mireo-config = mkHost {
+      specialArgs = serverSpecialArgs;
       modules = [
         ./nix-settings.nix
         ./profiles/base.nix
         microvm.nixosModules.host
         ./hosts/mireo
         ./hosts/mireo/grafana-microvm.nix
-        sops-nix.nixosModules.sops
         nur.modules.nixos.default
         run0-sudo-shim.nixosModules.default
       ];
     };
-    x61-config = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
+    x61-config = mkHost {
       modules = [
         ./hosts/x61
       ];
@@ -183,10 +196,6 @@
   in
     flake-parts.lib.mkFlake {inherit inputs;} (
       {
-        imports = [
-          inputs.flake-root.flakeModule
-          inputs.devshell.flakeModule
-        ];
         systems = ["x86_64-linux"];
 
         perSystem = {
@@ -194,6 +203,23 @@
           pkgs,
           ...
         }: let
+          frameworkChecks = (import "${framework.outPath}/lib/flake/checks.nix" {
+            inherit self pkgs framework omen-config;
+          }).checks;
+          # Framework still ships a Rust-only `webui-unit` check that targets a
+          # different WebUI implementation shape than this repo's Nix/static
+          # WebUI. Keep local/CI aggregate checks Nix-only by excluding it here.
+          frameworkChecksNoWebui = builtins.removeAttrs frameworkChecks ["webui-unit"];
+          deployChecks = deploy-rs.lib.${system}.deployChecks self.deploy;
+          fullCiCheckPaths = frameworkChecksNoWebui // deployChecks;
+          fullCiChecks = pkgs.runCommand "full-ci-checks" {} (
+            ''
+              mkdir -p "$out"
+            ''
+            + builtins.concatStringsSep "\n" (builtins.attrValues (builtins.mapAttrs (name: path: ''
+              ln -s ${path} "$out/${name}"
+            '') fullCiCheckPaths))
+          );
           rebuildApp = pkgs.writeShellApplication {
             name = "rebuild";
             runtimeInputs = [pkgs.nh];
@@ -208,7 +234,28 @@
           };
           checkApp = pkgs.writeShellApplication {
             name = "check";
-            text = "nix flake check";
+            text = ''
+              nix eval --option warn-dirty false .#packages.x86_64-linux.webui.drvPath --raw >/dev/null
+              nix eval --option warn-dirty false .#formatter.x86_64-linux.drvPath --raw >/dev/null
+              nix eval --option warn-dirty false .#devShells.x86_64-linux.default.drvPath --raw >/dev/null
+              nix eval --option warn-dirty false .#apps.x86_64-linux.rebuild.type --raw >/dev/null
+              nix build --option warn-dirty false .#full-ci-checks
+            '';
+          };
+          checkLightApp = pkgs.writeShellApplication {
+            name = "check-light";
+            text = ''
+              nix eval --option warn-dirty false .#packages.x86_64-linux.webui.drvPath --raw >/dev/null
+              nix eval --option warn-dirty false .#formatter.x86_64-linux.drvPath --raw >/dev/null
+              nix eval --option warn-dirty false .#devShells.x86_64-linux.default.drvPath --raw >/dev/null
+              nix eval --option warn-dirty false .#apps.x86_64-linux.rebuild.type --raw >/dev/null
+            '';
+          };
+          checkFullApp = pkgs.writeShellApplication {
+            name = "check-full";
+            text = ''
+              nix build --option warn-dirty false .#full-ci-checks
+            '';
           };
           updateApp = pkgs.writeShellApplication {
             name = "update";
@@ -228,7 +275,8 @@
             };
 
             packages = {
-              "geforce-now-web" = pkgs.callPackage ./pkgs/by-name/ge/geforce_now {};
+              webui = import ./webui/default.nix {inherit pkgs;};
+              full-ci-checks = fullCiChecks;
             };
 
             apps = {
@@ -241,6 +289,16 @@
                 type = "app";
                 program = "${checkApp}/bin/check";
                 meta.description = "Run nix flake check";
+              };
+              check-light = {
+                type = "app";
+                program = "${checkLightApp}/bin/check-light";
+                meta.description = "Run light flake surface checks";
+              };
+              check-full = {
+                type = "app";
+                program = "${checkFullApp}/bin/check-full";
+                meta.description = "Run full CI check builds";
               };
               update = {
                 type = "app";
@@ -270,19 +328,12 @@
             };
           }
           // {
-            checks =
-              (import ./lib/flake/checks.nix {
-                inherit self pkgs omen-config;
-              }).checks
-              // (import ./tests/checks.nix {
-                inherit self pkgs omen-config p50-config mireo-config x61-config;
-              }).checks
-              // deploy-rs.lib.${system}.deployChecks self.deploy;
+            checks = {};
           };
       }
       // {
         flake = {
-          lib = projectLib;
+          inherit (framework) lib;
 
           nixosModules = {
             pipebert = import ./modules/nixos/pipebert.nix;

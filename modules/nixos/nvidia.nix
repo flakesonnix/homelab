@@ -57,14 +57,27 @@
       };
     };
 
-    systemd.services.nvidia-loader = {
+    systemd.services.nvidia-loader = let
+      nvidiaLoader = pkgs.writeShellScript "nvidia-loader" ''
+        set -eu
+
+        # During activation, the running kernel may still be older than the
+        # newly built system. Skip lazy-load until reboot if NVIDIA modules are
+        # not present for the currently booted kernel.
+        if ! ${pkgs.kmod}/bin/modinfo -k "$(uname -r)" nvidia >/dev/null 2>&1; then
+          exit 0
+        fi
+
+        exec ${pkgs.kmod}/bin/modprobe nvidia nvidia_modeset nvidia_uvm nvidia_drm
+      '';
+    in {
       description = "Lazy-load NVIDIA kernel modules";
       wantedBy = ["graphical.target"];
       after = ["graphical.target"];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
-        ExecStart = "${pkgs.kmod}/bin/modprobe nvidia nvidia_modeset nvidia_uvm nvidia_drm";
+        ExecStart = nvidiaLoader;
       };
     };
   };

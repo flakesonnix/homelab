@@ -1,8 +1,6 @@
 {
   lucy.base.enable = true;
-  # On this machine we run Niri on the iGPU; avoid failing boots when
-  # NVIDIA kernel modules aren't present for the currently booted kernel.
-  lucy.nvidia.enable = false;
+  lucy.nvidia.enable = true;
   lucy.gnome.enable = false;
   lucy.gnomeExtensions.enable = false;
 

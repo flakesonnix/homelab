@@ -4,14 +4,7 @@
   pkgs,
   ...
 }: let
-  hasHm = lib.hasAttrByPath ["home-manager"] config;
-  hmUserNames =
-    if hasHm
-    then builtins.attrNames (config.home-manager.users or {})
-    else [];
-
   configuredUsers = lib.unique config.niri.users;
-  invalidUsers = builtins.filter (name: !(builtins.elem name hmUserNames)) configuredUsers;
 
   tuigreetCmd = lib.concatStringsSep " " [
     (lib.getExe pkgs.tuigreet)
@@ -37,15 +30,7 @@ in {
 
   config = lib.mkMerge [
     {
-      assertions =
-        lib.optional (configuredUsers != [] && !hasHm) {
-          assertion = false;
-          message = "niri.users requires home-manager to be imported.";
-        }
-        ++ lib.optional (invalidUsers != []) {
-          assertion = false;
-          message = "niri.users contains unknown Home Manager users: ${builtins.concatStringsSep ", " invalidUsers}";
-        };
+      assertions = [];
     }
 
     (lib.mkIf (configuredUsers != []) {
@@ -78,14 +63,7 @@ in {
         };
       };
 
-      home-manager.users = lib.mkIf (hasHm && configuredUsers != []) (
-        lib.mkMerge (
-          map (name: {
-            ${name}.programs.niri.enable = lib.mkDefault true;
-          })
-          configuredUsers
-        )
-      );
     })
+
   ];
 }

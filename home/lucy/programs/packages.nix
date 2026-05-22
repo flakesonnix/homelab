@@ -21,8 +21,5 @@ in {
       target = "home";
     };
 
-    home.sessionVariables = {
-      WALLPAPER = "/home/lucy/Pictures/s-l1600.jpg";
-    };
   };
 }

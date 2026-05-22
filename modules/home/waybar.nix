@@ -115,6 +115,7 @@
       border_radius = "12px";
       background = "rgba(0, 0, 0, 0)";
       border = "1px solid ${colors.base02}";
+      background_clip = "padding-box";
       transition = "all 150ms ease";
     })
     (waybarFramework.rule "#workspaces button:hover" {
@@ -126,7 +127,7 @@
       color = colors.base07;
       background = accentGradient;
       border = "1px solid ${colors.base06}";
-      box_shadow = "0 0 16px ${colors.base0E}";
+      box_shadow = "inset 0 0 0 1px ${colors.base06}, inset 0 0 18px ${colors.base0E}";
     })
     (waybarFramework.rule "#workspaces button.urgent" {
       background = colors.base08;
@@ -226,9 +227,9 @@
         default = "󰎆";
         spotify = "󰓇";
         firefox = "󰈹";
-        chromium = "";
+        chromium = "󰊯";
         vlc = "󰕼";
-        mpv = "";
+        mpv = "󰐹";
       };
       status-icons = {
         paused = "󰏤";
