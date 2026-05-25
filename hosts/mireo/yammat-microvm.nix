@@ -5,7 +5,9 @@
   ...
 }: let
   keys = import ../../ssh-public-keys.nix {inherit lib;};
-  yammatPackage = yammat.packages.${pkgs.system}.yammat;
+  yammatPackage = yammat.packages.${pkgs.system}.yammat.overrideAttrs (old: {
+    meta = (old.meta or {}) // {mainProgram = "yammat";};
+  });
 in {
   networking.hosts."10.8.0.5" = ["yammat" "yammat-vm"];
 
@@ -33,7 +35,7 @@ in {
 
       microvm = {
         hypervisor = "qemu";
-        mem = 2048;
+        mem = 2304;
         vcpu = 2;
         interfaces = [{
           type = "tap";

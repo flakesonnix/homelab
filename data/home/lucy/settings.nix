@@ -4,8 +4,7 @@
   pkgs,
   ...
 }: let
-  wallpaper = /home/lucy/Pictures/s-l1600.jpg;
-  hasWallpaper = builtins.pathExists wallpaper;
+  wallpaper = ../../../home/lucy/wallpapers/omen.jpg;
   isOmen = osConfig.networking.hostName == "omen";
   isP50 = osConfig.networking.hostName == "p50";
   cyberdeckScheme = {
@@ -48,27 +47,18 @@ in
       ])
       ++ lib.optionals isOmen [pkgs.easyeffects];
 
-    home.pointerCursor = {
-      package = pkgs.callPackage ../../../home/lucy/cursors/default.nix {};
-      name = "HelloKittyPeachMilkDonut";
-      size = 24;
-      gtk.enable = true;
-      x11.enable = true;
-    };
-
-    home.sessionVariables =
-      if hasWallpaper
-      then {
-        WALLPAPER = toString wallpaper;
-      }
-      else {};
+    home.sessionVariables.WALLPAPER = toString wallpaper;
 
     programs.nh.osFlake = "/home/lucy/Documents/dotfiles#${osConfig.networking.hostName}";
   }
-  // lib.optionalAttrs hasWallpaper {
+  // {
     stylix.image = wallpaper;
   }
   // lib.optionalAttrs isOmen {
+    # Firefox is more stable on omen via XWayland than native Wayland with the
+    # current NVIDIA stack.
+    home.sessionVariables.MOZ_ENABLE_WAYLAND = "0";
+
     programs.waybar.enable = lib.mkForce true;
 
     xdg.configFile."easyeffects/config.json".text = builtins.toJSON {
@@ -116,9 +106,6 @@ in
     programs.alacritty.enable = lib.mkForce false;
     services.flatpak.enable = lib.mkForce false;
     lucy.programs.android-studio = lib.mkForce false;
-
-    home.pointerCursor.package = lib.mkForce (pkgs.callPackage ../../../home/lucy/cursors/default.nix {});
-    home.pointerCursor.name = lib.mkForce "HelloKittyPeachMilkDonut";
 
     xdg.desktopEntries.youtube = {
       name = "YouTube";

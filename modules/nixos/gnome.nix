@@ -6,20 +6,12 @@
   options = {
     lucy.gnome = {
       enable = lib.mkEnableOption "GNOME desktop configuration";
-      wayland = lib.mkOption {
-        type = lib.types.bool;
-        default = true;
-        description = "Enable Wayland for GDM";
-      };
     };
   };
 
   config = lib.mkIf config.lucy.gnome.enable {
     services.xserver.enable = true;
-    services.displayManager.gdm = {
-      enable = true;
-      inherit (config.lucy.gnome) wayland;
-    };
+    services.displayManager.gdm.enable = true;
     services.desktopManager.gnome.enable = true;
     services.xserver.xkb = {
       layout = "us";

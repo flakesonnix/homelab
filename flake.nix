@@ -73,6 +73,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    yammat = {
+      url = "git+https://gitea.c3d2.de/c3d2/yammat?ref=master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     deploy-rs = {
       url = "github:serokell/deploy-rs";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -101,6 +106,7 @@
     nixGaming,
     nur,
     framework,
+    yammat,
     deploy-rs,
     ...
   }: let
@@ -125,6 +131,11 @@
 
     serverSpecialArgs = {
       inherit wrappers;
+      frameworkLib = framework.lib;
+    };
+
+    mireoSpecialArgs = {
+      inherit wrappers yammat;
       frameworkLib = framework.lib;
     };
 
@@ -177,7 +188,7 @@
       ];
     };
     mireo-config = mkHost {
-      specialArgs = serverSpecialArgs;
+      specialArgs = mireoSpecialArgs;
       modules = [
         ./nix-settings.nix
         ./profiles/base.nix

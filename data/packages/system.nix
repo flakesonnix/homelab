@@ -37,7 +37,7 @@ in {
         version = "latest";
         src = pkgs.fetchurl {
           url = "https://lmstudio.ai/download/latest/linux/x64";
-          sha256 = "1hnb0qx154f6s9hgbdmbnv7hb0pzfs1p1wxyjcbbx61aqn8ckd2k";
+          sha256 = "sha256-oDPL/m1Ghutxmi3iumsy2/Hs6Bp8UDWsJeup1Vlu/i8=";
         };
       })
     ];

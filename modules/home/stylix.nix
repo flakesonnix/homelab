@@ -1,9 +1,11 @@
 {
   lib,
   config,
+  pkgs,
   ...
 }: {
   config = lib.mkIf config.stylix.enable {
+    home.pointerCursor.package = lib.mkDefault (pkgs.callPackage ../../home/lucy/cursors/default.nix {});
     stylix = {
       polarity = lib.mkDefault "dark";
       targets = {
