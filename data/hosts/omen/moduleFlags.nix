@@ -1,3 +1,10 @@
-# Compatibility: the host loader expects `moduleFlags.nix`.
-# Keep `module-flags.nix` as the editable source for now.
-import ./module-flags.nix
+{
+  lucy.base.enable = true;
+  lucy.nvidia.enable = true;
+  lucy.gnome.enable = false;
+  lucy.gnomeExtensions.enable = false;
+
+  # Desktop fonts and common UI tools.
+  lucy.fonts.inter = true;
+  lucy.pwvucontrol = true;
+}

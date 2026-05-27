@@ -40,12 +40,10 @@ in
     stylix.polarity = "dark";
     stylix.base16Scheme = cyberdeckScheme;
 
-    home.packages =
-      (with pkgs; [
-        nvd
-        nix-tree
-      ])
-      ++ lib.optionals isOmen [pkgs.easyeffects];
+    home.packages = with pkgs; [
+      nvd
+      nix-tree
+    ];
 
     home.sessionVariables.WALLPAPER = toString wallpaper;
 
@@ -60,37 +58,6 @@ in
     home.sessionVariables.MOZ_ENABLE_WAYLAND = "0";
 
     programs.waybar.enable = lib.mkForce true;
-
-    xdg.configFile."easyeffects/config.json".text = builtins.toJSON {
-      input = {
-        plugins = [
-          {
-            name = "loudness";
-            enabled = true;
-          }
-          {
-            name = "bass_enhancer";
-            enabled = true;
-          }
-          {
-            name = "equalizer";
-            enabled = true;
-          }
-        ];
-      };
-      output = {
-        plugins = [
-          {
-            name = "reverb";
-            enabled = false;
-          }
-          {
-            name = "bass_enhancer";
-            enabled = true;
-          }
-        ];
-      };
-    };
   }
   // lib.optionalAttrs isP50 {
     # Keep p50 as simple GNOME/media machine, not full omen desktop/dev setup.

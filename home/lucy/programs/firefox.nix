@@ -29,6 +29,12 @@ in {
           "browser.link.open_newwindow" = 3;
           "browser.urlbar.showSearchSuggestionsFirst" = false;
           "browser.urlbar.autoFill" = false;
+
+          # NVIDIA + XWayland freeze fixes
+          "widget.dmabuf.enabled" = false;
+          "gfx.x11-egl.force-disabled" = true;
+          "media.ffmpeg.vaapi.enabled" = false;
+
           "privacy.donottrackheader.enabled" = true;
           "privacy.trackingprotection.enabled" = true;
           "privacy.trackingprotection.socialtracking.enabled" = true;

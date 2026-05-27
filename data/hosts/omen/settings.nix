@@ -1,6 +1,6 @@
 {lib, ...}: {
   lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
-  lucy.base.sshKeyComment = "lucy@p50";
+  lucy.base.sshKeyComment = "lucy@omen";
 
   networking.hostName = "omen";
   networking.hosts."10.8.0.176" = ["omen"];

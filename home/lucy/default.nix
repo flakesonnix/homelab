@@ -31,6 +31,7 @@ in {
     ./programs/zathura
     ./programs/eww.nix
     ./programs/rofi.nix
+    ./programs/easyeffects.nix
     ../../modules/home
     ../../modules/home/dunst.nix
   ];

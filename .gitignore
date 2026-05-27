@@ -20,3 +20,5 @@ secrets.yaml
 .deploy
 
 .ai/
+AGENTS.md
+CLAUDE.md
