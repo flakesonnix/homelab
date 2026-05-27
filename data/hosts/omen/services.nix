@@ -104,8 +104,19 @@ in {
   programs.noisetorch.enable = true;
 
   # nix-serve-ng → LAN binary cache for p50/mireo/x61
-  services.nix-serve.enable = true;
-  services.nix-serve.package = pkgs.nix-serve-ng;
+  # Manual service (nixpkgs nix-serve module stale, crashes as nix-serve user)
+  systemd.services.nix-serve = {
+    description = "nix-serve-ng binary cache server";
+    after = ["network.target" "nix-daemon.service"];
+    wantedBy = ["multi-user.target"];
+    environment.NIX_REMOTE = "daemon";
+    serviceConfig = {
+      ExecStart = "${pkgs.nix-serve-ng}/bin/nix-serve --listen 0.0.0.0:5000";
+      User = "root";
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
+  };
 
   networking.firewall.allowedTCPPorts = [5000];
 }
