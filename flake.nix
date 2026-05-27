@@ -331,8 +331,8 @@
               };
               deploy-omen = {
                 type = "app";
-                program = "${deployApp "omen"}/bin/deploy-omen";
-                meta.description = "Deploy omen via deploy-rs (localhost)";
+                program = "${rebuildApp}/bin/rebuild";
+                meta.description = "Rebuild omen locally via nh (deploy-rs uses SSH, not needed for localhost)";
               };
               deploy-p50 = {
                 type = "app";
