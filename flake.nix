@@ -331,8 +331,8 @@
               };
               deploy-omen = {
                 type = "app";
-                program = "${rebuildApp}/bin/rebuild";
-                meta.description = "Rebuild omen locally via nh (deploy-rs uses SSH, not needed for localhost)";
+                program = "${deployApp "omen"}/bin/deploy-omen";
+                meta.description = "Deploy omen via deploy-rs (SSH to localhost). First run: nix run .#rebuild to enable sshd";
               };
               deploy-p50 = {
                 type = "app";
@@ -399,6 +399,7 @@
             omen = {
               hostname = "localhost";
               sshUser = "root";
+              sshOptions = ["-o" "StrictHostKeyChecking=accept-new"];
               profiles.system = {
                 user = "root";
                 path = activateNixosWithNixPath self.nixosConfigurations.omen;
