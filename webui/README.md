@@ -58,9 +58,7 @@ in ''
 ## Running
 
 ```bash
-nix run
-# or
-./webui/server
+nix run .#webui
 ```
 
 Then open http://localhost:8080

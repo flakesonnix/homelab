@@ -178,6 +178,8 @@
         ./nix-settings.nix
         ./profiles/desktop.nix
         ./hosts/p50
+        ./modules/nixos/fonts.nix
+        ./modules/nixos/waybar.nix
         ./modules/nixos/gnome.nix
         ./modules/nixos/gnome-extensions.nix
         home-manager.nixosModules.home-manager
@@ -222,7 +224,8 @@
           # WebUI. Keep local/CI aggregate checks Nix-only by excluding it here.
           frameworkChecksNoWebui = builtins.removeAttrs frameworkChecks ["webui-unit"];
           deployChecks = deploy-rs.lib.${system}.deployChecks self.deploy;
-          fullCiCheckPaths = frameworkChecksNoWebui // deployChecks;
+          dotfilesChecks = (import ./tests/default.nix {inherit pkgs; lib = pkgs.lib; inherit self;});
+          fullCiCheckPaths = frameworkChecksNoWebui // deployChecks // {dotfiles-tests = dotfilesChecks;};
           fullCiChecks = pkgs.runCommand "full-ci-checks" {} (
             ''
               mkdir -p "$out"
@@ -251,6 +254,7 @@
               nix eval --option warn-dirty false .#devShells.x86_64-linux.default.drvPath --raw >/dev/null
               nix eval --option warn-dirty false .#apps.x86_64-linux.rebuild.type --raw >/dev/null
               nix build --option warn-dirty false .#full-ci-checks
+              nix build --option warn-dirty false '.#checks.x86_64-linux.dotfiles-tests'
             '';
           };
           checkLightApp = pkgs.writeShellApplication {
@@ -339,7 +343,9 @@
             };
           }
           // {
-            checks = {};
+            checks = {
+              dotfiles-tests = dotfilesChecks;
+            };
           };
       }
       // {

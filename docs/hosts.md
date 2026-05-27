@@ -99,9 +99,11 @@ nix run .#deploy-p50   # SSH to p50 (10.8.0.122)
 ### Features
 - NAT gateway for 10.8.0.0/24
 - systemd-networkd (no NetworkManager)
-- Two microvms running on br0:
+- Four microVMs running on br0:
   - **grafana** (10.8.0.2): Prometheus scraping router + all hosts, Grafana with mireo-router dashboard
   - **monerod** (10.8.0.4): Pruned Monero node + Tor relay (nickname `mireoMoneroRelay`)
+  - **network-services** (10.8.0.3): DHCP, DNS, PXE
+  - **yammat** (10.8.0.5): Event management (YAMMAT)
 - No desktop (`lucy.base.isServer = true`)
 - node_exporter running on 10.8.0.1:9100 for self-monitoring
 
@@ -119,7 +121,9 @@ None (server profile, framework data in `data/hosts/mireo/`)
 | VM | IP | Memory | vCPUs | Storage |
 |----|-----|--------|-------|---------|
 | grafana | 10.8.0.2 | 768 MB | 2 | 1 GB grafana + 1 GB prometheus |
+| network-services | 10.8.0.3 | 512 MB | 1 | — |
 | monerod | 10.8.0.4 | 2304 MB | 2 | 350 GB blockchain |
+| yammat | 10.8.0.5 | 512 MB | 1 | 10 GB |
 
 ### Monero port forwarding
 Port 9001/tcp (Tor ORPort) forwarded from WAN to monerod VM.

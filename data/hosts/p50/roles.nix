@@ -1,1 +1,1 @@
-[]
+["desktop" "dev"]

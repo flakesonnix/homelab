@@ -90,28 +90,32 @@
       font_size = "14px";
       min_height = "0";
     })
+    # Transparent shell — islands float on it
     (waybarFramework.rule "window#waybar" {
-      background = barGradient;
+      background = "rgba(0,0,0,0)";
       color = colors.base07;
-      border = "1px solid ${colors.base0E}";
-      border_radius = "20px";
-      box_shadow = "0 18px 42px ${colors.base00}";
     })
     (waybarFramework.rule "window#waybar.dock" {
-      background = barGradient;
+      background = "rgba(0,0,0,0)";
       color = colors.base07;
+    })
+    # Island bubbles
+    (waybarFramework.rule ".modules-left, .modules-center, .modules-right" {
+      background = barGradient;
       border = "1px solid ${colors.base0E}";
       border_radius = "20px";
       box_shadow = "0 18px 42px ${colors.base00}";
+      padding = "0 8px";
+      margin = "0 0";
     })
     (waybarFramework.rule "#workspaces" {
       margin_left = "0";
-      padding = "0 6px";
+      padding = "0 4px";
     })
     (waybarFramework.rule "#workspaces button" {
       color = colors.base05;
-      padding = "4px 12px";
-      margin = "3px 2px";
+      padding = "2px 10px";
+      margin = "4px 2px";
       border_radius = "12px";
       background = "rgba(0, 0, 0, 0)";
       border = "1px solid ${colors.base02}";
@@ -136,13 +140,13 @@
     (waybarFramework.rule "#clock" {
       color = colors.base07;
       font_weight = "700";
-      padding = "0 18px";
+      padding = "0 14px";
       letter_spacing = "0.12em";
     })
     (waybarFramework.rule "#mpris" {
       color = colors.base06;
       font_weight = "600";
-      min_width = "220px";
+      min_width = "200px";
     })
     (waybarFramework.rule "#mpris.paused, #mpris.stopped" {
       color = colors.base04;
@@ -157,7 +161,7 @@
     (waybarFramework.rule "#custom-power" {
       color = colors.base0E;
       min_width = "20px";
-      padding = "0 10px";
+      padding = "0 8px";
     })
     (waybarFramework.rule "#custom-power:hover" {
       color = colors.base08;
@@ -173,7 +177,7 @@
     (waybarFramework.rule "#window" {
       color = colors.base06;
       font_style = "italic";
-      min_width = "160px";
+      min_width = "140px";
     })
     (waybarFramework.rule "#custom-notifications" {color = colors.base05;})
     (waybarFramework.rule "#custom-notifications.active" {color = colors.base0A;})
@@ -181,14 +185,6 @@
     (waybarFramework.rule "#custom-notifications:hover" {
       color = colors.base08;
       background = panelGradient;
-    })
-    (waybarFramework.rule "#mpris, #clock, #network, #pulseaudio, #battery, #cpu, #memory, #custom-power, #custom-notifications, #idle_inhibitor, #tray, #window" {
-      background = cardGradient;
-      margin = "6px 4px";
-      padding = "0 13px";
-      border = "1px solid ${colors.base03}";
-      border_radius = "12px";
-      box_shadow = "inset 0 1px 0 ${colors.base03}, 0 0 12px ${colors.base00}";
     })
     (waybarFramework.rule "tooltip" {
       background = colors.base00;

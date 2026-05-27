@@ -1,4 +1,5 @@
 {lib, ...}: {
+  lucy.base.enable = true;
   lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
   lucy.base.sshKeyComment = "lucy@p50";
 

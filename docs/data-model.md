@@ -229,7 +229,7 @@ Files in `data/hosts/<host>/` are loaded by the framework's `loadHostDirectory`.
 |------|---------|
 | `settings.nix` | NixOS config merged directly (hostname, boot, network, etc.) |
 | `roles.nix` | List of role names |
-| `module-flags.nix` | Extra module flag overrides beyond what roles provide |
+| `moduleFlags.nix` | Extra module flag overrides beyond what roles provide |
 | `packages.nix` | Extra package selections |
 | `services.nix` | Service configuration |
 | `power.nix` | Power management settings |

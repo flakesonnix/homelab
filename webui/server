@@ -17,4 +17,4 @@ serve() {
     fi
 }
 
-exec socat "TCP-LISTEN:$PORT,reuseaddr,fork" "EXEC:$0,派的内斯1"
+exec socat "TCP-LISTEN:$PORT,reuseaddr,fork" "EXEC:$0"

@@ -4,7 +4,8 @@
   pkgs,
   ...
 }: let
-  wallpaper = ../../../home/lucy/wallpapers/omen.jpg;
+  stylixImage = ../../../home/lucy/wallpapers/omen.jpg;
+  wallpaper = "/home/lucy/Pictures/s-l1600.jpg";
   isOmen = osConfig.networking.hostName == "omen";
   isP50 = osConfig.networking.hostName == "p50";
   cyberdeckScheme = {
@@ -33,9 +34,8 @@
   };
 in
   {
-    # Keep wallpaper source in one place.
-    # Using a Nix path copies it into store (fully declarative), but the file
-    # still lives outside repo; move into repo later if you want portability.
+    # stylix.image needs a store path (build-time color extraction).
+    # WALLPAPER is a runtime path for swaybg on niri startup.
 
     stylix.polarity = "dark";
     stylix.base16Scheme = cyberdeckScheme;
@@ -50,7 +50,7 @@ in
     programs.nh.osFlake = "/home/lucy/Documents/dotfiles#${osConfig.networking.hostName}";
   }
   // {
-    stylix.image = wallpaper;
+    stylix.image = stylixImage;
   }
   // lib.optionalAttrs isOmen {
     # Firefox is more stable on omen via XWayland than native Wayland with the
