@@ -19,6 +19,9 @@ secrets.yaml
 # Build
 .deploy
 
+# Local nix store (nix-serve-ng)
+nix/
+
 .ai/
 AGENTS.md
 CLAUDE.md

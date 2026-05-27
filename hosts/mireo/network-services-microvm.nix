@@ -59,7 +59,7 @@ in {
         address = ["10.8.0.3/24"];
         networkConfig = {
           Gateway = "10.8.0.1";
-          DNS = ["10.8.0.1"];
+          DNS = ["10.8.0.1" "1.1.1.1" "9.9.9.9"];
           DHCP = "no";
           IPv6AcceptRA = false;
         };
