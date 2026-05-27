@@ -30,10 +30,8 @@ in {
           "browser.urlbar.showSearchSuggestionsFirst" = false;
           "browser.urlbar.autoFill" = false;
 
-          # NVIDIA + XWayland freeze fixes
-          "widget.dmabuf.enabled" = false;
-          "gfx.x11-egl.force-disabled" = true;
-          "media.ffmpeg.vaapi.enabled" = false;
+          # Hardware acceleration on NVIDIA 555+
+          "media.ffmpeg.vaapi.enabled" = true;
 
           "privacy.donottrackheader.enabled" = true;
           "privacy.trackingprotection.enabled" = true;

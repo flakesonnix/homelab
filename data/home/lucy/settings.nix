@@ -53,9 +53,8 @@ in
     stylix.image = stylixImage;
   }
   // lib.optionalAttrs isOmen {
-    # Firefox is more stable on omen via XWayland than native Wayland with the
-    # current NVIDIA stack.
-    home.sessionVariables.MOZ_ENABLE_WAYLAND = "0";
+    # Native Wayland on NVIDIA driver 555+ is smooth. Keep this block for
+    # future XWayland fallback if regressions appear.
 
     programs.waybar.enable = lib.mkForce true;
   }
