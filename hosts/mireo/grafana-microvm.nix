@@ -123,10 +123,12 @@
             values = false;
           };
         };
-        targets = [{
-          expr = "(1 - avg(rate(node_cpu_seconds_total{instance=\"router\",mode=\"idle\"}[5m]))) * 100";
-          refId = "A";
-        }];
+        targets = [
+          {
+            expr = "(1 - avg(rate(node_cpu_seconds_total{instance=\"router\",mode=\"idle\"}[5m]))) * 100";
+            refId = "A";
+          }
+        ];
         title = "CPU Usage";
         type = "stat";
       }
@@ -176,10 +178,12 @@
             values = false;
           };
         };
-        targets = [{
-          expr = "(1 - (node_memory_MemAvailable_bytes{instance=\"router\"} / node_memory_MemTotal_bytes{instance=\"router\"})) * 100";
-          refId = "A";
-        }];
+        targets = [
+          {
+            expr = "(1 - (node_memory_MemAvailable_bytes{instance=\"router\"} / node_memory_MemTotal_bytes{instance=\"router\"})) * 100";
+            refId = "A";
+          }
+        ];
         title = "Memory Used";
         type = "stat";
       }
@@ -229,10 +233,12 @@
             values = false;
           };
         };
-        targets = [{
-          expr = "(1 - (node_filesystem_avail_bytes{instance=\"router\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{instance=\"router\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"})) * 100";
-          refId = "A";
-        }];
+        targets = [
+          {
+            expr = "(1 - (node_filesystem_avail_bytes{instance=\"router\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{instance=\"router\",mountpoint=\"/\",fstype!~\"tmpfs|overlay\"})) * 100";
+            refId = "A";
+          }
+        ];
         title = "Disk Used /";
         type = "stat";
       }
@@ -280,22 +286,35 @@
             values = false;
           };
         };
-        targets = [{
-          expr = "node_load5{instance=\"router\"}";
-          refId = "A";
-        }];
+        targets = [
+          {
+            expr = "node_load5{instance=\"router\"}";
+            refId = "A";
+          }
+        ];
         title = "Load 5m";
         type = "stat";
       }
       {
-        datasource = {type = "prometheus"; uid = "prometheus";};
+        datasource = {
+          type = "prometheus";
+          uid = "prometheus";
+        };
         fieldConfig.defaults = {
           color.mode = "palette-classic";
           unit = "Mbps";
         };
-        gridPos = {h = 8; w = 24; x = 0; y = 14;};
+        gridPos = {
+          h = 8;
+          w = 24;
+          x = 0;
+          y = 14;
+        };
         id = 7;
-        options.legend = {displayMode = "list"; placement = "bottom";};
+        options.legend = {
+          displayMode = "list";
+          placement = "bottom";
+        };
         targets = [
           {
             expr = "rate(node_network_receive_bytes_total{host!=\"mireo\",device!~\"lo|tailscale.*|br.*|vm.*\"}[5m]) * 8 / 1000000";
@@ -312,78 +331,174 @@
         type = "timeseries";
       }
       {
-        datasource = {type = "prometheus"; uid = "prometheus";};
+        datasource = {
+          type = "prometheus";
+          uid = "prometheus";
+        };
         fieldConfig.defaults = {
           color.mode = "thresholds";
           thresholds.mode = "absolute";
-          thresholds.steps = [{color = "blue"; value = null;}];
+          thresholds.steps = [
+            {
+              color = "blue";
+              value = null;
+            }
+          ];
           unit = "decbytes";
         };
-        gridPos = {h = 4; w = 6; x = 0; y = 22;};
+        gridPos = {
+          h = 4;
+          w = 6;
+          x = 0;
+          y = 22;
+        };
         id = 8;
         options = {
-          colorMode = "value"; graphMode = "none";
-          justifyMode = "auto"; orientation = "auto";
-          reduceOptions = {calcs = ["lastNotNull"]; fields = ""; values = false;};
+          colorMode = "value";
+          graphMode = "none";
+          justifyMode = "auto";
+          orientation = "auto";
+          reduceOptions = {
+            calcs = ["lastNotNull"];
+            fields = "";
+            values = false;
+          };
         };
-        targets = [{expr = "increase(node_network_receive_bytes_total{instance=\"router\",device=\"enp4s0\"}[24h])"; refId = "A";}];
+        targets = [
+          {
+            expr = "increase(node_network_receive_bytes_total{instance=\"router\",device=\"enp4s0\"}[24h])";
+            refId = "A";
+          }
+        ];
         title = "WAN RX Today";
         type = "stat";
       }
       {
-        datasource = {type = "prometheus"; uid = "prometheus";};
+        datasource = {
+          type = "prometheus";
+          uid = "prometheus";
+        };
         fieldConfig.defaults = {
           color.mode = "thresholds";
           thresholds.mode = "absolute";
-          thresholds.steps = [{color = "blue"; value = null;}];
+          thresholds.steps = [
+            {
+              color = "blue";
+              value = null;
+            }
+          ];
           unit = "decbytes";
         };
-        gridPos = {h = 4; w = 6; x = 6; y = 22;};
+        gridPos = {
+          h = 4;
+          w = 6;
+          x = 6;
+          y = 22;
+        };
         id = 9;
         options = {
-          colorMode = "value"; graphMode = "none";
-          justifyMode = "auto"; orientation = "auto";
-          reduceOptions = {calcs = ["lastNotNull"]; fields = ""; values = false;};
+          colorMode = "value";
+          graphMode = "none";
+          justifyMode = "auto";
+          orientation = "auto";
+          reduceOptions = {
+            calcs = ["lastNotNull"];
+            fields = "";
+            values = false;
+          };
         };
-        targets = [{expr = "increase(node_network_transmit_bytes_total{instance=\"router\",device=\"enp4s0\"}[24h])"; refId = "A";}];
+        targets = [
+          {
+            expr = "increase(node_network_transmit_bytes_total{instance=\"router\",device=\"enp4s0\"}[24h])";
+            refId = "A";
+          }
+        ];
         title = "WAN TX Today";
         type = "stat";
       }
       {
-        datasource = {type = "prometheus"; uid = "prometheus";};
+        datasource = {
+          type = "prometheus";
+          uid = "prometheus";
+        };
         fieldConfig.defaults = {
           color.mode = "thresholds";
           thresholds.mode = "absolute";
-          thresholds.steps = [{color = "blue"; value = null;}];
+          thresholds.steps = [
+            {
+              color = "blue";
+              value = null;
+            }
+          ];
           unit = "decbytes";
         };
-        gridPos = {h = 4; w = 6; x = 12; y = 22;};
+        gridPos = {
+          h = 4;
+          w = 6;
+          x = 12;
+          y = 22;
+        };
         id = 10;
         options = {
-          colorMode = "value"; graphMode = "none";
-          justifyMode = "auto"; orientation = "auto";
-          reduceOptions = {calcs = ["lastNotNull"]; fields = ""; values = false;};
+          colorMode = "value";
+          graphMode = "none";
+          justifyMode = "auto";
+          orientation = "auto";
+          reduceOptions = {
+            calcs = ["lastNotNull"];
+            fields = "";
+            values = false;
+          };
         };
-        targets = [{expr = "increase(node_network_receive_bytes_total{instance=\"router\",device=\"enp4s0\"}[30d])"; refId = "A";}];
+        targets = [
+          {
+            expr = "increase(node_network_receive_bytes_total{instance=\"router\",device=\"enp4s0\"}[30d])";
+            refId = "A";
+          }
+        ];
         title = "WAN RX 30d";
         type = "stat";
       }
       {
-        datasource = {type = "prometheus"; uid = "prometheus";};
+        datasource = {
+          type = "prometheus";
+          uid = "prometheus";
+        };
         fieldConfig.defaults = {
           color.mode = "thresholds";
           thresholds.mode = "absolute";
-          thresholds.steps = [{color = "blue"; value = null;}];
+          thresholds.steps = [
+            {
+              color = "blue";
+              value = null;
+            }
+          ];
           unit = "decbytes";
         };
-        gridPos = {h = 4; w = 6; x = 18; y = 22;};
+        gridPos = {
+          h = 4;
+          w = 6;
+          x = 18;
+          y = 22;
+        };
         id = 11;
         options = {
-          colorMode = "value"; graphMode = "none";
-          justifyMode = "auto"; orientation = "auto";
-          reduceOptions = {calcs = ["lastNotNull"]; fields = ""; values = false;};
+          colorMode = "value";
+          graphMode = "none";
+          justifyMode = "auto";
+          orientation = "auto";
+          reduceOptions = {
+            calcs = ["lastNotNull"];
+            fields = "";
+            values = false;
+          };
         };
-        targets = [{expr = "increase(node_network_transmit_bytes_total{instance=\"router\",device=\"enp4s0\"}[30d])"; refId = "A";}];
+        targets = [
+          {
+            expr = "increase(node_network_transmit_bytes_total{instance=\"router\",device=\"enp4s0\"}[30d])";
+            refId = "A";
+          }
+        ];
         title = "WAN TX 30d";
         type = "stat";
       }
@@ -437,17 +552,21 @@ in {
         hypervisor = "qemu";
         mem = 768;
         vcpu = 2;
-        interfaces = [{
-          type = "tap";
-          id = "vm-grafana";
-          mac = "02:00:00:10:08:02";
-        }];
-        shares = [{
-          proto = "virtiofs";
-          tag = "ro-store";
-          source = "/nix/store";
-          mountPoint = "/nix/.ro-store";
-        }];
+        interfaces = [
+          {
+            type = "tap";
+            id = "vm-grafana";
+            mac = "02:00:00:10:08:02";
+          }
+        ];
+        shares = [
+          {
+            proto = "virtiofs";
+            tag = "ro-store";
+            source = "/nix/store";
+            mountPoint = "/nix/.ro-store";
+          }
+        ];
         volumes = [
           {
             image = "grafana-data.img";
@@ -490,17 +609,40 @@ in {
         scrapeConfigs = [
           {
             job_name = "router";
-            static_configs = [{
-              targets = ["10.8.0.1:9100"];
-              labels = {instance = "router"; host = "mireo";};
-            }];
+            static_configs = [
+              {
+                targets = ["10.8.0.1:9100"];
+                labels = {
+                  instance = "router";
+                  host = "mireo";
+                };
+              }
+            ];
           }
           {
             job_name = "hosts";
             static_configs = [
-              { targets = ["10.8.0.176:9100"]; labels = {instance = "omen"; host = "omen";}; }
-              { targets = ["10.8.0.122:9100"]; labels = {instance = "p50"; host = "p50";}; }
-              { targets = ["10.8.0.163:9100"]; labels = {instance = "x61"; host = "x61";}; }
+              {
+                targets = ["10.8.0.176:9100"];
+                labels = {
+                  instance = "omen";
+                  host = "omen";
+                };
+              }
+              {
+                targets = ["10.8.0.122:9100"];
+                labels = {
+                  instance = "p50";
+                  host = "p50";
+                };
+              }
+              {
+                targets = ["10.8.0.163:9100"];
+                labels = {
+                  instance = "x61";
+                  host = "x61";
+                };
+              }
             ];
           }
         ];
@@ -533,26 +675,30 @@ in {
           enable = true;
           datasources.settings = {
             apiVersion = 1;
-            datasources = [{
-              access = "proxy";
-              isDefault = true;
-              name = "Prometheus";
-              type = "prometheus";
-              uid = "prometheus";
-              url = "http://127.0.0.1:9090";
-            }];
+            datasources = [
+              {
+                access = "proxy";
+                isDefault = true;
+                name = "Prometheus";
+                type = "prometheus";
+                uid = "prometheus";
+                url = "http://127.0.0.1:9090";
+              }
+            ];
           };
           dashboards.settings = {
             apiVersion = 1;
-            providers = [{
-              disableDeletion = false;
-              editable = true;
-              folder = "Router";
-              name = "router";
-              options.path = "/etc/grafana-dashboards";
-              orgId = 1;
-              type = "file";
-            }];
+            providers = [
+              {
+                disableDeletion = false;
+                editable = true;
+                folder = "Router";
+                name = "router";
+                options.path = "/etc/grafana-dashboards";
+                orgId = 1;
+                type = "file";
+              }
+            ];
           };
         };
       };

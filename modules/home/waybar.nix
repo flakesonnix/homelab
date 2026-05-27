@@ -99,7 +99,7 @@
       background = "rgba(0,0,0,0)";
       color = colors.base07;
     })
-    # Island bubbles
+    # Island bubbles — responsive sizing
     (waybarFramework.rule ".modules-left, .modules-center, .modules-right" {
       background = barGradient;
       border = "1px solid ${colors.base0E}";
@@ -107,6 +107,15 @@
       box_shadow = "0 18px 42px ${colors.base00}";
       padding = "0 8px";
       margin = "0 0";
+    })
+    (waybarFramework.rule ".modules-left" {
+      max_width = "40%";
+    })
+    (waybarFramework.rule ".modules-center" {
+      max_width = "50%";
+    })
+    (waybarFramework.rule ".modules-right" {
+      max_width = "50%";
     })
     (waybarFramework.rule "#workspaces" {
       margin_left = "0";
@@ -146,7 +155,8 @@
     (waybarFramework.rule "#mpris" {
       color = colors.base06;
       font_weight = "600";
-      min_width = "200px";
+      min_width = "120px";
+      max_width = "300px";
     })
     (waybarFramework.rule "#mpris.paused, #mpris.stopped" {
       color = colors.base04;
@@ -177,7 +187,8 @@
     (waybarFramework.rule "#window" {
       color = colors.base06;
       font_style = "italic";
-      min_width = "140px";
+      min_width = "80px";
+      max_width = "200px";
     })
     (waybarFramework.rule "#custom-notifications" {color = colors.base05;})
     (waybarFramework.rule "#custom-notifications.active" {color = colors.base0A;})
@@ -217,7 +228,7 @@
     mpris = {
       format = "{player_icon}  {dynamic}";
       format-paused = "{status_icon}  {dynamic}";
-      dynamic-len = 40;
+      dynamic-len = 25;
       dynamic-order = ["title" "artist"];
       player-icons = {
         default = "󰎆";

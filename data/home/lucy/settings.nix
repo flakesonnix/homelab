@@ -125,6 +125,11 @@ in
       OnlyShowIn=GNOME;
     '';
 
+    programs.firefox.profiles.lucy.settings = {
+      "browser.startup.page" = 3;
+      "browser.sessionstore.resume_from_crash" = true;
+    };
+
     dconf.settings."org/gnome/shell" = {
       favorite-apps = [
         "org.mozilla.firefox.desktop"

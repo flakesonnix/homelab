@@ -13,7 +13,7 @@ Secrets are managed with [sops-nix](https://github.com/Mic92/sops-nix) using [ag
 
 ```bash
 # Generate age key pair (stores private key in .sops/keys.txt)
-./setup-sops.sh omen
+nix run .#setup-sops omen
 
 # Update .sops.yaml with the printed public key, then create the secrets file
 SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/omen/secrets.yaml
@@ -81,7 +81,7 @@ SOPS opens the decrypted file in `$EDITOR`, re-encrypts on save.
 
 ## Key rotation
 
-1. Generate new key: `./setup-sops.sh omen` (will error if key exists — delete `.sops/keys.txt` first)
+1. Generate new key: `nix run .#setup-sops omen` (will error if key exists — delete `.sops/keys.txt` first)
 2. Update public key in `.sops.yaml`
 3. Re-encrypt all affected secrets files: `SOPS_AGE_KEY_FILE=<old-key> sops updatekeys hosts/omen/secrets.yaml`
 4. Deploy new private key to host, rebuild

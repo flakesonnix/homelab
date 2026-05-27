@@ -23,7 +23,7 @@ in {
           "browser.download.useDownloadDir" = false;
           "browser.download.always_ask_before_handling_new_types" = true;
           "browser.shell.checkDefaultBrowser" = false;
-          "browser.startup.page" = 0;
+          "browser.startup.page" = lib.mkDefault 0;
           "browser.tabs.closeWindowWithLastTab" = false;
           "browser.tabs.loadDivertedInBackground" = true;
           "browser.link.open_newwindow" = 3;

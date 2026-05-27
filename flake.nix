@@ -216,36 +216,45 @@
           pkgs,
           ...
         }: let
-          frameworkChecks = (import "${framework.outPath}/lib/flake/checks.nix" {
-            inherit self pkgs framework omen-config;
-          }).checks;
+          frameworkChecks =
+            (import "${framework.outPath}/lib/flake/checks.nix" {
+              inherit self pkgs framework omen-config;
+            }).checks;
           # Framework still ships a Rust-only `webui-unit` check that targets a
           # different WebUI implementation shape than this repo's Nix/static
           # WebUI. Keep local/CI aggregate checks Nix-only by excluding it here.
           frameworkChecksNoWebui = builtins.removeAttrs frameworkChecks ["webui-unit"];
           deployChecks = deploy-rs.lib.${system}.deployChecks self.deploy;
-          dotfilesChecks = (import ./tests/default.nix {inherit pkgs; lib = pkgs.lib; inherit self;});
+          dotfilesChecks = import ./tests/default.nix {
+            inherit pkgs;
+            lib = pkgs.lib;
+            inherit self;
+          };
           fullCiCheckPaths = frameworkChecksNoWebui // deployChecks // {dotfiles-tests = dotfilesChecks;};
           fullCiChecks = pkgs.runCommand "full-ci-checks" {} (
             ''
               mkdir -p "$out"
             ''
             + builtins.concatStringsSep "\n" (builtins.attrValues (builtins.mapAttrs (name: path: ''
-              ln -s ${path} "$out/${name}"
-            '') fullCiCheckPaths))
+                ln -s ${path} "$out/${name}"
+              '')
+              fullCiCheckPaths))
           );
           rebuildApp = pkgs.writeShellApplication {
             name = "rebuild";
             runtimeInputs = [pkgs.nh];
             text = "nh os switch";
           };
-          deployApp = host: pkgs.writeShellApplication {
-            name = "deploy-${host}";
-            runtimeInputs = [deploy-rs.packages.${system}.default];
-            text = ''
-              deploy .#${host}
-            '';
-          };
+          dotfilesLib = import ./lib/default.nix pkgs;
+          setupSopsApp = dotfilesLib.mkSetupSops "setup-sops";
+          deployApp = host:
+            pkgs.writeShellApplication {
+              name = "deploy-${host}";
+              runtimeInputs = [deploy-rs.packages.${system}.default];
+              text = ''
+                deploy .#${host}
+              '';
+            };
           checkApp = pkgs.writeShellApplication {
             name = "check";
             text = ''
@@ -340,6 +349,11 @@
                 program = "${deployApp "x61"}/bin/deploy-x61";
                 meta.description = "Deploy x61 via deploy-rs to 10.8.0.163";
               };
+              setup-sops = {
+                type = "app";
+                program = "${setupSopsApp}/bin/setup-sops";
+                meta.description = "Generate sops-nix age key pair";
+              };
             };
           }
           // {
@@ -374,10 +388,11 @@
               stub = nixpkgs.legacyPackages.x86_64-linux.writeText "nixos-config.nix" "{ ... }: { }";
               nixPathEnv = "NIX_PATH=nixpkgs=flake:nixpkgs:nixos-config=${stub}";
             in
-              (deploy-rs.lib.x86_64-linux.activate.custom // {
-                dryActivate = "${nixPathEnv} $PROFILE/bin/switch-to-configuration dry-activate";
-                boot = "${nixPathEnv} $PROFILE/bin/switch-to-configuration boot";
-              })
+              (deploy-rs.lib.x86_64-linux.activate.custom
+                // {
+                  dryActivate = "${nixPathEnv} $PROFILE/bin/switch-to-configuration dry-activate";
+                  boot = "${nixPathEnv} $PROFILE/bin/switch-to-configuration boot";
+                })
               nixosConfig.config.system.build.toplevel
               "${nixPathEnv} $PROFILE/bin/switch-to-configuration switch";
           in {

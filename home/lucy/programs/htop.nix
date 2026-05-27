@@ -45,6 +45,5 @@ in {
         show_uptime = true;
       };
     };
-
-    };
+  };
 }

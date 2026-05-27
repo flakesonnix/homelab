@@ -62,15 +62,15 @@ in {
 
     programs.zsh.enable = lib.mkDefault false;
 
-      home.sessionVariables = {
-        SHELL = "${pkgs.bashInteractive}/bin/bash";
-        EDITOR = lib.mkForce "${pkgs.neovim}/bin/nvim";
-        VISUAL = lib.mkForce "${pkgs.neovim}/bin/nvim";
-        TERMINAL = lib.mkForce (
-          if config.programs.alacritty.enable
-          then "${pkgs.alacritty}/bin/alacritty"
-          else "kgx"
-        );
-      };
+    home.sessionVariables = {
+      SHELL = "${pkgs.bashInteractive}/bin/bash";
+      EDITOR = lib.mkForce "${pkgs.neovim}/bin/nvim";
+      VISUAL = lib.mkForce "${pkgs.neovim}/bin/nvim";
+      TERMINAL = lib.mkForce (
+        if config.programs.alacritty.enable
+        then "${pkgs.alacritty}/bin/alacritty"
+        else "kgx"
+      );
+    };
   };
 }

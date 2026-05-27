@@ -80,7 +80,7 @@
     '';
   };
 in {
-  # --- sops-nix secrets (uncomment after running ./setup-sops.sh) ---
+  # --- sops-nix secrets (uncomment after running `nix run .#setup-sops`) ---
   # lucy.secrets = {
   #   enable = true;
   #   sopsFile = ../../../hosts/omen/secrets.yaml;
@@ -102,4 +102,10 @@ in {
   hq.audio.streamTo = "p50";
 
   programs.noisetorch.enable = true;
+
+  # nix-serve-ng → LAN binary cache for p50/mireo/x61
+  services.nix-serve.enable = true;
+  services.nix-serve.package = pkgs.nix-serve-ng;
+
+  networking.firewall.allowedTCPPorts = [5000];
 }

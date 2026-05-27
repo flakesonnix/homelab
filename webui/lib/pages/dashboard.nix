@@ -1,7 +1,4 @@
-{
-  lib,
-  ...
-}: let
+{lib, ...}: let
   inherit (import ../layout.nix {}) head footer;
 in ''
   ${head}

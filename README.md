@@ -42,7 +42,7 @@ Network: `10.8.0.0/24` bridged on mireo. See [docs/hosts.md](docs/hosts.md) for 
 ├── home/lucy/              # User composition entry point
 ├── keys/                   # SSH public keys
 ├── webui/                  # Static Nix-generated docs site
-├── setup-sops.sh           # Age key generation helper
+├── lib/                    # Shared Nix functions
 └── .sops.yaml              # sops encryption rules
 ```
 
@@ -102,7 +102,7 @@ Uses sops-nix with age keys. See [docs/secrets.md](docs/secrets.md).
 
 Quick setup:
 ```bash
-./setup-sops.sh omen
+nix run .#setup-sops omen
 SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/omen/secrets.yaml
 ```
 

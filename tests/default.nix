@@ -2,16 +2,16 @@
   pkgs,
   lib,
   self,
-}:
-let
+}: let
   inherit (lib) mapAttrsToList removeSuffix;
   readNixDir = dir:
     builtins.listToAttrs (map (name: {
-      name = removeSuffix ".nix" name;
-      value = import (dir + "/${name}");
-    }) (builtins.attrNames (lib.filterAttrs (n: v:
-      v == "regular" && lib.hasSuffix ".nix" n
-    ) (builtins.readDir dir))));
+        name = removeSuffix ".nix" name;
+        value = import (dir + "/${name}");
+      }) (builtins.attrNames (lib.filterAttrs (
+        n: v:
+          v == "regular" && lib.hasSuffix ".nix" n
+      ) (builtins.readDir dir))));
   allRoles = readNixDir ../data/roles;
   allBundles = readNixDir ../data/bundles;
   allPresets = readNixDir ../data/presets;
@@ -103,9 +103,15 @@ let
   allPresets);
 
   _evaluateDataModel =
-    checkRoleBundles && checkRolePresets && checkRoleTargets && checkRoleDeps
-    && checkHostRoles && checkHomeRoles
-    && checkBundlePkgToggles && checkBundleTargets && checkPresetTargets;
+    checkRoleBundles
+    && checkRolePresets
+    && checkRoleTargets
+    && checkRoleDeps
+    && checkHostRoles
+    && checkHomeRoles
+    && checkBundlePkgToggles
+    && checkBundleTargets
+    && checkPresetTargets;
 
   # Derive host/formatting/devShell/app dependencies as string-ref attributes
   # so Nix includes them as build dependencies.
@@ -121,20 +127,27 @@ let
     shell-gtarp = depAttr "shell-gtarp" (self.devShells.${pkgs.system}.gtarp or null);
   };
   _appDeps = builtins.listToAttrs (map (name: {
-    inherit name;
-    value = depAttr name self.apps.${pkgs.system}.${name}.program;
-  }) [
-    "rebuild" "check" "check-light" "check-full" "update"
-    "deploy-omen" "deploy-p50" "deploy-mireo" "deploy-x61"
-  ]);
+      inherit name;
+      value = depAttr name self.apps.${pkgs.system}.${name}.program;
+    }) [
+      "rebuild"
+      "check"
+      "check-light"
+      "check-full"
+      "update"
+      "deploy-omen"
+      "deploy-p50"
+      "deploy-mireo"
+      "deploy-x61"
+    ]);
 in
   pkgs.runCommand "dotfiles-tests"
-    ({
+  ({
       buildInputs = [pkgs.alejandra];
       dataModelValid = _evaluateDataModel;
     }
     // _hostDeps // _webuiDep // _formatterDep // _devShellDeps // _appDeps)
-    ''
+  ''
     set -euo pipefail
 
     echo "=== Data-model integrity ==="

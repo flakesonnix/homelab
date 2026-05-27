@@ -72,7 +72,7 @@ in {
           "https://github.com/" = {
             insteadOf = "gh:";
           };
-};
+        };
       };
     };
   };

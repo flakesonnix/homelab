@@ -1,13 +1,10 @@
 {lib, ...}: {
+  lucy.base.enable = true;
   lucy.base.isServer = true;
   lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
   lucy.base.sshKeyComment = "lucy@mireo";
 
   networking.hostName = "mireo";
-  networking.hosts."10.8.0.176" = ["omen"];
-  networking.hosts."10.8.0.122" = ["p50"];
-  networking.hosts."10.8.0.163" = ["x61"];
-  networking.hosts."10.8.0.1" = ["mireo"];
   networking.networkmanager.enable = lib.mkForce false;
   networking.useNetworkd = true;
 
@@ -63,18 +60,6 @@
   networking.firewall.interfaces.br0.allowedTCPPorts = [19999 9090];
 
   boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
 
-  nix.settings.require-sigs = false;
-  nix.gc = {
-    automatic = true;
-    dates = "weekly";
-    options = "--delete-older-than 30d";
-  };
-  nix.optimise.automatic = true;
-
-  security.run0-sudo-shim.enable = true;
-  services.openssh.settings.PermitRootLogin = "prohibit-password";
-
-  system.stateVersion = "25.11";
+  nix.settings.substituters = lib.mkBefore ["http://omen:5000"];
 }

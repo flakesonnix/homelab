@@ -36,17 +36,21 @@ in {
         hypervisor = "qemu";
         mem = 384;
         vcpu = 1;
-        interfaces = [{
-          type = "tap";
-          id = "vm-net-services";
-          mac = "02:00:00:10:08:03";
-        }];
-        shares = [{
-          proto = "virtiofs";
-          tag = "ro-store";
-          source = "/nix/store";
-          mountPoint = "/nix/.ro-store";
-        }];
+        interfaces = [
+          {
+            type = "tap";
+            id = "vm-net-services";
+            mac = "02:00:00:10:08:03";
+          }
+        ];
+        shares = [
+          {
+            proto = "virtiofs";
+            tag = "ro-store";
+            source = "/nix/store";
+            mountPoint = "/nix/.ro-store";
+          }
+        ];
       };
 
       systemd.network.enable = true;

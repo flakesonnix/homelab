@@ -34,22 +34,28 @@
         hypervisor = "qemu";
         mem = 2304;
         vcpu = 2;
-        interfaces = [{
-          type = "tap";
-          id = "vm-monerod";
-          mac = "02:00:00:10:08:04";
-        }];
-        shares = [{
-          proto = "virtiofs";
-          tag = "ro-store";
-          source = "/nix/store";
-          mountPoint = "/nix/.ro-store";
-        }];
-        volumes = [{
-          image = "monerod-data.img";
-          mountPoint = "/var/lib/monero";
-          size = 350000;
-        }];
+        interfaces = [
+          {
+            type = "tap";
+            id = "vm-monerod";
+            mac = "02:00:00:10:08:04";
+          }
+        ];
+        shares = [
+          {
+            proto = "virtiofs";
+            tag = "ro-store";
+            source = "/nix/store";
+            mountPoint = "/nix/.ro-store";
+          }
+        ];
+        volumes = [
+          {
+            image = "monerod-data.img";
+            mountPoint = "/var/lib/monero";
+            size = 350000;
+          }
+        ];
       };
 
       systemd.network.enable = true;

@@ -99,7 +99,35 @@
     };
     boot.initrd.availableKernelModules = ["r8169" "e1000e"];
 
+    # ── LAN host entries ─────────────────────────────────────
+    networking.hosts."10.8.0.176" = ["omen"];
+    networking.hosts."10.8.0.122" = ["p50"];
+    networking.hosts."10.8.0.163" = ["x61"];
+    networking.hosts."10.8.0.1" = ["mireo"];
+
     nix.settings.trusted-users = ["root" "lucy"];
     nix.settings.require-sigs = false;
+
+    nix.gc = {
+      automatic = true;
+      dates = "weekly";
+      options = "--delete-older-than 30d";
+    };
+    nix.optimise.automatic = true;
+
+    services.openssh.settings.PermitRootLogin = "prohibit-password";
+
+    security.run0-sudo-shim.enable = true;
+    security.polkit.persistentAuthentication = lib.mkDefault true;
+
+    boot.loader.efi.canTouchEfiVariables = true;
+
+    fileSystems = lib.optionalAttrs (!config.lucy.base.isServer) {
+      "/mnt/mireo/data" = {
+        device = "10.8.0.1:/data";
+        fsType = "nfs";
+        options = ["x-systemd.automount" "noauto" "x-systemd.idle-timeout=600"];
+      };
+    };
   };
 }

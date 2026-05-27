@@ -37,17 +37,21 @@ in {
         hypervisor = "qemu";
         mem = 2304;
         vcpu = 2;
-        interfaces = [{
-          type = "tap";
-          id = "vm-yammat";
-          mac = "02:00:00:10:08:05";
-        }];
-        shares = [{
-          proto = "virtiofs";
-          tag = "ro-store";
-          source = "/nix/store";
-          mountPoint = "/nix/.ro-store";
-        }];
+        interfaces = [
+          {
+            type = "tap";
+            id = "vm-yammat";
+            mac = "02:00:00:10:08:05";
+          }
+        ];
+        shares = [
+          {
+            proto = "virtiofs";
+            tag = "ro-store";
+            source = "/nix/store";
+            mountPoint = "/nix/.ro-store";
+          }
+        ];
         volumes = [
           {
             image = "yammat-postgres.img";

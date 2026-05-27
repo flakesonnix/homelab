@@ -20,6 +20,5 @@ in {
       registry = packageRegistry;
       target = "home";
     };
-
   };
 }

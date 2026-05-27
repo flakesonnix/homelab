@@ -14,10 +14,10 @@
     fzf.enable = true;
     ssh.enable = true;
     opencode.enable = true;
-      nh = {
-        enable = true;
-        flake = "/home/lucy/Documents/dotfiles";
-      };
+    nh = {
+      enable = true;
+      flake = "/home/lucy/Documents/dotfiles";
+    };
   };
 
   packageToggles = [
