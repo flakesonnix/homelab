@@ -169,6 +169,7 @@
           };
         })
         ./modules/nixos/hm-base.nix
+        ./modules/nixos/deskflow.nix
         run0-sudo-shim.nixosModules.default
       ];
     };
@@ -186,6 +187,7 @@
         nur.modules.nixos.default
         ./modules/nixos/hm-base.nix
         ./modules/nixos/pipebert.nix
+        ./modules/nixos/deskflow.nix
         run0-sudo-shim.nixosModules.default
       ];
     };
@@ -204,6 +206,7 @@
     x61-config = mkHost {
       modules = [
         ./hosts/x61
+        ./modules/nixos/deskflow.nix
       ];
     };
   in

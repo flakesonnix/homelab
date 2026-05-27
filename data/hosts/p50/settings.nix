@@ -37,4 +37,10 @@
     nodeName = "p50-internal-audio";
     description = "P50 Internal Audio";
   };
+
+  hq.deskflow = {
+    enable = true;
+    role = "client";
+    serverAddress = "omen";
+  };
 }

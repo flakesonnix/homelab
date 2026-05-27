@@ -149,6 +149,12 @@ in {
     }
   ];
 
+  hq.deskflow = {
+    enable = true;
+    role = "client";
+    serverAddress = "omen";
+  };
+
   programs.firefox.enable = true;
   programs.dconf.enable = true;
 
