@@ -183,7 +183,7 @@ Installs font packages declared via `lucy.fonts.*` module flags (e.g. `lucy.font
 
 ### `gnome.nix` / `gnome-extensions.nix`
 
-GNOME shell configuration. `lucy.gnome.enable` flag. Extensions manager for GNOME shell extensions.
+GNOME shell configuration. `lucy.gnome.enable` flag. Extensions manager for GNOME shell extensions. Includes `gvfs` + Avahi client (`nssmdns4`) for Nautilus NFS autodiscovery via mDNS.
 
 ---
 

@@ -1,6 +1,6 @@
 # NixOS Dotfiles
 
-NixOS flake managing four machines for user `lucy`. Built on the [rivotril](https://github.com/flakesonnix/rivotril) framework for data-driven host and home composition.
+NixOS flake managing three machines for user `lucy`. Built on the [rivotril](https://github.com/flakesonnix/rivotril) framework for data-driven host and home composition.
 
 ## Hosts
 
@@ -8,10 +8,9 @@ NixOS flake managing four machines for user `lucy`. Built on the [rivotril](http
 |------|------|----------|-------|
 | `omen` | Desktop / gaming laptop | HP Omen, NVIDIA RTX 2070 | Primary machine. Niri compositor, eww bar, Secure Boot |
 | `p50` | Desktop workstation | ThinkPad P50, NVIDIA (legacy 535) | GNOME fallback, Pipebert audio sink |
-| `mireo` | Home server / router | Mini-PC, 4-port NIC | NAT gateway, microvms: grafana, monerod |
-| `x61` | Kiosk display | ThinkPad X61 | Auto-boots Firefox → Grafana dashboard |
+| `mireo` | Home server / router | Mini-PC, 4-port NIC | NAT gateway, IPv6 (FritzBox PD), NFS, iVentoy PXE, microvms |
 
-Network: `10.8.0.0/24` bridged on mireo. See [docs/hosts.md](docs/hosts.md) for full details.
+Network: `10.8.0.0/24` (+ `fd00:cafe:1::1/64` ULA) bridged on mireo. See [docs/hosts.md](docs/hosts.md) for full details.
 
 ## Layout
 
@@ -37,8 +36,7 @@ Network: `10.8.0.0/24` bridged on mireo. See [docs/hosts.md](docs/hosts.md) for 
 ├── hosts/
 │   ├── omen/               # Hardware config + framework host.nix
 │   ├── p50/
-│   ├── mireo/              # + microvm definitions (grafana, monerod)
-│   └── x61/                # Standalone host (no framework)
+│   └── mireo/              # + microvm definitions (grafana, monerod, network-services, yammat)
 ├── home/lucy/              # User composition entry point
 ├── keys/                   # SSH public keys
 ├── webui/                  # Static Nix-generated docs site
@@ -55,7 +53,6 @@ nix run .#rebuild
 # Deploy to a remote host
 nix run .#deploy-p50
 nix run .#deploy-mireo
-nix run .#deploy-x61
 
 # CI checks
 nix run .#check-light   # Fast: eval surfaces only

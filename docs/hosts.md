@@ -3,22 +3,21 @@
 ## Network Layout
 
 ```
-Internet
+Internet (IPv4 + IPv6 via FritzBox)
     │
-    │ 192.168.178.25
+    │ 192.168.178.25 / 2a02:3102:4c00:3b::1b5/64 (WAN)
   mireo (router)
     │
-    │ 10.8.0.1 (br0)
-    ├── 10.8.0.2  grafana microvm  (Prometheus + Grafana)
-    ├── 10.8.0.4  monerod microvm  (Monero node + Tor relay)
+    │ 10.8.0.1/24 + fd00:cafe:1::1/64 (br0)
+    ├── 10.8.0.2  grafana microvm     (Prometheus + Grafana)
+    ├── 10.8.0.3  network-services vm (bridge stub)
+    ├── 10.8.0.4  monerod microvm     (Monero node + Tor relay)
+    ├── 10.8.0.5  yammat microvm      (YAMMAT event management)
     ├── 10.8.0.122  p50
-    ├── 10.8.0.163  x61
     └── 10.8.0.176  omen
 ```
 
-mireo also bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (WAN).
-
-All machines mount `10.8.0.1:/data` via NFS at `/mnt/mireo/data` (automount, 600s idle timeout).
+mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (WAN). IPv6 prefix `2a02:3102:4cec:b500::/64` delegated from FritzBox to br0; dnsmasq issues RA (ra-stateless) to LAN clients.
 
 ---
 
@@ -97,13 +96,18 @@ nix run .#deploy-p50   # SSH to p50 (10.8.0.122)
 **IP:** 10.8.0.1 (LAN), 192.168.178.25 (WAN)
 
 ### Features
-- NAT gateway for 10.8.0.0/24
+- NAT gateway for 10.8.0.0/24 + IPv6 (FritzBox DHCPv6-PD, prefix `2a02:3102:4cec:b500::/64`)
 - systemd-networkd (no NetworkManager)
+- dnsmasq on host: DHCP, DNS, IPv6 RA (ra-stateless) for LAN (br0)
+- iVentoy PXE server via OCI container (Podman, `--network=host`, proxyDHCP mode, web UI :26000)
+- NFS export of `/data` to `10.8.0.0/24`
+- Avahi mDNS advertising NFS share (`_nfs._tcp`) for Nautilus autodiscovery
+- Netdata monitoring (10.8.0.1:19999)
 - Four microVMs running on br0:
   - **grafana** (10.8.0.2): Prometheus scraping router + all hosts, Grafana with mireo-router dashboard
+  - **network-services** (10.8.0.3): bridge tap stub (no services)
   - **monerod** (10.8.0.4): Pruned Monero node + Tor relay (nickname `mireoMoneroRelay`)
-  - **network-services** (10.8.0.3): DHCP, DNS, PXE
-  - **yammat** (10.8.0.5): Event management (YAMMAT)
+  - **yammat** (10.8.0.5): YAMMAT event management (C3D2 matemat, port 3000)
 - No desktop (`lucy.base.isServer = true`)
 - node_exporter running on 10.8.0.1:9100 for self-monitoring
 
@@ -111,49 +115,26 @@ nix run .#deploy-p50   # SSH to p50 (10.8.0.122)
 None (server profile, framework data in `data/hosts/mireo/`)
 
 ### Config files
-- `data/hosts/mireo/settings.nix` — hostname, network layout, NAT, firewall
+- `data/hosts/mireo/settings.nix` — hostname, network, NAT, dnsmasq, NFS, Avahi, iVentoy, Netdata
 - `hosts/mireo/host.nix` — framework applyHost
 - `hosts/mireo/grafana-microvm.nix` — grafana + prometheus microvm
 - `hosts/mireo/monerod-microvm.nix` — monerod + Tor microvm
-- `hosts/mireo/network-services-microvm.nix` — microvm bridge wiring
+- `hosts/mireo/network-services-microvm.nix` — network-services bridge tap stub
+- `hosts/mireo/yammat-microvm.nix` — YAMMAT microvm
 
 ### Microvm resource allocation
 | VM | IP | Memory | vCPUs | Storage |
 |----|-----|--------|-------|---------|
 | grafana | 10.8.0.2 | 768 MB | 2 | 1 GB grafana + 1 GB prometheus |
-| network-services | 10.8.0.3 | 512 MB | 1 | — |
+| network-services | 10.8.0.3 | 384 MB | 1 | — |
 | monerod | 10.8.0.4 | 2304 MB | 2 | 350 GB blockchain |
-| yammat | 10.8.0.5 | 512 MB | 1 | 10 GB |
+| yammat | 10.8.0.5 | 2304 MB | 2 | 8 GB postgres + 128 MB state |
 
 ### Monero port forwarding
 Port 9001/tcp (Tor ORPort) forwarded from WAN to monerod VM.
 
 ### Deploy
 ```bash
-nix run .#deploy-mireo   # SSH to mireo (192.168.178.25)
+nix run .#deploy-mireo   # SSH to mireo (192.168.178.25 or 10.8.0.1)
 ```
 
----
-
-## x61
-
-**Role:** Kiosk display  
-**Hardware:** ThinkPad X61  
-**IP:** 10.8.0.163
-
-### Features
-- Auto-login as `lucy` into a custom LightDM kiosk session
-- Kiosk session runs `firefox --kiosk` pointed at the Grafana dashboard (`http://10.8.0.2:3000/d/mireo-router/mireo-router?kiosk`)
-- Screen blanking disabled (xset s off, -dpms, s noblank)
-- Pipebert enabled (open firewall)
-- NFS mount of mireo data share
-- GRUB bootloader (`/dev/sda`)
-
-### Config files
-- `hosts/x61/host.nix` — full standalone config (no framework, no profile)
-- `hosts/x61/hardware-configuration.nix`
-
-### Deploy
-```bash
-nix run .#deploy-x61   # SSH to x61 (10.8.0.163)
-```
