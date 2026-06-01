@@ -1,13 +1,4 @@
-{
-  lib,
-  pkgs,
-  ...
-}: let
-  netbootxyzArm64 = pkgs.fetchurl {
-    url = "https://github.com/netbootxyz/netboot.xyz/releases/download/2.0.88/netboot.xyz-arm64.efi";
-    sha256 = "sha256-AeW92FU65XVJKGPi+A/iz7Jvtb7wKIO3xG3Cx7v4kRg=";
-  };
-in {
+{lib, ...}: {
   lucy.base.enable = true;
   lucy.base.isServer = true;
   lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
@@ -18,6 +9,9 @@ in {
   networking.useNetworkd = true;
 
   systemd.network.enable = true;
+  # FritzBox IPv6 (as of 2026-05-29):
+  #   WAN addr:  2a02:3102:4c00:3b::1b5/64
+  #   delegated: 2a02:3102:4cec:b500::/64  (assigned to br0 LAN)
   systemd.network.networks."10-wan" = {
     matchConfig.Name = "enp4s0";
     address = ["192.168.178.25/24"];
@@ -28,7 +22,7 @@ in {
     ];
     networkConfig = {
       DNS = ["1.1.1.1" "9.9.9.9"];
-      IPv6AcceptRA = false;
+      IPv6AcceptRA = true;
     };
   };
   systemd.network.networks."20-lan-enp9s0" = {
@@ -51,11 +45,11 @@ in {
   };
   systemd.network.networks."30-br0" = {
     matchConfig.Name = "br0";
-    address = ["10.8.0.1/24"];
+    address = ["10.8.0.1/24" "fd00:cafe:1::1/64"];
     networkConfig = {
       ConfigureWithoutCarrier = true;
       IPv6AcceptRA = false;
-      LinkLocalAddressing = "no";
+      LinkLocalAddressing = "ipv6";
     };
   };
 
@@ -68,7 +62,7 @@ in {
   networking.firewall.trustedInterfaces = ["br0"];
   networking.firewall.interfaces.br0.allowedTCPPorts = [19999 9090];
 
-  # --- dnsmasq: DHCP + DNS + TFTP for LAN (br0) ---
+  # --- dnsmasq: DHCP + DNS for LAN (br0) ---
   services.dnsmasq = {
     enable = true;
     settings = {
@@ -77,7 +71,11 @@ in {
       domain-needed = true;
       bogus-priv = true;
       dhcp-authoritative = true;
-      dhcp-range = ["10.8.0.100,10.8.0.199,255.255.255.0,24h"];
+      enable-ra = true;
+      dhcp-range = [
+        "10.8.0.100,10.8.0.199,255.255.255.0,24h"
+        "::,constructor:br0,ra-stateless,64,24h"
+      ];
       dhcp-option = [
         "option:router,10.8.0.1"
         "option:dns-server,10.8.0.1"
@@ -85,53 +83,51 @@ in {
       dhcp-host = [
         "84:2a:fd:4e:bd:7e,omen,10.8.0.176"
         "50:7b:9d:e8:86:9a,p50,10.8.0.122"
-        "00:1d:72:9e:25:83,x61,10.8.0.163"
         "d0:50:99:95:7b:13,client-124,10.8.0.124"
       ];
-      enable-tftp = true;
-      tftp-root = "/etc/netboot";
-      dhcp-userclass = "set:ipxe,iPXE";
-      dhcp-match = [
-        "set:efiarm64,option:client-arch,11"
-        "set:efi64,option:client-arch,7"
-        "set:efi64,option:client-arch,9"
-      ];
-      dhcp-boot = [
-        "tag:ipxe,menu.ipxe"
-        "tag:efiarm64,netboot.xyz-arm64.efi"
-        "tag:efi64,ipxe.efi"
-        "tag:!efi64,undionly.kpxe"
-      ];
-      server = ["1.1.1.1" "9.9.9.9"];
+      server = ["1.1.1.1" "9.9.9.9" "2606:4700:4700::1111" "2620:fe::9"];
     };
   };
 
-  # TFTP netboot files
-  environment.etc = {
-    "netboot/undionly.kpxe".source = "${pkgs.ipxe}/undionly.kpxe";
-    "netboot/ipxe.efi".source = "${pkgs.ipxe}/ipxe.efi";
-    "netboot/netboot.xyz.efi".source = "${pkgs.netbootxyz-efi}";
-    "netboot/netboot.xyz-arm64.efi".source = netbootxyzArm64;
-    "netboot/menu.ipxe".text = ''
-      #!ipxe
-      menu mireo netboot
-      item netbootxyz  netboot.xyz
-      item shell       iPXE shell
-      item reboot      Reboot
-      item exit        Exit back to firmware
-      choose --default netbootxyz --timeout 5000 target && goto ''${target}
+  # --- iVentoy PXE server (proxyDHCP mode, web UI :26000) ---
+  virtualisation.podman.enable = true;
+  virtualisation.oci-containers.backend = "podman";
+  virtualisation.oci-containers.containers.iventoy = {
+    image = "iventoy/iventoy:latest";
+    extraOptions = [
+      "--network=host"
+      "--privileged"
+    ];
+    volumes = [
+      "/data/iventoy/iso:/iventoy/iso"
+      "/data/iventoy/data:/iventoy/data"
+    ];
+  };
 
-      :netbootxyz
-      chain https://boot.netboot.xyz/menu.ipxe
+  fileSystems."/data" = {
+    device = "/dev/disk/by-uuid/ee576a43-066a-4e85-901d-2f03d618bea8";
+    fsType = "ext4";
+    options = ["defaults" "nofail"];
+  };
 
-      :shell
-      shell
-
-      :reboot
-      reboot
-
-      :exit
-      exit
+  services.avahi = {
+    enable = true;
+    nssmdns4 = true;
+    publish = {
+      enable = true;
+      userServices = true;
+    };
+    extraServiceFiles.nfs = ''
+      <?xml version="1.0" standalone='no'?>
+      <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+      <service-group>
+        <name replace-wildcards="yes">%h data</name>
+        <service>
+          <type>_nfs._tcp</type>
+          <port>2049</port>
+          <txt-record>path=/data</txt-record>
+        </service>
+      </service-group>
     '';
   };
 

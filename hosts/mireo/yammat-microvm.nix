@@ -90,7 +90,7 @@ in {
 
           database:
             user: "_env:PGUSER:yammat"
-            password: "_env:PGPASS:"
+            password: "_env:PGPASS:notused"
             host: "_env:PGHOST:localhost"
             port: "_env:PGPORT:5432"
             database: "_env:PGDATABASE:yammat"

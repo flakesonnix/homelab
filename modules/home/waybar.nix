@@ -108,14 +108,8 @@
       padding = "0 8px";
       margin = "0 0";
     })
-    (waybarFramework.rule ".modules-left" {
-      max_width = "40%";
-    })
-    (waybarFramework.rule ".modules-center" {
-      max_width = "50%";
-    })
-    (waybarFramework.rule ".modules-right" {
-      max_width = "50%";
+    (waybarFramework.rule ".modules-left, .modules-center, .modules-right" {
+      min_width = "200px";
     })
     (waybarFramework.rule "#workspaces" {
       margin_left = "0";
@@ -128,7 +122,6 @@
       border_radius = "12px";
       background = "rgba(0, 0, 0, 0)";
       border = "1px solid ${colors.base02}";
-      background_clip = "padding-box";
       transition = "all 150ms ease";
     })
     (waybarFramework.rule "#workspaces button:hover" {
@@ -155,8 +148,6 @@
     (waybarFramework.rule "#mpris" {
       color = colors.base06;
       font_weight = "600";
-      min_width = "120px";
-      max_width = "300px";
     })
     (waybarFramework.rule "#mpris.paused, #mpris.stopped" {
       color = colors.base04;
@@ -170,7 +161,6 @@
     (waybarFramework.rule "#cpu.critical, #memory.critical" {color = colors.base08;})
     (waybarFramework.rule "#custom-power" {
       color = colors.base0E;
-      min_width = "20px";
       padding = "0 8px";
     })
     (waybarFramework.rule "#custom-power:hover" {
@@ -187,8 +177,6 @@
     (waybarFramework.rule "#window" {
       color = colors.base06;
       font_style = "italic";
-      min_width = "80px";
-      max_width = "200px";
     })
     (waybarFramework.rule "#custom-notifications" {color = colors.base05;})
     (waybarFramework.rule "#custom-notifications.active" {color = colors.base0A;})
@@ -223,6 +211,7 @@
     "niri/window" = {
       format = "{title}";
       rewrite = {"^$" = "";};
+      max-length = 30;
     };
 
     mpris = {

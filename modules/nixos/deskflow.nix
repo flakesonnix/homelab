@@ -6,13 +6,10 @@ let
   #   section: screens
   #       omen:
   #       p50:
-  #       x61:
   #   end
   #   section: links
   #       omen:
   #           right = p50
-  #       x61:
-  #           right = omen
   #   end
   #   section: options
   #       heartbeat = 5000
@@ -104,7 +101,6 @@ in {
       default = {};
       example = {
         omen = { right = "p50"; };
-        x61 = { right = "omen"; };
         p50 = { left = "omen"; };
       };
       description = "Deskflow server screen layout map";

@@ -636,13 +636,6 @@ in {
                   host = "p50";
                 };
               }
-              {
-                targets = ["10.8.0.163:9100"];
-                labels = {
-                  instance = "x61";
-                  host = "x61";
-                };
-              }
             ];
           }
         ];

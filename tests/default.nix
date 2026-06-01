@@ -119,7 +119,7 @@
   _hostDeps = builtins.listToAttrs (map (host: {
     name = "host-${host}";
     value = depAttr host self.nixosConfigurations.${host}.config.system.build.toplevel;
-  }) ["omen" "p50" "mireo" "x61"]);
+  }) ["omen" "p50" "mireo"]);
   _webuiDep = {webui = depAttr "webui" self.packages.${pkgs.system}.webui;};
   _formatterDep = {fmt = depAttr "fmt" self.formatter.${pkgs.system};};
   _devShellDeps = {
@@ -138,7 +138,6 @@
       "deploy-omen"
       "deploy-p50"
       "deploy-mireo"
-      "deploy-x61"
     ]);
 in
   pkgs.runCommand "dotfiles-tests"

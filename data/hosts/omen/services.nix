@@ -103,7 +103,7 @@ in {
 
   programs.noisetorch.enable = true;
 
-  # nix-serve-ng → LAN binary cache for p50/mireo/x61
+  # nix-serve-ng → LAN binary cache for p50/mireo
   # Manual service (nixpkgs nix-serve module stale, crashes as nix-serve user)
   systemd.services.nix-serve = {
     description = "nix-serve-ng binary cache server";

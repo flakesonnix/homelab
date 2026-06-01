@@ -29,8 +29,7 @@
     enable = true;
     role = "server";
     screenLayout = {
-      x61 = { right = "omen"; };
-      omen = { left = "x61"; right = "p50"; };
+      omen = { right = "p50"; };
       p50 = { left = "omen"; };
     };
   };

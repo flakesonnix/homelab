@@ -203,12 +203,6 @@
         run0-sudo-shim.nixosModules.default
       ];
     };
-    x61-config = mkHost {
-      modules = [
-        ./hosts/x61
-        ./modules/nixos/deskflow.nix
-      ];
-    };
   in
     flake-parts.lib.mkFlake {inherit inputs;} (
       {
@@ -347,11 +341,6 @@
                 program = "${deployApp "mireo"}/bin/deploy-mireo";
                 meta.description = "Deploy mireo via deploy-rs to 192.168.178.25";
               };
-              deploy-x61 = {
-                type = "app";
-                program = "${deployApp "x61"}/bin/deploy-x61";
-                meta.description = "Deploy x61 via deploy-rs to 10.8.0.163";
-              };
               setup-sops = {
                 type = "app";
                 program = "${setupSopsApp}/bin/setup-sops";
@@ -379,7 +368,6 @@
             omen = omen-config;
             p50 = p50-config;
             mireo = mireo-config;
-            x61 = x61-config;
           };
 
           deploy.nodes = let
@@ -413,14 +401,6 @@
               profiles.system = {
                 user = "root";
                 path = activateNixosWithNixPath self.nixosConfigurations.mireo;
-              };
-            };
-            x61 = {
-              hostname = "x61";
-              sshUser = "root";
-              profiles.system = {
-                user = "root";
-                path = activateNixosWithNixPath self.nixosConfigurations.x61;
               };
             };
           };

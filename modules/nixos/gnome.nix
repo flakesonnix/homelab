@@ -30,5 +30,10 @@
     services.printing.enable = true;
     programs.firefox.enable = true;
     programs.dconf.enable = true;
+    services.gvfs.enable = true;
+    services.avahi = {
+      enable = true;
+      nssmdns4 = true;
+    };
   };
 }
