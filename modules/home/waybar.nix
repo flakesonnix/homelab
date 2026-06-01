@@ -15,74 +15,10 @@
   accentGradient = gradient "90deg" [colors.base0E colors.base0D colors.base0C];
   cardGradient = gradient "135deg" [colors.base01 colors.base02];
 
-  mediaPopupScript = pkgs.writeShellScript "waybar-media-popup" ''
-    title=$(${lib.getExe pkgs.playerctl} metadata title 2>/dev/null)
-    artist=$(${lib.getExe pkgs.playerctl} metadata artist 2>/dev/null)
-    album=$(${lib.getExe pkgs.playerctl} metadata album 2>/dev/null)
-    art_url=$(${lib.getExe pkgs.playerctl} metadata mpris:artUrl 2>/dev/null)
-    status=$(${lib.getExe pkgs.playerctl} status 2>/dev/null)
-
-    [ -z "$title" ] && exit 0
-
-    body=""
-    [ -n "$artist" ] && body="$artist"
-    [ -n "$album" ] && body="$body\n$album"
-
-    art_file=""
-    if [ -n "$art_url" ]; then
-      case "$art_url" in
-        file://*)
-          art_file="''${art_url#file://}"
-          ;;
-        http*)
-          art_file="/tmp/waybar-media-art.jpg"
-          ${lib.getExe pkgs.curl} -sf "$art_url" -o "$art_file" 2>/dev/null
-          ;;
-      esac
-    fi
-
-    icon_arg=""
-    [ -n "$art_file" ] && [ -f "$art_file" ] && icon_arg="-i $art_file"
-
-    # shellcheck disable=SC2086
-    ${pkgs.libnotify}/bin/notify-send $icon_arg \
-      -t 4000 \
-      -h string:x-canonical-private-synchronous:media-popup \
-      "$title" "$(printf '%b' "$body")"
-  '';
-
-  playerPickerScript = pkgs.writeShellScript "waybar-player-picker" ''
-    players=$(${lib.getExe pkgs.playerctl} -l 2>/dev/null)
-    count=$(printf '%s\n' "$players" | grep -c .)
-
-    if [ "$count" -le 1 ]; then
-      ${lib.getExe pkgs.playerctl} next
-    else
-      selected=$(printf '%s\n' "$players" | ${lib.getExe pkgs.fuzzel} --dmenu --prompt "Player: " --width 30)
-      [ -n "$selected" ] && ${lib.getExe pkgs.playerctl} -p "$selected" play-pause
-    fi
-  '';
-
-  notifScript = pkgs.writeShellScript "waybar-notifications" ''
-    output=$(makoctl list 2>&1)
-    if echo "$output" | grep -q "DBus\|does not exist\|Error"; then
-      printf '{"text":"󰂚","class":"inactive","tooltip":"No notifications"}\n'
-      exit 0
-    fi
-    count=$(echo "$output" | ${lib.getExe pkgs.python3} -c "
-    import sys, json
-    try:
-      d = json.load(sys.stdin)
-      print(sum(len(g) for g in d.get('data', [])))
-    except Exception:
-      print(0)
-    " 2>/dev/null || echo 0)
-    if [ "$count" -gt 0 ]; then
-      printf '{"text":"󱅫 %s","class":"active","tooltip":"%s notifications"}\n' "$count" "$count"
-    else
-      printf '{"text":"󰂚","class":"inactive","tooltip":"No notifications"}\n'
-    fi
-  '';
+  waybarScripts = import ../../lib/waybar-scripts.nix pkgs;
+  mediaPopupScript = waybarScripts.mkMediaPopup;
+  playerPickerScript = waybarScripts.mkPlayerPicker;
+  notifScript = waybarScripts.mkNotifCounter;
 
   waybarStyle = renderCss [
     (waybarFramework.rule "*" {

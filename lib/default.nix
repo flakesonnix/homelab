@@ -4,6 +4,11 @@ in {
   # ── Package registry helper ──────────────────────────────────
   mkPackageRegistry = type: import (./. + "/../data/packages/${type}.nix") {inherit pkgs;};
 
+  # ── Domain script libraries ──────────────────────────────────
+  waybarScripts = import ./waybar-scripts.nix pkgs;
+  systemScripts = import ./system-scripts.nix pkgs;
+  audioScripts = import ./audio-scripts.nix pkgs;
+
   # ── Sops setup keygen ────────────────────────────────────────
   mkSetupSops = name:
     pkgs.writeShellApplication {
