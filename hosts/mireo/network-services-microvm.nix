@@ -1,5 +1,4 @@
 {...}: {
-  networking.hosts."10.8.0.3" = ["network-services" "dhcp-pxe"];
 
   systemd.network.networks."25-lan-microvm" = {
     matchConfig.Name = "vm-net-services";

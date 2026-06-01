@@ -1,4 +1,4 @@
-{lib, ...}: {
+{lib, pkgs, ...}: {
   lucy.base.enable = true;
   lucy.base.isServer = true;
   lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
@@ -85,6 +85,18 @@
         "50:7b:9d:e8:86:9a,p50,10.8.0.122"
         "d0:50:99:95:7b:13,client-124,10.8.0.124"
       ];
+      host-record = [
+        "grafana,10.8.0.2"
+        "network-services,10.8.0.3"
+        "monerod,10.8.0.4"
+        "yammat,10.8.0.5"
+        "cups,10.8.0.6"
+        "sshkeys,10.8.0.7"
+        "aptcache,10.8.0.8"
+        "mireo,10.8.0.1"
+        "omen,10.8.0.176"
+        "p50,10.8.0.122"
+      ];
       server = ["1.1.1.1" "9.9.9.9" "2606:4700:4700::1111" "2620:fe::9"];
     };
   };
@@ -163,6 +175,55 @@
       Unmanaged = true;
     };
   };
+
+  # --- Automatic ISO download for iVentoy ---
+  systemd.services.iventoy-fetch-isos = {
+    description = "Download Linux ISOs for iVentoy PXE";
+    after = ["data.mount"];
+    requires = ["data.mount"];
+    wants = ["podman-iventoy.service"];
+    path = [pkgs.curl pkgs.coreutils];
+    serviceConfig = {
+      Type = "oneshot";
+      User = "root";
+    };
+    script = ''
+      ISO_DIR="/data/iventoy/iso"
+      mkdir -p "$ISO_DIR"
+
+      dl() {
+        local url="$1" file="$2"
+        if [ -f "$ISO_DIR/$file" ]; then
+          echo "Exists: $file"
+          return
+        fi
+        echo "Downloading $file..."
+        curl -fLo "$ISO_DIR/$file.tmp" "$url" && mv "$ISO_DIR/$file.tmp" "$ISO_DIR/$file" || { echo "FAILED: $file"; rm -f "$ISO_DIR/$file.tmp"; return 1; }
+      }
+
+      dl "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-12.9.0-amd64-netinst.iso" "debian-12-netinst.iso"
+      dl "https://files.devuan.org/devuan_daedalus/installer-iso/devuan_daedalus_5.0.0_amd64_netinst.iso" "devuan-daedalus-5-netinst.iso"
+      dl "https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso" "archlinux-x86_64.iso"
+      dl "https://releases.ubuntu.com/24.04/ubuntu-24.04.2-desktop-amd64.iso" "ubuntu-24.04-desktop.iso"
+    '';
+  };
+
+  systemd.timers.iventoy-fetch-isos = {
+    description = "Weekly update of iVentoy ISOs";
+    wantedBy = ["timers.target"];
+    timerConfig = {
+      OnCalendar = "weekly";
+      Persistent = true;
+    };
+  };
+
+  # Enable libvirtd for virt-manager remote management
+  virtualisation.libvirtd = {
+    enable = true;
+    onBoot = "ignore";
+    onShutdown = "shutdown";
+  };
+  users.users.lucy.extraGroups = ["libvirtd"];
 
   # Ensure dnsmasq starts after br0 has its IP address (avoids "unknown interface br0" race)
   systemd.services.dnsmasq.after = ["network-addresses-br0.service"];

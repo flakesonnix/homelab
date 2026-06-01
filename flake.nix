@@ -141,7 +141,7 @@
     };
 
     mireoSpecialArgs = {
-      inherit wrappers yammat;
+      inherit wrappers yammat nixpkgs;
       frameworkLib = framework.lib;
     };
 
@@ -265,7 +265,6 @@
           checkApp = pkgs.writeShellApplication {
             name = "check";
             text = ''
-              nix eval --option warn-dirty false .#packages.x86_64-linux.webui.drvPath --raw >/dev/null
               nix eval --option warn-dirty false .#formatter.x86_64-linux.drvPath --raw >/dev/null
               nix eval --option warn-dirty false .#devShells.x86_64-linux.default.drvPath --raw >/dev/null
               nix eval --option warn-dirty false .#apps.x86_64-linux.rebuild.type --raw >/dev/null
@@ -276,7 +275,6 @@
           checkLightApp = pkgs.writeShellApplication {
             name = "check-light";
             text = ''
-              nix eval --option warn-dirty false .#packages.x86_64-linux.webui.drvPath --raw >/dev/null
               nix eval --option warn-dirty false .#formatter.x86_64-linux.drvPath --raw >/dev/null
               nix eval --option warn-dirty false .#devShells.x86_64-linux.default.drvPath --raw >/dev/null
               nix eval --option warn-dirty false .#apps.x86_64-linux.rebuild.type --raw >/dev/null
@@ -308,7 +306,6 @@
             topology.modules = [./topology.nix];
 
             packages = {
-              webui = import ./webui/default.nix {inherit pkgs;};
               full-ci-checks = fullCiChecks;
               topology = self.topology.x86_64-linux.config.output;
             };

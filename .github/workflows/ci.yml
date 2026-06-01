@@ -16,9 +16,6 @@ jobs:
         with:
           install-url: https://nixos-nix-install-tests.s3.amazonaws.com/nix-install-2.24.7.x86_64-linux.tar.xz
 
-      - run: nix eval .#packages.x86_64-linux.webui.drvPath --raw
-        name: Evaluate package outputs
-
       - run: nix eval .#formatter.x86_64-linux.drvPath --raw
         name: Evaluate formatter output
 

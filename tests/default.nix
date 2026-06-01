@@ -120,7 +120,6 @@
     name = "host-${host}";
     value = depAttr host self.nixosConfigurations.${host}.config.system.build.toplevel;
   }) ["omen" "p50" "mireo"]);
-  _webuiDep = {webui = depAttr "webui" self.packages.${pkgs.system}.webui;};
   _formatterDep = {fmt = depAttr "fmt" self.formatter.${pkgs.system};};
   _devShellDeps = {
     shell-default = depAttr "shell-default" self.devShells.${pkgs.system}.default;
@@ -145,7 +144,7 @@ in
       buildInputs = [pkgs.alejandra];
       dataModelValid = _evaluateDataModel;
     }
-    // _hostDeps // _webuiDep // _formatterDep // _devShellDeps // _appDeps)
+    // _hostDeps // _formatterDep // _devShellDeps // _appDeps)
   ''
     set -euo pipefail
 
@@ -157,7 +156,7 @@ in
 
     echo ""
     echo "=== Build dependency verification ==="
-    echo "  hosts, webui, formatter, devShells, apps: built as dependencies"
+    echo "  hosts, formatter, devShells, apps: built as dependencies"
 
     echo ""
     echo "=== Formatting ==="

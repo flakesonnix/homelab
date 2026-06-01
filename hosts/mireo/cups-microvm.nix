@@ -1,5 +1,4 @@
 {pkgs, ...}: {
-  networking.hosts."10.8.0.6" = ["cups" "cups-vm"];
 
   systemd.network.networks."29-lan-microvm-cups" = {
     matchConfig.Name = "vm-cups";

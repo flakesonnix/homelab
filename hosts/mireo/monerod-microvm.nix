@@ -1,5 +1,4 @@
 {lib, ...}: {
-  networking.hosts."10.8.0.4" = ["monerod"];
 
   networking.nat.forwardPorts = [
     {

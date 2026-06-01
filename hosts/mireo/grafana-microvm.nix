@@ -519,7 +519,6 @@
     version = 1;
   };
 in {
-  networking.hosts."10.8.0.2" = ["grafana" "grafana-vm"];
 
   systemd.network.networks."24-lan-microvm" = {
     matchConfig.Name = "vm-*";

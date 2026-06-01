@@ -99,11 +99,6 @@
     };
     boot.initrd.availableKernelModules = ["r8169" "e1000e"];
 
-    # ── LAN host entries ─────────────────────────────────────
-    networking.hosts."10.8.0.176" = ["omen"];
-    networking.hosts."10.8.0.122" = ["p50"];
-    networking.hosts."10.8.0.1" = ["mireo"];
-
     nix.settings.trusted-users = ["root" "lucy"];
     nix.settings.require-sigs = false;
 

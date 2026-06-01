@@ -9,7 +9,6 @@
     meta = (old.meta or {}) // {mainProgram = "yammat";};
   });
 in {
-  networking.hosts."10.8.0.5" = ["yammat" "yammat-vm"];
 
   systemd.network.networks."27-lan-microvm-yammat" = {
     matchConfig.Name = "vm-yammat";

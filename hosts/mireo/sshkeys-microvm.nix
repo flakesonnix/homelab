@@ -1,7 +1,6 @@
 {lib, pkgs, ...}: let
   keys = import ../../ssh-public-keys.nix {inherit lib;};
 in {
-  networking.hosts."10.8.0.7" = ["sshkeys" "sshkeys-vm"];
 
   systemd.network.networks."28-lan-microvm-sshkeys" = {
     matchConfig.Name = "vm-sshkeys";
