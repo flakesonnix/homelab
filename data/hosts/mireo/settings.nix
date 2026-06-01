@@ -217,14 +217,6 @@
     };
   };
 
-  # Enable libvirtd for virt-manager remote management
-  virtualisation.libvirtd = {
-    enable = true;
-    onBoot = "ignore";
-    onShutdown = "shutdown";
-  };
-  users.users.lucy.extraGroups = ["libvirtd"];
-
   # Ensure dnsmasq starts after br0 has its IP address (avoids "unknown interface br0" race)
   systemd.services.dnsmasq.after = ["network-addresses-br0.service"];
   systemd.services.dnsmasq.requires = ["network-addresses-br0.service"];

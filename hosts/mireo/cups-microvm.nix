@@ -28,6 +28,7 @@
 
       microvm.mem = 512;
       microvm.vcpu = 1;
+      microvm.qemu.package = pkgs.qemu_full;
       microvm.volumes = [
         {
           image = "cups-etc.img";
