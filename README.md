@@ -140,3 +140,4 @@ Formatter: `nix fmt` (alejandra). Linter: `statix check`.
 - [docs/modules.md](docs/modules.md) — All nixos/ and home/ module options
 - [docs/secrets.md](docs/secrets.md) — sops-nix key setup and rotation
 - [docs/gaming-omen.md](docs/gaming-omen.md) — Gaming stack details for omen
+- [docs/printing.md](docs/printing.md) — Epson ET-2860 printer setup on NixOS and other distros
