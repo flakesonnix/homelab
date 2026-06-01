@@ -82,6 +82,28 @@ nix run .#deploy-omen
 - `data/hosts/p50/roles.nix` — role list
 - `hosts/p50/host.nix` — framework applyHost + legacy_535 override
 
+### Streaming audio to p50 from non-NixOS
+
+p50 runs Pipebert — a network audio receiver. It exposes 3 transports:
+
+| Method | Protocol | Port | Sender requires |
+|--------|----------|------|----------------|
+| PulseAudio TCP | `module-tunnel-sink` | 4713/tcp | PipeWire or PulseAudio |
+| AirPlay | RAOP | 5000/tcp + dynamic UDP | AirPlay client (macOS/iOS/Shairport) |
+| RTP SAP | RTP multicast | 9875/udp | PipeWire with `libpipewire-module-rtp-send` |
+
+**PulseAudio TCP (recommended for Linux):**
+```bash
+# On sender, load tunnel sink → p50 speakers
+pactl load-module module-tunnel-sink server=p50:4713 \
+  sink_name=remote-p50 \
+  sink_properties=device.description="P50 Speakers"
+```
+Then switch default sink to `remote-p50`. Sender must reach p50 on port 4713.
+
+**AirPlay:**
+Simply select "P50 Speakers" from any AirPlay-compatible device on the LAN.
+
 ### Deploy
 ```bash
 nix run .#deploy-p50   # SSH to p50 (10.8.0.122)
