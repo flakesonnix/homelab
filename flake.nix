@@ -87,6 +87,11 @@
       url = "github:microvm-nix/microvm.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nix-topology = {
+      url = "github:oddlama/nix-topology";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs @ {
@@ -108,6 +113,7 @@
     framework,
     yammat,
     deploy-rs,
+    nix-topology,
     ...
   }: let
     mkHost = {
@@ -160,6 +166,7 @@
         sops-nix.nixosModules.sops
         home-manager.nixosModules.home-manager
         lanzaboote.nixosModules.lanzaboote
+        nix-topology.nixosModules.default
         nur.modules.nixos.default
         ({lib, ...}: {
           boot.loader.systemd-boot.enable = lib.mkForce false;
@@ -185,6 +192,7 @@
         ./modules/nixos/gnome-extensions.nix
         home-manager.nixosModules.home-manager
         nur.modules.nixos.default
+        nix-topology.nixosModules.default
         ./modules/nixos/hm-base.nix
         ./modules/nixos/pipebert.nix
         ./modules/nixos/deskflow.nix
@@ -197,6 +205,7 @@
         ./nix-settings.nix
         ./profiles/base.nix
         microvm.nixosModules.host
+        nix-topology.nixosModules.default
         ./hosts/mireo
         ./hosts/mireo/grafana-microvm.nix
         nur.modules.nixos.default
@@ -206,6 +215,7 @@
   in
     flake-parts.lib.mkFlake {inherit inputs;} (
       {
+        imports = [nix-topology.flakeModule];
         systems = ["x86_64-linux"];
 
         perSystem = {
@@ -298,6 +308,7 @@
             packages = {
               webui = import ./webui/default.nix {inherit pkgs;};
               full-ci-checks = fullCiChecks;
+              topology = self.topology.x86_64-linux.config.output;
             };
 
             apps = {
