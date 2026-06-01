@@ -1,5 +1,4 @@
 {lib, ...}: {
-
   networking.nat.forwardPorts = [
     {
       sourcePort = 9001;
@@ -17,60 +16,30 @@
   microvm.vms.monerod = {
     autostart = true;
     config = {
-      system.stateVersion = "25.11";
+      imports = [
+        (import ./microvm-base.nix {
+          ip = "10.8.0.4";
+          mac = "02:00:00:10:08:04";
+          interfaceId = "vm-monerod";
+        })
+      ];
+
       networking.hostName = "monerod";
       networking.firewall.allowedTCPPorts = [22 18080 18081 9001];
 
-      users.users.root.openssh.authorizedKeys.keys = [
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS"
+      microvm.mem = 2304;
+      microvm.vcpu = 2;
+      microvm.volumes = [
+        {
+          image = "monerod-data.img";
+          mountPoint = "/var/lib/monero";
+          size = 350000;
+        }
       ];
-      services.openssh = {
-        enable = true;
-        settings.PermitRootLogin = "yes";
-      };
 
-      microvm = {
-        hypervisor = "qemu";
-        mem = 2304;
-        vcpu = 2;
-        interfaces = [
-          {
-            type = "tap";
-            id = "vm-monerod";
-            mac = "02:00:00:10:08:04";
-          }
-        ];
-        shares = [
-          {
-            proto = "virtiofs";
-            tag = "ro-store";
-            source = "/nix/store";
-            mountPoint = "/nix/.ro-store";
-          }
-        ];
-        volumes = [
-          {
-            image = "monerod-data.img";
-            mountPoint = "/var/lib/monero";
-            size = 350000;
-          }
-        ];
-      };
-
-      systemd.network.enable = true;
       systemd.tmpfiles.rules = [
         "d /var/lib/monero 0750 monero monero - -"
       ];
-      systemd.network.networks."20-lan" = {
-        matchConfig.Type = "ether";
-        address = ["10.8.0.4/24"];
-        networkConfig = {
-          Gateway = "10.8.0.1";
-          DNS = ["10.8.0.1"];
-          DHCP = "no";
-          IPv6AcceptRA = false;
-        };
-      };
 
       services.monero = {
         enable = true;

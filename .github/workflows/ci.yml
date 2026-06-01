@@ -11,19 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            extra-substituters = https://nix-gaming.cachix.org
-            extra-trusted-public-keys = nix-gaming.cachix.org-1:nbjlureqMbRAxR1gJ/f3hxemL9svXaZF/Ees8vCUUs4=
-
+      - uses: ./.github/actions/setup-nix
       - run: nix eval .#formatter.x86_64-linux.drvPath --raw
         name: Evaluate formatter output
-
       - run: nix eval .#devShells.x86_64-linux.default.drvPath --raw
         name: Evaluate dev shell output
-
       - run: nix eval .#apps.x86_64-linux.rebuild.type --raw
         name: Evaluate app outputs
 
@@ -31,13 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            extra-substituters = https://nix-gaming.cachix.org
-            extra-trusted-public-keys = nix-gaming.cachix.org-1:nbjlureqMbRAxR1gJ/f3hxemL9svXaZF/Ees8vCUUs4=
-
+      - uses: ./.github/actions/setup-nix
       - run: nix build .#full-ci-checks --fallback
         name: Run full CI checks
 
@@ -45,13 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            extra-substituters = https://nix-gaming.cachix.org
-            extra-trusted-public-keys = nix-gaming.cachix.org-1:nbjlureqMbRAxR1gJ/f3hxemL9svXaZF/Ees8vCUUs4=
-
+      - uses: ./.github/actions/setup-nix
       - run: nix eval .#nixosConfigurations.omen.config.system.build.toplevel.outPath --raw
         name: Evaluate NixOS config
 
@@ -62,22 +42,14 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            extra-substituters = https://nix-gaming.cachix.org
-            extra-trusted-public-keys = nix-gaming.cachix.org-1:nbjlureqMbRAxR1gJ/f3hxemL9svXaZF/Ees8vCUUs4=
-
+      - uses: ./.github/actions/setup-nix
       - name: Build topology diagrams
         run: nix build .#topology
-
       - name: Update docs/topology/
         run: |
           mkdir -p docs/topology
           cp result/main.svg docs/topology/main.svg
           cp result/network.svg docs/topology/network.svg
-
       - name: Commit updated topology
         run: |
           git config user.name "github-actions[bot]"

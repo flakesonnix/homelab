@@ -1,5 +1,4 @@
 {pkgs, ...}: {
-
   systemd.network.networks."29-lan-microvm-cups" = {
     matchConfig.Name = "vm-cups";
     networkConfig.Bridge = "br0";
@@ -15,65 +14,34 @@
   microvm.vms.cups = {
     autostart = true;
     config = {
-      system.stateVersion = "25.11";
+      imports = [
+        (import ./microvm-base.nix {
+          ip = "10.8.0.6";
+          mac = "02:00:00:10:08:06";
+          interfaceId = "vm-cups";
+        })
+      ];
+
       networking.hostName = "cups";
       networking.firewall.allowedTCPPorts = [22 631];
       networking.firewall.allowedUDPPorts = [631 5353];
 
-      users.users.root.openssh.authorizedKeys.keys = [
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS"
+      microvm.mem = 512;
+      microvm.vcpu = 1;
+      microvm.volumes = [
+        {
+          image = "cups-etc.img";
+          mountPoint = "/etc/cups";
+          size = 256;
+        }
       ];
-      services.openssh = {
-        enable = true;
-        settings.PermitRootLogin = "yes";
-      };
-
-      microvm = {
-        hypervisor = "qemu";
-        mem = 512;
-        vcpu = 1;
-        interfaces = [
-          {
-            type = "tap";
-            id = "vm-cups";
-            mac = "02:00:00:10:08:06";
-          }
-        ];
-        shares = [
-          {
-            proto = "virtiofs";
-            tag = "ro-store";
-            source = "/nix/store";
-            mountPoint = "/nix/.ro-store";
-          }
-        ];
-        volumes = [
-          {
-            image = "cups-etc.img";
-            mountPoint = "/etc/cups";
-            size = 256;
-          }
-        ];
-        # Epson ET-2860 USB passthrough (04b8:11c8)
-        qemu.extraArgs = [
-          "-device"
-          "qemu-xhci,id=xhci"
-          "-device"
-          "usb-host,vendorid=0x04b8,productid=0x11c8"
-        ];
-      };
-
-      systemd.network.enable = true;
-      systemd.network.networks."20-lan" = {
-        matchConfig.Type = "ether";
-        address = ["10.8.0.6/24"];
-        networkConfig = {
-          Gateway = "10.8.0.1";
-          DNS = ["10.8.0.1"];
-          DHCP = "no";
-          IPv6AcceptRA = false;
-        };
-      };
+      # Epson ET-2860 USB passthrough (04b8:11c8)
+      microvm.qemu.extraArgs = [
+        "-device"
+        "qemu-xhci,id=xhci"
+        "-device"
+        "usb-host,vendorid=0x04b8,productid=0x11c8"
+      ];
 
       services.printing = {
         enable = true;

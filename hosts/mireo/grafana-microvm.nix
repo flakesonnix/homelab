@@ -1,4 +1,4 @@
-{lib, ...}: let
+{...}: let
   dashboard = builtins.toJSON {
     annotations.list = [];
     editable = true;
@@ -535,52 +535,32 @@ in {
   microvm.vms.grafana = {
     autostart = true;
     config = {
-      system.stateVersion = "25.11";
+      imports = [
+        (import ./microvm-base.nix {
+          ip = "10.8.0.2";
+          mac = "02:00:00:10:08:02";
+          interfaceId = "vm-grafana";
+        })
+      ];
+
       networking.hostName = "grafana";
       networking.firewall.allowedTCPPorts = [22 3000 9090];
 
-      users.users.root.openssh.authorizedKeys.keys = [
-        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS"
+      microvm.mem = 768;
+      microvm.vcpu = 2;
+      microvm.volumes = [
+        {
+          image = "grafana-data.img";
+          mountPoint = "/var/lib/grafana";
+          size = 1024;
+        }
+        {
+          image = "prometheus-data.img";
+          mountPoint = "/var/lib/prometheus2";
+          size = 1024;
+        }
       ];
-      services.openssh = {
-        enable = true;
-        settings.PermitRootLogin = "yes";
-      };
 
-      microvm = {
-        hypervisor = "qemu";
-        mem = 768;
-        vcpu = 2;
-        interfaces = [
-          {
-            type = "tap";
-            id = "vm-grafana";
-            mac = "02:00:00:10:08:02";
-          }
-        ];
-        shares = [
-          {
-            proto = "virtiofs";
-            tag = "ro-store";
-            source = "/nix/store";
-            mountPoint = "/nix/.ro-store";
-          }
-        ];
-        volumes = [
-          {
-            image = "grafana-data.img";
-            mountPoint = "/var/lib/grafana";
-            size = 1024;
-          }
-          {
-            image = "prometheus-data.img";
-            mountPoint = "/var/lib/prometheus2";
-            size = 1024;
-          }
-        ];
-      };
-
-      systemd.network.enable = true;
       systemd.tmpfiles.rules = [
         "d /var/lib/grafana 0750 grafana grafana -"
         "d /var/lib/prometheus2 0750 prometheus prometheus -"
@@ -589,16 +569,6 @@ in {
         ForwardToConsole=yes
         MaxLevelConsole=debug
       '';
-      systemd.network.networks."20-lan" = {
-        matchConfig.Type = "ether";
-        address = ["10.8.0.2/24"];
-        networkConfig = {
-          Gateway = "10.8.0.1";
-          DNS = ["10.8.0.1"];
-          DHCP = "no";
-          IPv6AcceptRA = false;
-        };
-      };
 
       environment.etc."grafana-dashboards/mireo-router.json".text = dashboard;
 

@@ -1,7 +1,4 @@
-{lib, pkgs, ...}: let
-  keys = import ../../ssh-public-keys.nix {inherit lib;};
-in {
-
+{pkgs, ...}: {
   systemd.network.networks."30-lan-microvm-aptcache" = {
     matchConfig.Name = "vm-aptcache";
     networkConfig.Bridge = "br0";
@@ -12,15 +9,26 @@ in {
   microvm.vms.aptcache = {
     autostart = true;
     config = {
-      system.stateVersion = "25.11";
+      imports = [
+        (import ./microvm-base.nix {
+          ip = "10.8.0.8";
+          mac = "02:00:00:10:08:08";
+          interfaceId = "vm-aptcache";
+        })
+      ];
+
       networking.hostName = "aptcache";
       networking.firewall.allowedTCPPorts = [22 3142];
 
-      users.users.root.openssh.authorizedKeys.keys = [keys.lucy.servers];
-      services.openssh = {
-        enable = true;
-        settings.PermitRootLogin = "yes";
-      };
+      microvm.mem = 512;
+      microvm.vcpu = 1;
+      microvm.volumes = [
+        {
+          image = "aptcache-data.img";
+          mountPoint = "/var/cache/apt-cacher-ng";
+          size = 8192;
+        }
+      ];
 
       users.users.apt-cacher-ng = {
         isSystemUser = true;
@@ -57,46 +65,6 @@ in {
         "d /var/cache/apt-cacher-ng 0750 apt-cacher-ng apt-cacher-ng -"
         "d /var/log/apt-cacher-ng 0750 apt-cacher-ng apt-cacher-ng -"
       ];
-
-      microvm = {
-        hypervisor = "qemu";
-        mem = 512;
-        vcpu = 1;
-        interfaces = [
-          {
-            type = "tap";
-            id = "vm-aptcache";
-            mac = "02:00:00:10:08:08";
-          }
-        ];
-        shares = [
-          {
-            proto = "virtiofs";
-            tag = "ro-store";
-            source = "/nix/store";
-            mountPoint = "/nix/.ro-store";
-          }
-        ];
-        volumes = [
-          {
-            image = "aptcache-data.img";
-            mountPoint = "/var/cache/apt-cacher-ng";
-            size = 8192;
-          }
-        ];
-      };
-
-      systemd.network.enable = true;
-      systemd.network.networks."20-lan" = {
-        matchConfig.Type = "ether";
-        address = ["10.8.0.8/24"];
-        networkConfig = {
-          Gateway = "10.8.0.1";
-          DNS = ["10.8.0.1"];
-          DHCP = "no";
-          IPv6AcceptRA = false;
-        };
-      };
     };
   };
 }

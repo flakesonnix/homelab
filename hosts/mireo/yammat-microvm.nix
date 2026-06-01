@@ -9,7 +9,6 @@
     meta = (old.meta or {}) // {mainProgram = "yammat";};
   });
 in {
-
   systemd.network.networks."27-lan-microvm-yammat" = {
     matchConfig.Name = "vm-yammat";
     networkConfig.Bridge = "br0";
@@ -20,62 +19,32 @@ in {
   microvm.vms.yammat = {
     autostart = true;
     config = {
-      imports = [yammat.nixosModule];
+      imports = [
+        yammat.nixosModule
+        (import ./microvm-base.nix {
+          ip = "10.8.0.5";
+          mac = "02:00:00:10:08:05";
+          interfaceId = "vm-yammat";
+        })
+      ];
 
-      system.stateVersion = "25.11";
       networking.hostName = "yammat";
       networking.firewall.allowedTCPPorts = [22 3000];
 
-      users.users.root.openssh.authorizedKeys.keys = [keys.lucy.servers];
-      services.openssh = {
-        enable = true;
-        settings.PermitRootLogin = "yes";
-      };
-
-      microvm = {
-        hypervisor = "qemu";
-        mem = 2304;
-        vcpu = 2;
-        interfaces = [
-          {
-            type = "tap";
-            id = "vm-yammat";
-            mac = "02:00:00:10:08:05";
-          }
-        ];
-        shares = [
-          {
-            proto = "virtiofs";
-            tag = "ro-store";
-            source = "/nix/store";
-            mountPoint = "/nix/.ro-store";
-          }
-        ];
-        volumes = [
-          {
-            image = "yammat-postgres.img";
-            mountPoint = "/var/lib/postgresql";
-            size = 8192;
-          }
-          {
-            image = "yammat-state.img";
-            mountPoint = "/var/lib/yammat";
-            size = 128;
-          }
-        ];
-      };
-
-      systemd.network.enable = true;
-      systemd.network.networks."20-lan" = {
-        matchConfig.Type = "ether";
-        address = ["10.8.0.5/24"];
-        networkConfig = {
-          Gateway = "10.8.0.1";
-          DNS = ["10.8.0.1"];
-          DHCP = "no";
-          IPv6AcceptRA = false;
-        };
-      };
+      microvm.mem = 2304;
+      microvm.vcpu = 2;
+      microvm.volumes = [
+        {
+          image = "yammat-postgres.img";
+          mountPoint = "/var/lib/postgresql";
+          size = 8192;
+        }
+        {
+          image = "yammat-state.img";
+          mountPoint = "/var/lib/yammat";
+          size = 128;
+        }
+      ];
 
       services.yammat = {
         enable = true;
