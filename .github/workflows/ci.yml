@@ -14,7 +14,9 @@ jobs:
 
       - uses: cachix/install-nix-action@v27
         with:
-          install-url: https://nixos-nix-install-tests.s3.amazonaws.com/nix-install-2.24.7.x86_64-linux.tar.xz
+          extra_nix_config: |
+            extra-substituters = https://nix-gaming.cachix.org
+            extra-trusted-public-keys = nix-gaming.cachix.org-1:nbjlureqMbRAxR1gJ/f3hxemL9svXaZF/Ees8vCUUs4=
 
       - run: nix eval .#formatter.x86_64-linux.drvPath --raw
         name: Evaluate formatter output
@@ -32,9 +34,11 @@ jobs:
 
       - uses: cachix/install-nix-action@v27
         with:
-          install-url: https://nixos-nix-install-tests.s3.amazonaws.com/nix-install-2.24.7.x86_64-linux.tar.xz
+          extra_nix_config: |
+            extra-substituters = https://nix-gaming.cachix.org
+            extra-trusted-public-keys = nix-gaming.cachix.org-1:nbjlureqMbRAxR1gJ/f3hxemL9svXaZF/Ees8vCUUs4=
 
-      - run: nix build .#full-ci-checks
+      - run: nix build .#full-ci-checks --fallback
         name: Run full CI checks
 
   eval:
@@ -44,7 +48,9 @@ jobs:
 
       - uses: cachix/install-nix-action@v27
         with:
-          install-url: https://nixos-nix-install-tests.s3.amazonaws.com/nix-install-2.24.7.x86_64-linux.tar.xz
+          extra_nix_config: |
+            extra-substituters = https://nix-gaming.cachix.org
+            extra-trusted-public-keys = nix-gaming.cachix.org-1:nbjlureqMbRAxR1gJ/f3hxemL9svXaZF/Ees8vCUUs4=
 
       - run: nix eval .#nixosConfigurations.omen.config.system.build.toplevel.outPath --raw
         name: Evaluate NixOS config
@@ -59,7 +65,9 @@ jobs:
 
       - uses: cachix/install-nix-action@v27
         with:
-          install-url: https://nixos-nix-install-tests.s3.amazonaws.com/nix-install-2.24.7.x86_64-linux.tar.xz
+          extra_nix_config: |
+            extra-substituters = https://nix-gaming.cachix.org
+            extra-trusted-public-keys = nix-gaming.cachix.org-1:nbjlureqMbRAxR1gJ/f3hxemL9svXaZF/Ees8vCUUs4=
 
       - name: Build topology diagrams
         run: nix build .#topology
