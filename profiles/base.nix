@@ -32,7 +32,7 @@
       };
     };
 
-    services.printing.enable = true;
+    services.printing.enable = lib.mkDefault (!config.lucy.base.isServer);
 
     security.rtkit.enable = true;
 

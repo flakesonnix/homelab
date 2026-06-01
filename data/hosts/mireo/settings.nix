@@ -164,6 +164,10 @@
     };
   };
 
+  # Ensure dnsmasq starts after br0 has its IP address (avoids "unknown interface br0" race)
+  systemd.services.dnsmasq.after = ["network-addresses-br0.service"];
+  systemd.services.dnsmasq.requires = ["network-addresses-br0.service"];
+
   boot.loader.systemd-boot.enable = true;
 
   nix.settings.substituters = lib.mkBefore ["http://omen:5000"];
