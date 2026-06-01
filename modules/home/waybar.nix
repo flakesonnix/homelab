@@ -170,8 +170,8 @@
       };
       tooltip-format = "{player}\n{title}\n{artist} — {album}\n{status}";
       on-click = "playerctl play-pause";
-      on-click-middle = "${mediaPopupScript}";
-      on-click-right = "${playerPickerScript}";
+      on-click-middle = "${mediaPopupScript}/bin/waybar-media-popup";
+      on-click-right = "${playerPickerScript}/bin/waybar-player-picker";
       on-scroll-up = "playerctl previous";
       on-scroll-down = "playerctl next";
     };
@@ -232,7 +232,7 @@
     };
 
     "custom/notifications" = {
-      exec = "${notifScript}";
+      exec = "${notifScript}/bin/waybar-notifications";
       return-type = "json";
       interval = 3;
       on-click = "makoctl dismiss --all";

@@ -9,7 +9,7 @@ in {
     streamTo = lib.mkOption {
       type = lib.types.str;
       default = "";
-      description = "Hostname or IP of the remote audio sink to stream to";
+      description = "Hostname or IP of the remote pipebert receiver (connects to PulseAudio TCP port 4713)";
     };
   };
 
@@ -20,13 +20,13 @@ in {
       alsa.enable = true;
       wireplumber.enable = true;
       extraConfig = {
-        client = {
-          "context.properties" = {
-            "remote.#" = {
-              "remote.tcp" = cfg.streamTo;
-              "connect.autoconnect" = true;
-            };
-          };
+        pipewire-pulse."30-tunnel-sink" = {
+          "pulse.cmd" = [
+            {
+              cmd = "load-module";
+              args = "module-tunnel-sink server=${cfg.streamTo}:4713 sink_name=remote-${cfg.streamTo} sink_properties=device.description=Remote\\ Audio\\ (${cfg.streamTo})";
+            }
+          ];
         };
       };
     };

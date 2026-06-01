@@ -34,7 +34,7 @@ mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (
 - NVIDIA: lazy-load modprobe service, s2idle suspend, PRIME not enabled
 - Gaming: Steam, GameMode, Gamescope (capSysNice), MangoHud, performance governor
 - Asterisk SIP PBX
-- Audio streaming (RTP SAP receive via PipeWire)
+- Audio streaming → p50 (PipeWire tunnel sink → p50:4713 PulseAudio TCP)
 - Tailscale, Bluetooth
 
 ### Roles
@@ -70,7 +70,7 @@ nix run .#deploy-omen
 
 ### Features
 - GNOME shell (niri disabled)
-- Pipebert audio sink ("P50 Speakers") — PipeWire TCP + AirPlay
+- Pipebert audio sink ("P50 Speakers") — PulseAudio TCP :4713 + AirPlay + Mopidy
 - NVIDIA legacy_535 package override (`lib.mkForce` in `hosts/p50/host.nix`)
 - Power management disabled for NVIDIA on this machine
 

@@ -305,6 +305,8 @@
               ];
             };
 
+            topology.modules = [./topology.nix];
+
             packages = {
               webui = import ./webui/default.nix {inherit pkgs;};
               full-ci-checks = fullCiChecks;

@@ -31,16 +31,16 @@ in {
         };
         colors = {
           background = "${stripHash colors.base00}ee";
-          text = stripHash colors.base05;
-          prompt = stripHash colors.base0E;
-          placeholder = stripHash colors.base04;
-          input = stripHash colors.base07;
-          match = stripHash colors.base0C;
-          selection = stripHash colors.base0E;
-          selection-text = stripHash colors.base00;
-          selection-match = stripHash colors.base07;
-          counter = stripHash colors.base0A;
-          border = stripHash colors.base0E;
+          text = "${stripHash colors.base05}ff";
+          prompt = "${stripHash colors.base0E}ff";
+          placeholder = "${stripHash colors.base04}ff";
+          input = "${stripHash colors.base07}ff";
+          match = "${stripHash colors.base0C}ff";
+          selection = "${stripHash colors.base0E}ff";
+          selection-text = "${stripHash colors.base00}ff";
+          selection-match = "${stripHash colors.base07}ff";
+          counter = "${stripHash colors.base0A}ff";
+          border = "${stripHash colors.base0E}ff";
         };
       };
     };

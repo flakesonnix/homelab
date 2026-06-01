@@ -165,13 +165,17 @@ Generates `pjsip.conf` and `extensions.conf` from phone attrs. Built-in extensio
 
 ### `audio-stream.nix`
 
+Sender-side module. Creates PipeWire tunnel sink → remote PulseAudio TCP receiver.
+Used on omen → p50.
+
 Options namespace: `hq.audio.*`
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `streamTo` | str | `""` | Hostname/IP of remote PipeWire TCP sink |
+| `streamTo` | str | `""` | Hostname/IP of remote pipebert (PulseAudio TCP :4713) |
 
-When `streamTo != ""`: configures PipeWire client to auto-connect to remote TCP sink.
+When `streamTo != ""`: loads `module-tunnel-sink` → connects to `${streamTo}:4713`.
+Sink appears as `Remote Audio (<host>)` on sender. Sink switch via `audio-output [p50|local]` (bound to hotkey). Config: `lib/audio-scripts.nix`, patterns match `p50 speakers|pipebert|remote`.
 
 ---
 

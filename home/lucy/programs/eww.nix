@@ -253,19 +253,19 @@ in {
       (defpoll clock_time :interval "1s" "date +'%H:%M'")
       (defpoll clock_date :interval "30s" "date +'%A, %b %d'")
       (defpoll ram_usage :interval "5s" "sh -lc \"free | awk '/Mem:/ {printf \\\"%.0f%%%%\\\", $3/$2 * 100}'\"")
-      (defpoll cpu_usage :interval "5s" "sh -lc \"top -bn1 | awk '/Cpu\\(s\\)/ {printf \\\"%.0f%%%%\\\", $2}'\"")
+      (defpoll cpu_usage :interval "5s" "sh -lc \"awk 'NR==1{u=$2+$4;t=$2+$3+$4+$5;printf \\\"%.0f%%%%\\\",u/t*100}' /proc/stat\"")
+      (defpoll ram_pct :interval "5s" "sh -lc \"free | awk '/Mem:/ {printf \\\"%.0f\\\", $3/$2 * 100}'\"")
+      (defpoll cpu_pct :interval "5s" "sh -lc \"awk 'NR==1{u=$2+$4;t=$2+$3+$4+$5;printf \\\"%.0f\\\",u/t*100}' /proc/stat\"")
       (defpoll volume_text :interval "3s" "sh -lc \"wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{if ($3 == \\\"[MUTED]\\\") print \\\"mute\\\"; else printf \\\"%d%%\\\", $2 * 100}'\"")
       (defpoll network_text :interval "10s" "sh -lc \"ssid=\\$(nmcli -t -f active,ssid dev wifi | awk -F: '$1==\\\"yes\\\" {print $2; exit}'); printf '%s' \\\"''${ssid:-offline}\\\"\"")
       (defpoll media_text :interval "3s" "sh -lc \"playerctl metadata --format '{{artist}} - {{title}}' 2>/dev/null | cut -c1-40 || echo idle\"")
       (defpoll weather_text :interval "1800s" "sh -lc \"curl -fsS 'https://wttr.in/?format=%C+%t' 2>/dev/null || echo offline\"")
 
       (defwindow topbar
-        :anchor "top center"
-        :windowtype "dock"
-        :layer "top"
-        :exclusive true
-        :reserve (struts :distance "60px" :side "top")
         :geometry (geometry :x "18px" :y "14px" :width "calc(100% - 36px)" :height "52px" :anchor "top center")
+        :stacking "dock"
+        :exclusive true
+        :namespace "topbar"
         :class "eww-topbar"
         (box
           :class "topbar row"
@@ -317,12 +317,10 @@ in {
       )
 
       (defwindow sidebar
-        :anchor "top right"
-        :windowtype "layer"
-        :layer "top"
+        :geometry (geometry :x "0px" :y "0px" :width "320px" :height "100%" :anchor "top right")
+        :stacking "fg"
         :exclusive false
-        :width 320
-        :height 1080
+        :namespace "sidebar"
         :class "eww-sidebar"
         (box
           :class "sidebar"
@@ -339,7 +337,7 @@ in {
             :orientation "vertical"
             (label :text "󰠋 RAM" :class "widget-title")
             (scale
-              :value ram_usage
+              :value ram_pct
               :min 0
               :max 100
               :class "ram-scale"
@@ -350,7 +348,7 @@ in {
             :orientation "vertical"
             (label :text "󰐎 CPU" :class "widget-title")
             (scale
-              :value cpu_usage
+              :value cpu_pct
               :min 0
               :max 100
               :class "cpu-scale"

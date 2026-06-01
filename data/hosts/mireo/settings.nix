@@ -171,4 +171,10 @@
   boot.loader.systemd-boot.enable = true;
 
   nix.settings.substituters = lib.mkBefore ["http://omen:5000"];
+
+  topology.self = {
+    deviceType = "router";
+    icon = "devices.router";
+    hardware.info = "Mini-PC · 4-port NIC";
+  };
 }

@@ -43,4 +43,9 @@
     role = "client";
     serverAddress = "omen";
   };
+
+  topology.self = {
+    icon = "devices.desktop";
+    hardware.info = "ThinkPad P50 · NVIDIA 535";
+  };
 }

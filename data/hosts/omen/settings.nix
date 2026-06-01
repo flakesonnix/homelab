@@ -25,6 +25,11 @@
 
   niri.users = ["lucy"];
 
+  topology.self = {
+    icon = "devices.laptop";
+    hardware.info = "HP Omen · NVIDIA RTX 2070";
+  };
+
   hq.deskflow = {
     enable = true;
     role = "server";

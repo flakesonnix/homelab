@@ -52,12 +52,6 @@ in
   // {
     stylix.image = stylixImage;
   }
-  // lib.optionalAttrs isOmen {
-    # Native Wayland on NVIDIA driver 555+ is smooth. Keep this block for
-    # future XWayland fallback if regressions appear.
-
-    programs.waybar.enable = lib.mkForce true;
-  }
   // lib.optionalAttrs isP50 {
     # Keep p50 as simple GNOME/media machine, not full omen desktop/dev setup.
     programs.niri.enable = lib.mkForce false;
