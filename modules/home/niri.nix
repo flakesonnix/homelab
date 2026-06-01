@@ -111,6 +111,7 @@
     ${mkBindWithAttrs (keys.alt symbols.keys.enter) {hotkey-overlay-title = "Open a Terminal: alacritty";} (actions.spawn ["${lib.getExe pkgs.alacritty}"])}
     ${mkBindWithAttrs (keys.alt "D") {hotkey-overlay-title = "Run an Application: fuzzel";} (actions.spawn ["${lib.getExe pkgs.fuzzel}"])}
     ${mkBindWithAttrs (keys.altCtrl symbols.keys.escape) {hotkey-overlay-title = "Lock the Screen: swaylock";} (actions.shell lockCommand)}
+    ${mkBindWithAttrs (keys.altShift "S") {hotkey-overlay-title = "Audio Output: pwvucontrol";} (actions.spawn ["${lib.getExe pkgs.pwvucontrol}"])}
 
     XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1+ -l 1.0"; }
     XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1-"; }
