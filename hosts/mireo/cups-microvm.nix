@@ -28,7 +28,6 @@
 
       microvm.mem = 512;
       microvm.vcpu = 1;
-      microvm.qemu.package = pkgs.qemu_full;
       microvm.volumes = [
         {
           image = "cups-etc.img";
@@ -36,12 +35,15 @@
           size = 256;
         }
       ];
-      # Epson ET-2860 USB passthrough (04b8:11c8)
-      microvm.qemu.extraArgs = [
-        "-device"
-        "qemu-xhci,id=xhci"
-        "-device"
-        "usb-host,vendorid=0x04b8,productid=0x11c8"
+      # Epson ET-2860 USB passthrough (04b8:11c8).
+      # microvm.devices with bus="usb" triggers libusb-enabled QEMU build,
+      # adds qemu-xhci, and enables USB on the machine. Raw -device args
+      # via qemu.extraArgs bypass this and fail with "usb=off".
+      microvm.devices = [
+        {
+          bus = "usb";
+          path = "vendorid=0x04b8,productid=0x11c8";
+        }
       ];
 
       services.printing = {

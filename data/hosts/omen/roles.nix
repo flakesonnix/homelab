@@ -1,6 +1,5 @@
 [
   "desktop"
   "dev"
-  "llm"
   "gaming"
 ]

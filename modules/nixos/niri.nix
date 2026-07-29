@@ -18,7 +18,7 @@
     "--greeting 'Welcome back'"
     "--power-shutdown 'systemctl poweroff'"
     "--power-reboot 'systemctl reboot'"
-    "--cmd ${lib.getExe' pkgs.niri "niri-session"}"
+    "--cmd ${lib.getExe' config.programs.niri.package "niri-session"}"
   ];
 in {
   options.niri.users = lib.mkOption {

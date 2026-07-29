@@ -21,6 +21,8 @@
     "tpm.disable=1"
     "nvme_core.default_ps_max_latency_us=0"
     "console=tty1"
+    "initcall_blacklist=ucsi_acpi_init"
+    "modprobe.blacklist=ucsi_acpi"
   ];
 
   niri.users = ["lucy"];

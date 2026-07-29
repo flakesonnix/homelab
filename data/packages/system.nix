@@ -28,22 +28,6 @@ in {
     tags = ["desktop" "chat"];
   };
 
-  lmstudio = {
-    description = "LM Studio";
-    targets = ["system"];
-    packages.system = [
-      (pkgs.appimageTools.wrapType2 {
-        pname = "lmstudio";
-        version = "latest";
-        src = pkgs.fetchurl {
-          url = "https://lmstudio.ai/download/latest/linux/x64";
-          sha256 = "sha256-M7doFWVEyzcDJF4M+h4WKR+Q45yn3FZc2vZbzjYWBPE=";
-        };
-      })
-    ];
-    tags = ["desktop" "llm"];
-  };
-
   clion = {
     description = "CLion IDE";
     targets = ["user"];

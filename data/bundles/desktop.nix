@@ -16,7 +16,7 @@
     starship.enable = true;
     thunderbird.enable = true;
     vesktop.enable = true;
-    waybar.enable = false;
+    waybar.enable = true;
     zathura.enable = true;
   };
 
@@ -37,14 +37,4 @@
     ];
   };
 
-  xdg.desktopEntries.lmstudio = {
-    name = "LM Studio";
-    genericName = "LLM Runner";
-    comment = "Run LLMs locally";
-    exec = "lmstudio --no-sandbox %U";
-    icon = "lmstudio";
-    terminal = false;
-    categories = ["Development"];
-    mimeType = ["x-scheme-handler/chat"];
-  };
 }
