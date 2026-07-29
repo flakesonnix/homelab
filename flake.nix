@@ -166,7 +166,6 @@
         sops-nix.nixosModules.sops
         home-manager.nixosModules.home-manager
         lanzaboote.nixosModules.lanzaboote
-        nix-topology.nixosModules.default
         nur.modules.nixos.default
         ({lib, ...}: {
           boot.loader.systemd-boot.enable = lib.mkForce false;
@@ -186,7 +185,6 @@
         ./nix-settings.nix
         ./profiles/base.nix
         microvm.nixosModules.host
-        nix-topology.nixosModules.default
         ./hosts/mireo
         ./hosts/mireo/grafana-microvm.nix
         nur.modules.nixos.default
@@ -285,6 +283,14 @@
             };
 
             topology.modules = [./topology.nix];
+            topology.nixosConfigurations = builtins.mapAttrs (_: cfg:
+              cfg.extendModules {
+                modules = [
+                  nix-topology.nixosModules.default
+                  ./modules/nixos/topology.nix
+                ];
+              }
+            ) self.nixosConfigurations;
 
             packages = {
               full-ci-checks = fullCiChecks;

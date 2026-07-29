@@ -27,7 +27,7 @@
 
   niri.users = ["lucy"];
 
-  topology.self = {
+  lucy.topology = {
     icon = "devices.laptop";
     hardware.info = "HP Omen · NVIDIA RTX 2070";
   };
