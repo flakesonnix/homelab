@@ -103,7 +103,7 @@
   virtualisation.podman.enable = true;
   virtualisation.oci-containers.backend = "podman";
   virtualisation.oci-containers.containers.iventoy = {
-    image = "garybowers/iventoy:latest";
+    image = "docker.io/garybowers/iventoy:latest";
     extraOptions = [
       "--network=host"
       "--privileged"
