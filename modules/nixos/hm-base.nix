@@ -2,7 +2,6 @@
   lib,
   stylix,
   nix-flatpak,
-  nix-index-database,
   frameworkLib,
   ...
 }: {
@@ -19,7 +18,6 @@
       ../../home/lucy
       stylix.homeModules.stylix
       nix-flatpak.homeManagerModules.nix-flatpak
-      nix-index-database.homeModules.default
     ];
     nixpkgs.config.allowUnfree = true;
   };

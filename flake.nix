@@ -40,10 +40,6 @@
       url = "github:hercules-ci/flake-parts";
     };
 
-    nix-index-database = {
-      url = "github:nix-community/nix-index-database";
-    };
-
     nixos-hardware = {
       url = "github:NixOS/nixos-hardware/master";
     };
@@ -103,7 +99,6 @@
     nix-flatpak,
     sops-nix,
     flake-parts,
-    nix-index-database,
     lanzaboote,
     run0-sudo-shim,
     microvm,
@@ -126,12 +121,12 @@
       };
 
     omenSpecialArgs = {
-      inherit wrappers stylix nix-flatpak nix-index-database nixos-hardware nixGaming;
+      inherit wrappers stylix nix-flatpak nixos-hardware nixGaming;
       frameworkLib = framework.lib;
     };
 
     desktopSpecialArgs = {
-      inherit wrappers stylix nix-flatpak nix-index-database nixos-hardware;
+      inherit wrappers stylix nix-flatpak nixos-hardware;
       frameworkLib = framework.lib;
     };
 
