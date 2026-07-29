@@ -4,11 +4,6 @@
     networkConfig.Bridge = "br0";
   };
 
-  # Give the microvm QEMU process access to the Epson ET-2860 (04b8:11c8)
-  services.udev.extraRules = ''
-    SUBSYSTEM=="usb", ATTR{idVendor}=="04b8", ATTR{idProduct}=="11c8", GROUP="kvm", MODE="0660"
-  '';
-
   microvm.autostart = ["cups"];
 
   microvm.vms.cups = {
@@ -35,17 +30,6 @@
           size = 256;
         }
       ];
-      # Epson ET-2860 USB passthrough (04b8:11c8).
-      # microvm.devices with bus="usb" triggers libusb-enabled QEMU build,
-      # adds qemu-xhci, and enables USB on the machine.
-      microvm.qemu.package = pkgs.qemu_full;
-      microvm.devices = [
-        {
-          bus = "usb";
-          path = "vendorid=0x04b8,productid=0x11c8";
-        }
-      ];
-
       services.printing = {
         enable = true;
         listenAddresses = ["*:631"];
