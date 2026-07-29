@@ -35,7 +35,8 @@
       package = config.boot.kernelPackages.nvidiaPackages.production;
     };
 
-    boot.initrd.kernelModules = []; # Lazy-load, not in initrd
+    boot.blacklistedKernelModules = ["nouveau"];
+    boot.initrd.kernelModules = ["nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm"];
 
     boot.kernelParams = [
       "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
