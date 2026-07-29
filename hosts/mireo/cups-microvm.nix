@@ -37,8 +37,8 @@
       ];
       # Epson ET-2860 USB passthrough (04b8:11c8).
       # microvm.devices with bus="usb" triggers libusb-enabled QEMU build,
-      # adds qemu-xhci, and enables USB on the machine. Raw -device args
-      # via qemu.extraArgs bypass this and fail with "usb=off".
+      # adds qemu-xhci, and enables USB on the machine.
+      microvm.qemu.package = pkgs.qemu_full;
       microvm.devices = [
         {
           bus = "usb";
@@ -78,6 +78,13 @@
           location = "mireo";
           deviceUri = "usb://EPSON/ET-2860%20Series";
           model = "epson-inkjet-printer-escpr2/Epson-ET-2860_Series-epson-escpr2-en.ppd";
+          ppdOptions.PageSize = "A4";
+        }
+        {
+          name = "Lexmark";
+          location = "mireo";
+          deviceUri = "ipp://10.8.0.197/ipp/print";
+          model = "everywhere";
           ppdOptions.PageSize = "A4";
         }
       ];

@@ -1,8 +1,8 @@
 # Printing
 
-Network printer: **Epson ET-2860**, hosted in the `cups` microVM on mireo at `10.8.0.6:631`.
+Network printers: **Epson ET-2860** (USB) and **Lexmark** (driverless IPP), hosted in the `cups` microVM on mireo at `10.8.0.6:631`.
 
-The printer is shared via IPP and advertised via Avahi mDNS (`_ipp._tcp`), so it auto-discovers on any LAN machine with Avahi support.
+The printers are shared via IPP and advertised via Avahi mDNS (`_ipp._tcp`), so they auto-discover on any LAN machine with Avahi support.
 
 ---
 
@@ -71,6 +71,14 @@ ipp://10.8.0.6/printers/Epson-ET-2860
 
 Select driver: **Epson ET-2860 Series, ESC/P-R 2** (from the epson-escpr2/escpr package).
 
+For the Lexmark (driverless IPP):
+
+```
+ipp://10.8.0.6/printers/Lexmark
+```
+
+Select driver: **IPP Everywhere**.
+
 **Command line:**
 
 ```bash
@@ -80,6 +88,12 @@ lpadmin -p Epson-ET-2860 \
   -m epson-inkjet-printer-escpr2/Epson-ET-2860_Series-epson-escpr2-en.ppd \
   -o PageSize=A4
 
+lpadmin -p Lexmark \
+  -E \
+  -v ipp://10.8.0.6/printers/Lexmark \
+  -m everywhere \
+  -o PageSize=A4
+
 lpoptions -d Epson-ET-2860
 ```
 
@@ -87,6 +101,7 @@ Verify:
 
 ```bash
 lpstat -p Epson-ET-2860
+lpstat -p Lexmark
 ```
 
 ---
@@ -95,6 +110,7 @@ lpstat -p Epson-ET-2860
 
 ```bash
 echo "test" | lp -d Epson-ET-2860
+echo "test" | lp -d Lexmark
 ```
 
 ---
