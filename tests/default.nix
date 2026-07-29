@@ -120,14 +120,14 @@
     name = "host-${host}";
     value = depAttr host self.nixosConfigurations.${host}.config.system.build.toplevel;
   }) ["omen" "p50" "mireo"]);
-  _formatterDep = {fmt = depAttr "fmt" self.formatter.${pkgs.system};};
+  _formatterDep = {fmt = depAttr "fmt" self.formatter.${pkgs.stdenv.hostPlatform.system};};
   _devShellDeps = {
-    shell-default = depAttr "shell-default" self.devShells.${pkgs.system}.default;
-    shell-gtarp = depAttr "shell-gtarp" (self.devShells.${pkgs.system}.gtarp or null);
+    shell-default = depAttr "shell-default" self.devShells.${pkgs.stdenv.hostPlatform.system}.default;
+    shell-gtarp = depAttr "shell-gtarp" (self.devShells.${pkgs.stdenv.hostPlatform.system}.gtarp or null);
   };
   _appDeps = builtins.listToAttrs (map (name: {
       inherit name;
-      value = depAttr name self.apps.${pkgs.system}.${name}.program;
+      value = depAttr name self.apps.${pkgs.stdenv.hostPlatform.system}.${name}.program;
     }) [
       "rebuild"
       "check"

@@ -5,7 +5,7 @@
   ...
 }: let
   keys = import ../../ssh-public-keys.nix {inherit lib;};
-  yammatPackage = yammat.packages.${pkgs.system}.yammat.overrideAttrs (old: {
+  yammatPackage = yammat.packages.${pkgs.stdenv.hostPlatform.system}.yammat.overrideAttrs (old: {
     meta = (old.meta or {}) // {mainProgram = "yammat";};
   });
 in {
