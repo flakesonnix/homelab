@@ -34,11 +34,9 @@ _: {
       });
       niri = prev.niri.override {inherit (final) libdisplay-info;};
 
-      ceph = prev.ceph.overrideScope (cself: cprev: {
-        ceph-python-common = cprev.ceph-python-common.overridePythonAttrs (old: {
-          pythonImportsCheck = [];
-        });
-      });
+      qemu_full = prev.qemu_full.override {
+        cephSupport = false;
+      };
     })
   ];
 }
