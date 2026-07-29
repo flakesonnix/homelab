@@ -7,7 +7,7 @@ in {
   # The jq filter is generated from the pattern list at eval time.
   mkAudioSwitcher = {
     name ? "audio-output",
-    remotePatterns ? ["p50 speakers" "pipebert" "remote"],
+    remotePatterns ? ["p50 speakers" "remote"],
   }: let
     mkContains = pat: ''((.description // "") | ascii_downcase | contains("${pat}")) or ((.name // "") | ascii_downcase | contains("${pat}"))'';
     remoteSelect = lib.concatStringsSep " or " (map mkContains remotePatterns);

@@ -6,13 +6,6 @@
   networking.hostName = "p50";
   networking.networkmanager.enable = true;
 
-  lucy.pipebert = {
-    enable = true;
-    user = "lucy";
-    name = "P50 Speakers";
-    openFirewall = true;
-  };
-
   lucy.gnome.enable = true;
   programs.niri.enable = lib.mkForce false;
 
@@ -31,12 +24,6 @@
   nix.settings.substituters = lib.mkBefore ["http://omen:5000"];
 
   hardware.nvidia.powerManagement.enable = lib.mkForce false;
-
-  lucy.pipebert.sinkNode = {
-    enableRename = true;
-    nodeName = "p50-internal-audio";
-    description = "P50 Internal Audio";
-  };
 
   hq.deskflow = {
     enable = true;

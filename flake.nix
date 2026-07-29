@@ -194,7 +194,6 @@
         nur.modules.nixos.default
         nix-topology.nixosModules.default
         ./modules/nixos/hm-base.nix
-        ./modules/nixos/pipebert.nix
         ./modules/nixos/deskflow.nix
         run0-sudo-shim.nixosModules.default
       ];
@@ -369,7 +368,6 @@
           inherit (framework) lib;
 
           nixosModules = {
-            pipebert = import ./modules/nixos/pipebert.nix;
             nixos = import ./modules/nixos/default.nix;
             home = import ./modules/home/default.nix;
           };

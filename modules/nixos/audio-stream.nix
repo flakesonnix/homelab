@@ -9,7 +9,7 @@ in {
     streamTo = lib.mkOption {
       type = lib.types.str;
       default = "";
-      description = "Hostname or IP of the remote pipebert receiver (connects to PulseAudio TCP port 4713)";
+      description = "Hostname or IP of the remote PulseAudio TCP receiver (port 4713)";
     };
   };
 

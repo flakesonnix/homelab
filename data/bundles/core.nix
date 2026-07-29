@@ -31,6 +31,7 @@
     homeDirectory = "/home/lucy";
     stateVersion = "26.05";
     pointerCursor = {
+      enable = true;
       gtk.enable = true;
       x11.enable = true;
       name = "HelloKittyPeachMilkDonut";
