@@ -219,9 +219,9 @@
     };
   };
 
-  # Ensure dnsmasq starts after br0 has its IP address (avoids "unknown interface br0" race)
-  systemd.services.dnsmasq.after = ["network-addresses-br0.service"];
-  systemd.services.dnsmasq.requires = ["network-addresses-br0.service"];
+  # Ensure dnsmasq starts after br0 exists (avoids "unknown interface" race)
+  systemd.services.dnsmasq.after = ["sys-devices-virtual-net-br0.device"];
+  systemd.services.dnsmasq.bindsTo = ["sys-devices-virtual-net-br0.device"];
 
   boot.loader.systemd-boot.enable = true;
 
