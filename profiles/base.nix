@@ -34,7 +34,7 @@
 
     services.printing.enable = lib.mkDefault (!config.lucy.base.isServer);
 
-    security.rtkit.enable = true;
+    security.rtkit.enable = lib.mkDefault (!config.lucy.base.isServer);
 
     programs.gnupg.agent = {
       enable = true;

@@ -3,7 +3,6 @@
     ./base.nix
   ];
 
-  services.xserver.enable = lib.mkDefault true;
   services.xserver.xkb = {
     layout = lib.mkDefault "us";
     variant = "";
