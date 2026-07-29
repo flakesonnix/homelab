@@ -13,7 +13,6 @@ Internet (IPv4 + IPv6 via FritzBox)
     ├── 10.8.0.3  network-services vm (bridge stub)
     ├── 10.8.0.4  monerod microvm     (Monero node + Tor relay)
     ├── 10.8.0.5  yammat microvm      (YAMMAT event management)
-    ├── 10.8.0.122  p50
     └── 10.8.0.176  omen
 ```
 
@@ -34,7 +33,7 @@ mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (
 - NVIDIA: lazy-load modprobe service, s2idle suspend, PRIME not enabled
 - Gaming: Steam, GameMode, Gamescope (capSysNice), MangoHud, performance governor
 - Asterisk SIP PBX
-- Audio streaming → p50 (PipeWire tunnel sink → p50:4713 PulseAudio TCP)
+- Audio streaming → remote tunnel sink
 - Tailscale, Bluetooth
 
 ### Roles
@@ -60,56 +59,7 @@ sudo nixos-rebuild switch --flake ~/Documents/dotfiles#omen
 nix run .#deploy-omen
 ```
 
----
 
-## p50
-
-**Role:** Desktop workstation  
-**Hardware:** ThinkPad P50, NVIDIA (forced to legacy_535 driver)  
-**IP:** 10.8.0.122
-
-### Features
-- GNOME shell (niri disabled)
-- Pipebert audio sink ("P50 Speakers") — PulseAudio TCP :4713 + AirPlay + Mopidy
-- NVIDIA legacy_535 package override (`lib.mkForce` in `hosts/p50/host.nix`)
-- Power management disabled for NVIDIA on this machine
-
-### Roles
-`desktop`, `dev`
-
-### Config files
-- `data/hosts/p50/settings.nix` — hostname, pipebert config, GNOME enable, NVIDIA overrides
-- `data/hosts/p50/roles.nix` — role list
-- `hosts/p50/host.nix` — framework applyHost + legacy_535 override
-
-### Streaming audio to p50 from non-NixOS
-
-p50 runs Pipebert — a network audio receiver. It exposes 3 transports:
-
-| Method | Protocol | Port | Sender requires |
-|--------|----------|------|----------------|
-| PulseAudio TCP | `module-tunnel-sink` | 4713/tcp | PipeWire or PulseAudio |
-| AirPlay | RAOP | 5000/tcp + dynamic UDP | AirPlay client (macOS/iOS/Shairport) |
-| RTP SAP | RTP multicast | 9875/udp | PipeWire with `libpipewire-module-rtp-send` |
-
-**PulseAudio TCP (recommended for Linux):**
-```bash
-# On sender, load tunnel sink → p50 speakers
-pactl load-module module-tunnel-sink server=p50:4713 \
-  sink_name=remote-p50 \
-  sink_properties=device.description="P50 Speakers"
-```
-Then switch default sink to `remote-p50`. Sender must reach p50 on port 4713.
-
-**AirPlay:**
-Simply select "P50 Speakers" from any AirPlay-compatible device on the LAN.
-
-### Deploy
-```bash
-nix run .#deploy-p50   # SSH to p50 (10.8.0.122)
-```
-
----
 
 ## mireo
 

@@ -32,12 +32,5 @@
     hardware.info = "HP Omen · NVIDIA RTX 2070";
   };
 
-  hq.deskflow = {
-    enable = true;
-    role = "server";
-    screenLayout = {
-      omen = { right = "p50"; };
-      p50 = { left = "omen"; };
-    };
-  };
+  hq.deskflow.enable = true;
 }

@@ -15,7 +15,7 @@
   allRoles = readNixDir ../data/roles;
   allBundles = readNixDir ../data/bundles;
   allPresets = readNixDir ../data/presets;
-  hostDataDirs = ["omen" "p50" "mireo"];
+  hostDataDirs = ["omen" "mireo"];
   homeDataDirs = ["lucy"];
 
   force = cond: msg:
@@ -119,7 +119,7 @@
   _hostDeps = builtins.listToAttrs (map (host: {
     name = "host-${host}";
     value = depAttr host self.nixosConfigurations.${host}.config.system.build.toplevel;
-  }) ["omen" "p50" "mireo"]);
+  }) ["omen" "mireo"]);
   _formatterDep = {fmt = depAttr "fmt" self.formatter.${pkgs.stdenv.hostPlatform.system};};
   _devShellDeps = {
     shell-default = depAttr "shell-default" self.devShells.${pkgs.stdenv.hostPlatform.system}.default;
@@ -135,7 +135,6 @@
       "check-full"
       "update"
       "deploy-omen"
-      "deploy-p50"
       "deploy-mireo"
     ]);
 in

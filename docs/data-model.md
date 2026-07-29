@@ -31,9 +31,6 @@ data/
 │   │   ├── packages.nix
 │   │   ├── power.nix
 │   │   └── services.nix
-│   ├── p50/
-│   │   ├── settings.nix
-│   │   └── roles.nix
 │   └── mireo/
 │       └── settings.nix
 └── home/lucy/
@@ -93,7 +90,7 @@ Roles are the top-level unit of intent. A host or home declares a list of role n
 
 ```
 data/hosts/omen/roles.nix   →  [ "desktop" "dev" "llm" "gaming" ]
-data/hosts/p50/roles.nix    →  [ "desktop" "dev" ]
+
 data/home/lucy/roles.nix    →  [ "core" "desktop" "dev" ]
 ```
 

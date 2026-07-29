@@ -2,15 +2,7 @@
 let
   cfg = config.hq.deskflow;
 
-  # generate section-based server config, e.g.:
-  #   section: screens
-  #       omen:
-  #       p50:
-  #   end
-  #   section: links
-  #       omen:
-  #           right = p50
-  #   end
+  # generate section-based server config
   #   section: options
   #       heartbeat = 5000
   #       protocol = barrier
@@ -100,8 +92,7 @@ in {
       });
       default = {};
       example = {
-        omen = { right = "p50"; };
-        p50 = { left = "omen"; };
+        omen = {};
       };
       description = "Deskflow server screen layout map";
     };

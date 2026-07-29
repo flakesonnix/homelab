@@ -19,12 +19,11 @@ in {
     extraExtensions = "";
   };
 
-  # The receiver is currently reachable on omen via the `p50` host mapping.
-  hq.audio.streamTo = "p50";
+  hq.audio.streamTo = "";
 
   programs.noisetorch.enable = true;
 
-  # nix-serve-ng → LAN binary cache for p50/mireo
+  # nix-serve-ng → LAN binary cache for LAN hosts
   # Manual service (nixpkgs nix-serve module stale, crashes as nix-serve user)
   systemd.services.nix-serve = {
     description = "nix-serve-ng binary cache server";

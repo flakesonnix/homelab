@@ -598,13 +598,6 @@ in {
                   host = "omen";
                 };
               }
-              {
-                targets = ["10.8.0.122:9100"];
-                labels = {
-                  instance = "p50";
-                  host = "p50";
-                };
-              }
             ];
           }
         ];

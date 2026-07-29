@@ -7,7 +7,7 @@ in {
   # The jq filter is generated from the pattern list at eval time.
   mkAudioSwitcher = {
     name ? "audio-output",
-    remotePatterns ? ["p50 speakers" "remote"],
+    remotePatterns ? ["remote"],
   }: let
     mkContains = pat: ''((.description // "") | ascii_downcase | contains("${pat}")) or ((.name // "") | ascii_downcase | contains("${pat}"))'';
     remoteSelect = lib.concatStringsSep " or " (map mkContains remotePatterns);
@@ -36,7 +36,7 @@ in {
 
         choose_target() {
           case "''${1:-menu}" in
-            p50|remote)
+            remote)
               printf '%s\n' "$remote_sink"
               ;;
             local)
@@ -48,19 +48,19 @@ in {
               ;;
             menu|"")
               if command -v fuzzel >/dev/null 2>&1; then
-                choice=$(printf 'P50\nLocal\n' | fuzzel --dmenu --prompt 'Audio Output: ' --width 24)
+                choice=$(printf 'Remote\nLocal\n' | fuzzel --dmenu --prompt 'Audio Output: ' --width 24)
                 case "$choice" in
-                  P50) printf '%s\n' "$remote_sink" ;;
+                  Remote) printf '%s\n' "$remote_sink" ;;
                   Local) printf '%s\n' "$local_sink" ;;
                   *) exit 1 ;;
                 esac
               else
-                printf 'usage: audio-output [local|p50|status]\n' >&2
+                printf 'usage: audio-output [local|remote|status]\n' >&2
                 exit 1
               fi
               ;;
             *)
-              printf 'usage: audio-output [local|p50|status]\n' >&2
+              printf 'usage: audio-output [local|remote|status]\n' >&2
               exit 1
               ;;
           esac

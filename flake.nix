@@ -180,24 +180,6 @@
         run0-sudo-shim.nixosModules.default
       ];
     };
-    p50-config = mkHost {
-      specialArgs = desktopSpecialArgs;
-      modules = [
-        ./nix-settings.nix
-        ./profiles/desktop.nix
-        ./hosts/p50
-        ./modules/nixos/fonts.nix
-        ./modules/nixos/waybar.nix
-        ./modules/nixos/gnome.nix
-        ./modules/nixos/gnome-extensions.nix
-        home-manager.nixosModules.home-manager
-        nur.modules.nixos.default
-        nix-topology.nixosModules.default
-        ./modules/nixos/hm-base.nix
-        ./modules/nixos/deskflow.nix
-        run0-sudo-shim.nixosModules.default
-      ];
-    };
     mireo-config = mkHost {
       specialArgs = mireoSpecialArgs;
       modules = [
@@ -340,11 +322,6 @@
                 program = "${rebuildApp}/bin/rebuild";
                 meta.description = "Rebuild omen locally via nh";
               };
-              deploy-p50 = {
-                type = "app";
-                program = "${deployApp "p50"}/bin/deploy-p50";
-                meta.description = "Deploy p50 via deploy-rs to 10.8.0.122";
-              };
               deploy-mireo = {
                 type = "app";
                 program = "${deployApp "mireo"}/bin/deploy-mireo";
@@ -374,7 +351,6 @@
 
           nixosConfigurations = {
             omen = omen-config;
-            p50 = p50-config;
             mireo = mireo-config;
           };
 
@@ -395,14 +371,6 @@
               nixosConfig.config.system.build.toplevel
               "${nixPathEnv} $PROFILE/bin/switch-to-configuration switch";
           in {
-            p50 = {
-              hostname = "p50";
-              sshUser = "root";
-              profiles.system = {
-                user = "root";
-                path = activateNixosWithNixPath self.nixosConfigurations.p50;
-              };
-            };
             mireo = {
               hostname = "10.8.0.1";
               sshUser = "root";

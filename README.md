@@ -1,13 +1,12 @@
 # NixOS Dotfiles
 
-NixOS flake managing three machines for user `lucy`. Built on the [rivotril](https://github.com/flakesonnix/rivotril) framework for data-driven host and home composition.
+NixOS flake managing two machines for user `lucy`. Built on the [rivotril](https://github.com/flakesonnix/rivotril) framework for data-driven host and home composition.
 
 ## Hosts
 
 | Host | Role | Hardware | Notes |
 |------|------|----------|-------|
 | `omen` | Desktop / gaming laptop | HP Omen, NVIDIA RTX 2070 | Primary machine. Niri compositor, eww bar, Secure Boot |
-| `p50` | Desktop workstation | ThinkPad P50, NVIDIA (legacy 535) | GNOME fallback, Pipebert audio sink |
 | `mireo` | Home server / router | Mini-PC, 4-port NIC | NAT gateway, IPv6 (FritzBox PD), NFS, iVentoy PXE, microvms |
 
 Network: `10.8.0.0/24` (+ `fd00:cafe:1::1/64` ULA) bridged on mireo. See [docs/hosts.md](docs/hosts.md) for full details.
@@ -35,7 +34,6 @@ Network: `10.8.0.0/24` (+ `fd00:cafe:1::1/64` ULA) bridged on mireo. See [docs/h
 │   └── home/               # Reusable Home Manager modules
 ├── hosts/
 │   ├── omen/               # Hardware config + framework host.nix
-│   ├── p50/
 │   └── mireo/              # + microvm definitions (grafana, monerod, network-services, yammat)
 ├── home/lucy/              # User composition entry point
 ├── keys/                   # SSH public keys
@@ -51,7 +49,6 @@ Network: `10.8.0.0/24` (+ `fd00:cafe:1::1/64` ULA) bridged on mireo. See [docs/h
 nix run .#rebuild
 
 # Deploy to a remote host
-nix run .#deploy-p50
 nix run .#deploy-mireo
 
 # CI checks
@@ -86,7 +83,7 @@ All custom NixOS and Home Manager modules live in `modules/`. See [docs/modules.
 Key modules:
 - `nixos/base.nix` — `lucy.base.*`: SSH, timezone, locale, sudo, firewall, libvirtd
 - `nixos/nvidia.nix` — `lucy.nvidia.*`: NVIDIA GPU with lazy-load service
-- `nixos/pipebert.nix` — `lucy.pipebert.*`: Network audio sink (PipeWire TCP, AirPlay, Mopidy)
+
 - `nixos/asterisk.nix` — `services.asteriskLocal.*`: Local SIP PBX
 - `nixos/niri.nix` — `niri.users`: Niri + greetd/tuigreet host integration
 - `nixos/gaming.nix` — aggregate: Steam, GameMode, Gamescope, performance tuning
