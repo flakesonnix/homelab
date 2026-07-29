@@ -227,7 +227,7 @@
 
   nix.settings.substituters = lib.mkBefore ["http://omen:5000"];
 
-  topology.self = {
+  lucy.topology = {
     deviceType = "router";
     icon = "devices.router";
     hardware.info = "Mini-PC · 4-port NIC";

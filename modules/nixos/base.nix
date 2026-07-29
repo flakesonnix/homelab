@@ -33,6 +33,12 @@
         description = "Port for SSH access during initrd unlock";
       };
     };
+
+    lucy.topology = lib.mkOption {
+      type = lib.types.attrs;
+      default = {};
+      description = "Metadata for nix-topology rendering (icon, hardware.info, deviceType)";
+    };
   };
 
   config = lib.mkIf config.lucy.base.enable {
