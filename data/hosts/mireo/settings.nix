@@ -151,7 +151,7 @@
   services.nfs.server = {
     enable = true;
     exports = ''
-      /data 10.8.0.0/24(rw,sync,no_subtree_check,no_root_squash)
+      /data 10.8.0.0/24(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=100)
     '';
   };
 
