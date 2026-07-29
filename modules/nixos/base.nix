@@ -123,5 +123,9 @@
         options = ["x-systemd.automount" "noauto" "x-systemd.idle-timeout=600"];
       };
     };
+
+    systemd.tmpfiles.rules = lib.optionals (!config.lucy.base.isServer) [
+      "L /home/lucy/data - - - - /mnt/mireo/data"
+    ];
   };
 }

@@ -122,6 +122,10 @@
     options = ["defaults" "nofail"];
   };
 
+  systemd.tmpfiles.rules = [
+    "Z /data 0755 lucy users - -"
+  ];
+
   services.avahi = {
     enable = true;
     nssmdns4 = true;
