@@ -177,6 +177,7 @@
         })
         ./modules/nixos/hm-base.nix
         ./modules/nixos/deskflow.nix
+        ./modules/nixos/waydroid.nix
         run0-sudo-shim.nixosModules.default
       ];
     };
