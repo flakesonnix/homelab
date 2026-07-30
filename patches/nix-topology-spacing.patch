@@ -1,0 +1,10 @@
+--- a/topology/renderers/elk/lib.nix
++++ b/topology/renderers/elk/lib.nix
+@@ -129,6 +129,7 @@
+             layoutOptions = {
+               "org.eclipse.elk.algorithm" = "layered";
+               "org.eclipse.elk.edgeRouting" = "ORTHOGONAL";
++              "org.eclipse.elk.spacing.nodeNode" = 120;
+               "org.eclipse.elk.direction" = "RIGHT";
+               "org.eclipse.elk.layered.allowNonFlowPortsToSwitchSides" = true;
+               "org.eclipse.elk.layered.crossingMinimization.strategy" = true;

@@ -111,6 +111,12 @@
     nix-topology,
     ...
   }: let
+    pkgsForPatch = import nixpkgs { system = "x86_64-linux"; };
+    patchedNixTopologySrc = pkgsForPatch.applyPatches {
+      name = "nix-topology-patched";
+      src = inputs.nix-topology;
+      patches = [./patches/nix-topology-spacing.patch];
+    };
     mkHost = {
       modules,
       specialArgs ? {},
@@ -189,7 +195,7 @@
   in
     flake-parts.lib.mkFlake {inherit inputs;} (
       {
-        imports = [nix-topology.flakeModule];
+        imports = [(import "${patchedNixTopologySrc}/flake-module.nix")];
         systems = ["x86_64-linux"];
 
         perSystem = {
@@ -289,7 +295,13 @@
 
             packages = {
               full-ci-checks = fullCiChecks;
-              topology = self.topology.x86_64-linux.config.output;
+              topology = pkgs.runCommand "topology-fixed" {
+                buildInputs = [pkgs.python3];
+              } ''
+                cp -r ${self.topology.x86_64-linux.config.output} $out
+                chmod +w $out/network.svg
+                python3 ${./scripts/fix-network-svg.py} $out/network.svg $out/network.svg
+              '';
             };
 
             apps = {
