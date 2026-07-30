@@ -38,18 +38,20 @@ mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (
 - Asterisk SIP PBX
 - Audio streaming → remote tunnel sink
 - Tailscale, Bluetooth
+- Waydroid (Android container, initialised with GAPPS image via oneshot service)
 
 ### Roles
 `desktop`, `dev`, `llm`, `gaming`
 
 ### Config files
 - `data/hosts/omen/settings.nix` — hostname, hosts, Bluetooth, Niri users, boot params
+- `data/hosts/omen/module-flags.nix` — NixOS feature toggles (nvidia, fonts, waydroid, etc.)
 - `data/hosts/omen/roles.nix` — role list
 - `hosts/omen/host.nix` — framework applyHost call
 - `hosts/omen/hardware-configuration.nix` — nixos-hardware-generated
 
 ### Special modules loaded
-`asterisk`, `audio-stream`, `fonts`, `gaming`, `gnome`, `gnome-extensions`, `niri`, `nvidia`, `nvidia-resume`, `serial-getty`, `sops`, `waybar`, `lanzaboote`
+`asterisk`, `audio-stream`, `fonts`, `gaming`, `gnome`, `gnome-extensions`, `niri`, `nvidia`, `nvidia-resume`, `serial-getty`, `sops`, `waybar`, `waydroid`, `lanzaboote`
 
 ### Rebuild
 ```bash
@@ -88,6 +90,7 @@ nix run .#deploy-omen
   - **aptcache** (10.8.0.8): apt-cacher-ng caching proxy for LAN
 - No desktop (`lucy.base.isServer = true`)
 - node_exporter running on 10.8.0.1:9100 for self-monitoring
+- CLI tools: tcpdump, mtr, nmap, iperf3, ethtool, socat, btop, htop, ncdu, jq, lsof, sysstat, smartmontools
 
 ### Roles
 None (server profile, framework data in `data/hosts/mireo/`)

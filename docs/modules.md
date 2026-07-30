@@ -181,6 +181,19 @@ ComfyUI (Stable Diffusion web UI) service configuration.
 
 ---
 
+### `waydroid.nix`
+
+Options namespace: `lucy.waydroid.*`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enable` | bool | false | Enable Waydroid Android container |
+| `gapps` | bool | true | Initialize with Google Apps (GAPPS) image |
+
+When enabled: enables `virtualisation.waydroid`, installs `waydroid` package. A oneshot systemd service (`waydroid-gapps-init`) runs `waydroid init -s GAPPS` on first boot if system.img is absent.
+
+---
+
 ### `waybar.nix`
 
 NixOS-level Waybar font installation (`lucy.waybar.installFonts`).
