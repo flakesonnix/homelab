@@ -41,6 +41,24 @@
     };
   };
 
+  # --- SSH keys VM ---
+  nodes.sshkeys = {
+    deviceType = "nixos";
+    services.sshkeys = {
+      name = "SSH Public Keys";
+      info = "10.8.0.7:80";
+    };
+  };
+
+  # --- APT cache VM ---
+  nodes.aptcache = {
+    deviceType = "nixos";
+    services.aptcache = {
+      name = "apt-cacher-ng";
+      info = "10.8.0.8:3142";
+    };
+  };
+
   # --- Monerod VM: manual service (tor auto-detected, monerod is not) ---
   nodes.monerod = {
     deviceType = "nixos";
