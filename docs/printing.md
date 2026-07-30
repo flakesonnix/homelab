@@ -1,6 +1,6 @@
 # Printing
 
-Network printers: **Epson ET-2860** (USB) and **Lexmark** (driverless IPP), hosted in the `cups` microVM on mireo at `10.8.0.6:631`.
+Network printers: **Epson ET-2860** and **Lexmark** (driverless IPP), hosted in the `cups` microVM on mireo at `10.8.0.6:631`.
 
 The printers are shared via IPP and advertised via Avahi mDNS (`_ipp._tcp`), so they auto-discover on any LAN machine with Avahi support.
 

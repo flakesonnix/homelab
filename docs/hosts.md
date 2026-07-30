@@ -13,6 +13,9 @@ Internet (IPv4 + IPv6 via FritzBox)
     ├── 10.8.0.3  network-services vm (bridge stub)
     ├── 10.8.0.4  monerod microvm     (Monero node + Tor relay)
     ├── 10.8.0.5  yammat microvm      (YAMMAT event management)
+    ├── 10.8.0.6  cups microvm        (CUPS print server)
+    ├── 10.8.0.7  sshkeys microvm     (SSH public key web)
+    ├── 10.8.0.8  aptcache microvm    (apt-cacher-ng proxy)
     └── 10.8.0.176  omen
 ```
 
@@ -75,11 +78,14 @@ nix run .#deploy-omen
 - NFS export of `/data` to `10.8.0.0/24`
 - Avahi mDNS advertising NFS share (`_nfs._tcp`) for Nautilus autodiscovery
 - Netdata monitoring (10.8.0.1:19999)
-- Four microVMs running on br0:
+- Seven microVMs running on br0:
   - **grafana** (10.8.0.2): Prometheus scraping router + all hosts, Grafana with mireo-router dashboard
   - **network-services** (10.8.0.3): bridge tap stub (no services)
   - **monerod** (10.8.0.4): Pruned Monero node + Tor relay (nickname `mireoMoneroRelay`)
   - **yammat** (10.8.0.5): YAMMAT event management (C3D2 matemat, port 3000)
+  - **cups** (10.8.0.6): CUPS print server (IPP, Avahi, Epson ET-2860 + Lexmark)
+  - **sshkeys** (10.8.0.7): Nginx serving SSH public keys
+  - **aptcache** (10.8.0.8): apt-cacher-ng caching proxy for LAN
 - No desktop (`lucy.base.isServer = true`)
 - node_exporter running on 10.8.0.1:9100 for self-monitoring
 
@@ -93,6 +99,10 @@ None (server profile, framework data in `data/hosts/mireo/`)
 - `hosts/mireo/monerod-microvm.nix` — monerod + Tor microvm
 - `hosts/mireo/network-services-microvm.nix` — network-services bridge tap stub
 - `hosts/mireo/yammat-microvm.nix` — YAMMAT microvm
+- `hosts/mireo/cups-microvm.nix` — CUPS print server microvm
+- `hosts/mireo/sshkeys-microvm.nix` — SSH public key web server microvm
+- `hosts/mireo/aptcache-microvm.nix` — apt-cacher-ng proxy microvm
+- `hosts/mireo/microvm-base.nix` — shared microvm base config
 
 ### Microvm resource allocation
 | VM | IP | Memory | vCPUs | Storage |
@@ -101,6 +111,9 @@ None (server profile, framework data in `data/hosts/mireo/`)
 | network-services | 10.8.0.3 | 384 MB | 1 | — |
 | monerod | 10.8.0.4 | 2304 MB | 2 | 350 GB blockchain |
 | yammat | 10.8.0.5 | 2304 MB | 2 | 8 GB postgres + 128 MB state |
+| cups | 10.8.0.6 | 512 MB | 1 | 256 MB cups config |
+| sshkeys | 10.8.0.7 | 256 MB | 1 | — |
+| aptcache | 10.8.0.8 | 512 MB | 1 | 8 GB cache |
 
 ### Monero port forwarding
 Port 9001/tcp (Tor ORPort) forwarded from WAN to monerod VM.

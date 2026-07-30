@@ -98,41 +98,7 @@ Options namespace: `lucy.secrets.*`
 
 Thin wrapper around sops-nix that enforces `sopsFile != null` via assertion.
 
----
 
-### `pipebert.nix`
-
-A network audio receiver. Options namespace: `lucy.pipebert.*`
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enable` | bool | false | Enable Pipebert |
-| `user` | str | `"lucy"` | User owning lingering services |
-| `hostName` | str | `"pipebert"` | Fallback hostname |
-| `domain` | str or null | null | Optional domain for vhosts |
-| `name` | str | `"Pipebert"` | AirPlay/sink advertised name |
-| `mediaDir` | str | `"/home/lucy/Music"` | Mopidy local music dir |
-| `allowedCidrs` | list of str | `[]` | CIDRs for restricted firewall (empty = open to all) |
-| `openFirewall` | bool | false | Open service ports |
-| `airplay.enable` | bool | true | Shairport Sync + nqptp (AirPlay 1 + 2) |
-| `mopidy.enable` | bool | true | Mopidy with Iris/MPD/YouTube |
-| `mopidy.extensionPackages` | list | `[]` | Extra Mopidy extensions |
-| `mopidy.extraConfigFiles` | list | `[]` | Extra Mopidy config files (for secrets) |
-| `mopidy.extraSettings` | attrs | `{}` | Mopidy settings merged over defaults |
-| `ledfx.enable` | bool | false | LEDfx as user service |
-| `web.enable` | bool | false | Nginx landing page + reverse proxies |
-| `sinkNode.enableRename` | bool | false | Rename physical PipeWire sink node |
-| `sinkNode.nodeName` | str | `""` | PipeWire node name to rename |
-| `sinkNode.description` | str | `"Pipebert Audio Streaming"` | Renamed sink description |
-| `usbDevice.enableReload` | bool | false | Cycle USB audio device after PipeWire starts |
-| `usbDevice.vendorId` | str | `""` | USB vendor ID |
-| `usbDevice.productId` | str | `""` | USB product ID |
-
-Services started: PipeWire (RTP SAP receive, PulseAudio TCP on 4713, zeroconf publish), Avahi (mDNS), Mopidy (optional), Shairport Sync user service (optional), nqptp system service (optional), LEDfx user service (optional), Nginx (optional).
-
-Firewall ports (when `openFirewall = true`): 4713/tcp (Pulse), 6600/tcp (MPD), 5000/7000/tcp + 6001-6011/udp + 49152-60999/udp (AirPlay), 5353/udp (mDNS), 9875/udp (RTP), 319-320/udp (PTP). When `allowedCidrs != []`, uses nftables source-restricted rules instead of global open ports.
-
----
 
 ### `asterisk.nix`
 

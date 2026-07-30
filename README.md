@@ -34,7 +34,7 @@ Network: `10.8.0.0/24` (+ `fd00:cafe:1::1/64` ULA) bridged on mireo. See [docs/h
 │   └── home/               # Reusable Home Manager modules
 ├── hosts/
 │   ├── omen/               # Hardware config + framework host.nix
-│   └── mireo/              # + microvm definitions (grafana, monerod, network-services, yammat)
+│   └── mireo/              # + microvm definitions (7 VMs: grafana, monerod, network-services, yammat, cups, sshkeys, aptcache)
 ├── home/lucy/              # User composition entry point
 ├── keys/                   # SSH public keys
 ├── webui/                  # Static Nix-generated docs site
