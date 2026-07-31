@@ -128,7 +128,17 @@
       "/mnt/mireo/data" = {
         device = "10.8.0.1:/data";
         fsType = "nfs";
-        options = ["x-systemd.automount" "noauto" "x-systemd.idle-timeout=600"];
+        # soft + short timeo: with the server down, the mount attempt fails
+        # in seconds instead of hanging every automount trigger for 90s
+        # (default hard mount), which froze any program touching ~/data.
+        options = [
+          "x-systemd.automount"
+          "noauto"
+          "x-systemd.idle-timeout=600"
+          "soft"
+          "timeo=50"
+          "retrans=2"
+        ];
       };
     };
 
