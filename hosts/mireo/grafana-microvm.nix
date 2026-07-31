@@ -1,4 +1,4 @@
-{...}: let
+{pkgs, ...}: let
   dashboard = builtins.toJSON {
     annotations.list = [];
     editable = true;
@@ -519,7 +519,6 @@
     version = 1;
   };
 in {
-
   systemd.network.networks."24-lan-microvm" = {
     matchConfig.Name = "vm-*";
     networkConfig.Bridge = "br0";
@@ -569,6 +568,29 @@ in {
         ForwardToConsole=yes
         MaxLevelConsole=debug
       '';
+
+      # Grafana reads its secret key via file provider; generate once so the
+      # key never lands in the Nix store.
+      systemd.services.grafana-secret = {
+        description = "Generate Grafana secret key";
+        before = ["grafana.service"];
+        requiredBy = ["grafana.service"];
+        wantedBy = ["multi-user.target"];
+        path = [pkgs.coreutils];
+        serviceConfig = {
+          Type = "oneshot";
+          User = "grafana";
+          Group = "grafana";
+          UMask = "0077";
+        };
+        script = ''
+          if [ ! -s /var/lib/grafana/secret.key ]; then
+            head -c 48 /dev/urandom | base64 > /var/lib/grafana/secret.key
+          fi
+        '';
+      };
+      systemd.services.grafana.after = ["grafana-secret.service"];
+      systemd.services.grafana.requires = ["grafana-secret.service"];
 
       environment.etc."grafana-dashboards/mireo-router.json".text = dashboard;
 
@@ -622,7 +644,8 @@ in {
             org_role = "Viewer";
           };
           security = {
-            secret_key = "mireo-grafana-microvm-2026-05-20";
+            # File provider: key generated at activation (grafana-secret.service)
+            secret_key = "$__file{/var/lib/grafana/secret.key}";
             disable_initial_admin_creation = false;
           };
         };
