@@ -89,7 +89,7 @@ Roles are the top-level unit of intent. A host or home declares a list of role n
 ### Host role data
 
 ```
-data/hosts/omen/roles.nix   →  [ "desktop" "dev" "llm" "gaming" ]
+data/hosts/omen/roles.nix   →  [ "desktop" "dev" "gaming" ]
 
 data/home/lucy/roles.nix    →  [ "core" "desktop" "dev" ]
 ```
@@ -226,7 +226,7 @@ Files in `data/hosts/<host>/` are loaded by the framework's `loadHostDirectory`.
 |------|---------|
 | `settings.nix` | NixOS config merged directly (hostname, boot, network, etc.) |
 | `roles.nix` | List of role names |
-| `moduleFlags.nix` | Extra module flag overrides beyond what roles provide |
+| `module-flags.nix` | Extra module flag overrides beyond what roles provide |
 | `packages.nix` | Extra package selections |
 | `services.nix` | Service configuration |
 | `power.nix` | Power management settings |

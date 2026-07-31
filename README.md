@@ -37,7 +37,6 @@ Network: `10.8.0.0/24` (+ `fd00:cafe:1::1/64` ULA) bridged on mireo. See [docs/h
 │   └── mireo/              # + microvm definitions (7 VMs: grafana, monerod, network-services, yammat, cups, sshkeys, aptcache)
 ├── home/lucy/              # User composition entry point
 ├── keys/                   # SSH public keys
-├── webui/                  # Static Nix-generated docs site
 ├── lib/                    # Shared Nix functions
 └── .sops.yaml              # sops encryption rules
 ```
@@ -102,24 +101,14 @@ SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/omen/secrets.yaml
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs three jobs on every push/PR:
+GitHub Actions (`.github/workflows/ci.yml`) runs four jobs on every push/PR:
 
 | Job | What it checks |
 |-----|---------------|
-| `check-light` | Evaluates webui, formatter, devShell, and app derivation paths |
-| `check-full` | Builds `full-ci-checks` (framework checks + deploy-rs schema checks) |
+| `check-light` | Evaluates formatter, devShell, and app derivation paths |
+| `check-full` | Builds `full-ci-checks` (framework checks + deploy-rs schema checks + dotfiles tests) |
 | `eval` | Evaluates `nixosConfigurations.omen.config.system.build.toplevel` |
-
-## WebUI
-
-Static HTML documentation site generated from Nix:
-
-```bash
-nix build .#webui
-./result/bin/nixfiles-webui   # Serves on http://127.0.0.1:8080
-```
-
-Pages: dashboard, roles (host + home), presets, bundles.
+| `topology` | Regenerates `docs/topology/` SVGs and commits them (master pushes only) |
 
 ## Network Topology
 

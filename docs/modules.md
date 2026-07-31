@@ -24,21 +24,6 @@ When enabled: OpenSSH (no password auth), sudo, libvirtd (non-server), firewall 
 
 ---
 
-### `network.nix`
-
-Options namespace: `networking.staticIP.*`
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `enable` | bool | false | Enable static IP (disables NetworkManager and DHCP) |
-| `address` | str | required | Static IPv4 address |
-| `prefixLength` | int | 24 | Subnet prefix length |
-| `gateway` | str | required | Default gateway |
-| `dns` | list of str | `["1.1.1.1" "8.8.8.8"]` | DNS servers |
-| `interface` | str | required | Network interface name |
-
----
-
 ### `nvidia.nix`
 
 Options namespace: `lucy.nvidia.*`
@@ -163,21 +148,65 @@ Home Manager base configuration imported at the NixOS level. Sets up `home-manag
 
 ---
 
-### `latex.nix`
+### `serial-getty.nix`
 
-Installs a TeX Live environment.
+Options namespace: `lucy.serialGetty.*`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `disabled` | list of str | `[]` | Serial TTYs whose systemd getty units get disabled (e.g. omen disables ttyS0-3) |
 
 ---
 
-### `serial-getty.nix`
+### `latex.nix`
 
-Enables serial console getty (for headless access via serial port).
+Options namespace: `lucy.latex.*` — `enable` installs TeX Live (texliveSmall), latexmk, biber, texlab, zathura.
 
 ---
 
 ### `comfyui.nix`
 
-ComfyUI (Stable Diffusion web UI) service configuration.
+Options namespace: `lucy.comfyui.*`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enable` | bool | false | Enable ComfyUI (Stable Diffusion web UI) service |
+| `gpuSupport` | enum (none/cuda/rocm) | `"cuda"` | GPU backend |
+| `port` | port | 8188 | Web UI port |
+| `openFirewall` | bool | false | Open the port in the firewall |
+
+---
+
+### `packages.nix`
+
+Options namespace: `lucy.*`
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `basePackages` | list of package | User packages from host data (installed via `users.users.lucy.packages`) |
+| `hostPackages` | list of package | Extra host-level user packages |
+| `<name>` | bool | One toggle per entry in `data/packages/system.nix`; enabled entries resolve via their `targets` |
+
+---
+
+### `topology.nix`
+
+Reads `lucy.topology.*` (set in host data) and forwards it to nix-topology's `topology.self` for diagram rendering.
+
+---
+
+### `deskflow.nix`
+
+Options namespace: `hq.deskflow.*`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enable` | bool | false | Enable deskflow keyboard/mouse sharing |
+| `role` | enum (server/client) | `"client"` | server shares KBM; client is remote-controlled |
+| `serverAddress` | str | `"omen"` | Server host for client mode |
+| `screenLayout` | attrs of submodules | `{}` | Server screen links (left/right/up/down) |
+
+Generates `settings.ini` + (server) `server.conf`, runs `deskflow-core` as a systemd service under user `lucy`.
 
 ---
 
@@ -196,7 +225,12 @@ When enabled: enables `virtualisation.waydroid`, installs `waydroid` package. A 
 
 ### `waybar.nix`
 
-NixOS-level Waybar font installation (`lucy.waybar.installFonts`).
+Options namespace: `lucy.waybar.*`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `installFonts` | bool | false | Install Waybar fonts system-wide |
+| `nerdFonts` | list of package | `[nerd-fonts.hack nerd-fonts.symbols-only]` | Nerd Font families for bar glyphs |
 
 ---
 
@@ -275,4 +309,4 @@ opencode AI coding tool configuration.
 
 ### `home/dunst.nix`
 
-Dunst notification daemon configuration. (Used on non-niri setups; niri uses mako.)
+Dunst notification daemon configuration. Auto-disabled while `programs.niri.enable` is true (niri setups use mako).

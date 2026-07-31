@@ -41,7 +41,7 @@ mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (
 - Waydroid (Android container, initialised with GAPPS image via oneshot service)
 
 ### Roles
-`desktop`, `dev`, `llm`, `gaming`
+`desktop`, `dev`, `gaming`
 
 ### Config files
 - `data/hosts/omen/settings.nix` — hostname, hosts, Bluetooth, Niri users, boot params
@@ -51,7 +51,7 @@ mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (
 - `hosts/omen/hardware-configuration.nix` — nixos-hardware-generated
 
 ### Special modules loaded
-`asterisk`, `audio-stream`, `fonts`, `gaming`, `gnome`, `gnome-extensions`, `niri`, `nvidia`, `nvidia-resume`, `serial-getty`, `sops`, `waybar`, `waydroid`, `lanzaboote`
+`asterisk`, `audio-stream`, `deskflow`, `fonts`, `gaming`, `gnome`, `gnome-extensions`, `niri`, `nvidia`, `nvidia-resume`, `serial-getty`, `sops`, `waybar`, `waydroid`, `lanzaboote`
 
 ### Rebuild
 ```bash

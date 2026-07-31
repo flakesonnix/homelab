@@ -79,6 +79,18 @@ SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/omen/secrets.yaml
 
 SOPS opens the decrypted file in `$EDITOR`, re-encrypts on save.
 
+## Initrd SSH unlock keys
+
+`lucy.base` enables SSH in the initrd (port 2222 by default) for LUKS-style remote unlock. It uses a host key at `/etc/secrets/initrd/ssh_host_ed25519_key`, which must exist on the host (it is not managed declaratively):
+
+```bash
+sudo mkdir -p /etc/secrets/initrd
+sudo ssh-keygen -t ed25519 -f /etc/secrets/initrd/ssh_host_ed25519_key -N ""
+sudo chmod 600 /etc/secrets/initrd/ssh_host_ed25519_key
+```
+
+Authorized keys match the root account's `authorized_keys` (i.e. `lucy.base.sshKey`).
+
 ## Key rotation
 
 1. Generate new key: `nix run .#setup-sops omen` (will error if key exists — delete `.sops/keys.txt` first)
