@@ -2,6 +2,7 @@
   pkgs,
   lib,
   self,
+  microvm,
 }: let
   inherit (lib) mapAttrsToList removeSuffix;
   readNixDir = dir:
@@ -283,8 +284,228 @@
       machine.succeed("grep -q 'height=\"447.462\"' /tmp/net.svg")
     '';
   };
+  # ---- builder unit tests ----
+  # Eval-time module assertions (abort on failure, like the data model
+  # checks) plus runtime script tests; all collected into builders-unit.
+  mkMicrovm = import ../hosts/mireo/mk-microvm.nix;
+  mkKeyGenService = dotfilesLib.secretKeys.mkKeyGenService;
+  nixosEval = modules:
+    (import "${pkgs.path}/nixos/lib/eval-config.nix" {
+      system = pkgs.stdenv.hostPlatform.system;
+      inherit modules;
+    }).config;
+  forceB = cond: msg:
+    if cond
+    then true
+    else builtins.abort "BUILDER TEST ERROR: ${msg}";
+
+  vmSpec = {
+    name = "testvm";
+    ip = "10.8.0.5";
+    mem = 2048;
+    vcpu = 2;
+    tcpPorts = [80 443];
+    udpPorts = [53];
+    volumes = [
+      {
+        image = "/var/lib/test/data.img";
+        mountPoint = "/data";
+        size = 1024;
+        user = "lucy";
+        group = "users";
+      }
+      {
+        image = "/var/lib/test/plain.img";
+        mountPoint = "/plain";
+        size = 2048;
+      }
+    ];
+    tmpfiles = ["d /run/test 0755 root root - -"];
+    config = {
+      imports = [{environment.variables.FOO = "bar";}];
+    };
+    extraDns = ["1.1.1.1"];
+  };
+  vmEval = nixosEval [microvm.nixosModules.host (mkMicrovm vmSpec)];
+  vmCfg = vmEval.microvm.vms.testvm.config.config;
+  checkVm =
+    forceB vmEval.microvm.vms.testvm.autostart "mk-microvm: vms.testvm.autostart must be true"
+    && forceB (vmCfg.networking.hostName == "testvm") "mk-microvm: hostName"
+    && forceB (vmCfg.microvm.hypervisor == "qemu") "mk-microvm: hypervisor"
+    && forceB (vmCfg.microvm.mem == 2048) "mk-microvm: mem"
+    && forceB (vmCfg.microvm.vcpu == 2) "mk-microvm: vcpu"
+    && forceB (lib.all (p: builtins.elem p vmCfg.networking.firewall.allowedTCPPorts) [80 443]) "mk-microvm: tcpPorts"
+    && forceB (lib.all (p: builtins.elem p vmCfg.networking.firewall.allowedUDPPorts) [53]) "mk-microvm: udpPorts"
+    && forceB (let
+      iface = builtins.head vmCfg.microvm.interfaces;
+    in
+      iface.id == "vm-testvm" && iface.type == "tap" && iface.mac == "02:00:00:10:08:05")
+    "mk-microvm: default interfaceId and MAC from ip"
+    && forceB (let
+      vols = vmCfg.microvm.volumes;
+      v1 = builtins.head vols;
+      v2 = builtins.head (builtins.tail vols);
+    in
+      builtins.length vols
+      == 2
+      && !(v1 ? user)
+      && !(v1 ? group)
+      && v1.image == "/var/lib/test/data.img"
+      && v1.mountPoint == "/data"
+      && v1.size == 1024
+      && v2.image == "/var/lib/test/plain.img"
+      && v2.mountPoint == "/plain"
+      && v2.size == 2048)
+    "mk-microvm: volume user/group stripped"
+    && forceB (lib.all (r: builtins.elem r vmCfg.systemd.tmpfiles.rules) ["d /run/test 0755 root root - -" "d /data 0750 lucy users - -"]) "mk-microvm: tmpfiles rules"
+    && forceB (vmCfg.environment.variables.FOO == "bar") "mk-microvm: extra config imports merged";
+
+  baseSpec =
+    vmSpec
+    // {
+      name = "basevm";
+      ip = "10.8.0.8";
+      interfaceId = "vm-aptcache";
+      extraDns = ["1.1.1.1"];
+      volumes = [];
+      tmpfiles = [];
+      config = {};
+    };
+  baseCfg = (nixosEval [microvm.nixosModules.host (mkMicrovm baseSpec)]).microvm.vms.basevm.config.config;
+  checkBase =
+    forceB (let
+      iface = builtins.head baseCfg.microvm.interfaces;
+    in
+      iface.id == "vm-aptcache" && iface.type == "tap" && iface.mac == "02:00:00:10:08:08")
+    "microvm-base: interface id and MAC"
+    && forceB (baseCfg.networking.hostName == "basevm") "microvm-base: hostName via mk-microvm"
+    && forceB (baseCfg.systemd.network.networks."20-lan".address == ["10.8.0.8/24"]) "microvm-base: address"
+    && forceB (baseCfg.systemd.network.networks."20-lan".networkConfig.Gateway == "10.8.0.1") "microvm-base: gateway"
+    && forceB (baseCfg.systemd.network.networks."20-lan".networkConfig.DNS == ["10.8.0.1" "1.1.1.1"]) "microvm-base: dns";
+
+  keygenCfg = nixosEval [
+    (mkKeyGenService {
+      serviceName = "grafana";
+      secretFile = "/var/lib/grafana/secret.key";
+      user = "grafana";
+      group = "grafana";
+      bytes = 48;
+      format = "base64";
+      extraCommands = "chown grafana:grafana /var/lib/grafana/secret.key";
+    })
+  ];
+  keygenScript = keygenCfg.systemd.services."grafana-secret-key".script;
+  checkKeygen =
+    forceB (keygenCfg.systemd.services."grafana-secret-key".before == ["grafana.service"]) "mkKeyGenService: before"
+    && forceB (keygenCfg.systemd.services."grafana-secret-key".requiredBy == ["grafana.service"]) "mkKeyGenService: requiredBy"
+    && forceB (keygenCfg.systemd.services."grafana-secret-key".wantedBy == ["multi-user.target"]) "mkKeyGenService: wantedBy"
+    && forceB (keygenCfg.systemd.services."grafana-secret-key".serviceConfig.Type == "oneshot") "mkKeyGenService: Type"
+    && forceB (keygenCfg.systemd.services."grafana-secret-key".serviceConfig.user == "grafana") "mkKeyGenService: user"
+    && forceB (keygenCfg.systemd.services."grafana-secret-key".serviceConfig.group == "grafana") "mkKeyGenService: group"
+    && forceB (keygenCfg.systemd.services."grafana-secret-key".serviceConfig.UMask == "0077") "mkKeyGenService: UMask"
+    && forceB (lib.hasInfix "head -c 48 /dev/urandom | base64 > \"/var/lib/grafana/secret.key\"" keygenScript) "mkKeyGenService: base64 generation"
+    && forceB (lib.hasInfix "chown grafana:grafana" keygenScript) "mkKeyGenService: extraCommands"
+    && forceB (keygenCfg.systemd.services.grafana.after == ["grafana-secret-key.service"]) "mkKeyGenService: target after"
+    && forceB (keygenCfg.systemd.services.grafana.requires == ["grafana-secret-key.service"]) "mkKeyGenService: target requires";
+
+  keygenRawScript =
+    (nixosEval [
+      (mkKeyGenService {
+        serviceName = "yammat";
+        secretFile = "/var/lib/yammat/client_session_key.aes";
+        user = "yammat";
+        group = "yammat";
+        bytes = 96;
+      })
+    ]).systemd.services."yammat-secret-key".script;
+  checkKeygenRaw =
+    forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
+    && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
+
+  _evaluateBuilders = checkVm && checkBase && checkKeygen && checkKeygenRaw;
+
+  notifCounter = dotfilesLib.waybarScripts.mkNotifCounter {};
+  notifCounterCustom = dotfilesLib.waybarScripts.mkNotifCounter {
+    icons = {
+      active = "A";
+      inactive = "I";
+    };
+  };
+  testCheckApp = dotfilesLib.ciScripts.mkCheckApp {
+    name = "test-check";
+    evalTargets = ["a" "b"];
+    buildTargets = ["c"];
+  };
+  testBundle = dotfilesLib.ciScripts.mkCiCheckBundle {
+    name = "test-bundle";
+    checks = {
+      foo = pkgs.hello;
+      bar = pkgs.gitMinimal;
+    };
+  };
+
+  buildersUnit =
+    pkgs.runCommand "builders-unit"
+    {
+      buildersValid = _evaluateBuilders;
+      buildInputs = [pkgs.jq pkgs.gnugrep];
+    }
+    ''
+      set -euo pipefail
+
+      echo "=== waybar notification counter ==="
+      mkdir -p stub
+      cat > stub/makoctl <<'EOF'
+      #!/bin/sh
+      if [ -n "''${MAKO_ERR:-}" ]; then
+        echo "$MAKO_ERR" >&2
+        exit 1
+      fi
+      printf '%s' "''${MAKO_FIXTURE:-}"
+      EOF
+      chmod +x stub/makoctl
+      export PATH="$PWD/stub:$PATH"
+
+      empty='{"data":[],"error":null}'
+      two='{"data":[{"notifications":[{"id":1},{"id":2}]}],"error":null}'
+
+      # real wrapper: makoctl fails (no DBus) -> must not abort, emits inactive JSON
+      ${notifCounter}/bin/waybar-notifications | jq -e '.class == "inactive"' >/dev/null
+      echo "  OK: wrapper survives makoctl failure"
+
+      # fixture injection: run the script body with the stub first in PATH
+      sed '/^export PATH=/d' ${notifCounter}/bin/waybar-notifications > counter.sh
+      MAKO_ERR="Failed to connect to DBus" bash counter.sh | grep -q '"class":"inactive"'
+      MAKO_FIXTURE="$empty" bash counter.sh | grep -q '"class":"inactive"'
+      MAKO_FIXTURE="$two" bash counter.sh | grep -q '"class":"active"'
+      MAKO_FIXTURE="$two" bash counter.sh | grep -q '󱅫 2'
+      echo "  OK: error, empty and active states"
+
+      echo "=== waybar notification counter (custom icons) ==="
+      sed '/^export PATH=/d' ${notifCounterCustom}/bin/waybar-notifications > counter-custom.sh
+      MAKO_FIXTURE="$empty" bash counter-custom.sh | grep -q '"text":"I"'
+      MAKO_FIXTURE="$two" bash counter-custom.sh | grep -q '"text":"A 2"'
+      echo "  OK: custom icons"
+
+      echo "=== ci check app ==="
+      grep -rq 'nix eval --option warn-dirty false a --raw >/dev/null' ${testCheckApp}/
+      grep -rq 'nix eval --option warn-dirty false b --raw >/dev/null' ${testCheckApp}/
+      grep -rq 'nix build --option warn-dirty false c' ${testCheckApp}/
+      echo "  OK: eval and build targets"
+
+      echo "=== ci check bundle ==="
+      [ -L ${testBundle}/foo ] && [ -L ${testBundle}/bar ]
+      case "$(readlink ${testBundle}/foo)" in *hello*) ;; *) echo "FAIL: foo link target" >&2; exit 1 ;; esac
+      case "$(readlink ${testBundle}/bar)" in *git*) ;; *) echo "FAIL: bar link target" >&2; exit 1 ;; esac
+      echo "  OK: named check links"
+
+      echo ""
+      echo "All builder unit tests passed."
+      touch "$out"
+    '';
 in {
   dotfiles-tests = dotfilesTests;
   topology-unit = topologyUnit;
   topology-vm = topologyVmTest;
+  builders-unit = buildersUnit;
 }

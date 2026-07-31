@@ -64,7 +64,7 @@ pkgs: {
       name = "waybar-notifications";
       runtimeInputs = with pkgs; [mako jq];
       text = ''
-        output=$(makoctl list 2>&1)
+        output=$(makoctl list 2>&1 || true)
         if printf '%s' "$output" | grep -q "DBus\|does not exist\|Error"; then
           printf '{"text":"${icons.inactive}","class":"inactive","tooltip":"No notifications"}\n'
           exit 0

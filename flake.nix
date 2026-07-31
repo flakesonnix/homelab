@@ -215,7 +215,7 @@
             ).checks ["webui-unit"];
           deployChecks = deploy-rs.lib.${system}.deployChecks self.deploy;
           dotfilesChecks = import ./tests/default.nix {
-            inherit pkgs;
+            inherit pkgs microvm;
             lib = pkgs.lib;
             inherit self;
           };
