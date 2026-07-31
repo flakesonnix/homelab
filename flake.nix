@@ -215,9 +215,8 @@
             ).checks ["webui-unit"];
           deployChecks = deploy-rs.lib.${system}.deployChecks self.deploy;
           dotfilesChecks = import ./tests/default.nix {
-            inherit pkgs microvm;
-            lib = pkgs.lib;
-            inherit self;
+            inherit pkgs microvm self;
+            inherit (pkgs) lib;
           };
           fullCiChecks = dotfilesLib.ciScripts.mkCiCheckBundle {
             checks =
@@ -297,7 +296,7 @@
               topology = pkgs.runCommand "topology-fixed" {} ''
                 cp -r ${self.topology.x86_64-linux.config.output} $out
                 chmod +w $out $out/network.svg
-                ${dotfilesLib.topologyScripts.fixNetworkSvg {}}/bin/fix-network-svg $out/network.svg
+                ${dotfilesLib.topologyScripts.fixNetworkSvgApp {}}/bin/fix-network-svg $out/network.svg
               '';
             };
 

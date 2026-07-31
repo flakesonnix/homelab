@@ -6,7 +6,8 @@
   ...
 }: let
   projectLib = frameworkLib;
-  packageRegistry = import ../../data/packages/system.nix {inherit pkgs;};
+  inherit (import ../../lib/types.nix {inherit lib;}) checked packageRegistryType;
+  packageRegistry = checked packageRegistryType (import ../../data/packages/system.nix {inherit pkgs;});
   hostData = projectLib.framework.host.loadHostDirectory {
     inherit lib;
     root = ../../data/hosts/omen;

@@ -1,19 +1,24 @@
 pkgs: let
   inherit (pkgs) lib;
+  inherit (lib) mkOption types;
 in {
   # PulseAudio/PipeWire sink switcher.
   # remotePatterns: list of strings matched (case-insensitive) against sink
   # name and description to identify the remote sink.
   # The jq filter is generated from the pattern list at eval time.
-  mkAudioSwitcher = {
-    name ? "audio-output",
-    remotePatterns ? ["remote"],
-  }: let
+  mkAudioSwitcher = spec: let
+    inherit (import ./types.nix {inherit lib;}) checked;
+    s = checked (types.submodule {
+      options = {
+        name = mkOption {type = types.nonEmptyStr; default = "audio-output";};
+        remotePatterns = mkOption {type = types.listOf types.nonEmptyStr; default = ["remote"];};
+      };
+    }) spec;
     mkContains = pat: ''((.description // "") | ascii_downcase | contains("${pat}")) or ((.name // "") | ascii_downcase | contains("${pat}"))'';
-    remoteSelect = lib.concatStringsSep " or " (map mkContains remotePatterns);
+    remoteSelect = lib.concatStringsSep " or " (map mkContains s.remotePatterns);
   in
     pkgs.writeShellApplication {
-      inherit name;
+      inherit (s) name;
       runtimeInputs = with pkgs; [jq pulseaudio];
       text = ''
         sinks_json=$(pactl -f json list sinks)

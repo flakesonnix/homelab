@@ -1,8 +1,11 @@
 pkgs: let
   inherit (pkgs) lib;
+  inherit (import ./types.nix {inherit lib;}) checked packageRegistryType;
 in {
   # ── Package registry helper ──────────────────────────────────
-  mkPackageRegistry = type: import (./. + "/../data/packages/${type}.nix") {inherit pkgs;};
+  # Imports data/packages/<type>.nix and validates it against the typed
+  # registry schema; unknown fields or bad types abort evaluation.
+  mkPackageRegistry = type: checked packageRegistryType (import (./. + "/../data/packages/${type}.nix") {inherit pkgs;});
 
   # ── Domain script libraries ──────────────────────────────────
   waybarScripts = import ./waybar-scripts.nix pkgs;

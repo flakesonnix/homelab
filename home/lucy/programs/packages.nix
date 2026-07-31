@@ -7,7 +7,8 @@
 }: let
   projectLib = frameworkLib;
   packageFramework = projectLib.framework.package;
-  packageRegistry = import ../../../data/packages/home.nix {inherit pkgs;};
+  inherit (import ../../../lib/types.nix {inherit lib;}) checked packageRegistryType;
+  packageRegistry = checked packageRegistryType (import ../../../data/packages/home.nix {inherit pkgs;});
 in {
   options.lucy.programs = packageFramework.mkRegistryModule {
     inherit lib;

@@ -6,7 +6,8 @@
   ...
 }: let
   projectLib = frameworkLib;
-  packageRegistry = import ../../data/packages/home.nix {inherit pkgs;};
+  inherit (import ../../lib/types.nix {inherit lib;}) checked packageRegistryType;
+  packageRegistry = checked packageRegistryType (import ../../data/packages/home.nix {inherit pkgs;});
   homeData = projectLib.framework.home.loadHomeDirectory {
     inherit lib;
     root = ../../data/home/lucy;

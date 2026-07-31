@@ -1,7 +1,12 @@
 # Nix-only post-processing for nix-topology's network SVG.
-# The fixer is generated from a data spec: every tunable is an attr of
-# `spec`, so call sites carry data (no strings); the shell template below
-# is the only place literal strings live.
+#
+# The fixer logic is a pure Nix function (lib/topology-fixer.nix, builtins
+# only) that maps an SVG string to the fixed SVG string. Every tunable is an
+# attr of `spec`; call sites carry data, no shell strings.
+#
+# The generated SVG only exists as a store path at build time, so the fix is
+# applied by evaluating the pure function with `nix eval --file` inside a
+# thin runner; the shell is plumbing only (mktemp/mv), no fixer logic.
 pkgs: let
   inherit (pkgs) lib;
   defaultSpec = {
@@ -15,71 +20,37 @@ pkgs: let
     iconSuffix = "h8v8h-8z";
   };
 in {
-  fixNetworkSvg = spec: let
-    s = defaultSpec // spec;
-    step = s.labelHeight + s.minSpacing;
-    contentHeight = s.labelHeight + s.heightPadding;
+  # Pure: fix the given SVG string with the given spec.
+  fixNetworkSvg = spec: svg:
+    (import ./topology-fixer.nix {
+      inherit svg;
+      spec = defaultSpec // spec;
+    });
+
+  # Build-time runner: fixes a generated SVG file in place via `nix eval`.
+  # The fixer runs as pure Nix; the shell is plumbing only (mv/mktemp).
+  fixNetworkSvgApp = spec: let
+    fixer = pkgs.writeText "topology-fixer.nix" (builtins.readFile ./topology-fixer.nix);
+    expr = pkgs.writeText "fix-network-svg.nix" ''
+      (import ${fixer}) {
+        spec = builtins.fromJSON '''${builtins.toJSON (defaultSpec // spec)}''';
+        svg = builtins.readFile (builtins.getEnv "SVG_PATH");
+      }
+    '';
   in
     pkgs.writeShellApplication {
       name = "fix-network-svg";
-      runtimeInputs = [pkgs.gnused pkgs.gawk pkgs.gnugrep pkgs.coreutils];
+      runtimeInputs = [pkgs.nix pkgs.coreutils];
       text = ''
         set -euo pipefail
-        svg="$1"
+        svg="$(realpath "$1")"
         [ -w "$svg" ] || { echo "not writable: $svg" >&2; exit 1; }
-        adj=$(mktemp)
-        trap 'rm -f "$adj"' EXIT
-
-        # Match the opening tag only: nix-topology emits multiline labels
-        # (e.g. IPv6 addresses) whose <text> element spans several lines.
-        label_re='<text[^>]* y="[0-9.]+"[^>]*${s.labelMarker}[^>]*style="font:${s.font}"[^>]*>'
-        labels=$(grep -oE "$label_re" "$svg" || true)
-        [ -n "$labels" ] || exit 0
-
-        # Sort labels by y (4th "..."-delimited field), then compute adjusted
-        # positions and icon offsets (icons sit iconOffset px from the label).
-        # Positions keep the original decimal format (int or n-decimals).
-        # Field order: old_y  new_y  old_icon_y  new_icon_y  <label element>
-        printf '%s\n' "$labels" \
-          | sort -t'"' -k4,4n \
-          | awk -v step="${toString step}" -v off="${toString s.iconOffset}" '
-              {
-                y = $0; sub(/^.* y="/, "", y); sub(/".*/, "", y)
-                if (match(y, /\./)) {
-                  decimals = length(y) - RSTART
-                  val = y
-                } else {
-                  decimals = 0
-                  val = y
-                }
-                if (NR == 1) cursor = val
-                new = (val < cursor) ? cursor : val
-                cursor = new + step
-                fmt = (decimals == 0) ? "%d" : "%." decimals "f"
-                printf fmt "\t" fmt "\t" fmt "\t" fmt "\t%s\n", val, new, val + off, new + off, $0
-              }
-            ' > "$adj"
-
-        last_new=""
-        while IFS=$'\t' read -r old_y new_y old_icon new_icon element; do
-          last_new="$new_y"
-          [ "$old_y" = "$new_y" ] && continue
-
-          pattern='y="'$old_y'"'
-          replacement='y="'$new_y'"'
-          fixed=''${element/$pattern/$replacement}
-          # Escape sed metacharacters in the replacement string
-          fixed=''${fixed//&/\\&}
-          sed -i "s|$element|$fixed|" "$svg"
-          sed -i "s|${s.iconPrefix}''${old_icon}${s.iconSuffix}|${s.iconPrefix}''${new_icon}${s.iconSuffix}|" "$svg"
-        done < "$adj"
-
-        # Grow the root <svg> height if the last label moved past the old height
-        new_height=$(awk -v y="$last_new" -v pad="${toString contentHeight}" 'BEGIN { printf "%.3f", y + pad }')
-        orig_height=$(grep -oE '<svg[^>]*height="[0-9.]+"' "$svg" | head -n 1 | sed -nE 's/.*height="([0-9.]+)"/\1/p')
-        if awk -v h="$new_height" -v o="$orig_height" 'BEGIN { exit !(h > o) }'; then
-          sed -i -E "0,/(<svg[^>]*height=\")[0-9.]+\"/s//\1''${new_height}\"/" "$svg"
-        fi
+        tmp="$(mktemp)"
+        trap 'rm -f "$tmp"' EXIT
+        SVG_PATH="$svg" NIX_STATE_DIR="$(mktemp -d)" \
+          nix --extra-experimental-features nix-command eval --impure --raw \
+          --file ${expr} > "$tmp"
+        mv -f "$tmp" "$svg"
       '';
     };
 }

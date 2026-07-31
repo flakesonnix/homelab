@@ -1,4 +1,7 @@
-pkgs: {
+pkgs: let
+  inherit (pkgs) lib;
+  inherit (lib) mkOption types;
+in {
   mkMediaPopup = pkgs.writeShellApplication {
     name = "waybar-media-popup";
     runtimeInputs = with pkgs; [playerctl curl libnotify];
@@ -54,26 +57,34 @@ pkgs: {
     '';
   };
 
-  mkNotifCounter = {
-    icons ? {
-      active = "󱅫";
-      inactive = "󰂚";
-    },
-  }:
+  mkNotifCounter = spec: let
+    inherit (import ./types.nix {inherit lib;}) checked;
+    s = checked (types.submodule {
+      options.icons = mkOption {
+        type = types.submodule {
+          options = {
+            active = mkOption {type = types.nonEmptyStr; default = "󱅫";};
+            inactive = mkOption {type = types.nonEmptyStr; default = "󰂚";};
+          };
+        };
+        default = {};
+      };
+    }) spec;
+  in
     pkgs.writeShellApplication {
       name = "waybar-notifications";
       runtimeInputs = with pkgs; [mako jq];
       text = ''
         output=$(makoctl list 2>&1 || true)
         if printf '%s' "$output" | grep -q "DBus\|does not exist\|Error"; then
-          printf '{"text":"${icons.inactive}","class":"inactive","tooltip":"No notifications"}\n'
+          printf '{"text":"${s.icons.inactive}","class":"inactive","tooltip":"No notifications"}\n'
           exit 0
         fi
         count=$(printf '%s' "$output" | jq -r '[.data[].notifications | length] | add // 0' 2>/dev/null || echo 0)
         if [ "$count" -gt 0 ]; then
-          printf '{"text":"${icons.active} %s","class":"active","tooltip":"%s notifications"}\n' "$count" "$count"
+          printf '{"text":"${s.icons.active} %s","class":"active","tooltip":"%s notifications"}\n' "$count" "$count"
         else
-          printf '{"text":"${icons.inactive}","class":"inactive","tooltip":"No notifications"}\n'
+          printf '{"text":"${s.icons.inactive}","class":"inactive","tooltip":"No notifications"}\n'
         fi
       '';
     };
