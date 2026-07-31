@@ -8,7 +8,7 @@
 in {
   options.programs.dunst.enable = lib.mkEnableOption "Dunst notification daemon";
 
-  config = lib.mkIf config.programs.dunst.enable {
+  config = lib.mkIf (config.programs.dunst.enable && !(config.programs.niri.enable or false)) {
     home.packages = [pkgs.dunst];
 
     xdg.configFile."dunst/dunstrc".text = ''
@@ -83,7 +83,7 @@ in {
       border_color = "${colors.base08}cc"
     '';
 
-    systemd.user.services.dunst = lib.mkIf (config.programs.niri.enable or false) {
+    systemd.user.services.dunst = {
       Unit = {
         Description = "Dunst notification daemon";
         After = ["graphical-session.target"];
