@@ -12,5 +12,4 @@ pkgs: {
       exec modprobe nvidia nvidia_modeset nvidia_uvm nvidia_drm
     '';
   };
-
 }

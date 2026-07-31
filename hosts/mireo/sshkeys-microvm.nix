@@ -1,4 +1,8 @@
-{lib, pkgs, ...}: let
+{
+  lib,
+  pkgs,
+  ...
+}: let
   keys = import ../../ssh-public-keys.nix {inherit lib;};
 in {
   systemd.network.networks."28-lan-microvm-sshkeys" = {

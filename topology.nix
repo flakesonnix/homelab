@@ -1,4 +1,4 @@
-{ lib, ... }: {
+{lib, ...}: {
   # --- Internet gateway ---
   nodes.internet = {
     name = "Internet";

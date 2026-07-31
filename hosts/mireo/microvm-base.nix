@@ -1,8 +1,11 @@
 # Common NixOS module for all mireo microvms.
 # Usage: imports = [ (import ./microvm-base.nix { ip = "10.8.0.X"; mac = "02:00:00:..."; interfaceId = "vm-name"; }) ];
-{ ip, mac, interfaceId, extraDns ? [] }:
-{ lib, ... }:
-let
+{
+  ip,
+  mac,
+  interfaceId,
+  extraDns ? [],
+}: {lib, ...}: let
   keys = import ../../ssh-public-keys.nix {inherit lib;};
 in {
   system.stateVersion = "25.11";

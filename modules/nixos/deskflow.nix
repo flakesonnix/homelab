@@ -1,5 +1,9 @@
-{ config, lib, pkgs, ... }:
-let
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}: let
   cfg = config.hq.deskflow;
 
   # generate section-based server config
@@ -9,13 +13,15 @@ let
   #   end
   serverConf = pkgs.writeText "deskflow-server.conf" (let
     screens = builtins.attrNames cfg.screenLayout;
-    links = lib.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList (name: dirs:
-      [ "    ${name}:" ]
-      ++ lib.optional (dirs.left != null) "        left = ${dirs.left}"
-      ++ lib.optional (dirs.right != null) "        right = ${dirs.right}"
-      ++ lib.optional (dirs.up != null) "        up = ${dirs.up}"
-      ++ lib.optional (dirs.down != null) "        down = ${dirs.down}"
-    ) cfg.screenLayout));
+    links = lib.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList (
+        name: dirs:
+          ["    ${name}:"]
+          ++ lib.optional (dirs.left != null) "        left = ${dirs.left}"
+          ++ lib.optional (dirs.right != null) "        right = ${dirs.right}"
+          ++ lib.optional (dirs.up != null) "        up = ${dirs.up}"
+          ++ lib.optional (dirs.down != null) "        down = ${dirs.down}"
+      )
+      cfg.screenLayout));
   in ''
     section: screens
     ${lib.concatStringsSep "\n" (map (s: "    ${s}:") screens)}
@@ -64,13 +70,12 @@ let
       remoteHost=${cfg.serverAddress}
     ''
   );
-
 in {
   options.hq.deskflow = {
     enable = lib.mkEnableOption "Deskflow keyboard/mouse sharing";
 
     role = lib.mkOption {
-      type = lib.types.enum [ "server" "client" ];
+      type = lib.types.enum ["server" "client"];
       default = "client";
       description = "Role: server (shares its KBM) or client (remote controlled)";
     };
@@ -84,10 +89,22 @@ in {
     screenLayout = lib.mkOption {
       type = lib.types.attrsOf (lib.types.submodule {
         options = {
-          left = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
-          right = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
-          up = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
-          down = lib.mkOption { type = lib.types.nullOr lib.types.str; default = null; };
+          left = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+          };
+          right = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+          };
+          up = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+          };
+          down = lib.mkOption {
+            type = lib.types.nullOr lib.types.str;
+            default = null;
+          };
         };
       });
       default = {};
@@ -99,19 +116,21 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages = [ pkgs.deskflow ];
+    environment.systemPackages = [pkgs.deskflow];
 
-    environment.etc = {
-      "deskflow/settings.ini".source = settingsIni;
-    } // lib.optionalAttrs (cfg.role == "server") {
-      "deskflow/server.conf".source = serverConf;
-    };
+    environment.etc =
+      {
+        "deskflow/settings.ini".source = settingsIni;
+      }
+      // lib.optionalAttrs (cfg.role == "server") {
+        "deskflow/server.conf".source = serverConf;
+      };
 
     systemd.services.deskflow = {
       description = "Deskflow ${cfg.role}";
-      documentation = [ "https://github.com/deskflow/deskflow" ];
-      wantedBy = [ "graphical.target" ];
-      after = [ "network.target" "graphical.target" ];
+      documentation = ["https://github.com/deskflow/deskflow"];
+      wantedBy = ["graphical.target"];
+      after = ["network.target" "graphical.target"];
       serviceConfig = {
         User = "lucy";
         Type = "simple";

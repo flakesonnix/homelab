@@ -36,5 +36,4 @@
       "com.teamspeak.TeamSpeak"
     ];
   };
-
 }
