@@ -85,8 +85,10 @@
 
     networking.firewall = {
       enable = true;
-      allowedTCPPorts = [22 24800] ++ (lib.range 5555 5585);
-      allowedUDPPorts = [5555 5585];
+      allowedTCPPorts =
+        [22]
+        ++ lib.optionals (!config.lucy.base.isServer) ([24800] ++ lib.range 5555 5585);
+      allowedUDPPorts = lib.optionals (!config.lucy.base.isServer) [5555 5585];
     };
 
     users.users.lucy.openssh.authorizedKeys.keys = [

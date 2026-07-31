@@ -65,9 +65,6 @@ in {
         pull = {
           rebase = true;
         };
-        credential = {
-          helper = "store";
-        };
         url = {
           "https://github.com/" = {
             insteadOf = "gh:";

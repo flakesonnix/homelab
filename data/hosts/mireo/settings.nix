@@ -1,4 +1,8 @@
-{lib, pkgs, ...}: {
+{
+  lib,
+  pkgs,
+  ...
+}: {
   lucy.base.enable = true;
   lucy.base.isServer = true;
   lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
@@ -104,6 +108,7 @@
   virtualisation.oci-containers.backend = "podman";
   virtualisation.oci-containers.containers.iventoy = {
     image = "docker.io/garybowers/iventoy:latest";
+    # --privileged required: proxyDHCP mode needs raw sockets/BPF for DHCP+TFTP
     extraOptions = [
       "--network=host"
       "--privileged"
