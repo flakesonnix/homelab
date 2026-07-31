@@ -6,7 +6,6 @@
     extra-substituters = ["https://nix-gaming.cachix.org"];
     extra-trusted-public-keys = ["nix-gaming.cachix.org-1:nbjlureqMbRAxR1gJ/f3hxemL9svXaZF/Ees8vCUUs4="];
     warn-dirty = false;
-    warnImplicit = false;
   };
 
   inputs = {
@@ -55,7 +54,7 @@
     };
 
     lanzaboote = {
-      url = "github:nix-community/lanzaboote/0403b4b7e8b2612657f0053a4c315e6c43eee9e6";
+      url = "github:nix-community/lanzaboote";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -111,7 +110,7 @@
     nix-topology,
     ...
   }: let
-    pkgsForPatch = import nixpkgs { system = "x86_64-linux"; };
+    pkgsForPatch = import nixpkgs {system = "x86_64-linux";};
     patchedNixTopologySrc = pkgsForPatch.applyPatches {
       name = "nix-topology-patched";
       src = inputs.nix-topology;
@@ -208,9 +207,9 @@
             (import "${framework.outPath}/lib/flake/checks.nix" {
               inherit self pkgs framework omen-config;
             }).checks;
-          # Framework still ships a Rust-only `webui-unit` check that targets a
-          # different WebUI implementation shape than this repo's Nix/static
-          # WebUI. Keep local/CI aggregate checks Nix-only by excluding it here.
+          # Framework ships a Rust-only `webui-unit` check that targets a
+          # different WebUI implementation than this repo (which has no
+          # WebUI). Keep local/CI aggregate checks Nix-only by excluding it.
           frameworkChecksNoWebui = builtins.removeAttrs frameworkChecks ["webui-unit"];
           deployChecks = deploy-rs.lib.${system}.deployChecks self.deploy;
           dotfilesChecks = import ./tests/default.nix {
@@ -285,24 +284,28 @@
             };
 
             topology.modules = [./topology.nix];
-            topology.nixosConfigurations = builtins.mapAttrs (_: cfg:
-              cfg.extendModules {
-                modules = [
-                  nix-topology.nixosModules.default
-                  ./modules/nixos/topology.nix
-                ];
-              }
-            ) self.nixosConfigurations;
+            topology.nixosConfigurations =
+              builtins.mapAttrs (
+                _: cfg:
+                  cfg.extendModules {
+                    modules = [
+                      nix-topology.nixosModules.default
+                      ./modules/nixos/topology.nix
+                    ];
+                  }
+              )
+              self.nixosConfigurations;
 
             packages = {
               full-ci-checks = fullCiChecks;
-              topology = pkgs.runCommand "topology-fixed" {
-                buildInputs = [pkgs.python3];
-              } ''
-                cp -r ${self.topology.x86_64-linux.config.output} $out
-                chmod +w $out/network.svg
-                python3 ${./scripts/fix-network-svg.py} $out/network.svg $out/network.svg
-              '';
+              topology =
+                pkgs.runCommand "topology-fixed" {
+                  buildInputs = [pkgs.python3];
+                } ''
+                  cp -r ${self.topology.x86_64-linux.config.output} $out
+                  chmod +w $out/network.svg
+                  python3 ${./scripts/fix-network-svg.py} $out/network.svg $out/network.svg
+                '';
             };
 
             apps = {
