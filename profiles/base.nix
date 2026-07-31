@@ -7,10 +7,6 @@
     ../modules/nixos
   ];
 
-  options = {
-    lucy.enableFirefox = lib.mkEnableOption "Firefox browser";
-  };
-
   config = {
     environment.sessionVariables = {
       EDITOR = "vim";
@@ -20,17 +16,6 @@
     i18n.defaultLocale = lib.mkDefault "en_US.UTF-8";
 
     nixpkgs.config.allowUnfree = true;
-
-    programs.firefox = lib.mkIf config.lucy.enableFirefox {
-      enable = true;
-      policies = {
-        ExtensionSettings = {
-          "uBlock0@raymondhill.net" = {
-            install_url = "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi";
-          };
-        };
-      };
-    };
 
     services.printing.enable = lib.mkDefault (!config.lucy.base.isServer);
 
