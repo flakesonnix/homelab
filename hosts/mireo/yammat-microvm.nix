@@ -4,116 +4,94 @@
   yammat,
   ...
 }: let
-  keys = import ../../ssh-public-keys.nix {inherit lib;};
+  inherit (import ../../lib/secret-keys.nix pkgs) mkKeyGenService;
   yammatPackage = yammat.packages.${pkgs.stdenv.hostPlatform.system}.yammat.overrideAttrs (old: {
     meta = (old.meta or {}) // {mainProgram = "yammat";};
   });
 in {
-  systemd.network.networks."27-lan-microvm-yammat" = {
-    matchConfig.Name = "vm-yammat";
-    networkConfig.Bridge = "br0";
-  };
-
-  microvm.autostart = ["yammat"];
-
-  microvm.vms.yammat = {
-    autostart = true;
-    config = {
-      imports = [
-        yammat.nixosModule
-        (import ./microvm-base.nix {
-          ip = "10.8.0.5";
-          mac = "02:00:00:10:08:05";
-          interfaceId = "vm-yammat";
-        })
-      ];
-
-      networking.hostName = "yammat";
-      networking.firewall.allowedTCPPorts = [22 3000];
-
-      microvm.mem = 2304;
-      microvm.vcpu = 2;
-      microvm.volumes = [
+  imports = [
+    (import ./mk-microvm.nix {
+      name = "yammat";
+      ip = "10.8.0.5";
+      mem = 2304;
+      vcpu = 2;
+      tcpPorts = [22 3000];
+      volumes = [
         {
           image = "yammat-postgres.img";
           mountPoint = "/var/lib/postgresql";
           size = 8192;
+          user = "postgres";
+          group = "postgres";
         }
         {
           image = "yammat-state.img";
           mountPoint = "/var/lib/yammat";
           size = 128;
+          user = "yammat";
+          group = "yammat";
         }
       ];
+      config = {
+        imports = [
+          yammat.nixosModule
+          (mkKeyGenService {
+            serviceName = "yammat";
+            secretFile = "/var/lib/yammat/client_session_key.aes";
+            user = "yammat";
+            group = "yammat";
+            bytes = 96;
+            extraCommands = ''
+              install -m 600 /var/lib/yammat/client_session_key.aes /tmp/yammat_session_key.aes
+            '';
+          })
+        ];
 
-      services.yammat = {
-        enable = true;
-        package = yammatPackage;
-        config = lib.mkForce ''
-          static-dir: "_env:STATIC_DIR:static"
-          host: "_env:HOST:10.8.0.5"
-          port: "_env:PORT:3000"
-          approot: "_env:APPROOT:http://10.8.0.5:3000"
-          ip-from-header: "_env:IP_FROM_HEADER:false"
+        services.yammat = {
+          enable = true;
+          package = yammatPackage;
+          config = lib.mkForce ''
+            static-dir: "_env:STATIC_DIR:static"
+            host: "_env:HOST:10.8.0.5"
+            port: "_env:PORT:3000"
+            approot: "_env:APPROOT:http://10.8.0.5:3000"
+            ip-from-header: "_env:IP_FROM_HEADER:false"
 
-          database:
-            user: "_env:PGUSER:yammat"
-            password: "_env:PGPASS:notused"
-            host: "_env:PGHOST:localhost"
-            port: "_env:PGPORT:5432"
-            database: "_env:PGDATABASE:yammat"
-            poolsize: "_env:PGPOOLSIZE:10"
+            database:
+              user: "_env:PGUSER:yammat"
+              password: "_env:PGPASS:notused"
+              host: "_env:PGHOST:localhost"
+              port: "_env:PGPORT:5432"
+              database: "_env:PGDATABASE:yammat"
+              poolsize: "_env:PGPOOLSIZE:10"
 
-          email:
-          - "noreply@yammat.local"
-          currency: "€"
-          cash_charge: 0
+            email:
+            - "noreply@yammat.local"
+            currency: "€"
+            cash_charge: 0
 
-          copyright: "Powered by YAMMAT"
-          copyright_link: "https://gitea.c3d2.de/c3d2/yammat"
+            copyright: "Powered by YAMMAT"
+            copyright_link: "https://gitea.c3d2.de/c3d2/yammat"
 
-          block_users: false
-        '';
-      };
-
-      systemd.tmpfiles.rules = [
-        "d /var/lib/yammat 0750 yammat yammat - -"
-      ];
-
-      systemd.services.yammat-session-key = {
-        description = "Prepare YAMMAT session key";
-        before = ["yammat.service"];
-        requiredBy = ["yammat.service"];
-        wantedBy = ["multi-user.target"];
-        path = [pkgs.coreutils];
-        serviceConfig = {
-          Type = "oneshot";
-          User = "yammat";
-          Group = "yammat";
-          UMask = "0077";
+            block_users: false
+          '';
         };
-        script = ''
-          if [ ! -s /var/lib/yammat/client_session_key.aes ]; then
-            head -c 96 /dev/urandom > /var/lib/yammat/client_session_key.aes
-          fi
-          install -m 600 /var/lib/yammat/client_session_key.aes /tmp/yammat_session_key.aes
-        '';
-      };
 
-      systemd.services.yammat = {
-        after = ["postgresql.service" "yammat-session-key.service"];
-        requires = ["postgresql.service" "yammat-session-key.service"];
-        environment = {
-          APPROOT = lib.mkForce "http://10.8.0.5:3000";
-          HOST = lib.mkForce "10.8.0.5";
-          PORT = lib.mkForce "3000";
-          STATIC_DIR = lib.mkForce "${yammatPackage}/static";
-          PGHOST = lib.mkForce "";
-          PGPASS = lib.mkForce "";
-          PGUSER = lib.mkForce "yammat";
-          PGDATABASE = lib.mkForce "yammat";
+        systemd.services.yammat = {
+          after = ["postgresql.service"];
+          requires = ["postgresql.service"];
+          environment = {
+            APPROOT = lib.mkForce "http://10.8.0.5:3000";
+            HOST = lib.mkForce "10.8.0.5";
+            PORT = lib.mkForce "3000";
+            STATIC_DIR = lib.mkForce "${yammatPackage}/static";
+            PGHOST = lib.mkForce "";
+            PGPASS = lib.mkForce "";
+            PGUSER = lib.mkForce "yammat";
+            PGDATABASE = lib.mkForce "yammat";
+          };
         };
       };
-    };
-  };
+    })
+  ];
 }

@@ -1,4 +1,5 @@
 {pkgs, ...}: let
+  inherit (import ../../lib/secret-keys.nix pkgs) mkKeyGenService;
   dashboard = builtins.toJSON {
     annotations.list = [];
     editable = true;
@@ -519,167 +520,135 @@
     version = 1;
   };
 in {
-  systemd.network.networks."24-lan-microvm" = {
-    matchConfig.Name = "vm-*";
-    networkConfig.Bridge = "br0";
-  };
-
-  services.prometheus.exporters.node = {
-    enable = true;
-    listenAddress = "10.8.0.1";
-    port = 9100;
-  };
-
-  microvm.autostart = ["grafana"];
-  microvm.vms.grafana = {
-    autostart = true;
-    config = {
-      imports = [
-        (import ./microvm-base.nix {
-          ip = "10.8.0.2";
-          mac = "02:00:00:10:08:02";
-          interfaceId = "vm-grafana";
-        })
-      ];
-
-      networking.hostName = "grafana";
-      networking.firewall.allowedTCPPorts = [22 3000 9090];
-
-      microvm.mem = 768;
-      microvm.vcpu = 2;
-      microvm.volumes = [
+  imports = [
+    (import ./mk-microvm.nix {
+      name = "grafana";
+      ip = "10.8.0.2";
+      mem = 768;
+      vcpu = 2;
+      tcpPorts = [22 3000 9090];
+      volumes = [
         {
           image = "grafana-data.img";
           mountPoint = "/var/lib/grafana";
           size = 1024;
+          user = "grafana";
+          group = "grafana";
         }
         {
           image = "prometheus-data.img";
           mountPoint = "/var/lib/prometheus2";
           size = 1024;
+          user = "prometheus";
+          group = "prometheus";
         }
       ];
-
-      systemd.tmpfiles.rules = [
-        "d /var/lib/grafana 0750 grafana grafana -"
-        "d /var/lib/prometheus2 0750 prometheus prometheus -"
-      ];
-      services.journald.extraConfig = ''
-        ForwardToConsole=yes
-        MaxLevelConsole=debug
-      '';
-
-      # Grafana reads its secret key via file provider; generate once so the
-      # key never lands in the Nix store.
-      systemd.services.grafana-secret = {
-        description = "Generate Grafana secret key";
-        before = ["grafana.service"];
-        requiredBy = ["grafana.service"];
-        wantedBy = ["multi-user.target"];
-        path = [pkgs.coreutils];
-        serviceConfig = {
-          Type = "oneshot";
-          User = "grafana";
-          Group = "grafana";
-          UMask = "0077";
-        };
-        script = ''
-          if [ ! -s /var/lib/grafana/secret.key ]; then
-            head -c 48 /dev/urandom | base64 > /var/lib/grafana/secret.key
-          fi
-        '';
-      };
-      systemd.services.grafana.after = ["grafana-secret.service"];
-      systemd.services.grafana.requires = ["grafana-secret.service"];
-
-      environment.etc."grafana-dashboards/mireo-router.json".text = dashboard;
-
-      services.prometheus = {
-        enable = true;
-        port = 9090;
-        scrapeConfigs = [
-          {
-            job_name = "router";
-            static_configs = [
-              {
-                targets = ["10.8.0.1:9100"];
-                labels = {
-                  instance = "router";
-                  host = "mireo";
-                };
-              }
-            ];
-          }
-          {
-            job_name = "hosts";
-            static_configs = [
-              {
-                targets = ["10.8.0.176:9100"];
-                labels = {
-                  instance = "omen";
-                  host = "omen";
-                };
-              }
-            ];
-          }
+      config = {
+        imports = [
+          (mkKeyGenService {
+            serviceName = "grafana";
+            secretFile = "/var/lib/grafana/secret.key";
+            user = "grafana";
+            group = "grafana";
+            bytes = 48;
+            format = "base64";
+          })
         ];
-      };
 
-      services.grafana = {
-        enable = true;
-        dataDir = "/var/lib/grafana";
-        settings = {
-          analytics.reporting_enabled = false;
-          server = {
-            http_addr = "0.0.0.0";
-            http_port = 3000;
-            domain = "10.8.0.2";
-          };
-          users = {
-            default_theme = "dark";
-            viewers_can_edit = false;
-          };
-          "auth.anonymous" = {
-            enabled = true;
-            org_role = "Viewer";
-          };
-          security = {
-            # File provider: key generated at activation (grafana-secret.service)
-            secret_key = "$__file{/var/lib/grafana/secret.key}";
-            disable_initial_admin_creation = false;
-          };
-        };
-        provision = {
+        services.journald.extraConfig = ''
+          ForwardToConsole=yes
+          MaxLevelConsole=debug
+        '';
+
+        environment.etc."grafana-dashboards/mireo-router.json".text = dashboard;
+
+        services.prometheus = {
           enable = true;
-          datasources.settings = {
-            apiVersion = 1;
-            datasources = [
-              {
-                access = "proxy";
-                isDefault = true;
-                name = "Prometheus";
-                type = "prometheus";
-                uid = "prometheus";
-                url = "http://127.0.0.1:9090";
-              }
-            ];
+          port = 9090;
+          scrapeConfigs = [
+            {
+              job_name = "router";
+              static_configs = [
+                {
+                  targets = ["10.8.0.1:9100"];
+                  labels = {
+                    instance = "router";
+                    host = "mireo";
+                  };
+                }
+              ];
+            }
+            {
+              job_name = "hosts";
+              static_configs = [
+                {
+                  targets = ["10.8.0.176:9100"];
+                  labels = {
+                    instance = "omen";
+                    host = "omen";
+                  };
+                }
+              ];
+            }
+          ];
+        };
+
+        services.grafana = {
+          enable = true;
+          dataDir = "/var/lib/grafana";
+          settings = {
+            analytics.reporting_enabled = false;
+            server = {
+              http_addr = "0.0.0.0";
+              http_port = 3000;
+              domain = "10.8.0.2";
+            };
+            users = {
+              default_theme = "dark";
+              viewers_can_edit = false;
+            };
+            "auth.anonymous" = {
+              enabled = true;
+              org_role = "Viewer";
+            };
+            security = {
+              # File provider: key generated at activation (grafana-secret-key.service)
+              secret_key = "$__file{/var/lib/grafana/secret.key}";
+              disable_initial_admin_creation = false;
+            };
           };
-          dashboards.settings = {
-            apiVersion = 1;
-            providers = [
-              {
-                disableDeletion = false;
-                editable = true;
-                folder = "Router";
-                name = "router";
-                options.path = "/etc/grafana-dashboards";
-                orgId = 1;
-                type = "file";
-              }
-            ];
+          provision = {
+            enable = true;
+            datasources.settings = {
+              apiVersion = 1;
+              datasources = [
+                {
+                  access = "proxy";
+                  isDefault = true;
+                  name = "Prometheus";
+                  type = "prometheus";
+                  uid = "prometheus";
+                  url = "http://127.0.0.1:9090";
+                }
+              ];
+            };
+            dashboards.settings = {
+              apiVersion = 1;
+              providers = [
+                {
+                  disableDeletion = false;
+                  editable = true;
+                  folder = "Router";
+                  name = "router";
+                  options.path = "/etc/grafana-dashboards";
+                  orgId = 1;
+                  type = "file";
+                }
+              ];
+            };
           };
         };
       };
-    };
-  };
+    })
+  ];
 }

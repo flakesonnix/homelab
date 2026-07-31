@@ -9,4 +9,10 @@
     ./sshkeys-microvm.nix
     ./yammat-microvm.nix
   ];
+
+  # All microvm tap interfaces join the LAN bridge.
+  systemd.network.networks."24-lan-microvm" = {
+    matchConfig.Name = "vm-*";
+    networkConfig.Bridge = "br0";
+  };
 }
