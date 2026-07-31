@@ -4,19 +4,19 @@
   pkgs,
   ...
 }: let
-  nerdFontFamilies =
-    builtins.filter
-    (name:
-      !(builtins.elem name [
-        "override"
-        "overrideDerivation"
-        "recurseForDerivations"
-      ]))
-    (builtins.attrNames pkgs.nerd-fonts);
+  cfg = config.lucy.waybar;
 in {
-  options.lucy.waybar.installFonts = lib.mkEnableOption "install Waybar Nerd Fonts system-wide";
+  options.lucy.waybar = {
+    installFonts = lib.mkEnableOption "install Waybar fonts system-wide";
 
-  config = lib.mkIf config.lucy.waybar.installFonts {
-    fonts.packages = builtins.map (name: pkgs.nerd-fonts.${name}) nerdFontFamilies;
+    nerdFonts = lib.mkOption {
+      type = lib.types.listOf lib.types.package;
+      default = [pkgs.nerd-fonts.hack pkgs.nerd-fonts.symbols-only];
+      description = "Nerd Font families installed for Waybar glyphs";
+    };
+  };
+
+  config = lib.mkIf cfg.installFonts {
+    fonts.packages = cfg.nerdFonts;
   };
 }
