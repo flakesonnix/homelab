@@ -223,7 +223,7 @@
             checks =
               frameworkChecks
               // deployChecks
-              // {dotfiles-tests = dotfilesChecks;};
+              // dotfilesChecks;
           };
           rebuildApp = pkgs.writeShellApplication {
             name = "rebuild";
@@ -345,9 +345,7 @@
             };
           }
           // {
-            checks = {
-              dotfiles-tests = dotfilesChecks;
-            };
+            checks = dotfilesChecks;
           };
       }
       // {
