@@ -55,7 +55,6 @@ in {
         shopt -s autocd checkwinsize cmdhist globstar histappend
         bind 'set completion-ignore-case on'
         bind 'set show-all-if-ambiguous on'
-        alias neofetch=hyfetch
         ${bashPrompt}
       '';
     };

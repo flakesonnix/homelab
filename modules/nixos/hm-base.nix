@@ -7,12 +7,6 @@
 }: {
   home-manager.backupFileExtension = "hm-backup";
 
-  users.users.lucy = {
-    isNormalUser = true;
-    description = "Lucy";
-    extraGroups = ["wheel" "networkmanager"];
-  };
-
   home-manager.users.lucy = {
     imports = [
       ../../home/lucy

@@ -132,7 +132,7 @@ To add custom annotations (extra services, links, icons), create `topology.nix` 
 
 ```bash
 nix develop
-# provides: alejandra, python3, statix, nix-tree
+# provides: alejandra, statix, nix-tree
 ```
 
 Formatter: `nix fmt` (alejandra). Linter: `statix check`.

@@ -18,7 +18,7 @@
   waybarScripts = import ../../lib/waybar-scripts.nix pkgs;
   mediaPopupScript = waybarScripts.mkMediaPopup;
   playerPickerScript = waybarScripts.mkPlayerPicker;
-  notifScript = waybarScripts.mkNotifCounter;
+  notifScript = waybarScripts.mkNotifCounter {};
 
   waybarStyle = renderCss [
     (waybarFramework.rule "*" {

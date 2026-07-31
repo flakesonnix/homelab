@@ -203,36 +203,33 @@
           pkgs,
           ...
         }: let
+          dotfilesLib = import ./lib/default.nix pkgs;
+          # Framework template checks that target components this repo
+          # doesn't ship are excluded from the aggregate CI bundle.
           frameworkChecks =
-            (import "${framework.outPath}/lib/flake/checks.nix" {
-              inherit self pkgs framework omen-config;
-            }).checks;
-          # Framework ships a Rust-only `webui-unit` check that targets a
-          # different WebUI implementation than this repo (which has no
-          # WebUI). Keep local/CI aggregate checks Nix-only by excluding it.
-          frameworkChecksNoWebui = builtins.removeAttrs frameworkChecks ["webui-unit"];
+            builtins.removeAttrs
+            (
+              import "${framework.outPath}/lib/flake/checks.nix" {
+                inherit self pkgs framework omen-config;
+              }
+            ).checks ["webui-unit"];
           deployChecks = deploy-rs.lib.${system}.deployChecks self.deploy;
           dotfilesChecks = import ./tests/default.nix {
             inherit pkgs;
             lib = pkgs.lib;
             inherit self;
           };
-          fullCiCheckPaths = frameworkChecksNoWebui // deployChecks // {dotfiles-tests = dotfilesChecks;};
-          fullCiChecks = pkgs.runCommand "full-ci-checks" {} (
-            ''
-              mkdir -p "$out"
-            ''
-            + builtins.concatStringsSep "\n" (builtins.attrValues (builtins.mapAttrs (name: path: ''
-                ln -s ${path} "$out/${name}"
-              '')
-              fullCiCheckPaths))
-          );
+          fullCiChecks = dotfilesLib.ciScripts.mkCiCheckBundle {
+            checks =
+              frameworkChecks
+              // deployChecks
+              // {dotfiles-tests = dotfilesChecks;};
+          };
           rebuildApp = pkgs.writeShellApplication {
             name = "rebuild";
             runtimeInputs = [pkgs.nh];
             text = "nh os switch";
           };
-          dotfilesLib = import ./lib/default.nix pkgs;
           setupSopsApp = dotfilesLib.mkSetupSops "setup-sops";
           deployApp = host:
             pkgs.writeShellApplication {
@@ -242,29 +239,29 @@
                 deploy .#${host}
               '';
             };
-          checkApp = pkgs.writeShellApplication {
+          checkApp = dotfilesLib.ciScripts.mkCheckApp {
             name = "check";
-            text = ''
-              nix eval --option warn-dirty false .#formatter.x86_64-linux.drvPath --raw >/dev/null
-              nix eval --option warn-dirty false .#devShells.x86_64-linux.default.drvPath --raw >/dev/null
-              nix eval --option warn-dirty false .#apps.x86_64-linux.rebuild.type --raw >/dev/null
-              nix build --option warn-dirty false .#full-ci-checks
-              nix build --option warn-dirty false '.#checks.x86_64-linux.dotfiles-tests'
-            '';
+            evalTargets = [
+              ".#formatter.x86_64-linux.drvPath"
+              ".#devShells.x86_64-linux.default.drvPath"
+              ".#apps.x86_64-linux.rebuild.type"
+            ];
+            buildTargets = [
+              ".#full-ci-checks"
+              ".#checks.x86_64-linux.dotfiles-tests"
+            ];
           };
-          checkLightApp = pkgs.writeShellApplication {
+          checkLightApp = dotfilesLib.ciScripts.mkCheckApp {
             name = "check-light";
-            text = ''
-              nix eval --option warn-dirty false .#formatter.x86_64-linux.drvPath --raw >/dev/null
-              nix eval --option warn-dirty false .#devShells.x86_64-linux.default.drvPath --raw >/dev/null
-              nix eval --option warn-dirty false .#apps.x86_64-linux.rebuild.type --raw >/dev/null
-            '';
+            evalTargets = [
+              ".#formatter.x86_64-linux.drvPath"
+              ".#devShells.x86_64-linux.default.drvPath"
+              ".#apps.x86_64-linux.rebuild.type"
+            ];
           };
-          checkFullApp = pkgs.writeShellApplication {
+          checkFullApp = dotfilesLib.ciScripts.mkCheckApp {
             name = "check-full";
-            text = ''
-              nix build --option warn-dirty false .#full-ci-checks
-            '';
+            buildTargets = [".#full-ci-checks"];
           };
           updateApp = pkgs.writeShellApplication {
             name = "update";
@@ -277,7 +274,6 @@
             devShells.default = pkgs.mkShell {
               packages = with pkgs; [
                 alejandra
-                python3
                 statix
                 nix-tree
               ];
@@ -298,14 +294,11 @@
 
             packages = {
               full-ci-checks = fullCiChecks;
-              topology =
-                pkgs.runCommand "topology-fixed" {
-                  buildInputs = [pkgs.python3];
-                } ''
-                  cp -r ${self.topology.x86_64-linux.config.output} $out
-                  chmod +w $out/network.svg
-                  python3 ${./scripts/fix-network-svg.py} $out/network.svg $out/network.svg
-                '';
+              topology = pkgs.runCommand "topology-fixed" {} ''
+                cp -r ${self.topology.x86_64-linux.config.output} $out
+                chmod +w $out $out/network.svg
+                ${dotfilesLib.topologyScripts.fixNetworkSvg {}}/bin/fix-network-svg $out/network.svg
+              '';
             };
 
             apps = {

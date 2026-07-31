@@ -54,28 +54,27 @@ pkgs: {
     '';
   };
 
-  mkNotifCounter = pkgs.writeShellApplication {
-    name = "waybar-notifications";
-    runtimeInputs = with pkgs; [mako python3];
-    text = ''
-      output=$(makoctl list 2>&1)
-      if printf '%s' "$output" | grep -q "DBus\|does not exist\|Error"; then
-        printf '{"text":"󰂚","class":"inactive","tooltip":"No notifications"}\n'
-        exit 0
-      fi
-      count=$(printf '%s' "$output" | python3 -c "
-      import sys, json
-      try:
-        d = json.load(sys.stdin)
-        print(sum(len(g) for g in d.get('data', [])))
-      except Exception:
-        print(0)
-      " 2>/dev/null || echo 0)
-      if [ "$count" -gt 0 ]; then
-        printf '{"text":"󱅫 %s","class":"active","tooltip":"%s notifications"}\n' "$count" "$count"
-      else
-        printf '{"text":"󰂚","class":"inactive","tooltip":"No notifications"}\n'
-      fi
-    '';
-  };
+  mkNotifCounter = {
+    icons ? {
+      active = "󱅫";
+      inactive = "󰂚";
+    },
+  }:
+    pkgs.writeShellApplication {
+      name = "waybar-notifications";
+      runtimeInputs = with pkgs; [mako jq];
+      text = ''
+        output=$(makoctl list 2>&1)
+        if printf '%s' "$output" | grep -q "DBus\|does not exist\|Error"; then
+          printf '{"text":"${icons.inactive}","class":"inactive","tooltip":"No notifications"}\n'
+          exit 0
+        fi
+        count=$(printf '%s' "$output" | jq -r '[.data[].notifications | length] | add // 0' 2>/dev/null || echo 0)
+        if [ "$count" -gt 0 ]; then
+          printf '{"text":"${icons.active} %s","class":"active","tooltip":"%s notifications"}\n' "$count" "$count"
+        else
+          printf '{"text":"${icons.inactive}","class":"inactive","tooltip":"No notifications"}\n'
+        fi
+      '';
+    };
 }
