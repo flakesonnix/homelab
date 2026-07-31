@@ -21,6 +21,9 @@ in {
 
   hq.audio.streamTo = "";
 
+  # Scraped by the grafana microvm on mireo (10.8.0.2)
+  services.prometheus.exporters.node.enable = true;
+
   programs.noisetorch.enable = true;
 
   # nix-serve-ng → LAN binary cache for LAN hosts
@@ -38,5 +41,5 @@ in {
     };
   };
 
-  networking.firewall.allowedTCPPorts = [5000];
+  networking.firewall.allowedTCPPorts = [5000 9100];
 }
