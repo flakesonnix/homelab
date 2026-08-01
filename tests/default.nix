@@ -138,6 +138,15 @@
       "deploy-omen"
       "deploy-mireo"
     ]);
+  _homectlDeps = {
+    homectlApi = depAttr "homectl-api" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-api;
+    homectlAgent = depAttr "homectl-agent" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-agent;
+    homectlCli = depAttr "homectl" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl;
+    homectlWeb = depAttr "homectl-web" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-web;
+    homectlManifest = depAttr "homectl-manifest" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-manifest;
+    homectlUi = depAttr "homectl-ui" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-ui;
+  };
+  _homectlCheckDep = {homectlTests = depAttr "homectl-tests" self.checks.${pkgs.stdenv.hostPlatform.system}.homectl-tests;};
 
   dotfilesLib = import ../lib/default.nix pkgs;
   fixerScripts = dotfilesLib.topologyScripts;
@@ -211,10 +220,15 @@
   dotfilesTests =
     pkgs.runCommand "dotfiles-tests"
     ({
-        buildInputs = [pkgs.alejandra];
+        buildInputs = [pkgs.alejandra pkgs.jq];
         dataModelValid = _evaluateDataModel;
       }
-      // _hostDeps // _formatterDep // _devShellDeps // _appDeps)
+      // _hostDeps
+      // _formatterDep
+      // _devShellDeps
+      // _appDeps
+      // _homectlDeps
+      // _homectlCheckDep)
     ''
       set -euo pipefail
 
@@ -226,7 +240,16 @@
 
       echo ""
       echo "=== Build dependency verification ==="
-      echo "  hosts, formatter, devShells, apps: built as dependencies"
+      echo "  hosts, formatter, devShells, apps, homectl: built as dependencies"
+
+      echo ""
+      echo "=== homectl artifacts ==="
+      manifest="$homectl-manifest"
+      ui="$homectl-ui"
+      jq -e '.hosts.omen.hostname and (.hosts | has("mireo"))' "$manifest" >/dev/null
+      jq -e '.vms | has("cups")' "$manifest" >/dev/null
+      jq -e '.navigation | any(.page == "dashboard")' "$ui" >/dev/null
+      echo "  manifest.json and ui.json valid"
 
       echo ""
       echo "=== Formatting ==="
@@ -257,7 +280,8 @@
   fixedBig = fixerScripts.fixNetworkSvg {} bigSvg;
   countSub = s: p: builtins.length (builtins.filter builtins.isString (builtins.split p s)) - 1;
   checkBig =
-    countSub fixedBig "y=\"275\"" == 1
+    countSub fixedBig "y=\"275\""
+    == 1
     && countSub fixedBig "y=\"303\"" == 1
     && countSub fixedBig "y=\"331\"" == 1
     && countSub fixedBig "y=\"286\"" == 0;
@@ -265,44 +289,45 @@
   # Unit tests: the fixer is a pure Nix function; assertions run at eval time
   # on the fixture string. The runner smoke test exercises the build-time
   # `nix eval` plumbing on the real fixture file.
-  topologyUnit = pkgs.runCommand "topology-fixer-unit" {
-    fixerDefaultValid = checkFixerDefault;
-    fixerWideValid = checkFixerWide;
-    bigSvgValid = checkBig;
-  } ''
-    set -euo pipefail
+  topologyUnit =
+    pkgs.runCommand "topology-fixer-unit" {
+      fixerDefaultValid = checkFixerDefault;
+      fixerWideValid = checkFixerWide;
+      bigSvgValid = checkBig;
+    } ''
+      set -euo pipefail
 
-    echo "=== Default spec (step=28, iconOffset=-9) ==="
-    echo "  OK: spacing, formats, icons, multiline label, height (pure)"
+      echo "=== Default spec (step=28, iconOffset=-9) ==="
+      echo "  OK: spacing, formats, icons, multiline label, height (pure)"
 
-    echo "=== Custom spec (minSpacing=40 -> step=52) ==="
-    echo "  OK: custom spec honoured (pure)"
+      echo "=== Custom spec (minSpacing=40 -> step=52) ==="
+      echo "  OK: custom spec honoured (pure)"
 
-    echo "=== Large SVG (9000 filler lines, no stack overflow) ==="
-    echo "  OK: whole-string fixer survives large inputs (pure)"
+      echo "=== Large SVG (9000 filler lines, no stack overflow) ==="
+      echo "  OK: whole-string fixer survives large inputs (pure)"
 
-    echo "=== Build-time runner (nix eval plumbing) ==="
-    cp ${fixture} net.svg
-    chmod +w net.svg
-    ${fixerScripts.fixNetworkSvgApp {}}/bin/fix-network-svg net.svg
-    grep -q 'y="303"' net.svg
-    grep -q 'y="331"' net.svg
-    grep -q 'y="359.000"' net.svg
-    grep -q 'y="415.462"' net.svg
-    grep -q 'fd00:cafe:1::1' net.svg
-    grep -q 'M178.6 294h8v8h-8z' net.svg
-    grep -q 'M178.6 350.000h8v8h-8z' net.svg
-    grep -q 'height="447.462"' net.svg
-    if grep -q 'y="286"' net.svg; then
-      echo "FAIL: overlapping label not moved" >&2
-      exit 1
-    fi
-    echo "  OK: runner fixes the file in place"
+      echo "=== Build-time runner (nix eval plumbing) ==="
+      cp ${fixture} net.svg
+      chmod +w net.svg
+      ${fixerScripts.fixNetworkSvgApp {}}/bin/fix-network-svg net.svg
+      grep -q 'y="303"' net.svg
+      grep -q 'y="331"' net.svg
+      grep -q 'y="359.000"' net.svg
+      grep -q 'y="415.462"' net.svg
+      grep -q 'fd00:cafe:1::1' net.svg
+      grep -q 'M178.6 294h8v8h-8z' net.svg
+      grep -q 'M178.6 350.000h8v8h-8z' net.svg
+      grep -q 'height="447.462"' net.svg
+      if grep -q 'y="286"' net.svg; then
+        echo "FAIL: overlapping label not moved" >&2
+        exit 1
+      fi
+      echo "  OK: runner fixes the file in place"
 
-    echo ""
-    echo "All topology unit tests passed."
-    touch "$out"
-  '';
+      echo ""
+      echo "All topology unit tests passed."
+      touch "$out"
+    '';
   # ---- builder unit tests ----
   # Eval-time module assertions (abort on failure, like the data model
   # checks) plus runtime script tests; all collected into builders-unit.

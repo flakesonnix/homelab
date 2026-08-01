@@ -382,9 +382,11 @@
             };
           }
           // {
-            checks = dotfilesChecks // {
-              homectl-tests = homectlPkgs.tests;
-            };
+            checks =
+              dotfilesChecks
+              // {
+                homectl-tests = homectlPkgs.tests;
+              };
           };
       }
       // {

@@ -81,7 +81,7 @@
 
   hostView = name: cfg: let
     roleNames = hostRoles name;
-    roleAttrs = map (r: roleOf r) roleNames;
+    roleAttrs = map roleOf roleNames;
     hostPayloads = map (r: r.host or {}) roleAttrs;
     homePayloads = map (r: r.home or {}) roleAttrs;
     presetNames = unique (concatMap (p: p.presets or []) hostPayloads);
@@ -94,8 +94,8 @@
     roles = roleNames;
     bundles = bundlesOf;
     presets = presetNames;
-    moduleFlags = moduleFlags;
-    packageTags = packageTags;
+    inherit moduleFlags;
+    inherit packageTags;
     packages = registryNames (import ../data/packages/system.nix {inherit pkgs;});
   };
 
@@ -113,9 +113,9 @@
     else null;
 
   vmOf = name: vm: host: let
-    ev = vm.evaluatedConfig.config or {};
+    ev = vm.config.config or {};
   in {
-    host = host;
+    inherit host;
     ip = addrOf (ev.systemd.network.networks."20-lan".address or null);
     mem = ev.microvm.mem or null;
     vcpu = ev.microvm.vcpu or null;
@@ -127,7 +127,11 @@
         mountPoint = v.mountPoint or null;
         size = v.size or null;
       })
-      (attrValues (ev.microvm.volumes or {}));
+      (
+        if builtins.isList (ev.microvm.volumes or {})
+        then ev.microvm.volumes
+        else attrValues (ev.microvm.volumes or {})
+      );
   };
 
   # ----------------------------------------------------------------------
@@ -139,8 +143,8 @@
     then let
       o = cfg.config.lucy.homectl;
       value = {
-        enable = o.enable;
-        role = o.role;
+        inherit (o) enable;
+        inherit (o) role;
         agent.plugins = o.agent.plugins;
         api = {
           port = o.api.port;
@@ -149,7 +153,7 @@
           proxy = o.api.proxy;
         };
         ui.navigation = o.ui.navigation;
-        rbac = o.rbac;
+        inherit (o) rbac;
       };
       t = tryEval (builtins.deepSeq value value);
     in
@@ -182,7 +186,7 @@
       then {}
       else cfg.api.proxy or {};
   in
-    mapAttrs (n: v: {target = v.target;}) proxy;
+    mapAttrs (n: v: {inherit (v) target;}) proxy;
 
   uiOpts = let
     cfg =
@@ -353,8 +357,8 @@
     vms = vmCatalog;
     deployNodes =
       mapAttrs (_: n: {
-        hostname = n.hostname;
-        sshUser = n.sshUser;
+        inherit (n) hostname;
+        inherit (n) sshUser;
       })
       deployNodes;
     proxy = proxyRoutes;
@@ -363,14 +367,14 @@
         value = pluginList n;
       })
       hostNames);
-    catalog = catalog;
+    inherit catalog;
   };
 
   ui = {
-    navigation = navigation;
-    dashboard = dashboard;
-    featureFlags = featureFlags;
-    rbac = rbac;
+    inherit navigation;
+    inherit dashboard;
+    inherit featureFlags;
+    inherit rbac;
   };
 in {
   inherit manifest ui;
