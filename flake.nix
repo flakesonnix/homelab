@@ -188,6 +188,20 @@
         ./modules/nixos/homectl.nix
         run0-sudo-shim.nixosModules.default
         nix-serve-ng.nixosModules.default
+        ({...}:
+          # nix-serve-ng's overlay pins `nixVersions.nix_2_28`, which the
+          # current nixpkgs removed (only nix_2_31 remains). Alias it.
+          {
+            nixpkgs.overlays = [
+              (final: prev: {
+                nixVersions =
+                  prev.nixVersions
+                  // {
+                    nix_2_28 = final.nixVersions.nix_2_31;
+                  };
+              })
+            ];
+          })
       ];
     };
     mireo-config = mkHost {

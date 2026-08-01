@@ -143,8 +143,14 @@
     homectlAgent = depAttr "homectl-agent" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-agent;
     homectlCli = depAttr "homectl" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl;
     homectlWeb = depAttr "homectl-web" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-web;
-    homectlManifest = depAttr "homectl-manifest" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-manifest;
-    homectlUi = depAttr "homectl-ui" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-ui;
+    homectlManifest = let
+      d = self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-manifest;
+    in
+      builtins.seq d d.outPath;
+    homectlUi = let
+      d = self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-ui;
+    in
+      builtins.seq d d.outPath;
   };
   _homectlCheckDep = {homectlTests = depAttr "homectl-tests" self.checks.${pkgs.stdenv.hostPlatform.system}.homectl-tests;};
 
@@ -244,8 +250,8 @@
 
       echo ""
       echo "=== homectl artifacts ==="
-      manifest="$homectl-manifest"
-      ui="$homectl-ui"
+      manifest="$homectlManifest"
+      ui="$homectlUi"
       jq -e '.hosts.omen.hostname and (.hosts | has("mireo"))' "$manifest" >/dev/null
       jq -e '.vms | has("cups")' "$manifest" >/dev/null
       jq -e '.navigation | any(.page == "dashboard")' "$ui" >/dev/null

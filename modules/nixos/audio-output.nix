@@ -38,7 +38,7 @@ in {
     environment.systemPackages = [
       (pkgs.writeShellApplication {
         inherit (cfg) name;
-        runtimeInputs = with pkgs; [jq pulseaudio coreutils gnugrep notify-send];
+        runtimeInputs = with pkgs; [jq pulseaudio coreutils gnugrep libnotify];
         text = ''
           sinks_json=$(pactl -f json list sinks)
 

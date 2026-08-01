@@ -45,8 +45,8 @@ in {
       enable = true;
       package = cfg.package;
       bindAddress = cfg.bindAddress;
-      port = toString cfg.port;
-      extraParams = cfg.extraParams;
+      port = cfg.port;
+      extraParams = lib.concatStringsSep " " cfg.extraParams;
     };
 
     networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [cfg.port];
