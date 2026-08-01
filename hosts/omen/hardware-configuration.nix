@@ -29,7 +29,7 @@
     options = ["fmask=0077" "dmask=0077"];
   };
 
-  swapDevices = [{device = "/dev/mapper/luks-d18ac909-2d76-47d4-a73e-8d396beee250";}];
+  swapDevices = [{device = "/dev/disk/by-path/pci-0000:3b:00.0-nvme-1-part3";}];
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.intel.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
