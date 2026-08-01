@@ -1,0 +1,57 @@
+# homectl package derivations. M0: stdlib-only Go binaries + Vite frontend +
+# Nix-generated artifacts. Binaries keep the flake's repo paths stable; all
+# structure (UI, plugins, routes) comes from the artifacts, not from Go.
+{pkgs}: let
+  src = ./.;
+
+  goBuild = {
+    pkg,
+    binary,
+    ...
+  }@args:
+    pkgs.buildGoModule (
+      {
+        pname = binary;
+        version = "0.1.0";
+        inherit src;
+        vendorHash = null;
+        subPackages = [pkg];
+        ldflags = ["-s" "-w"];
+        postInstall = ''
+          mv $out/bin/${baseNameOf pkg} $out/bin/${binary}
+        '';
+        meta.mainProgram = binary;
+      }
+      // builtins.removeAttrs args ["pkg" "binary"]
+    );
+in {
+  api = goBuild {
+    pkg = "api";
+    binary = "homectl-api";
+  };
+  agent = goBuild {
+    pkg = "agent";
+    binary = "homectl-agent";
+  };
+  cli = goBuild {
+    pkg = "cli";
+    binary = "homectl";
+  };
+
+  tests = goBuild {
+    pkg = "api";
+    binary = "homectl-tests";
+    doCheck = true;
+    checkPhase = "go vet ./... && go test ./...";
+  };
+
+  web = pkgs.buildNpmPackage {
+    pname = "homectl-web";
+    version = "0.1.0";
+    src = ./web/frontend;
+    nodejs = pkgs.nodejs_22;
+    npmDepsHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+    buildPhase = "npm run build";
+    installPhase = "mkdir -p $out && cp -r dist/* $out/";
+  };
+}

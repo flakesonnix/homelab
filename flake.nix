@@ -87,6 +87,11 @@
       url = "github:oddlama/nix-topology";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nix-serve-ng = {
+      url = "github:aristanetworks/nix-serve-ng";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs @ {
@@ -108,6 +113,7 @@
     yammat,
     deploy-rs,
     nix-topology,
+    nix-serve-ng,
     ...
   }: let
     pkgsForPatch = import nixpkgs {system = "x86_64-linux";};
@@ -163,6 +169,8 @@
         ./modules/nixos/serial-getty.nix
         ./modules/nixos/sops.nix
         ./modules/nixos/waybar.nix
+        ./modules/nixos/nix-serve.nix
+        ./modules/nixos/audio-output.nix
         sops-nix.nixosModules.sops
         home-manager.nixosModules.home-manager
         lanzaboote.nixosModules.lanzaboote
@@ -177,7 +185,9 @@
         ./modules/nixos/hm-base.nix
         ./modules/nixos/deskflow.nix
         ./modules/nixos/waydroid.nix
+        ./modules/nixos/homectl.nix
         run0-sudo-shim.nixosModules.default
+        nix-serve-ng.nixosModules.default
       ];
     };
     mireo-config = mkHost {
@@ -188,6 +198,8 @@
         microvm.nixosModules.host
         ./hosts/mireo
         ./hosts/mireo/grafana-microvm.nix
+        ./modules/nixos/cups.nix
+        ./modules/nixos/homectl.nix
         nur.modules.nixos.default
         run0-sudo-shim.nixosModules.default
       ];
@@ -266,6 +278,8 @@
             name = "update";
             text = "nix flake update";
           };
+        in let
+          homectlPkgs = import ./homectl/default.nix {inherit pkgs;};
         in
           {
             formatter = pkgs.alejandra;
@@ -275,6 +289,8 @@
                 alejandra
                 statix
                 nix-tree
+                go
+                nodejs_22
               ];
             };
 
@@ -298,6 +314,12 @@
                 chmod +w $out $out/network.svg
                 ${dotfilesLib.topologyScripts.fixNetworkSvgApp {}}/bin/fix-network-svg $out/network.svg
               '';
+              homectl-api = homectlPkgs.api;
+              homectl-agent = homectlPkgs.agent;
+              homectl = homectlPkgs.cli;
+              homectl-web = homectlPkgs.web;
+              homectl-manifest = pkgs.writeText "manifest.json" self.homectlArtifacts.manifestJson;
+              homectl-ui = pkgs.writeText "ui.json" self.homectlArtifacts.uiJson;
             };
 
             apps = {
@@ -341,10 +363,28 @@
                 program = "${setupSopsApp}/bin/setup-sops";
                 meta.description = "Generate sops-nix age key pair";
               };
+              homectl = {
+                type = "app";
+                program = "${homectlPkgs.cli}/bin/homectl";
+                meta.description = "homectl CLI (status, health)";
+              };
+              homectl-manifest = {
+                type = "app";
+                program = "${dotfilesLib.ciScripts.mkCheckApp {
+                  name = "homectl-manifest";
+                  buildTargets = [
+                    ".#packages.x86_64-linux.homectl-manifest"
+                    ".#packages.x86_64-linux.homectl-ui"
+                  ];
+                }}/bin/homectl-manifest";
+                meta.description = "Evaluate the homectl artifacts";
+              };
             };
           }
           // {
-            checks = dotfilesChecks;
+            checks = dotfilesChecks // {
+              homectl-tests = homectlPkgs.tests;
+            };
           };
       }
       // {
@@ -359,6 +399,13 @@
           nixosConfigurations = {
             omen = omen-config;
             mireo = mireo-config;
+          };
+
+          homectlArtifacts = import ./homectl/manifest.nix {
+            lib = nixpkgs.lib;
+            pkgs = pkgsForPatch;
+            configurations = self.nixosConfigurations;
+            deployNodes = self.deploy.nodes or {};
           };
 
           deploy.nodes = let

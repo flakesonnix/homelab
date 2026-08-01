@@ -26,20 +26,19 @@ in {
 
   programs.noisetorch.enable = true;
 
-  # nix-serve-ng → LAN binary cache for LAN hosts
-  # Manual service (nixpkgs nix-serve module stale, crashes as nix-serve user)
-  systemd.services.nix-serve = {
-    description = "nix-serve-ng binary cache server";
-    after = ["network.target" "nix-daemon.service"];
-    wantedBy = ["multi-user.target"];
-    environment.NIX_REMOTE = "daemon";
-    serviceConfig = {
-      ExecStart = "${pkgs.nix-serve-ng}/bin/nix-serve --listen 0.0.0.0:5000";
-      User = "root";
-      Restart = "on-failure";
-      RestartSec = 5;
-    };
+  # nix-serve-ng binary cache server
+  lucy.nixServe = {
+    enable = true;
+    bindAddress = "0.0.0.0";
+    port = 5000;
+    openFirewall = true;
   };
 
-  networking.firewall.allowedTCPPorts = [5000 9100];
+  # Audio output switcher (local/remote)
+  lucy.audioOutput = {
+    enable = true;
+    name = "audio-output";
+    remotePatterns = ["remote"];
+    notify = true;
+  };
 }
