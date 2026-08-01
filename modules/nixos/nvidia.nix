@@ -67,7 +67,7 @@
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
-        ExecStart = scripts.mkNvidiaLoader;
+        ExecStart = "${scripts.mkNvidiaLoader}/bin/nvidia-loader";
       };
     };
   };
