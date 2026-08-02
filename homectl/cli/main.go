@@ -8,22 +8,35 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"homectl/shared/version"
 )
 
 func main() {
-	api := flag.String("api", "http://localhost:8443", "homectl API base URL")
-	showVersion := flag.Bool("version", false, "print version and exit")
-	flag.Parse()
+	// Accept both `homectl status --api URL` and `homectl --api URL status`.
+	// flag stops at the first non-flag token, so peel a leading subcommand off.
+	sub := ""
+	rest := os.Args[1:]
+	if len(rest) > 0 && !strings.HasPrefix(rest[0], "-") {
+		sub = rest[0]
+		rest = rest[1:]
+	}
+	fs := flag.NewFlagSet("homectl", flag.ExitOnError)
+	api := fs.String("api", "http://localhost:8443", "homectl API base URL")
+	showVersion := fs.Bool("version", false, "print version and exit")
+	fs.Parse(rest)
 
 	if *showVersion {
 		log.Println(version.String())
 		return
 	}
 
-	cmd := flag.Arg(0)
+	cmd := sub
+	if cmd == "" && fs.NArg() > 0 {
+		cmd = fs.Arg(0)
+	}
 	switch cmd {
 	case "", "status":
 		if err := status(*api); err != nil {
