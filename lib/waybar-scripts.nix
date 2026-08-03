@@ -59,17 +59,25 @@ in {
 
   mkNotifCounter = spec: let
     inherit (import ./types.nix {inherit lib;}) checked;
-    s = checked (types.submodule {
-      options.icons = mkOption {
-        type = types.submodule {
-          options = {
-            active = mkOption {type = types.nonEmptyStr; default = "󱅫";};
-            inactive = mkOption {type = types.nonEmptyStr; default = "󰂚";};
+    s =
+      checked (types.submodule {
+        options.icons = mkOption {
+          type = types.submodule {
+            options = {
+              active = mkOption {
+                type = types.nonEmptyStr;
+                default = "󱅫";
+              };
+              inactive = mkOption {
+                type = types.nonEmptyStr;
+                default = "󰂚";
+              };
+            };
           };
+          default = {};
         };
-        default = {};
-      };
-    }) spec;
+      })
+      spec;
   in
     pkgs.writeShellApplication {
       name = "waybar-notifications";
@@ -81,6 +89,7 @@ in {
           exit 0
         fi
         count=$(printf '%s' "$output" | jq -r '[.data[].notifications | length] | add // 0' 2>/dev/null || echo 0)
+        count=''${count:-0}
         if [ "$count" -gt 0 ]; then
           printf '{"text":"${s.icons.active} %s","class":"active","tooltip":"%s notifications"}\n' "$count" "$count"
         else
