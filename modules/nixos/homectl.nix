@@ -5,6 +5,7 @@
   ...
 }: let
   inherit (lib) mkEnableOption mkOption types;
+  cfg = config.lucy.homectl;
 in {
   options = {
     lucy.homectl = {
@@ -16,6 +17,11 @@ in {
       };
 
       api = {
+        package = mkOption {
+          type = types.nullOr types.package;
+          default = null;
+          description = "homectl-api server binary (set by the flake)";
+        };
         port = mkOption {
           type = types.port;
           default = 8443;
@@ -50,6 +56,11 @@ in {
       };
 
       agent = {
+        package = mkOption {
+          type = types.nullOr types.package;
+          default = null;
+          description = "homectl-agent binary (set by the flake)";
+        };
         endpoint = mkOption {
           type = types.str;
           default = "wss://homectl.lan:8443/api/v1/ws";
@@ -142,31 +153,42 @@ in {
     };
   };
 
-  config = lib.mkIf config.lucy.homectl.enable (lib.mkMerge [
-    (lib.mkIf (config.lucy.homectl.role == "api") {
-      systemd.services.homectl-api = {
-        description = "homectl control-plane API";
-        wantedBy = ["multi-user.target"];
-        after = ["network.target"];
-        serviceConfig = {
-          ExecStart = "${pkgs.homectl}/bin/homectl-api --manifest ${toString config.lucy.homectl.api.artifactsDir}/manifest.json --ui ${toString config.lucy.homectl.api.artifactsDir}/ui.json";
-          Restart = "on-failure";
-          DynamicUser = true;
-          StateDirectory = "homectl";
+  config = lib.mkIf cfg.enable (
+    lib.mkMerge [
+      (lib.mkIf (cfg.role == "api" && cfg.api.package != null) {
+        systemd.services.homectl-api = {
+          description = "homectl control-plane API";
+          wantedBy = ["multi-user.target"];
+          after = ["network.target"];
+          serviceConfig = {
+            ExecStart = lib.concatStringsSep " " (
+              [
+                "${cfg.api.package}/bin/homectl-api"
+                "--manifest"
+                "${toString cfg.api.artifactsDir}/manifest.json"
+                "--ui"
+                "${toString cfg.api.artifactsDir}/ui.json"
+              ]
+              ++ lib.optional (cfg.api.webDir != null) "--web ${toString cfg.api.webDir}"
+            );
+            Restart = "on-failure";
+            DynamicUser = true;
+            StateDirectory = "homectl";
+          };
         };
-      };
-    })
-    (lib.mkIf (config.lucy.homectl.role == "agent") {
-      systemd.services.homectl-agent = {
-        description = "homectl agent";
-        wantedBy = ["multi-user.target"];
-        after = ["network-online.target"];
-        serviceConfig = {
-          ExecStart = "${pkgs.homectl}/bin/homectl-agent";
-          Restart = "on-failure";
-          DynamicUser = true;
+      })
+      (lib.mkIf (cfg.role == "agent" && cfg.agent.package != null) {
+        systemd.services.homectl-agent = {
+          description = "homectl agent";
+          wantedBy = ["multi-user.target"];
+          after = ["network-online.target"];
+          serviceConfig = {
+            ExecStart = "${cfg.agent.package}/bin/homectl-agent";
+            Restart = "on-failure";
+            DynamicUser = true;
+          };
         };
-      };
-    })
-  ]);
+      })
+    ]
+  );
 }

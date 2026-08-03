@@ -15,6 +15,7 @@ func main() {
 	addr := flag.String("addr", ":8443", "listen address")
 	manifestPath := flag.String("manifest", "manifest.json", "path to Nix-generated manifest.json")
 	uiPath := flag.String("ui", "ui.json", "path to Nix-generated ui.json")
+	webDir := flag.String("web", "", "optional path to the built frontend to serve at /")
 	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
 
@@ -35,6 +36,10 @@ func main() {
 	server, err := httpapi.New(manifest, ui)
 	if err != nil {
 		log.Fatalf("init server: %v", err)
+	}
+	if *webDir != "" {
+		server.ServeWeb(*webDir)
+		log.Printf("serving frontend from %s", *webDir)
 	}
 
 	log.Printf("%s listening on %s", version.String(), *addr)

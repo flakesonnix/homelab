@@ -4,6 +4,7 @@ package httpapi
 import (
 	"encoding/json"
 	"net/http"
+	"path/filepath"
 
 	"homectl/shared/version"
 )
@@ -17,6 +18,7 @@ type Meta struct {
 // Server is the homectl API server (M0 subset).
 type Server struct {
 	meta Meta
+	web  http.Handler
 }
 
 // New creates a Server with the given artifacts. Artifacts are plain decoded
@@ -32,11 +34,29 @@ func New(manifest, ui []byte) (*Server, error) {
 	return &Server{meta: Meta{Manifest: m, UI: u}}, nil
 }
 
+// ServeWeb enables serving the static frontend (Vite build output) from dir
+// below /, with a single-page-app fallback to index.html for unknown paths.
+func (s *Server) ServeWeb(dir string) {
+	root := http.Dir(dir)
+	s.web = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		p := "." + r.URL.Path
+		if f, err := root.Open(p); err == nil {
+			f.Close()
+			http.ServeFile(w, r, filepath.Join(dir, r.URL.Path))
+			return
+		}
+		http.ServeFile(w, r, filepath.Join(dir, "index.html"))
+	})
+}
+
 // Handler returns the API HTTP handler.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/health", s.handleHealth)
 	mux.HandleFunc("GET /api/v1/meta", s.handleMeta)
+	if s.web != nil {
+		mux.Handle("/", s.web)
+	}
 	return mux
 }
 

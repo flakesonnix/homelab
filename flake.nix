@@ -117,6 +117,7 @@
     ...
   }: let
     pkgsForPatch = import nixpkgs {system = "x86_64-linux";};
+    homectlPkgs = import ./homectl/default.nix {pkgs = pkgsForPatch;};
     patchedNixTopologySrc = pkgsForPatch.applyPatches {
       name = "nix-topology-patched";
       src = inputs.nix-topology;
@@ -202,6 +203,10 @@
               })
             ];
           })
+        ({lib, ...}: {
+          lucy.homectl.api.package = lib.mkDefault homectlPkgs.api;
+          lucy.homectl.agent.package = lib.mkDefault homectlPkgs.agent;
+        })
       ];
     };
     mireo-config = mkHost {
@@ -216,6 +221,10 @@
         ./modules/nixos/homectl.nix
         nur.modules.nixos.default
         run0-sudo-shim.nixosModules.default
+        ({lib, ...}: {
+          lucy.homectl.api.package = lib.mkDefault homectlPkgs.api;
+          lucy.homectl.agent.package = lib.mkDefault homectlPkgs.agent;
+        })
       ];
     };
   in
