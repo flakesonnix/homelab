@@ -3,7 +3,9 @@
   config,
   pkgs,
   ...
-}: {
+}: let
+  systemScripts = import ../../lib/system-scripts.nix pkgs;
+in {
   options = {
     lucy.base = {
       enable = lib.mkEnableOption "Base configuration shared across all hosts";
@@ -128,13 +130,13 @@
       "/mnt/mireo/data" = {
         device = "10.8.0.1:/data";
         fsType = "nfs";
-        # soft + short timeo: with the server down, the mount attempt fails
-        # in seconds instead of hanging every automount trigger for 90s
-        # (default hard mount), which froze any program touching ~/data.
+        # Mounted on demand by the NetworkManager dispatcher (mkMireoDataDispatcher)
+        # only while mireo's NFS server answers, so programs touching ~/data fail
+        # instantly instead of hanging on the automount when we're away from home.
+        # soft + short timeo still keep mid-session drops from blocking apps for
+        # the default hard-mount 90s.
         options = [
-          "x-systemd.automount"
           "noauto"
-          "x-systemd.idle-timeout=600"
           "soft"
           "timeo=50"
           "retrans=2"
@@ -143,7 +145,15 @@
     };
 
     systemd.tmpfiles.rules = lib.optionals (!config.lucy.base.isServer) [
+      "d /mnt/mireo/data 0700 lucy lucy - -"
       "L /home/lucy/data - - - - /mnt/mireo/data"
+    ];
+
+    networking.networkmanager.dispatcherScripts = lib.mkIf (!config.lucy.base.isServer) [
+      {
+        source = systemScripts.mkMireoDataDispatcher;
+        type = "basic";
+      }
     ];
   };
 }

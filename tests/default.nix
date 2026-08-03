@@ -481,6 +481,7 @@
       inactive = "I";
     };
   };
+  mireoDataDispatcher = dotfilesLib.systemScripts.mkMireoDataDispatcher;
   testCheckApp = dotfilesLib.ciScripts.mkCheckApp {
     name = "test-check";
     evalTargets = ["a" "b"];
@@ -548,6 +549,38 @@
       case "$(readlink ${testBundle}/foo)" in *hello*) ;; *) echo "FAIL: foo link target" >&2; exit 1 ;; esac
       case "$(readlink ${testBundle}/bar)" in *git*) ;; *) echo "FAIL: bar link target" >&2; exit 1 ;; esac
       echo "  OK: named check links"
+
+      echo "=== mireo data dispatcher ==="
+      sed '/^export PATH=/d' ${mireoDataDispatcher} > dispatcher.sh
+      cat > stub/mountpoint <<'EOF'
+      #!/bin/sh
+      exit 1
+      EOF
+      cat > stub/nc <<'EOF'
+      #!/bin/sh
+      [ -n "''${NFS_REACHABLE:-}" ] && exit 0 || exit 1
+      EOF
+      : > dispatcher.log
+      cat > stub/mount <<EOF
+      #!/bin/sh
+      echo "mount" >> "\$LOG"
+      EOF
+      cat > stub/umount <<EOF
+      #!/bin/sh
+      echo "umount" >> "\$LOG"
+      EOF
+      chmod +x stub/mountpoint stub/nc stub/mount stub/umount
+      export PATH="$PWD/stub:$PATH"
+      export LOG="$PWD/dispatcher.log"
+
+      bash dispatcher.sh wlan0 up
+      grep -q mount dispatcher.log && { echo "FAIL: mounted while unreachable" >&2; exit 1; }
+      NFS_REACHABLE=1 bash dispatcher.sh wlan0 up
+      grep -q mount dispatcher.log || { echo "FAIL: not mounted while reachable" >&2; exit 1; }
+      : > dispatcher.log
+      bash dispatcher.sh wlan0 down
+      grep -q umount dispatcher.log || { echo "FAIL: no unmount on down" >&2; exit 1; }
+      echo "  OK: mounts only when reachable, unmounts on down"
 
       echo ""
       echo "All builder unit tests passed."
