@@ -171,7 +171,6 @@
         ./modules/nixos/sops.nix
         ./modules/nixos/waybar.nix
         ./modules/nixos/nix-serve.nix
-        ./modules/nixos/audio-output.nix
         sops-nix.nixosModules.sops
         home-manager.nixosModules.home-manager
         lanzaboote.nixosModules.lanzaboote

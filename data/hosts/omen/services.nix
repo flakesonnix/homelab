@@ -1,13 +1,9 @@
-{pkgs, ...}: let
-  audioOutputApp = (import ../../../lib/audio-scripts.nix pkgs).mkAudioSwitcher {};
-in {
+{
   # --- sops-nix secrets (uncomment after running `nix run .#setup-sops`) ---
   # lucy.secrets = {
   #   enable = true;
   #   sopsFile = ../../../hosts/omen/secrets.yaml;
   # };
-
-  lucy.hostPackages = [audioOutputApp];
 
   services.asteriskLocal = {
     enable = false;
@@ -32,13 +28,5 @@ in {
     bindAddress = "0.0.0.0";
     port = 5000;
     openFirewall = true;
-  };
-
-  # Audio output switcher (local/remote)
-  lucy.audioOutput = {
-    enable = true;
-    name = "audio-output";
-    remotePatterns = ["remote"];
-    notify = true;
   };
 }

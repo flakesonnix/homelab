@@ -126,7 +126,7 @@ Options namespace: `hq.audio.*`
 | `streamTo` | str | `""` | Hostname/IP of remote PulseAudio TCP receiver (:4713) |
 
 When `streamTo != ""`: loads `module-tunnel-sink` → connects to `${streamTo}:4713`.
-Sink appears as `Remote Audio (<host>)` on sender. Sink switch via `audio-output [remote|local]` (bound to hotkey). Config: `lib/audio-scripts.nix`, patterns match `remote`.
+Sink appears as `Remote Audio (<host>)` on sender.
 
 ---
 

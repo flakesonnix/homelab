@@ -10,7 +10,6 @@ in {
   # ── Domain script libraries ──────────────────────────────────
   waybarScripts = import ./waybar-scripts.nix pkgs;
   systemScripts = import ./system-scripts.nix pkgs;
-  audioScripts = import ./audio-scripts.nix pkgs;
   topologyScripts = import ./topology.nix pkgs;
   ciScripts = import ./ci.nix pkgs;
   secretKeys = import ./secret-keys.nix pkgs;
