@@ -230,8 +230,6 @@
 
   boot.loader.systemd-boot.enable = true;
 
-  nix.settings.substituters = lib.mkBefore ["http://omen:5000"];
-
   lucy.topology = {
     deviceType = "router";
     icon = "devices.router";

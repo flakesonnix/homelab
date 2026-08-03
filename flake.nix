@@ -87,11 +87,6 @@
       url = "github:oddlama/nix-topology";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    nix-serve-ng = {
-      url = "github:aristanetworks/nix-serve-ng";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
   outputs = inputs @ {
@@ -113,7 +108,6 @@
     yammat,
     deploy-rs,
     nix-topology,
-    nix-serve-ng,
     ...
   }: let
     pkgsForPatch = import nixpkgs {system = "x86_64-linux";};
@@ -170,7 +164,6 @@
         ./modules/nixos/serial-getty.nix
         ./modules/nixos/sops.nix
         ./modules/nixos/waybar.nix
-        ./modules/nixos/nix-serve.nix
         sops-nix.nixosModules.sops
         home-manager.nixosModules.home-manager
         lanzaboote.nixosModules.lanzaboote
@@ -187,21 +180,6 @@
         ./modules/nixos/waydroid.nix
         ./modules/nixos/homectl.nix
         run0-sudo-shim.nixosModules.default
-        nix-serve-ng.nixosModules.default
-        ({...}:
-          # nix-serve-ng's overlay pins `nixVersions.nix_2_28`, which the
-          # current nixpkgs removed (only nix_2_31 remains). Alias it.
-          {
-            nixpkgs.overlays = [
-              (final: prev: {
-                nixVersions =
-                  prev.nixVersions
-                  // {
-                    nix_2_28 = final.nixVersions.nix_2_31;
-                  };
-              })
-            ];
-          })
         ({lib, ...}: {
           lucy.homectl.api.package = lib.mkDefault homectlPkgs.api;
           lucy.homectl.agent.package = lib.mkDefault homectlPkgs.agent;

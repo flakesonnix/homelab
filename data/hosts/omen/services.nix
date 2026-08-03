@@ -21,12 +21,4 @@
   services.prometheus.exporters.node.enable = true;
 
   programs.noisetorch.enable = true;
-
-  # nix-serve-ng binary cache server
-  lucy.nixServe = {
-    enable = true;
-    bindAddress = "0.0.0.0";
-    port = 5000;
-    openFirewall = true;
-  };
 }
