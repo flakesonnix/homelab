@@ -16,11 +16,6 @@
   };
   services.blueman.enable = true;
 
-  boot.kernelParams = [
-    "nvme_core.default_ps_max_latency_us=0"
-    "console=tty1"
-  ];
-
   niri.users = ["lucy"];
 
   lucy.topology = {
