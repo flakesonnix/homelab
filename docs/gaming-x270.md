@@ -1,8 +1,8 @@
-# Gaming — omen
+# Gaming — x270
 
 ## Stack overview
 
-Gaming on omen is driven by three presets (activated via the `gaming` role):
+Gaming on x270 is driven by three presets (activated via the `gaming` role):
 
 | Preset | What it enables |
 |--------|----------------|
@@ -50,8 +50,8 @@ GameMode daemon runs as a system service. Games using `libgamemode` or launched 
 
 ## Performance governor
 
-`gaming-performance` preset sets `cpuFreqGovernor = "performance"` and disables the power profiles daemon to prevent it from resetting the governor. This is always active on omen (not just during gaming).
+`gaming-performance` preset sets `cpuFreqGovernor = "performance"` and disables the power profiles daemon to prevent it from resetting the governor. This is always active on x270 (not just during gaming).
 
 ## Disable for non-gaming builds
 
-If omen ever runs without the `gaming` role, the module flags simply won't be set and none of the gaming stack activates — the presets are purely additive.
+If x270 ever runs without the `gaming` role, the module flags simply won't be set and none of the gaming stack activates — the presets are purely additive.

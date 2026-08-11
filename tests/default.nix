@@ -16,7 +16,7 @@
   allRoles = readNixDir ../data/roles;
   allBundles = readNixDir ../data/bundles;
   allPresets = readNixDir ../data/presets;
-  hostDataDirs = ["omen" "mireo"];
+  hostDataDirs = ["x270" "mireo"];
   homeDataDirs = ["lucy"];
 
   force = cond: msg:
@@ -120,7 +120,7 @@
   _hostDeps = builtins.listToAttrs (map (host: {
     name = "host-${host}";
     value = depAttr host self.nixosConfigurations.${host}.config.system.build.toplevel;
-  }) ["omen" "mireo"]);
+  }) ["x270" "mireo"]);
   _formatterDep = {fmt = depAttr "fmt" self.formatter.${pkgs.stdenv.hostPlatform.system};};
   _devShellDeps = {
     shell-default = depAttr "shell-default" self.devShells.${pkgs.stdenv.hostPlatform.system}.default;
@@ -135,7 +135,7 @@
       "check-light"
       "check-full"
       "update"
-      "deploy-omen"
+      "deploy-x270"
       "deploy-mireo"
     ]);
   _homectlDeps = {
@@ -252,7 +252,7 @@
       echo "=== homectl artifacts ==="
       manifest="$homectlManifest"
       ui="$homectlUi"
-      jq -e '.hosts.omen.hostname and (.hosts | has("mireo"))' "$manifest" >/dev/null
+      jq -e '.hosts.x270.hostname and (.hosts | has("mireo"))' "$manifest" >/dev/null
       jq -e '.vms | has("cups")' "$manifest" >/dev/null
       jq -e '.navigation | any(.page == "dashboard")' "$ui" >/dev/null
       echo "  manifest.json and ui.json valid"

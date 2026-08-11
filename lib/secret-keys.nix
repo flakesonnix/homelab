@@ -16,34 +16,41 @@ in {
         user = mkOption {type = types.nonEmptyStr;};
         group = mkOption {type = types.nonEmptyStr;};
         bytes = mkOption {type = types.ints.positive;};
-        format = mkOption {type = types.enum ["raw" "base64"]; default = "raw";};
-        extraCommands = mkOption {type = types.lines; default = "";};
+        format = mkOption {
+          type = types.enum ["raw" "base64"];
+          default = "raw";
+        };
+        extraCommands = mkOption {
+          type = types.lines;
+          default = "";
+        };
       };
     };
     s = checked specType spec;
-  in {pkgs, ...}: {
-    systemd.services."${s.serviceName}-secret-key" = {
-      description = "Generate ${s.serviceName} secret key";
-      before = ["${s.serviceName}.service"];
-      requiredBy = ["${s.serviceName}.service"];
-      wantedBy = ["multi-user.target"];
-      path = [pkgs.coreutils];
-      serviceConfig = {
-        Type = "oneshot";
-        inherit (s) user group;
-        UMask = "0077";
+  in
+    {pkgs, ...}: {
+      systemd.services."${s.serviceName}-secret-key" = {
+        description = "Generate ${s.serviceName} secret key";
+        before = ["${s.serviceName}.service"];
+        requiredBy = ["${s.serviceName}.service"];
+        wantedBy = ["multi-user.target"];
+        path = [pkgs.coreutils];
+        serviceConfig = {
+          Type = "oneshot";
+          inherit (s) user group;
+          UMask = "0077";
+        };
+        script = ''
+          if [ ! -s "${s.secretFile}" ]; then
+            head -c ${toString s.bytes} /dev/urandom${lib.optionalString (s.format == "base64") " | base64"} > "${s.secretFile}"
+          fi
+          ${s.extraCommands}
+        '';
       };
-      script = ''
-        if [ ! -s "${s.secretFile}" ]; then
-          head -c ${toString s.bytes} /dev/urandom${lib.optionalString (s.format == "base64") " | base64"} > "${s.secretFile}"
-        fi
-        ${s.extraCommands}
-      '';
-    };
 
-    systemd.services.${s.serviceName} = {
-      after = ["${s.serviceName}-secret-key.service"];
-      requires = ["${s.serviceName}-secret-key.service"];
+      systemd.services.${s.serviceName} = {
+        after = ["${s.serviceName}-secret-key.service"];
+        requires = ["${s.serviceName}-secret-key.service"];
+      };
     };
-  };
 }

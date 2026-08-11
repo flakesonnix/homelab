@@ -16,24 +16,25 @@ Internet (IPv4 + IPv6 via FritzBox)
     ├── 10.8.0.6  cups microvm        (CUPS print server)
     ├── 10.8.0.7  sshkeys microvm     (SSH public key web)
     ├── 10.8.0.8  aptcache microvm    (apt-cacher-ng proxy)
-    └── 10.8.0.176  omen
+    └── 10.8.0.176  x270
 ```
 
 mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (WAN). IPv6 prefix `2a02:3102:4cec:b500::/64` delegated from FritzBox to br0; dnsmasq issues RA (ra-stateless) to LAN clients.
 
 ---
 
-## omen
+## x270
 
 **Role:** Primary desktop / gaming laptop  
-**Hardware:** HP Omen laptop, NVIDIA RTX 2070  
+**Hardware:** Lenovo ThinkPad X270, i7-7600U  
 **IP:** 10.8.0.176
 
 ### Features
 - Niri Wayland compositor with eww desktop shell (topbar + sidebar)
 - Stylix theming (cyberdeck/dark palette)
 - Secure Boot via lanzaboote
-- NVIDIA: lazy-load modprobe service, s2idle suspend, PRIME not enabled
+- Suspend-then-hibernate (lid close, 30 min timer on battery)
+- Smartcard reader (pcscd + ccid)
 - Gaming: Steam, GameMode, Gamescope (capSysNice), MangoHud, performance governor
 - Asterisk SIP PBX
 - Audio streaming → remote tunnel sink
@@ -44,24 +45,24 @@ mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (
 `desktop`, `dev`, `gaming`
 
 ### Config files
-- `data/hosts/omen/settings.nix` — hostname, hosts, Bluetooth, Niri users, boot params
-- `data/hosts/omen/module-flags.nix` — NixOS feature toggles (nvidia, fonts, waydroid, etc.)
-- `data/hosts/omen/roles.nix` — role list
-- `hosts/omen/host.nix` — framework applyHost call
-- `hosts/omen/hardware-configuration.nix` — nixos-hardware-generated
+- `data/hosts/x270/settings.nix` — hostname, hosts, Bluetooth, Niri users, boot params
+- `data/hosts/x270/module-flags.nix` — NixOS feature toggles (smartcard, fonts, waydroid, etc.)
+- `data/hosts/x270/roles.nix` — role list
+- `hosts/x270/host.nix` — framework applyHost call
+- `hosts/x270/hardware-configuration.nix` — nixos-hardware-generated
 
 ### Special modules loaded
-`asterisk`, `audio-stream`, `deskflow`, `fonts`, `gaming`, `gnome`, `gnome-extensions`, `niri`, `nvidia`, `nvidia-resume`, `serial-getty`, `sops`, `waybar`, `waydroid`, `lanzaboote`
+`asterisk`, `audio-stream`, `deskflow`, `fonts`, `gaming`, `gnome`, `gnome-extensions`, `niri`, `serial-getty`, `sops`, `waybar`, `waydroid`, `lanzaboote`
 
 ### Rebuild
 ```bash
 # Local (preferred)
 nix run .#rebuild
 # or
-sudo nixos-rebuild switch --flake ~/Documents/dotfiles#omen
+sudo nixos-rebuild switch --flake ~/Documents/dotfiles#x270
 
 # Via deploy-rs
-nix run .#deploy-omen
+nix run .#deploy-x270
 ```
 
 

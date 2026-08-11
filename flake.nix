@@ -126,13 +126,8 @@
         inherit modules specialArgs;
       };
 
-    omenSpecialArgs = {
+    x270SpecialArgs = {
       inherit wrappers stylix nix-flatpak nixos-hardware nixGaming;
-      frameworkLib = framework.lib;
-    };
-
-    desktopSpecialArgs = {
-      inherit wrappers stylix nix-flatpak nixos-hardware;
       frameworkLib = framework.lib;
     };
 
@@ -146,12 +141,12 @@
       frameworkLib = framework.lib;
     };
 
-    omen-config = mkHost {
-      specialArgs = omenSpecialArgs;
+    x270-config = mkHost {
+      specialArgs = x270SpecialArgs;
       modules = [
         ./nix-settings.nix
         ./profiles/desktop.nix
-        ./hosts/omen
+        ./hosts/x270
         ./modules/nixos/asterisk.nix
         ./modules/nixos/audio-stream.nix
         ./modules/nixos/fonts.nix
@@ -159,8 +154,6 @@
         ./modules/nixos/gnome.nix
         ./modules/nixos/gnome-extensions.nix
         ./modules/nixos/niri.nix
-        ./modules/nixos/nvidia.nix
-        ./modules/nixos/nvidia-resume.nix
         ./modules/nixos/serial-getty.nix
         ./modules/nixos/sops.nix
         ./modules/nixos/waybar.nix
@@ -222,7 +215,7 @@
             builtins.removeAttrs
             (
               import "${framework.outPath}/lib/flake/checks.nix" {
-                inherit self pkgs framework omen-config;
+                inherit self pkgs framework x270-config;
               }
             ).checks ["webui-unit"];
           deployChecks = deploy-rs.lib.${system}.deployChecks self.deploy;
@@ -326,7 +319,7 @@
               rebuild = {
                 type = "app";
                 program = "${rebuildApp}/bin/rebuild";
-                meta.description = "Rebuild the omen host via nh";
+                meta.description = "Rebuild the x270 host via nh";
               };
               check = {
                 type = "app";
@@ -348,10 +341,10 @@
                 program = "${updateApp}/bin/update";
                 meta.description = "Update flake inputs";
               };
-              deploy-omen = {
+              deploy-x270 = {
                 type = "app";
                 program = "${rebuildApp}/bin/rebuild";
-                meta.description = "Rebuild omen locally via nh";
+                meta.description = "Rebuild x270 locally via nh";
               };
               deploy-mireo = {
                 type = "app";
@@ -399,7 +392,7 @@
           };
 
           nixosConfigurations = {
-            omen = omen-config;
+            x270 = x270-config;
             mireo = mireo-config;
           };
 

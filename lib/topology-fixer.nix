@@ -13,7 +13,8 @@
   spec,
   svg,
 }: let
-  inherit (builtins)
+  inherit
+    (builtins)
     concatStringsSep
     elemAt
     filter
@@ -29,7 +30,8 @@
     split
     stringLength
     substring
-    toString;
+    toString
+    ;
 
   s = spec;
   step = s.labelHeight + s.minSpacing;
@@ -40,7 +42,10 @@
   # matched (segments before the first label can be huge).
   segs = filter isString (split s.labelMarker svg);
   markerY = seg: let
-    from = if stringLength seg < 2000 then 0 else stringLength seg - 2000;
+    from =
+      if stringLength seg < 2000
+      then 0
+      else stringLength seg - 2000;
     tail = substring from 2000 seg;
     m = match "(.*)<text[^>]* y=\"([0-9.]+)\"[^>]*$" tail;
   in
@@ -59,10 +64,19 @@
   fmt = v: n: let
     str = toString v;
     int = match "^[0-9]+$" str != null;
-    dec = if int then "" else elemAt (filter isString (split "\\." str)) 1;
+    dec =
+      if int
+      then ""
+      else elemAt (filter isString (split "\\." str)) 1;
   in
     if int
-    then str + (if n == 0 then "" else "." + zeros n)
+    then
+      str
+      + (
+        if n == 0
+        then ""
+        else "." + zeros n
+      )
     else if stringLength dec < n
     then str + zeros (n - stringLength dec)
     else if stringLength dec > n
@@ -72,26 +86,39 @@
   decOf = yStr: let
     m = match ".*\\.([0-9]+)$" yStr;
   in
-    if m == null then 0 else stringLength (head m);
+    if m == null
+    then 0
+    else stringLength (head m);
 
   # Sort by y, then walk with a cursor enforcing minSpacing between labels.
   sorted = sort (a: b: a.y < b.y) labels;
   adjusted = let
     go = acc: l: let
-      new = if l.y < acc.cursor then acc.cursor else l.y;
+      new =
+        if l.y < acc.cursor
+        then acc.cursor
+        else l.y;
     in {
-      items = acc.items ++ [
-        {
-          inherit (l) yStr y;
-          inherit new;
-        }
-      ];
+      items =
+        acc.items
+        ++ [
+          {
+            inherit (l) yStr y;
+            inherit new;
+          }
+        ];
       cursor = new + step;
     };
-  in (foldl' go {items = []; cursor = 0;} sorted).items;
+  in
+    (foldl' go {
+        items = [];
+        cursor = 0;
+      }
+      sorted).items;
 
   # Rewrite moved label positions, then shift their icons by the same delta.
-  svgLabels = foldl' (acc: a: let
+  svgLabels =
+    foldl' (acc: a: let
       newStr = fmt a.new (decOf a.yStr);
     in
       if a.yStr == newStr
@@ -99,7 +126,8 @@
       else replaceStrings ["y=\"${a.yStr}\""] ["y=\"${newStr}\""] acc)
     svg
     adjusted;
-  svgIcons = foldl' (acc: a: let
+  svgIcons =
+    foldl' (acc: a: let
       n = decOf a.yStr;
       oldIcon = fmt (a.y + s.iconOffset) n;
       newIcon = fmt (a.new + s.iconOffset) n;
@@ -115,13 +143,27 @@
   # matched (the root tag closes within the first chars).
   svgTag = "<svg" + head (match "^([^>]*)>.*" (substring 0 2000 (elemAt (filter isString (split "<svg" svgIcons)) 1))) + ">";
   origHeight = head (match ".*height=\"([0-9.]+)\".*" svgTag);
-  lastLabel = if adjusted == [] then null else elemAt adjusted (length adjusted - 1);
-  lastNew = if lastLabel == null then null else lastLabel.new;
-  lastDec = if lastLabel == null then 0 else decOf lastLabel.yStr;
+  lastLabel =
+    if adjusted == []
+    then null
+    else elemAt adjusted (length adjusted - 1);
+  lastNew =
+    if lastLabel == null
+    then null
+    else lastLabel.new;
+  lastDec =
+    if lastLabel == null
+    then 0
+    else decOf lastLabel.yStr;
   newHeight =
     if lastNew == null
     then null
-    else fmt (lastNew + contentHeight) (if lastDec == 0 then 3 else lastDec);
+    else
+      fmt (lastNew + contentHeight) (
+        if lastDec == 0
+        then 3
+        else lastDec
+      );
   grow = newHeight != null && fromJSON newHeight > fromJSON origHeight;
 
   svgFixed =

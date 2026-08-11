@@ -43,13 +43,13 @@ in {
         ll = "ls -lah";
         la = "ls -A";
         grep = "grep --color=auto";
-        rebuild = "sudo nixos-rebuild switch --flake ~/Documents/dotfiles#omen";
+        rebuild = "sudo nixos-rebuild switch --flake ~/Documents/dotfiles#x270";
         uds = "df -h";
         umc = "free -m";
         specs = "hyfetch";
         nix-clean = "nix-collect-garbage -d";
         nix-update = "nix flake update";
-        nix-rebuild = "sudo nixos-rebuild switch --flake .#omen";
+        nix-rebuild = "sudo nixos-rebuild switch --flake .#x270";
       };
       initExtra = ''
         shopt -s autocd checkwinsize cmdhist globstar histappend

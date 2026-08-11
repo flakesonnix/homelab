@@ -13,10 +13,10 @@ Secrets are managed with [sops-nix](https://github.com/Mic92/sops-nix) using [ag
 
 ```bash
 # Generate age key pair (stores private key in .sops/keys.txt)
-nix run .#setup-sops omen
+nix run .#setup-sops x270
 
 # Update .sops.yaml with the printed public key, then create the secrets file
-SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/omen/secrets.yaml
+SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/x270/secrets.yaml
 ```
 
 The script outputs the public key and the exact `.sops.yaml` snippet to add. Current `.sops.yaml` covers `hosts/.*/secrets.yaml`.
@@ -74,7 +74,7 @@ asterisk:
 ## Editing secrets
 
 ```bash
-SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/omen/secrets.yaml
+SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/x270/secrets.yaml
 ```
 
 SOPS opens the decrypted file in `$EDITOR`, re-encrypts on save.
@@ -93,7 +93,7 @@ Authorized keys match the root account's `authorized_keys` (i.e. `lucy.base.sshK
 
 ## Key rotation
 
-1. Generate new key: `nix run .#setup-sops omen` (will error if key exists — delete `.sops/keys.txt` first)
+1. Generate new key: `nix run .#setup-sops x270` (will error if key exists — delete `.sops/keys.txt` first)
 2. Update public key in `.sops.yaml`
-3. Re-encrypt all affected secrets files: `SOPS_AGE_KEY_FILE=<old-key> sops updatekeys hosts/omen/secrets.yaml`
+3. Re-encrypt all affected secrets files: `SOPS_AGE_KEY_FILE=<old-key> sops updatekeys hosts/x270/secrets.yaml`
 4. Deploy new private key to host, rebuild

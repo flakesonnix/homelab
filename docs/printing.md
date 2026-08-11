@@ -6,7 +6,7 @@ The printers are shared via IPP and advertised via Avahi mDNS (`_ipp._tcp`), so 
 
 ---
 
-## NixOS (omen)
+## NixOS (x270)
 
 Printing is enabled by `profiles/base.nix`. CUPS auto-discovers the shared printer via Avahi. No extra config needed — open a print dialog and the printer appears.
 

@@ -10,7 +10,7 @@
   packageRegistry = checked packageRegistryType (import ../../data/packages/system.nix {inherit pkgs;});
   hostData = projectLib.framework.host.loadHostDirectory {
     inherit lib;
-    root = ../../data/hosts/omen;
+    root = ../../data/hosts/x270;
     args = {inherit pkgs wrappers;};
   };
 in {

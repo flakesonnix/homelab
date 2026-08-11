@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-nix
-      - run: nix eval .#nixosConfigurations.omen.config.system.build.toplevel.outPath --raw
+      - run: nix eval .#nixosConfigurations.x270.config.system.build.toplevel.outPath --raw
         name: Evaluate NixOS config
 
   homectl:

@@ -82,7 +82,7 @@ in {
 
     serverAddress = lib.mkOption {
       type = lib.types.str;
-      default = "omen";
+      default = "x270";
       description = "Server hostname/IP for client mode";
     };
 
@@ -109,7 +109,7 @@ in {
       });
       default = {};
       example = {
-        omen = {};
+        x270 = {};
       };
       description = "Deskflow server screen layout map";
     };

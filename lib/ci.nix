@@ -9,13 +9,21 @@ in {
   # evalTargets/buildTargets are typed data; the script is generated from
   # them.
   mkCheckApp = spec: let
-    s = checked (types.submodule {
-      options = {
-        name = mkOption {type = types.nonEmptyStr;};
-        evalTargets = mkOption {type = types.listOf types.nonEmptyStr; default = [];};
-        buildTargets = mkOption {type = types.listOf types.nonEmptyStr; default = [];};
-      };
-    }) spec;
+    s =
+      checked (types.submodule {
+        options = {
+          name = mkOption {type = types.nonEmptyStr;};
+          evalTargets = mkOption {
+            type = types.listOf types.nonEmptyStr;
+            default = [];
+          };
+          buildTargets = mkOption {
+            type = types.listOf types.nonEmptyStr;
+            default = [];
+          };
+        };
+      })
+      spec;
   in
     pkgs.writeShellApplication {
       inherit (s) name;
@@ -27,12 +35,17 @@ in {
 
   # Bundles named check derivations into one aggregate derivation.
   mkCiCheckBundle = spec: let
-    s = checked (types.submodule {
-      options = {
-        name = mkOption {type = types.nonEmptyStr; default = "full-ci-checks";};
-        checks = mkOption {type = types.attrsOf types.anything;};
-      };
-    }) spec;
+    s =
+      checked (types.submodule {
+        options = {
+          name = mkOption {
+            type = types.nonEmptyStr;
+            default = "full-ci-checks";
+          };
+          checks = mkOption {type = types.attrsOf types.anything;};
+        };
+      })
+      spec;
   in
     pkgs.runCommand s.name {} (
       "mkdir -p $out\n"

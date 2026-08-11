@@ -1,9 +1,9 @@
 {lib, ...}: {
   lucy.base.enable = true;
   lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
-  lucy.base.sshKeyComment = "lucy@omen";
+  lucy.base.sshKeyComment = "lucy@x270";
 
-  networking.hostName = "omen";
+  networking.hostName = "x270";
   networking.networkmanager.enable = true;
 
   hardware.bluetooth = {
@@ -16,20 +16,16 @@
   };
   services.blueman.enable = true;
 
-  boot.initrd.availableKernelModules = ["r8169"];
   boot.kernelParams = [
-    "tpm.disable=1"
     "nvme_core.default_ps_max_latency_us=0"
     "console=tty1"
-    "initcall_blacklist=ucsi_acpi_init"
-    "modprobe.blacklist=ucsi_acpi"
   ];
 
   niri.users = ["lucy"];
 
   lucy.topology = {
     icon = "devices.laptop";
-    hardware.info = "HP Omen · NVIDIA RTX 2070";
+    hardware.info = "Lenovo ThinkPad X270 · i7-7600U";
   };
 
   hq.deskflow.enable = true;

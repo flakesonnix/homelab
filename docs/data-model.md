@@ -24,7 +24,7 @@ data/
 │   ├── system.nix          # Tagged system/user package registry
 │   └── home.nix            # Tagged home package registry
 ├── hosts/
-│   ├── omen/
+│   ├── x270/
 │   │   ├── settings.nix    # NixOS config merged into host
 │   │   ├── roles.nix       # [ "desktop" "dev" "llm" "gaming" ]
 │   │   ├── module-flags.nix
@@ -89,7 +89,7 @@ Roles are the top-level unit of intent. A host or home declares a list of role n
 ### Host role data
 
 ```
-data/hosts/omen/roles.nix   →  [ "desktop" "dev" "gaming" ]
+data/hosts/x270/roles.nix   →  [ "desktop" "dev" "gaming" ]
 
 data/home/lucy/roles.nix    →  [ "core" "desktop" "dev" ]
 ```

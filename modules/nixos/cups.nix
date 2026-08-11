@@ -1,4 +1,9 @@
-{ lib, config, pkgs, ... }: let
+{
+  lib,
+  config,
+  pkgs,
+  ...
+}: let
   cfg = config.lucy.cups;
 in {
   options.lucy.cups = {
@@ -57,7 +62,7 @@ in {
           };
           ppdOptions = lib.mkOption {
             type = lib.types.attrsOf lib.types.str;
-            default = { PageSize = "A4"; };
+            default = {PageSize = "A4";};
             description = "PPD options";
           };
           isDefault = lib.mkOption {
@@ -96,16 +101,19 @@ in {
     };
 
     hardware.printers = {
-      ensureDefaultPrinter = lib.optionalString
+      ensureDefaultPrinter =
+        lib.optionalString
         (builtins.any (p: p.isDefault) cfg.printers)
         (builtins.head (builtins.filter (p: p.isDefault) cfg.printers)).name;
-      ensurePrinters = lib.map (p: {
-        name = p.name;
-        location = p.location;
-        deviceUri = p.deviceUri;
-        model = p.model;
-        ppdOptions = p.ppdOptions;
-      }) cfg.printers;
+      ensurePrinters =
+        lib.map (p: {
+          name = p.name;
+          location = p.location;
+          deviceUri = p.deviceUri;
+          model = p.model;
+          ppdOptions = p.ppdOptions;
+        })
+        cfg.printers;
     };
 
     services.avahi = lib.mkIf cfg.avahi {

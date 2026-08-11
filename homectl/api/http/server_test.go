@@ -13,7 +13,7 @@ import (
 func testServer(t *testing.T) *Server {
 	t.Helper()
 	s, err := New(
-		[]byte(`{"hosts":{"omen":{"hostname":"omen"}},"vms":{}}`),
+		[]byte(`{"hosts":{"x270":{"hostname":"x270"}},"vms":{}}`),
 		[]byte(`{"navigation":[{"label":"Dashboard","path":"/"}]}`),
 	)
 	if err != nil {

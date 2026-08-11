@@ -584,8 +584,8 @@ in {
                 {
                   targets = ["10.8.0.176:9100"];
                   labels = {
-                    instance = "omen";
-                    host = "omen";
+                    instance = "x270";
+                    host = "x270";
                   };
                 }
               ];

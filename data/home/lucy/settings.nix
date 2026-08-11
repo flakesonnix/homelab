@@ -4,7 +4,7 @@
   pkgs,
   ...
 }: let
-  stylixImage = ../../../home/lucy/wallpapers/omen.jpg;
+  stylixImage = ../../../home/lucy/wallpapers/x270.jpg;
   wallpaper = "/home/lucy/Pictures/s-l1600.jpg";
 
   cyberdeckScheme = {

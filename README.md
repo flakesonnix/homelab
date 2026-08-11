@@ -6,7 +6,7 @@ NixOS flake managing two machines for user `lucy`. Built on the [rivotril](https
 
 | Host | Role | Hardware | Notes |
 |------|------|----------|-------|
-| `omen` | Desktop / gaming laptop | HP Omen, NVIDIA RTX 2070 | Primary machine. Niri compositor, eww bar, Secure Boot |
+| `x270` | Desktop / gaming laptop | Lenovo ThinkPad X270, i7-7600U | Primary machine. Niri compositor, eww bar, Secure Boot |
 | `mireo` | Home server / router | Mini-PC, 4-port NIC | NAT gateway, IPv6 (FritzBox PD), NFS, iVentoy PXE, microvms |
 
 Network: `10.8.0.0/24` (+ `fd00:cafe:1::1/64` ULA) bridged on mireo. See [docs/hosts.md](docs/hosts.md) for full details.
@@ -33,7 +33,7 @@ Network: `10.8.0.0/24` (+ `fd00:cafe:1::1/64` ULA) bridged on mireo. See [docs/h
 │   ├── nixos/              # Reusable NixOS modules
 │   └── home/               # Reusable Home Manager modules
 ├── hosts/
-│   ├── omen/               # Hardware config + framework host.nix
+│   ├── x270/               # Hardware config + framework host.nix
 │   └── mireo/              # + microvm definitions (7 VMs: grafana, monerod, network-services, yammat, cups, sshkeys, aptcache)
 ├── home/lucy/              # User composition entry point
 ├── keys/                   # SSH public keys
@@ -58,10 +58,10 @@ nix run .#check-full    # Full: build all CI checks
 nix run .#update
 
 # Direct nixos-rebuild
-nixos-rebuild switch --flake .#omen
+nixos-rebuild switch --flake .#x270
 ```
 
-Shell aliases available on omen: `rebuild`, `nix-rebuild`, `nix-clean`, `nix-update`.
+Shell aliases available on x270: `rebuild`, `nix-rebuild`, `nix-clean`, `nix-update`.
 
 ## Data Model
 
@@ -81,8 +81,6 @@ All custom NixOS and Home Manager modules live in `modules/`. See [docs/modules.
 
 Key modules:
 - `nixos/base.nix` — `lucy.base.*`: SSH, timezone, locale, sudo, firewall, libvirtd
-- `nixos/nvidia.nix` — `lucy.nvidia.*`: NVIDIA GPU with lazy-load service
-
 - `nixos/asterisk.nix` — `services.asteriskLocal.*`: Local SIP PBX
 - `nixos/niri.nix` — `niri.users`: Niri + greetd/tuigreet host integration
 - `nixos/gaming.nix` — aggregate: Steam, GameMode, Gamescope, performance tuning
@@ -95,8 +93,8 @@ Uses sops-nix with age keys. See [docs/secrets.md](docs/secrets.md).
 
 Quick setup:
 ```bash
-nix run .#setup-sops omen
-SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/omen/secrets.yaml
+nix run .#setup-sops x270
+SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/x270/secrets.yaml
 ```
 
 ## CI
@@ -107,7 +105,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs four jobs on every push/PR:
 |-----|---------------|
 | `check-light` | Evaluates formatter, devShell, and app derivation paths |
 | `check-full` | Builds `full-ci-checks` (framework checks + deploy-rs schema checks + dotfiles tests) |
-| `eval` | Evaluates `nixosConfigurations.omen.config.system.build.toplevel` |
+| `eval` | Evaluates `nixosConfigurations.x270.config.system.build.toplevel` |
 | `topology` | Regenerates `docs/topology/` SVGs and commits them (master pushes only) |
 
 ## Network Topology
@@ -143,5 +141,5 @@ Formatter: `nix fmt` (alejandra). Linter: `statix check`.
 - [docs/data-model.md](docs/data-model.md) — Role, bundle, preset, and package registry shapes
 - [docs/modules.md](docs/modules.md) — All nixos/ and home/ module options
 - [docs/secrets.md](docs/secrets.md) — sops-nix key setup and rotation
-- [docs/gaming-omen.md](docs/gaming-omen.md) — Gaming stack details for omen
+- [docs/gaming-x270.md](docs/gaming-x270.md) — Gaming stack details for x270
 - [docs/printing.md](docs/printing.md) — Epson ET-2860 printer setup on NixOS and other distros

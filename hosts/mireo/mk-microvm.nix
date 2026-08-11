@@ -13,8 +13,14 @@ spec: {lib, ...}: let
       image = mkOption {type = types.str;};
       mountPoint = mkOption {type = types.path;};
       size = mkOption {type = types.ints.positive;};
-      user = mkOption {type = types.nullOr types.str; default = null;};
-      group = mkOption {type = types.nullOr types.str; default = null;};
+      user = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+      group = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
     };
   };
 
@@ -24,13 +30,34 @@ spec: {lib, ...}: let
       ip = mkOption {type = ipv4;};
       mem = mkOption {type = types.ints.positive;};
       vcpu = mkOption {type = types.ints.positive;};
-      tcpPorts = mkOption {type = types.listOf types.port; default = [];};
-      udpPorts = mkOption {type = types.listOf types.port; default = [];};
-      volumes = mkOption {type = types.listOf volumeType; default = [];};
-      tmpfiles = mkOption {type = types.listOf types.str; default = [];};
-      extraDns = mkOption {type = types.listOf types.str; default = [];};
-      interfaceId = mkOption {type = types.nullOr types.nonEmptyStr; default = null;};
-      config = mkOption {type = types.attrs; default = {};};
+      tcpPorts = mkOption {
+        type = types.listOf types.port;
+        default = [];
+      };
+      udpPorts = mkOption {
+        type = types.listOf types.port;
+        default = [];
+      };
+      volumes = mkOption {
+        type = types.listOf volumeType;
+        default = [];
+      };
+      tmpfiles = mkOption {
+        type = types.listOf types.str;
+        default = [];
+      };
+      extraDns = mkOption {
+        type = types.listOf types.str;
+        default = [];
+      };
+      interfaceId = mkOption {
+        type = types.nullOr types.nonEmptyStr;
+        default = null;
+      };
+      config = mkOption {
+        type = types.attrs;
+        default = {};
+      };
     };
   };
 
@@ -41,7 +68,10 @@ spec: {lib, ...}: let
     imports = [
       (import ./microvm-base.nix {
         inherit (s) ip;
-        interfaceId = if s.interfaceId == null then "vm-${s.name}" else s.interfaceId;
+        interfaceId =
+          if s.interfaceId == null
+          then "vm-${s.name}"
+          else s.interfaceId;
         inherit (s) extraDns;
       })
     ];

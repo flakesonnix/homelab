@@ -21,11 +21,10 @@ pkgs: let
   };
 in {
   # Pure: fix the given SVG string with the given spec.
-  fixNetworkSvg = spec: svg:
-    (import ./topology-fixer.nix {
-      inherit svg;
-      spec = defaultSpec // spec;
-    });
+  fixNetworkSvg = spec: svg: (import ./topology-fixer.nix {
+    inherit svg;
+    spec = defaultSpec // spec;
+  });
 
   # Build-time runner: fixes a generated SVG file in place via `nix eval`.
   # The fixer runs as pure Nix; the shell is plumbing only (mv/mktemp).

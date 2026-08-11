@@ -2,7 +2,7 @@
   # --- sops-nix secrets (uncomment after running `nix run .#setup-sops`) ---
   # lucy.secrets = {
   #   enable = true;
-  #   sopsFile = ../../../hosts/omen/secrets.yaml;
+  #   sopsFile = ../../../hosts/x270/secrets.yaml;
   # };
 
   services.asteriskLocal = {

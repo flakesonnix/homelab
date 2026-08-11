@@ -22,7 +22,7 @@ in {
       text = ''
         KEY_DIR=".sops"
         KEY_FILE="$KEY_DIR/keys.txt"
-        HOST_NAME="''${1:-omen}"
+        HOST_NAME="''${1:-x270}"
         if [ -f "$KEY_FILE" ]; then
           echo "Key already exists at $KEY_FILE"
           echo "Delete it and re-run to generate a new one."

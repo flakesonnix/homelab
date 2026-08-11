@@ -40,7 +40,7 @@ When enabled: `hardware.graphics` with 32-bit, production driver package, `NVreg
 
 ### `nvidia-resume.nix`
 
-No options. Fixes NVIDIA suspend/resume by writing ACPI quirks. Imported alongside `nvidia.nix` on omen.
+No options. Fixes NVIDIA suspend/resume by writing ACPI quirks. Imported alongside `nvidia.nix` on hosts with NVIDIA GPUs.
 
 ---
 
@@ -117,7 +117,7 @@ Generates `pjsip.conf` and `extensions.conf` from phone attrs. Built-in extensio
 ### `audio-stream.nix`
 
 Sender-side module. Creates PipeWire tunnel sink → remote PulseAudio TCP receiver.
-Used on omen.
+Used on the desktop host.
 
 Options namespace: `hq.audio.*`
 
@@ -154,7 +154,7 @@ Options namespace: `lucy.serialGetty.*`
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `disabled` | list of str | `[]` | Serial TTYs whose systemd getty units get disabled (e.g. omen disables ttyS0-3) |
+| `disabled` | list of str | `[]` | Serial TTYs whose systemd getty units get disabled (e.g. x270 disables ttyS0-3) |
 
 ---
 
@@ -203,7 +203,7 @@ Options namespace: `hq.deskflow.*`
 |--------|------|---------|-------------|
 | `enable` | bool | false | Enable deskflow keyboard/mouse sharing |
 | `role` | enum (server/client) | `"client"` | server shares KBM; client is remote-controlled |
-| `serverAddress` | str | `"omen"` | Server host for client mode |
+| `serverAddress` | str | `"x270"` | Server host for client mode |
 | `screenLayout` | attrs of submodules | `{}` | Server screen links (left/right/up/down) |
 
 Generates `settings.ini` + (server) `server.conf`, runs `deskflow-core` as a systemd service under user `lucy`.
