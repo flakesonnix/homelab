@@ -25,8 +25,8 @@ in {
     systemd.services.waydroid-gapps-init = lib.mkIf cfg.gapps {
       description = "Waydroid GApps image initialisation";
       after = ["network-online.target"];
+      wants = ["network-online.target" "waydroid-container.service"];
       wantedBy = ["multi-user.target"];
-      wants = ["waydroid-container.service"];
       path = [pkgs.waydroid pkgs.curl pkgs.xz];
       unitConfig.ConditionPathExists = "!/var/lib/waydroid/images/system.img";
       serviceConfig = {
