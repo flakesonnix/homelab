@@ -236,4 +236,17 @@
     icon = "devices.router";
     hardware.info = "Mini-PC · 4-port NIC";
   };
+
+  # --- homectl control plane (M1: mireo runtime) ---
+  lucy.homectl = {
+    enable = true;
+    role = "api";
+    api = {
+      port = 8443;
+      artifactsDir = ../../../homectl/artifacts;
+    };
+    agent = {
+      plugins = ["systemd" "journal" "metrics"];
+    };
+  };
 }

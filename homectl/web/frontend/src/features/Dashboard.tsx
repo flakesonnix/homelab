@@ -1,4 +1,9 @@
+import { useEffect, useState } from "react";
 import type { Dashboard, HostInfo, VMInfo } from "../api/meta";
+import type { VMEntry } from "../api/runtime";
+import { fetchVMs } from "../api";
+import HostOverview from "./HostOverview";
+import VMTable from "./VMTable";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -18,9 +23,37 @@ export default function Dashboard({
   hosts: Record<string, HostInfo>;
   vms: Record<string, VMInfo>;
 }) {
+  const [mireoVMs, setMireoVMs] = useState<VMEntry[] | null>(null);
+  const [vmErr, setVmErr] = useState<string | null>(null);
+  const [vmLoading, setVmLoading] = useState(true);
+
+  useEffect(() => {
+    if (!hosts["mireo"]) {
+      setVmLoading(false);
+      return;
+    }
+    fetchVMs("mireo")
+      .then((r) => setMireoVMs(r.vms))
+      .catch((e) => setVmErr(String(e)))
+      .finally(() => setVmLoading(false));
+  }, [hosts]);
+
+  const hasMireo = !!hosts["mireo"];
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <h2 className="text-xl font-semibold text-zinc-100">Dashboard</h2>
+
+      {hasMireo && (
+        <>
+          <HostOverview host="mireo" />
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-zinc-200">MicroVMs · mireo</h3>
+            <VMTable vms={mireoVMs ?? []} loading={vmLoading} error={vmErr} />
+          </div>
+        </>
+      )}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Object.entries(hosts).map(([name, host]) => (
           <section key={name} className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">

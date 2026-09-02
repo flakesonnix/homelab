@@ -24,4 +24,7 @@
   };
 
   hq.deskflow.enable = true;
+
+  # Workaround for libvirtd TPM failure on recent NixOS (tpmrm0 missing, exit 243).
+  virtualisation.libvirtd.enable = lib.mkForce false;
 }

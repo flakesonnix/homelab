@@ -73,7 +73,7 @@
   hostRoles = host: let
     dir = tryEval (readDir (../data/hosts + "/${host}"));
   in
-    if !dir.success || !(dir.value ? roles.nix)
+    if !dir.success || !(builtins.hasAttr "roles.nix" dir.value)
     then []
     else import (hostRolesFile host);
 
@@ -204,7 +204,7 @@
 
   hostNames = attrNames configurations;
 
-  hasVms = (builtins.length (vmCatalog.hostsVms or [])) > 0;
+  hasVms = (builtins.length (attrNames vmCatalog)) > 0;
 
   defaultNav =
     [

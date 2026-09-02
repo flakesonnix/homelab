@@ -155,7 +155,7 @@ in {
 
   config = lib.mkIf cfg.enable (
     lib.mkMerge [
-      (lib.mkIf (cfg.role == "api" && cfg.api.package != null) {
+      (lib.mkIf (cfg.api.package != null) {
         systemd.services.homectl-api = {
           description = "homectl control-plane API";
           wantedBy = ["multi-user.target"];
@@ -177,7 +177,7 @@ in {
           };
         };
       })
-      (lib.mkIf (cfg.role == "agent" && cfg.agent.package != null) {
+      (lib.mkIf (cfg.agent.package != null) {
         systemd.services.homectl-agent = {
           description = "homectl agent";
           wantedBy = ["multi-user.target"];
