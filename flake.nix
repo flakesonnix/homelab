@@ -105,7 +105,7 @@
     ...
   }: let
     pkgsForPatch = import nixpkgs {system = "x86_64-linux";};
-    homectlPkgs = import ./homectl/default.nix {pkgs = pkgsForPatch;};
+    nixfleetPkgs = import ./nixfleet/default.nix {pkgs = pkgsForPatch;};
     patchedNixTopologySrc = pkgsForPatch.applyPatches {
       name = "nix-topology-patched";
       src = inputs.nix-topology;
@@ -164,11 +164,11 @@
         ./modules/nixos/hm-base.nix
         ./modules/nixos/deskflow.nix
         ./modules/nixos/waydroid.nix
-        ./modules/nixos/homectl.nix
+        ./modules/nixos/nixfleet.nix
         run0-sudo-shim.nixosModules.default
         ({lib, ...}: {
-          lucy.homectl.api.package = lib.mkDefault homectlPkgs.api;
-          lucy.homectl.agent.package = lib.mkDefault homectlPkgs.agent;
+          lucy.nixfleet.api.package = lib.mkDefault nixfleetPkgs.api;
+          lucy.nixfleet.agent.package = lib.mkDefault nixfleetPkgs.agent;
         })
       ];
     };
@@ -181,12 +181,12 @@
         ./hosts/mireo
         ./hosts/mireo/grafana-microvm.nix
         ./modules/nixos/cups.nix
-        ./modules/nixos/homectl.nix
+        ./modules/nixos/nixfleet.nix
         nur.modules.nixos.default
         run0-sudo-shim.nixosModules.default
         ({lib, ...}: {
-          lucy.homectl.api.package = lib.mkDefault homectlPkgs.api;
-          lucy.homectl.agent.package = lib.mkDefault homectlPkgs.agent;
+          lucy.nixfleet.api.package = lib.mkDefault nixfleetPkgs.api;
+          lucy.nixfleet.agent.package = lib.mkDefault nixfleetPkgs.agent;
         })
       ];
     };
@@ -277,7 +277,7 @@
             update = "Update flake inputs";
             "setup-sops" = "Generate sops-nix age key pair";
             topology = "Build network/host topology SVGs";
-            homectl = "homectl CLI (status, health)";
+            nixfleet = "nixfleet CLI (status, health)";
           };
           menuApp = pkgs.writeShellApplication {
             name = "menu";
@@ -291,7 +291,7 @@
             '';
           };
 
-          homectlPkgs = import ./homectl/default.nix {inherit pkgs;};
+          nixfleetPkgs = import ./nixfleet/default.nix {inherit pkgs;};
         in
           {
             formatter = pkgs.alejandra;
@@ -331,12 +331,12 @@
                 chmod +w $out $out/network.svg
                 ${dotfilesLib.topologyScripts.fixNetworkSvgApp {}}/bin/fix-network-svg $out/network.svg
               '';
-              homectl-api = homectlPkgs.api;
-              homectl-agent = homectlPkgs.agent;
-              homectl = homectlPkgs.cli;
-              homectl-web = homectlPkgs.web;
-              homectl-manifest = pkgs.writeText "manifest.json" self.homectlArtifacts.manifestJson;
-              homectl-ui = pkgs.writeText "ui.json" self.homectlArtifacts.uiJson;
+              nixfleet-api = nixfleetPkgs.api;
+              nixfleet-agent = nixfleetPkgs.agent;
+              nixfleet = nixfleetPkgs.cli;
+              nixfleet-web = nixfleetPkgs.web;
+              nixfleet-manifest = pkgs.writeText "manifest.json" self.nixfleetArtifacts.manifestJson;
+              nixfleet-ui = pkgs.writeText "ui.json" self.nixfleetArtifacts.uiJson;
             };
 
             apps = {
@@ -380,21 +380,21 @@
                 program = "${setupSopsApp}/bin/setup-sops";
                 meta.description = "Generate sops-nix age key pair";
               };
-              homectl = {
+              nixfleet = {
                 type = "app";
-                program = "${homectlPkgs.cli}/bin/homectl";
-                meta.description = "homectl CLI (status, health)";
+                program = "${nixfleetPkgs.cli}/bin/nixfleet";
+                meta.description = "nixfleet CLI (status, health)";
               };
-              homectl-manifest = {
+              nixfleet-manifest = {
                 type = "app";
                 program = "${dotfilesLib.ciScripts.mkCheckApp {
-                  name = "homectl-manifest";
+                  name = "nixfleet-manifest";
                   buildTargets = [
-                    ".#packages.x86_64-linux.homectl-manifest"
-                    ".#packages.x86_64-linux.homectl-ui"
+                    ".#packages.x86_64-linux.nixfleet-manifest"
+                    ".#packages.x86_64-linux.nixfleet-ui"
                   ];
-                }}/bin/homectl-manifest";
-                meta.description = "Evaluate the homectl artifacts";
+                }}/bin/nixfleet-manifest";
+                meta.description = "Evaluate the nixfleet artifacts";
               };
               menu = {
                 type = "app";
@@ -407,7 +407,7 @@
             checks =
               dotfilesChecks
               // {
-                homectl-tests = homectlPkgs.tests;
+                nixfleet-tests = nixfleetPkgs.tests;
               };
           };
       }
@@ -425,7 +425,7 @@
             mireo = mireo-config;
           };
 
-          homectlArtifacts = import ./homectl/manifest.nix {
+          nixfleetArtifacts = import ./nixfleet/manifest.nix {
             inherit (nixpkgs) lib;
             pkgs = pkgsForPatch;
             configurations = self.nixosConfigurations;

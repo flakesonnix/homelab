@@ -1,4 +1,4 @@
-// Command homectl-agent runs on every managed host.
+// Command nixfleet-agent runs on every managed host.
 package main
 
 import (
@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"homectl/api/runtime"
-	"homectl/shared/version"
+	"nixfleet/api/runtime"
+	"nixfleet/shared/version"
 )
 
 func main() {

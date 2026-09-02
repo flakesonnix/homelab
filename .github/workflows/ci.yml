@@ -44,19 +44,19 @@ jobs:
       - run: nix eval .#nixosConfigurations.x270.config.system.build.toplevel.outPath --raw
         name: Evaluate NixOS config
 
-  homectl:
+  nixfleet:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-nix
-      - run: nix build .#checks.x86_64-linux.homectl-tests --fallback
+      - run: nix build .#checks.x86_64-linux.nixfleet-tests --fallback
         name: Build and test Go code
-      - run: nix build .#homectl-web --fallback
+      - run: nix build .#nixfleet-web --fallback
         name: Build frontend
-      - run: nix build .#homectl-manifest .#homectl-ui --fallback
-        name: Evaluate homectl artifacts
+      - run: nix build .#nixfleet-manifest .#nixfleet-ui --fallback
+        name: Evaluate nixfleet artifacts
 
-  homectl-manifest:
+  nixfleet-manifest:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     permissions:
@@ -66,17 +66,17 @@ jobs:
       - uses: ./.github/actions/setup-nix
       - name: Build artifacts
         run: |
-          nix build .#homectl-manifest --out-link /tmp/homectl-manifest
-          nix build .#homectl-ui --out-link /tmp/homectl-ui
-          mkdir -p homectl/artifacts
-          cp /tmp/homectl-manifest homectl/artifacts/manifest.json
-          cp /tmp/homectl-ui homectl/artifacts/ui.json
+          nix build .#nixfleet-manifest --out-link /tmp/nixfleet-manifest
+          nix build .#nixfleet-ui --out-link /tmp/nixfleet-ui
+          mkdir -p nixfleet/artifacts
+          cp /tmp/nixfleet-manifest nixfleet/artifacts/manifest.json
+          cp /tmp/nixfleet-ui nixfleet/artifacts/ui.json
       - name: Commit updated artifacts
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add homectl/artifacts/
-          git diff --cached --quiet || git commit -m "chore(homectl): update artifacts [skip ci]"
+          git add nixfleet/artifacts/
+          git diff --cached --quiet || git commit -m "chore(nixfleet): update artifacts [skip ci]"
           git push
 
   topology:

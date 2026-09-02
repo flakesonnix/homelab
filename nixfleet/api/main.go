@@ -1,4 +1,4 @@
-// Command homectl-api is the homectl control-plane server (M0: health + meta).
+// Command nixfleet-api is the nixfleet control-plane server (M0: health + meta).
 package main
 
 import (
@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	"homectl/api/http"
-	"homectl/shared/version"
+	"nixfleet/api/http"
+	"nixfleet/shared/version"
 )
 
 func main() {

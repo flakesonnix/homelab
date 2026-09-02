@@ -61,7 +61,7 @@ export default function App() {
   return (
     <div className="flex min-h-screen bg-zinc-950 text-zinc-200">
       <nav className="w-52 shrink-0 border-r border-zinc-800 bg-zinc-900/50 p-3">
-        <h1 className="mb-3 px-2 text-lg font-bold text-zinc-100">homectl</h1>
+        <h1 className="mb-3 px-2 text-lg font-bold text-zinc-100">nixfleet</h1>
         <ul className="space-y-1">
           {meta.ui.navigation.map((item) => (
             <li key={item.page}>

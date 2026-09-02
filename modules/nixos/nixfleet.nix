@@ -5,22 +5,22 @@
   ...
 }: let
   inherit (lib) mkEnableOption mkOption types;
-  cfg = config.lucy.homectl;
+  cfg = config.lucy.nixfleet;
 in {
   options = {
-    lucy.homectl = {
-      enable = mkEnableOption "homectl control plane";
+    lucy.nixfleet = {
+      enable = mkEnableOption "nixfleet control plane";
 
       role = mkOption {
         type = types.enum ["api" "agent" "cli"];
-        description = "homectl role of this host (api runs the server)";
+        description = "nixfleet role of this host (api runs the server)";
       };
 
       api = {
         package = mkOption {
           type = types.nullOr types.package;
           default = null;
-          description = "homectl-api server binary (set by the flake)";
+          description = "nixfleet-api server binary (set by the flake)";
         };
         port = mkOption {
           type = types.port;
@@ -34,7 +34,7 @@ in {
         webDir = mkOption {
           type = types.nullOr types.path;
           default = null;
-          description = "Built homectl-web SPA directory (served at /)";
+          description = "Built nixfleet-web SPA directory (served at /)";
         };
         proxy = mkOption {
           type = types.attrsOf (types.submodule {
@@ -59,11 +59,11 @@ in {
         package = mkOption {
           type = types.nullOr types.package;
           default = null;
-          description = "homectl-agent binary (set by the flake)";
+          description = "nixfleet-agent binary (set by the flake)";
         };
         endpoint = mkOption {
           type = types.str;
-          default = "wss://homectl.lan:8443/api/v1/ws";
+          default = "wss://nixfleet.lan:8443/api/v1/ws";
           description = "API WebSocket endpoint this agent connects to";
         };
         tokenFile = mkOption {
@@ -156,14 +156,14 @@ in {
   config = lib.mkIf cfg.enable (
     lib.mkMerge [
       (lib.mkIf (cfg.api.package != null) {
-        systemd.services.homectl-api = {
-          description = "homectl control-plane API";
+        systemd.services.nixfleet-api = {
+          description = "nixfleet control-plane API";
           wantedBy = ["multi-user.target"];
           after = ["network.target"];
           serviceConfig = {
             ExecStart = lib.concatStringsSep " " (
               [
-                "${cfg.api.package}/bin/homectl-api"
+                "${cfg.api.package}/bin/nixfleet-api"
                 "--manifest"
                 "${toString cfg.api.artifactsDir}/manifest.json"
                 "--ui"
@@ -173,17 +173,17 @@ in {
             );
             Restart = "on-failure";
             DynamicUser = true;
-            StateDirectory = "homectl";
+            StateDirectory = "nixfleet";
           };
         };
       })
       (lib.mkIf (cfg.agent.package != null) {
-        systemd.services.homectl-agent = {
-          description = "homectl agent";
+        systemd.services.nixfleet-agent = {
+          description = "nixfleet agent";
           wantedBy = ["multi-user.target"];
           after = ["network-online.target"];
           serviceConfig = {
-            ExecStart = "${cfg.agent.package}/bin/homectl-agent";
+            ExecStart = "${cfg.agent.package}/bin/nixfleet-agent";
             Restart = "on-failure";
             DynamicUser = true;
           };

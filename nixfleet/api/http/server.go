@@ -1,4 +1,4 @@
-// Package httpapi implements the homectl API HTTP surface (M1: health + meta + runtime).
+// Package httpapi implements the nixfleet API HTTP surface (M1: health + meta + runtime).
 package httpapi
 
 import (
@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"homectl/api/manifest"
-	"homectl/api/runtime"
-	"homectl/shared/version"
+	"nixfleet/api/manifest"
+	"nixfleet/api/runtime"
+	"nixfleet/shared/version"
 )
 
 // Meta bundles the Nix-generated artifacts served to the frontend.
@@ -20,7 +20,7 @@ type Meta struct {
 	UI       any `json:"ui"`
 }
 
-// Server is the homectl API server.
+// Server is the nixfleet API server.
 type Server struct {
 	meta          Meta
 	manifestTyped *manifest.Manifest

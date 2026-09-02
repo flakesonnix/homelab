@@ -237,13 +237,13 @@
     hardware.info = "Mini-PC · 4-port NIC";
   };
 
-  # --- homectl control plane (M1: mireo runtime) ---
-  lucy.homectl = {
+  # --- nixfleet control plane (M1: mireo runtime) ---
+  lucy.nixfleet = {
     enable = true;
     role = "api";
     api = {
       port = 8443;
-      artifactsDir = ../../../homectl/artifacts;
+      artifactsDir = ../../../nixfleet/artifacts;
     };
     agent = {
       plugins = ["systemd" "journal" "metrics"];

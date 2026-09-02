@@ -58,9 +58,9 @@ sops host="x270":
 topology:
     nix build .#topology
 
-# homectl CLI (status, health)
-homectl:
-    nix run .#homectl
+# nixfleet CLI (status, health)
+nixfleet:
+    nix run .#nixfleet
 
 # Interactive command launcher (fzf)
 menu:

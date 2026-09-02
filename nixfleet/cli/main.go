@@ -1,4 +1,4 @@
-// Command homectl is the homectl CLI (M0: status against the API).
+// Command nixfleet is the nixfleet CLI (M0: status against the API).
 package main
 
 import (
@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"homectl/shared/version"
+	"nixfleet/shared/version"
 )
 
 func main() {
-	// Accept both `homectl status --api URL` and `homectl --api URL status`.
+	// Accept both `nixfleet status --api URL` and `nixfleet --api URL status`.
 	// flag stops at the first non-flag token, so peel a leading subcommand off.
 	sub := ""
 	rest := os.Args[1:]
@@ -23,8 +23,8 @@ func main() {
 		sub = rest[0]
 		rest = rest[1:]
 	}
-	fs := flag.NewFlagSet("homectl", flag.ExitOnError)
-	api := fs.String("api", "http://localhost:8443", "homectl API base URL")
+	fs := flag.NewFlagSet("nixfleet", flag.ExitOnError)
+	api := fs.String("api", "http://localhost:8443", "nixfleet API base URL")
 	showVersion := fs.Bool("version", false, "print version and exit")
 	fs.Parse(rest)
 
@@ -47,7 +47,7 @@ func main() {
 			log.Fatal(err)
 		}
 	default:
-		fmt.Fprintf(os.Stderr, "usage: homectl [status|health] [--api URL]\n")
+		fmt.Fprintf(os.Stderr, "usage: nixfleet [status|health] [--api URL]\n")
 		os.Exit(2)
 	}
 }
@@ -86,6 +86,6 @@ func status(api string) error {
 		return fmt.Errorf("no manifest in meta response")
 	}
 	hosts, _ := manifest["hosts"].(map[string]any)
-	fmt.Printf("homectl: %d hosts in manifest\n", len(hosts))
+	fmt.Printf("nixfleet: %d hosts in manifest\n", len(hosts))
 	return nil
 }

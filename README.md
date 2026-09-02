@@ -109,9 +109,9 @@ Key modules:
 - `home/niri.nix` — `programs.niri.enable`: Full KDL config, lock screen, wlogout
 - `home/waybar.nix` — `programs.waybar.enable`: Styled bar with mpris, battery, CPU
 
-## Homectl — Mireo Runtime Control Plane (M1)
+## NixFleet — Mireo Runtime Control Plane (M1)
 
-`homectl` is the in-repo control plane for the homelab. Architecture is **Nix → `homectl/manifest.nix` → `manifest.json`/`ui.json` → Go API/Agent → React**.
+`nixfleet` is the in-repo control plane for the homelab. Architecture is **Nix → `nixfleet/manifest.nix` → `manifest.json`/`ui.json` → Go API/Agent → React**.
 
 M1 implements the first real vertical slice: **declarative inventory (manifest) merged with live runtime from the mireo agent**.
 
@@ -120,9 +120,9 @@ M1 implements the first real vertical slice: **declarative inventory (manifest) 
 - `hostRoles` now uses `hasAttr "roles.nix"` (was `? roles.nix`, invalid due to dot) — `x270` now correctly exposes `roles [desktop dev gaming]`, `bundles [desktop dev]`, `presets [gaming-*]`. `mireo` intentionally has no `roles.nix` (server profile, roles `[]`).
 
 **Host `mireo` (M1):**
-- `lucy.homectl.enable = true; role = "api"` in `data/hosts/mireo/settings.nix` — both `homectl-api` (8443, serves `manifest.json`/`ui.json` + `homectl-web` when built) and `homectl-agent` (`systemd`+`journal`+`metrics` plugins) run as `DynamicUser` services.
+- `lucy.nixfleet.enable = true; role = "api"` in `data/hosts/mireo/settings.nix` — both `nixfleet-api` (8443, serves `manifest.json`/`ui.json` + `nixfleet-web` when built) and `nixfleet-agent` (`systemd`+`journal`+`metrics` plugins) run as `DynamicUser` services.
 - Firewall: `br0` now allows `8443`.
-- Module `lucy.homectl` no longer gates services on `role` — any host with `enable` and a package runs the corresponding service, so `mireo` as `api` can also run the agent.
+- Module `lucy.nixfleet` no longer gates services on `role` — any host with `enable` and a package runs the corresponding service, so `mireo` as `api` can also run the agent.
 
 **M1 API (extends `/api/v1/health` + `/api/v1/meta`, same `shared/proto` envelope conventions):**
 - `GET /api/v1/hosts` — hosts from manifest (no hardcoding)
@@ -140,9 +140,9 @@ Validation: host must exist in manifest (404), VM name validated against manifes
 - `SystemdFailed` — `0 failed` healthy state or table of failed units
 - Dashboard now shows `HostOverview` + `VMTable` for `mireo`; `/vms` and `/network` routes reuse the same components; no charts/terminal/deploy yet (observability first, operations after).
 
-Build via `nix build .#homectl-web` / `nix build .#homectl-api` / `nix build .#homectl-agent`; tests: `go test ./...` (manifest, runtime parsers, HTTP validation).
+Build via `nix build .#nixfleet-web` / `nix build .#nixfleet-api` / `nix build .#nixfleet-agent`; tests: `go test ./...` (manifest, runtime parsers, HTTP validation).
 
-See `homectl/docs/architecture.md` (M0-M5 roadmap, Nix-First) and `docs/hosts.md` (mireo homectl).
+See `nixfleet/docs/architecture.md` (M0-M5 roadmap, Nix-First) and `docs/hosts.md` (mireo nixfleet).
 
 ## Secrets
 

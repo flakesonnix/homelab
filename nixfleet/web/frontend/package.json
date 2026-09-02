@@ -1,5 +1,5 @@
 {
-  "name": "homectl-web",
+  "name": "nixfleet-web",
   "private": true,
   "version": "0.1.0",
   "type": "module",

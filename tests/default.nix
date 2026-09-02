@@ -138,21 +138,21 @@
       "deploy-x270"
       "deploy-mireo"
     ]);
-  _homectlDeps = {
-    homectlApi = depAttr "homectl-api" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-api;
-    homectlAgent = depAttr "homectl-agent" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-agent;
-    homectlCli = depAttr "homectl" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl;
-    homectlWeb = depAttr "homectl-web" self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-web;
-    homectlManifest = let
-      d = self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-manifest;
+  _nixfleetDeps = {
+    nixfleetApi = depAttr "nixfleet-api" self.packages.${pkgs.stdenv.hostPlatform.system}.nixfleet-api;
+    nixfleetAgent = depAttr "nixfleet-agent" self.packages.${pkgs.stdenv.hostPlatform.system}.nixfleet-agent;
+    nixfleetCli = depAttr "nixfleet" self.packages.${pkgs.stdenv.hostPlatform.system}.nixfleet;
+    nixfleetWeb = depAttr "nixfleet-web" self.packages.${pkgs.stdenv.hostPlatform.system}.nixfleet-web;
+    nixfleetManifest = let
+      d = self.packages.${pkgs.stdenv.hostPlatform.system}.nixfleet-manifest;
     in
       builtins.seq d d.outPath;
-    homectlUi = let
-      d = self.packages.${pkgs.stdenv.hostPlatform.system}.homectl-ui;
+    nixfleetUi = let
+      d = self.packages.${pkgs.stdenv.hostPlatform.system}.nixfleet-ui;
     in
       builtins.seq d d.outPath;
   };
-  _homectlCheckDep = {homectlTests = depAttr "homectl-tests" self.checks.${pkgs.stdenv.hostPlatform.system}.homectl-tests;};
+  _nixfleetCheckDep = {nixfleetTests = depAttr "nixfleet-tests" self.checks.${pkgs.stdenv.hostPlatform.system}.nixfleet-tests;};
 
   dotfilesLib = import ../lib/default.nix pkgs;
   fixerScripts = dotfilesLib.topologyScripts;
@@ -233,8 +233,8 @@
       // _formatterDep
       // _devShellDeps
       // _appDeps
-      // _homectlDeps
-      // _homectlCheckDep)
+      // _nixfleetDeps
+      // _nixfleetCheckDep)
     ''
       set -euo pipefail
 
@@ -246,12 +246,12 @@
 
       echo ""
       echo "=== Build dependency verification ==="
-      echo "  hosts, formatter, devShells, apps, homectl: built as dependencies"
+      echo "  hosts, formatter, devShells, apps, nixfleet: built as dependencies"
 
       echo ""
-      echo "=== homectl artifacts ==="
-      manifest="$homectlManifest"
-      ui="$homectlUi"
+      echo "=== nixfleet artifacts ==="
+      manifest="$nixfleetManifest"
+      ui="$nixfleetUi"
       jq -e '.hosts.x270.hostname and (.hosts | has("mireo"))' "$manifest" >/dev/null
       jq -e '.vms | has("cups")' "$manifest" >/dev/null
       jq -e '.navigation | any(.page == "dashboard")' "$ui" >/dev/null

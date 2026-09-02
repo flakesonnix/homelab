@@ -1,8 +1,8 @@
-# homectl artifact generator — pure Nix, no runtime logic.
+# nixfleet artifact generator — pure Nix, no runtime logic.
 #
-# Produces the two JSON artifacts (manifest.json, ui.json) that drive homectl.
+# Produces the two JSON artifacts (manifest.json, ui.json) that drive nixfleet.
 # Everything here is derived from the flake: nixosConfigurations, the data/
-# model and the homectl module options. Go and React only read the output.
+# model and the nixfleet module options. Go and React only read the output.
 # Pattern mirrors lib/topology.nix: pure Nix evaluated at build time.
 {
   lib,
@@ -77,7 +77,7 @@
     then []
     else import (hostRolesFile host);
 
-  roleOf = name: roles.${name} or (throw "homectl manifest: unknown role ${name}");
+  roleOf = name: roles.${name} or (throw "nixfleet manifest: unknown role ${name}");
 
   hostView = name: cfg: let
     roleNames = hostRoles name;
@@ -85,7 +85,7 @@
     hostPayloads = map (r: r.host or {}) roleAttrs;
     homePayloads = map (r: r.home or {}) roleAttrs;
     presetNames = unique (concatMap (p: p.presets or []) hostPayloads);
-    presetAttrs = map (p: presets.${p} or (throw "homectl manifest: unknown preset ${p}")) presetNames;
+    presetAttrs = map (p: presets.${p} or (throw "nixfleet manifest: unknown preset ${p}")) presetNames;
     moduleFlags = lib.foldl' (a: b: a // (b.moduleFlags or {})) {} (hostPayloads ++ presetAttrs);
     packageTags = unique (concatMap (p: p.packageTags or []) hostPayloads);
     bundlesOf = unique (concatLists (map (p: p.bundles or []) homePayloads));
@@ -135,13 +135,13 @@
   };
 
   # ----------------------------------------------------------------------
-  # homectl module option extraction (guarded: module may be absent)
+  # nixfleet module option extraction (guarded: module may be absent)
   # ----------------------------------------------------------------------
 
-  homectlOpts = cfg:
-    if cfg.options ? lucy.homectl
+  nixfleetOpts = cfg:
+    if cfg.options ? lucy.nixfleet
     then let
-      o = cfg.config.lucy.homectl;
+      o = cfg.config.lucy.nixfleet;
       value = {
         inherit (o) enable;
         inherit (o) role;
@@ -162,10 +162,10 @@
       else {}
     else {};
 
-  enabled = cfg: (homectlOpts cfg).enable or false;
+  enabled = cfg: (nixfleetOpts cfg).enable or false;
 
   apiHost = let
-    withRole = filter (n: (homectlOpts configurations.${n}).role or "" == "api") (attrNames configurations);
+    withRole = filter (n: (nixfleetOpts configurations.${n}).role or "" == "api") (attrNames configurations);
   in
     if withRole == []
     then null
@@ -173,14 +173,14 @@
 
   pluginList = name:
     if enabled configurations.${name}
-    then (homectlOpts configurations.${name}).agent.plugins or ["systemd" "journal" "metrics"]
+    then (nixfleetOpts configurations.${name}).agent.plugins or ["systemd" "journal" "metrics"]
     else [];
 
   proxyRoutes = let
     cfg =
       if apiHost == null
       then {}
-      else homectlOpts configurations.${apiHost};
+      else nixfleetOpts configurations.${apiHost};
     proxy =
       if cfg == {}
       then {}
@@ -192,7 +192,7 @@
     cfg =
       if apiHost == null
       then {}
-      else homectlOpts configurations.${apiHost};
+      else nixfleetOpts configurations.${apiHost};
   in
     if cfg == {}
     then {}
@@ -315,8 +315,8 @@
     ]
     else
       (
-        if builtins.hasAttr "rbac" (homectlOpts configurations.${apiHost})
-        then (homectlOpts configurations.${apiHost}).rbac
+        if builtins.hasAttr "rbac" (nixfleetOpts configurations.${apiHost})
+        then (nixfleetOpts configurations.${apiHost}).rbac
         else [
           {
             role = "admin";

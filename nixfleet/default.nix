@@ -1,4 +1,4 @@
-# homectl package derivations. M0: stdlib-only Go binaries + Vite frontend +
+# nixfleet package derivations. M0: stdlib-only Go binaries + Vite frontend +
 # Nix-generated artifacts. Binaries keep the flake's repo paths stable; all
 # structure (UI, plugins, routes) comes from the artifacts, not from Go.
 {pkgs}: let
@@ -27,26 +27,26 @@
 in {
   api = goBuild {
     pkg = "api";
-    binary = "homectl-api";
+    binary = "nixfleet-api";
   };
   agent = goBuild {
     pkg = "agent";
-    binary = "homectl-agent";
+    binary = "nixfleet-agent";
   };
   cli = goBuild {
     pkg = "cli";
-    binary = "homectl";
+    binary = "nixfleet";
   };
 
   tests = goBuild {
     pkg = "api";
-    binary = "homectl-tests";
+    binary = "nixfleet-tests";
     doCheck = true;
     checkPhase = "go vet ./... && go test ./...";
   };
 
   web = pkgs.buildNpmPackage {
-    pname = "homectl-web";
+    pname = "nixfleet-web";
     version = "0.1.0";
     src = ./web/frontend;
     nodejs = pkgs.nodejs_22;

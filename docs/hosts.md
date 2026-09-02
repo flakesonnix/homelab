@@ -101,9 +101,9 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 - node_exporter running on 10.8.0.1:9100 for self-monitoring
 - CLI tools: tcpdump, mtr, nmap, iperf3, ethtool, socat, btop, htop, ncdu, jq, lsof, sysstat, smartmontools
 
-### Homectl (M1 — mireo runtime control plane)
-- `lucy.homectl.enable = true; role = "api"` in `data/hosts/mireo/settings.nix` — both `homectl-api` (8443, `DynamicUser`, `StateDirectory=homectl`) and `homectl-agent` (`systemd`+`journal`+`metrics`) run on mireo; module no longer gates on `role`, so `api` host also runs agent.
-- `api.artifactsDir = ../../../homectl/artifacts` (committed `manifest.json`/`ui.json`), `api.webDir` via `flake.nix` `homectlPkgs.web` when built; firewall `br0` now allows `8443`.
+### NixFleet (M1 — mireo runtime control plane)
+- `lucy.nixfleet.enable = true; role = "api"` in `data/hosts/mireo/settings.nix` — both `nixfleet-api` (8443, `DynamicUser`, `StateDirectory=nixfleet`) and `nixfleet-agent` (`systemd`+`journal`+`metrics`) run on mireo; module no longer gates on `role`, so `api` host also runs agent.
+- `api.artifactsDir = ../../../nixfleet/artifacts` (committed `manifest.json`/`ui.json`), `api.webDir` via `flake.nix` `nixfleetPkgs.web` when built; firewall `br0` now allows `8443`.
 - API (extends M0 `GET /health` + `GET /meta`): `GET /hosts`, `/:host/health`, `/:host/resources`, `/:host/network`, `/:host/vms` (merged `configured`+`runtime`), `/:host/systemd/failed` — validated against manifest, `503` for non-local host (M1 collects only where API runs).
 - Frontend `HostOverview` + `VMTable` + `SystemdFailed` on dashboard; `/vms` lists 7 VMs (grafana…aptcache) with `Name|IP|State|vCPU|RAM|Health|Ports`, network table shows `br0` + VM taps.
 
@@ -111,7 +111,7 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` intentionally absent, manifest `roles: []`)
 
 ### Config files
-- `data/hosts/mireo/settings.nix` — hostname, network, NAT, dnsmasq, NFS, Avahi, iVentoy, Netdata, **homectl M1** (`lucy.homectl.*`, firewall 8443)
+- `data/hosts/mireo/settings.nix` — hostname, network, NAT, dnsmasq, NFS, Avahi, iVentoy, Netdata, **nixfleet M1** (`lucy.nixfleet.*`, firewall 8443)
 - `hosts/mireo/host.nix` — framework applyHost
 - `hosts/mireo/grafana-microvm.nix` — grafana + prometheus microvm
 - `hosts/mireo/monerod-microvm.nix` — monerod + Tor microvm

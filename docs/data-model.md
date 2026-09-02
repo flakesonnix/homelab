@@ -233,17 +233,17 @@ Files in `data/hosts/<host>/` are loaded by the framework's `loadHostDirectory`.
 
 ---
 
-## Homectl Manifest (M1)
+## NixFleet Manifest (M1)
 
-`homectl/manifest.nix` is the **build-time source of truth** for the control plane. It is pure Nix (like `lib/topology.nix`): `flake.nix` → `homectlArtifacts = import ./homectl/manifest.nix { lib, pkgs, configurations = self.nixosConfigurations, deployNodes = self.deploy.nodes }` → `packages.homectl-manifest = writeText manifest.json` + `packages.homectl-ui = writeText ui.json` → committed to `homectl/artifacts/` and served by `homectl-api` (`GET /api/v1/meta` forwards them verbatim as `any`; Go never invents hosts/VMs).
+`nixfleet/manifest.nix` is the **build-time source of truth** for the control plane. It is pure Nix (like `lib/topology.nix`): `flake.nix` → `nixfleetArtifacts = import ./nixfleet/manifest.nix { lib, pkgs, configurations = self.nixosConfigurations, deployNodes = self.deploy.nodes }` → `packages.nixfleet-manifest = writeText manifest.json` + `packages.nixfleet-ui = writeText ui.json` → committed to `nixfleet/artifacts/` and served by `nixfleet-api` (`GET /api/v1/meta` forwards them verbatim as `any`; Go never invents hosts/VMs).
 
 `manifest.json` (`version: 1`):
 - `hosts: { <name>: { hostname, roles, bundles, presets, moduleFlags, packageTags, packages: {tag->[pkg]} } }` — `roles` from `data/hosts/<host>/roles.nix` (see below), `bundles/presets/packageTags` derived via `roles → host/home` payloads, `moduleFlags` merged.
 - `vms: { <vm>: { host: "mireo", ip, mem, vcpu, autostart, tcpPorts, udpPorts, volumes: [{mountPoint,size}] } }` — extracted from `microvm.vms` (`systemd.network.networks."20-lan".address`, `microvm.{mem,vcpu,volumes}`, firewall ports).
-- `deployNodes: { <host>: {hostname, sshUser} }`, `proxy`, `plugins` (`lucy.homectl.agent.plugins` when `enable`), `catalog` (roles/bundles/presets metadata + package registries).
+- `deployNodes: { <host>: {hostname, sshUser} }`, `proxy`, `plugins` (`lucy.nixfleet.agent.plugins` when `enable`), `catalog` (roles/bundles/presets metadata + package registries).
 
 `ui.json`:
-- `navigation` — default `Dashboard, Hosts, Journal, Terminal, Deploy, (VMs if hasVms), NixOS, Git, GitHub, Monitoring, Network, Settings` + `ui.navigation` from `lucy.homectl.ui` when `apiHost` set.
+- `navigation` — default `Dashboard, Hosts, Journal, Terminal, Deploy, (VMs if hasVms), NixOS, Git, GitHub, Monitoring, Network, Settings` + `ui.navigation` from `lucy.nixfleet.ui` when `apiHost` set.
 - `dashboard.widgets` — one `host-summary` per host + `dashboardWidgets`, `featureFlags` (`terminal`, `files`, `containers`, `tailscale`, `proxy`), `rbac` (default `admin * *`).
 
 M1 fixes:
