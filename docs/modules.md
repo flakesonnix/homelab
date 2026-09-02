@@ -189,6 +189,38 @@ Options namespace: `lucy.*`
 
 ---
 
+### `homectl.nix` (M1 — mireo runtime control plane)
+
+Options namespace: `lucy.homectl.*`
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enable` | bool | `false` | Enable homectl control plane (both API and agent services become available when their packages are set) |
+| `role` | enum `api`/`agent`/`cli` | required when `enable` | Declarative role — used by `homectl/manifest.nix` to compute `apiHost` and `plugins`; **service creation is now package-gated, not role-gated** (M1 fix): any host with `enable` + `api.package` runs `homectl-api`, any with `enable` + `agent.package` runs `homectl-agent`, so `mireo` as `role = "api"` can also run the agent |
+| `api.package` | `nullOr package` | `null` (set via `flake.nix` `lib.mkDefault homectlPkgs.api`) | `homectl-api` binary |
+| `api.port` | port | `8443` | API listen port (mireo firewall `br0` now allows `8443`) |
+| `api.artifactsDir` | path | required | Directory with `manifest.json` + `ui.json` (mireo: `../../../homectl/artifacts`, i.e. committed `homectl/artifacts`) |
+| `api.webDir` | `nullOr path` | `null` | Built `homectl-web` SPA dir served at `/` with SPA fallback to `index.html` (mireo: via `flake.nix` `homectlPkgs.web` when built; currently `null` in `settings.nix` to avoid `deepSeq` stack overflow — frontend is built as `homectl-web` package but not yet wired as `webDir` derivation) |
+| `api.proxy` | `attrsOf {target: str, subPath: bool}` | `{}` | Reverse-proxy routes at `/apps/<name>` |
+| `agent.package` | `nullOr package` | `null` (`homectlPkgs.agent`) | `homectl-agent` binary |
+| `agent.endpoint` | str | `"wss://homectl.lan:8443/api/v1/ws"` | API WS endpoint (future) |
+| `agent.tokenFile` | `nullOr path` | `null` | Bearer token file (sops, `0600`) |
+| `agent.plugins` | `listOf str` | `["systemd" "journal" "metrics"]` | Enabled agent plugins (mireo: same) |
+| `agent.filesRoots` | `listOf path` | `[]` | Allowlist for files plugin |
+| `agent.terminalUser` | str | `"lucy"` | User for browser terminal |
+| `ui.navigation` | `listOf {label, path, page}` | `[]` | Extra nav entries merged into `ui.json` |
+| `ui.dashboardWidgets` | `listOf {type, host, dataSource, refreshMs, config}` | `[]` | Extra dashboard widgets |
+| `ui.pages` | `attrsOf {enabled: bool}` | `{}` | Per-page feature toggles |
+| `rbac` | `listOf {role, action, resource}` | `[]` (defaults to `admin * *`) | Permission policy |
+
+When `enable`:
+- `systemd.services.homectl-api` (if `api.package` set): `ExecStart = ${api.package}/bin/homectl-api --manifest ${artifactsDir}/manifest.json --ui ${artifactsDir}/ui.json [--web ${webDir}]`, `DynamicUser`, `StateDirectory=homectl`, `wantedBy multi-user, after network.target`
+- `systemd.services.homectl-agent` (if `agent.package` set): `ExecStart = ${agent.package}/bin/homectl-agent`, `DynamicUser`, `after network-online.target`, stays alive with 30s heartbeat (`runtime.CollectSystem`)
+
+Enabled on `mireo` via `data/hosts/mireo/settings.nix` (`enable = true; role = "api"; api.port = 8443; artifactsDir = ../../../homectl/artifacts`) + `flake.nix` `homectlPkgs.*` defaults. `x270` not enabled.
+
+M1 API extends `GET /api/v1/health` + `GET /api/v1/meta` with: `GET /hosts`, `/:host/health`, `/:host/resources`, `/:host/network` (`ip -j`), `/:host/vms` (merged `configured`+`runtime` via `systemctl is-active microvm@<name>` validated), `/:host/systemd/failed` (`systemctl --failed`). See `homectl/api/runtime` and `homectl/api/http/server.go`.
+
 ### `topology.nix`
 
 Reads `lucy.topology.*` (set in host data) and forwards it to nix-topology's `topology.self` for diagram rendering.

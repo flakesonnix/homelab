@@ -109,6 +109,41 @@ Key modules:
 - `home/niri.nix` — `programs.niri.enable`: Full KDL config, lock screen, wlogout
 - `home/waybar.nix` — `programs.waybar.enable`: Styled bar with mpris, battery, CPU
 
+## Homectl — Mireo Runtime Control Plane (M1)
+
+`homectl` is the in-repo control plane for the homelab. Architecture is **Nix → `homectl/manifest.nix` → `manifest.json`/`ui.json` → Go API/Agent → React**.
+
+M1 implements the first real vertical slice: **declarative inventory (manifest) merged with live runtime from the mireo agent**.
+
+**Manifest fixes (M1):**
+- `hasVms` now correctly uses `attrNames vmCatalog` (was `hostsVms`, always false) — `/vms` navigation now appears.
+- `hostRoles` now uses `hasAttr "roles.nix"` (was `? roles.nix`, invalid due to dot) — `x270` now correctly exposes `roles [desktop dev gaming]`, `bundles [desktop dev]`, `presets [gaming-*]`. `mireo` intentionally has no `roles.nix` (server profile, roles `[]`).
+
+**Host `mireo` (M1):**
+- `lucy.homectl.enable = true; role = "api"` in `data/hosts/mireo/settings.nix` — both `homectl-api` (8443, serves `manifest.json`/`ui.json` + `homectl-web` when built) and `homectl-agent` (`systemd`+`journal`+`metrics` plugins) run as `DynamicUser` services.
+- Firewall: `br0` now allows `8443`.
+- Module `lucy.homectl` no longer gates services on `role` — any host with `enable` and a package runs the corresponding service, so `mireo` as `api` can also run the agent.
+
+**M1 API (extends `/api/v1/health` + `/api/v1/meta`, same `shared/proto` envelope conventions):**
+- `GET /api/v1/hosts` — hosts from manifest (no hardcoding)
+- `GET /api/v1/hosts/:host/health` — `health` (`healthy|degraded|critical|unknown`), `agent` (`connected|unavailable`), `kernel`, `os`, `uptimeS`, `failedUnits`
+- `GET /api/v1/hosts/:host/resources` — CPU (logical, usage via `/proc/stat`), load (`/proc/loadavg`), memory (`/proc/meminfo`), storage (`statfs` for `/`, `/data`, `/nix/store`, `/boot`)
+- `GET /api/v1/hosts/:host/network` — `ip -j link/addr/route` (fixed args, fallback to `/proc/net/dev`), `br0` + VM taps visible
+- `GET /api/v1/hosts/:host/vms` — merged `configured` (from manifest) + `runtime` (`systemctl is-active microvm@<name>` validated via `isValidVMName`) + `health`
+- `GET /api/v1/hosts/:host/systemd/failed` — `systemctl --failed` (bounded, no arbitrary args)
+
+Validation: host must exist in manifest (404), VM name validated against manifest (no `microvm@userInput` injection), non-local host → `503 AGENT_UNAVAILABLE` (M1 only collects for the host where the API runs). Health/resources use Linux interfaces (`/proc`, `syscall`, `ip -j`) — no external monitoring dependency.
+
+**Frontend (M1, dark dense admin UI):**
+- `HostOverview` — mireo header (online/health/agent, kernel, uptime), CPU/load, memory/storage bars, network table (monospace IPs), systemd failed list
+- `VMTable` — dense table `Name | IP | State | vCPU | RAM | Health | Ports` (monospace, `configured` vs `runtime` separated)
+- `SystemdFailed` — `0 failed` healthy state or table of failed units
+- Dashboard now shows `HostOverview` + `VMTable` for `mireo`; `/vms` and `/network` routes reuse the same components; no charts/terminal/deploy yet (observability first, operations after).
+
+Build via `nix build .#homectl-web` / `nix build .#homectl-api` / `nix build .#homectl-agent`; tests: `go test ./...` (manifest, runtime parsers, HTTP validation).
+
+See `homectl/docs/architecture.md` (M0-M5 roadmap, Nix-First) and `docs/hosts.md` (mireo homectl).
+
 ## Secrets
 
 Uses sops-nix with age keys. See [docs/secrets.md](docs/secrets.md).
