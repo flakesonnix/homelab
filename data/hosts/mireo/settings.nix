@@ -226,8 +226,12 @@
   };
 
   # Ensure dnsmasq starts after br0 exists (avoids "unknown interface" race)
+  # Make dnsmasq restart on failure but not block NixOS activation (optional
+  # runtime service — failure should not trigger deploy-rs rollback).
   systemd.services.dnsmasq.after = ["sys-devices-virtual-net-br0.device"];
   systemd.services.dnsmasq.bindsTo = ["sys-devices-virtual-net-br0.device"];
+  systemd.services.dnsmasq.serviceConfig.Restart = "on-failure";
+  systemd.services.dnsmasq.serviceConfig.RestartSec = "5s";
 
   boot.loader.systemd-boot.enable = true;
 

@@ -9,12 +9,19 @@ _: {
         "ollama.cachix.org-1:+8gHyhs2wZvI/0A7kujPWiPM4LlgFjEKhcOvl5n9jss="
         "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
       ];
+      # No hard dependency on any single cache: cache.nixos.org is always first
+      # and is the fallback; optional caches (nix-gaming, ollama, cuda) are
+      # tried after. If a cache is unreachable (e.g. old http://omen:5000 which
+      # was removed in 0397ed5), Nix will warn and fall back — it must not block
+      # the build. Keep connect-timeout low so a dead cache fails fast.
       substituters = [
         "https://cache.nixos.org"
         "https://nix-gaming.cachix.org"
         "https://ollama.cachix.org"
         "https://cache.nixos-cuda.org"
       ];
+      connect-timeout = 5;
+      fallback = true;
     };
   };
 

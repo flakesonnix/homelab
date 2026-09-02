@@ -160,6 +160,8 @@ in {
           description = "nixfleet control-plane API";
           wantedBy = ["multi-user.target"];
           after = ["network.target"];
+          # API failure must not break the whole NixOS activation: keep it as a
+          # normal service (no Requires/PartOf), just restart on failure.
           serviceConfig = {
             ExecStart = lib.concatStringsSep " " (
               [
@@ -172,6 +174,9 @@ in {
               ++ lib.optional (cfg.api.webDir != null) "--web ${toString cfg.api.webDir}"
             );
             Restart = "on-failure";
+            RestartSec = "5s";
+            StartLimitBurst = 5;
+            StartLimitIntervalSec = 60;
             DynamicUser = true;
             StateDirectory = "nixfleet";
           };
@@ -181,10 +186,14 @@ in {
         systemd.services.nixfleet-agent = {
           description = "nixfleet agent";
           wantedBy = ["multi-user.target"];
+          wants = ["network-online.target"];
           after = ["network-online.target"];
           serviceConfig = {
             ExecStart = "${cfg.agent.package}/bin/nixfleet-agent";
             Restart = "on-failure";
+            RestartSec = "5s";
+            StartLimitBurst = 5;
+            StartLimitIntervalSec = 60;
             DynamicUser = true;
           };
         };

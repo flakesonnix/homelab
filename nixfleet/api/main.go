@@ -26,24 +26,24 @@ func main() {
 
 	manifest, err := os.ReadFile(*manifestPath)
 	if err != nil {
-		log.Fatalf("read manifest: %v", err)
+		log.Fatalf("nixfleet-api: failed to read manifest %q: %v (check lucy.nixfleet.api.artifactsDir, file must contain valid manifest.json from nixfleet/manifest.nix)", *manifestPath, err)
 	}
 	ui, err := os.ReadFile(*uiPath)
 	if err != nil {
-		log.Fatalf("read ui: %v", err)
+		log.Fatalf("nixfleet-api: failed to read ui %q: %v (check lucy.nixfleet.api.artifactsDir, file must contain valid ui.json)", *uiPath, err)
 	}
 
 	server, err := httpapi.New(manifest, ui)
 	if err != nil {
-		log.Fatalf("init server: %v", err)
+		log.Fatalf("nixfleet-api: failed to parse manifest/ui %q/%q: %v (check JSON validity, run `nix build .#nixfleet-manifest`)", *manifestPath, *uiPath, err)
 	}
 	if *webDir != "" {
 		server.ServeWeb(*webDir)
 		log.Printf("serving frontend from %s", *webDir)
 	}
 
-	log.Printf("%s listening on %s", version.String(), *addr)
+	log.Printf("%s listening on %s (manifest %s, ui %s)", version.String(), *addr, *manifestPath, *uiPath)
 	if err := http.ListenAndServe(*addr, server.Handler()); err != nil {
-		log.Fatal(err)
+		log.Fatalf("nixfleet-api: http server failed on %s: %v", *addr, err)
 	}
 }

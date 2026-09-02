@@ -84,6 +84,13 @@
     };
   };
 
+  # Custom flake outputs (intentional, used by external tools):
+  # - deploy (deploy-rs): flake.deploy.nodes for `deploy .#<host>`
+  # - topology (nix-topology): flake.topology for `nix build .#topology`
+  # - nixfleetArtifacts (nixfleet): flake.nixfleetArtifacts for manifest/ui generation
+  # Warnings about "unknown flake output" for these are expected and can be ignored;
+  # they are not standard outputs like `packages` or `checks` but are required by
+  # their respective tools. See docs/architecture.md and flake.nix comments.
   outputs = inputs @ {
     self,
     nixpkgs,
