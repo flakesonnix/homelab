@@ -25,9 +25,7 @@
     _type = "heading";
   };
 
-  mkParagraph = {
-    text,
-  }: {
+  mkParagraph = {text}: {
     inherit text;
     _type = "paragraph";
   };
@@ -42,7 +40,7 @@
 
   mkTable = {
     headers, # list of strings
-    rows,    # list of (list of strings)
+    rows, # list of (list of strings)
   }: {
     inherit headers rows;
     _type = "table";
@@ -56,9 +54,7 @@
     _type = "codeBlock";
   };
 
-  mkBlockquote = {
-    text,
-  }: {
+  mkBlockquote = {text}: {
     inherit text;
     _type = "blockquote";
   };
@@ -80,16 +76,14 @@
     _type = "link";
   };
 
-  mkInlineCode = {
-    code,
-  }: {
+  mkInlineCode = {code}: {
     inherit code;
     _type = "inlineCode";
   };
 
   mkReference = {
     type, # entity type: host, service, module, etc.
-    id,   # entity id
+    id, # entity id
     label ? null,
   }: {
     inherit type id label;

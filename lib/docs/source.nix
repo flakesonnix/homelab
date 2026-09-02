@@ -1,6 +1,9 @@
 # Source — load real project data for the docs framework.
 # Reuses the existing framework's data layout, no duplication.
-{lib, pkgs}: let
+{
+  lib,
+  pkgs,
+}: let
   # Load roles, bundles, presets from data/
   readNixDir = dir:
     builtins.listToAttrs (map (name: {
@@ -47,25 +50,73 @@
   };
 
   microvms = {
-    grafana = { host = "mireo"; ip = "10.8.0.2"; mem = 768; vcpu = 2; services = ["grafana" "prometheus"]; description = "Prometheus + Grafana"; };
-    "network-services" = { host = "mireo"; ip = "10.8.0.3"; mem = 384; vcpu = 1; services = []; description = "Bridge stub"; };
-    monerod = { host = "mireo"; ip = "10.8.0.4"; mem = 2304; vcpu = 2; services = ["monerod" "tor"]; description = "Monero + Tor"; };
-    yammat = { host = "mireo"; ip = "10.8.0.5"; mem = 2304; vcpu = 2; services = ["yammat" "postgres"]; description = "YAMMAT"; };
-    cups = { host = "mireo"; ip = "10.8.0.6"; mem = 512; vcpu = 1; services = ["cups" "avahi"]; description = "CUPS print"; };
-    sshkeys = { host = "mireo"; ip = "10.8.0.7"; mem = 256; vcpu = 1; services = ["caddy"]; description = "SSH keys web"; };
-    aptcache = { host = "mireo"; ip = "10.8.0.8"; mem = 512; vcpu = 1; services = ["apt-cacher-ng"]; description = "APT cache"; };
+    grafana = {
+      host = "mireo";
+      ip = "10.8.0.2";
+      mem = 768;
+      vcpu = 2;
+      services = ["grafana" "prometheus"];
+      description = "Prometheus + Grafana";
+    };
+    "network-services" = {
+      host = "mireo";
+      ip = "10.8.0.3";
+      mem = 384;
+      vcpu = 1;
+      services = [];
+      description = "Bridge stub";
+    };
+    monerod = {
+      host = "mireo";
+      ip = "10.8.0.4";
+      mem = 2304;
+      vcpu = 2;
+      services = ["monerod" "tor"];
+      description = "Monero + Tor";
+    };
+    yammat = {
+      host = "mireo";
+      ip = "10.8.0.5";
+      mem = 2304;
+      vcpu = 2;
+      services = ["yammat" "postgres"];
+      description = "YAMMAT";
+    };
+    cups = {
+      host = "mireo";
+      ip = "10.8.0.6";
+      mem = 512;
+      vcpu = 1;
+      services = ["cups" "avahi"];
+      description = "CUPS print";
+    };
+    sshkeys = {
+      host = "mireo";
+      ip = "10.8.0.7";
+      mem = 256;
+      vcpu = 1;
+      services = ["caddy"];
+      description = "SSH keys web";
+    };
+    aptcache = {
+      host = "mireo";
+      ip = "10.8.0.8";
+      mem = 512;
+      vcpu = 1;
+      services = ["apt-cacher-ng"];
+      description = "APT cache";
+    };
   };
 
   modules = {
-    base = { description = "Base NixOS config (SSH, locale, firewall)"; };
-    niri = { description = "Niri compositor + greetd"; };
-    gaming = { description = "Gaming stack (Steam, GameMode)"; };
-    microvm = { description = "MicroVM host (QEMU, tap, br0)"; };
-    dnsmasq = { description = "DHCP/DNS/RA for LAN"; };
-    nixfleet = { description = "NixFleet control plane (API+agent)"; };
-    cups = { description = "CUPS print server"; };
+    base = {description = "Base NixOS config (SSH, locale, firewall)";};
+    niri = {description = "Niri compositor + greetd";};
+    gaming = {description = "Gaming stack (Steam, GameMode)";};
+    microvm = {description = "MicroVM host (QEMU, tap, br0)";};
+    dnsmasq = {description = "DHCP/DNS/RA for LAN";};
+    nixfleet = {description = "NixFleet control plane (API+agent)";};
+    cups = {description = "CUPS print server";};
   };
-
 in {
   inherit hosts roles bundles presets microvms modules;
 }

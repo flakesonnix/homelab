@@ -1,5 +1,8 @@
 # Docs framework — main entry
-{lib, pkgs}: let
+{
+  lib,
+  pkgs,
+}: let
   ast = import ./ast.nix;
   domain = import ./domain.nix {inherit lib;};
   validate = import ./validate.nix {inherit lib;};
