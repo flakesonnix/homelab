@@ -62,6 +62,19 @@ topology:
 nixfleet:
     nix run .#nixfleet
 
+# NixFleet docs framework
+docs-generate:
+    nix run .#nixfleet -- docs generate
+
+docs-check:
+    nix run .#nixfleet -- docs check
+
+docs-build:
+    nix run .#nixfleet -- docs build
+
+docs-serve:
+    nix run .#nixfleet -- docs serve
+
 # Interactive command launcher (fzf)
 menu:
     nix run .#menu
