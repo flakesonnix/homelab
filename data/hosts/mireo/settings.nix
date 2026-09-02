@@ -247,7 +247,15 @@
     role = "api";
     api = {
       port = 8443;
-      artifactsDir = ../../../nixfleet/artifacts;
+      # Copy to a GC-rooted derivation so the path survives after the
+      # flake source is garbage-collected (direct flake-source references
+      # like ../../../nixfleet/artifacts are build-time only and break at
+      # runtime once `nix store gc` removes the source).
+      artifactsDir = pkgs.runCommand "nixfleet-artifacts" {} ''
+        mkdir -p $out
+        cp ${../../../nixfleet/artifacts/manifest.json} $out/manifest.json
+        cp ${../../../nixfleet/artifacts/ui.json} $out/ui.json
+      '';
     };
     agent = {
       plugins = ["systemd" "journal" "metrics"];

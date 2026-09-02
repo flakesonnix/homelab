@@ -28,7 +28,7 @@ in {
           description = "API listen port";
         };
         artifactsDir = mkOption {
-          type = types.path;
+          type = types.either types.path types.package;
           description = "Directory with Nix-generated manifest.json and ui.json";
         };
         webDir = mkOption {
@@ -162,6 +162,8 @@ in {
           after = ["network.target"];
           # API failure must not break the whole NixOS activation: keep it as a
           # normal service (no Requires/PartOf), just restart on failure.
+          startLimitBurst = 5;
+          startLimitIntervalSec = 60;
           serviceConfig = {
             ExecStart = lib.concatStringsSep " " (
               [
@@ -175,8 +177,6 @@ in {
             );
             Restart = "on-failure";
             RestartSec = "5s";
-            StartLimitBurst = 5;
-            StartLimitIntervalSec = 60;
             DynamicUser = true;
             StateDirectory = "nixfleet";
           };
@@ -188,12 +188,12 @@ in {
           wantedBy = ["multi-user.target"];
           wants = ["network-online.target"];
           after = ["network-online.target"];
+          startLimitBurst = 5;
+          startLimitIntervalSec = 60;
           serviceConfig = {
             ExecStart = "${cfg.agent.package}/bin/nixfleet-agent";
             Restart = "on-failure";
             RestartSec = "5s";
-            StartLimitBurst = 5;
-            StartLimitIntervalSec = 60;
             DynamicUser = true;
           };
         };

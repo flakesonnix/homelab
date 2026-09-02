@@ -148,8 +148,6 @@
         agent.plugins = o.agent.plugins;
         api = {
           port = o.api.port;
-          artifactsDir = o.api.artifactsDir;
-          webDir = o.api.webDir;
           proxy = o.api.proxy;
         };
         ui.navigation = o.ui.navigation;
