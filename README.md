@@ -11,6 +11,10 @@ NixOS flake managing two machines for user `lucy`. Data-driven host and home com
 
 Network: `10.8.0.0/24` (+ `fd00:cafe:1::1/64` ULA) bridged on mireo. See [docs/hosts.md](docs/hosts.md) for full details.
 
+![Niri on x270 — 2026-09-02](docs/images/niri-x270-2026-09-02.png)
+
+*ThinkPad X270 running Niri (2026-09-02) — Alt+Enter terminal, Alt+D fuzzel, Stylix cyberdeck theme.*
+
 ## Layout
 
 ```
