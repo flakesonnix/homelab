@@ -551,7 +551,7 @@
       echo "  OK: named check links"
 
       echo "=== mireo data dispatcher ==="
-      sed '/^export PATH=/d' ${mireoDataDispatcher} > dispatcher.sh
+      sed '/^export PATH=/d' ${mireoDataDispatcher}/bin/mireo-data-dispatcher > dispatcher.sh
       cat > stub/mountpoint <<'EOF'
       #!/bin/sh
       exit 1
@@ -574,12 +574,13 @@
       export LOG="$PWD/dispatcher.log"
 
       bash dispatcher.sh wlan0 up
-      grep -q mount dispatcher.log && { echo "FAIL: mounted while unreachable" >&2; exit 1; }
+      grep -q '^mount$' dispatcher.log && { echo "FAIL: mounted while unreachable" >&2; exit 1; }
+      : > dispatcher.log
       NFS_REACHABLE=1 bash dispatcher.sh wlan0 up
-      grep -q mount dispatcher.log || { echo "FAIL: not mounted while reachable" >&2; exit 1; }
+      grep -q '^mount$' dispatcher.log || { echo "FAIL: not mounted while reachable" >&2; exit 1; }
       : > dispatcher.log
       bash dispatcher.sh wlan0 down
-      grep -q umount dispatcher.log || { echo "FAIL: no unmount on down" >&2; exit 1; }
+      grep -q '^umount$' dispatcher.log || { echo "FAIL: no unmount on down" >&2; exit 1; }
       echo "  OK: mounts only when reachable, unmounts on down"
 
       echo ""

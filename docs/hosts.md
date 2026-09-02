@@ -54,15 +54,20 @@ mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (
 ### Special modules loaded
 `asterisk`, `audio-stream`, `deskflow`, `fonts`, `gaming`, `gnome`, `gnome-extensions`, `niri`, `serial-getty`, `sops`, `waybar`, `waydroid`, `lanzaboote`
 
-### Rebuild
+### Deploy
+
 ```bash
-# Local (preferred)
+# Local (preferred, via nh)
 nix run .#rebuild
 # or
-sudo nixos-rebuild switch --flake ~/Documents/dotfiles#x270
+sudo nixos-rebuild switch --flake .#x270
 
-# Via deploy-rs
-nix run .#deploy-x270
+# Via deploy-rs (to localhost, or 10.8.0.176 when deploying remotely)
+nix run .#deploy-x270   # SSH to localhost as root
+deploy .#x270           # same, via deploy-rs directly
+
+# Deploy from x270 to mireo (LAN)
+nix run .#deploy-mireo  # SSH to 10.8.0.1
 ```
 
 
@@ -124,6 +129,7 @@ Port 9001/tcp (Tor ORPort) forwarded from WAN to monerod VM.
 
 ### Deploy
 ```bash
-nix run .#deploy-mireo   # SSH to mireo (192.168.178.25 or 10.8.0.1)
+nix run .#deploy-mireo   # SSH to mireo via deploy-rs (10.8.0.1 on LAN, 192.168.178.25 from FritzBox LAN)
+deploy .#mireo           # same, via deploy-rs directly
 ```
 

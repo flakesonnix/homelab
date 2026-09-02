@@ -265,26 +265,6 @@
         "type": "github"
       }
     },
-    "framework": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1778017647,
-        "narHash": "sha256-bYDESJVXalEcEtydMJVOlcDPOg7kf7wCC3CJ5kR1bxQ=",
-        "owner": "flakesonnix",
-        "repo": "rivotril",
-        "rev": "d4eaac8af903c4b947cb3846cb836f33ef1015d9",
-        "type": "github"
-      },
-      "original": {
-        "owner": "flakesonnix",
-        "repo": "rivotril",
-        "type": "github"
-      }
-    },
     "fromYaml": {
       "flake": false,
       "locked": {
@@ -655,7 +635,6 @@
       "inputs": {
         "deploy-rs": "deploy-rs",
         "flake-parts": "flake-parts",
-        "framework": "framework",
         "home-manager": "home-manager",
         "lanzaboote": "lanzaboote",
         "microvm": "microvm",

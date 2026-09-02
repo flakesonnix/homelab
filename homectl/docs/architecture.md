@@ -50,10 +50,10 @@ plugin or permission that exists in the UI has its declarative origin in Nix.
 
 | Layer | Existing structure | homectl usage |
 |---|---|---|
-| Framework | `rivotril` (`applyHost`/`applyHome`), `specialArgs.frameworkLib` | read-only: host configs already evaluated |
+| Framework | in-repo `lib/framework` (`applyHost`/`applyHome`), `specialArgs.frameworkLib` | read-only: host configs already evaluated |
 | Data model | `data/roles/`, `data/bundles/`, `data/presets/`, `data/packages/{system,home}.nix`, `data/hosts/<host>/` | read-only, exposed via manifest (below) — never duplicated |
 | Typed builders | `lib/types.nix` (`checked`, `ipv4`, `packageRegistryType`), `mk-microvm`, `mkKeyGenService`, `mkCheckApp`, `mkCiCheckBundle` | reuse `checked` for homectl option types; reuse `mkKeyGenService` for token/secret generation |
-| Deploy | `deploy-rs` (`flake.deploy.nodes.mireo`, `activateNixosWithNixPath`), apps `rebuild`/`deploy-x270` (`nh os switch`), `deploy-mireo` | invoked **as-is** by the deploy plugin — never reimplemented |
+| Deploy | `deploy-rs` (`flake.deploy.nodes.{x270,mireo}`, `activateNixosWithNixPath`), apps `rebuild` (`nh os switch`), `deploy-x270`/`deploy-mireo` (deploy-rs) | invoked **as-is** by the deploy plugin — never reimplemented |
 | MicroVMs | `microvm.nixosModules.host`, 7 VMs via `mk-microvm` (autostart, `microvm@<name>` units, MAC from IP, tap→br0) | VM list from manifest; lifecycle via systemd units + serial console |
 | Secrets | sops-nix (x270), `lucy.secrets`, `.sops.yaml`; `mkKeyGenService` for runtime secrets | agent tokens via sops; runtime secrets via keygen pattern |
 | Topology | pure-Nix SVG fixer pattern (`nix eval --impure` + `SVG_PATH`, CI commits results) | same pattern for the **artifact generators** (`homectl-manifest`) |
@@ -277,8 +277,7 @@ run, with a pre-flight diff step:
               + generation number preview                    → new generation
 3. show diff  UI: affected hosts, changed packages, restarted services, modules
 4. confirm    explicit user confirmation (audit-logged)
-5. deploy     nh os switch | deploy-rs (per existing app: deploy-x270 → nh,
-              deploy-mireo → deploy-rs)
+5. deploy     nh os switch (rebuild) | deploy-rs (deploy-x270 → localhost, deploy-mireo → 10.8.0.1)
 6. live logs  WS stream of build/activation output
 7. result     success/failure → jobs table in SQLite; agent reports new generation
 ```

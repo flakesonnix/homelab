@@ -1,6 +1,6 @@
 # Data Model
 
-All declarative host and home configuration lives in `data/`. The rivotril framework (`frameworkLib`) reads this data and resolves it into NixOS/Home Manager config at evaluation time.
+All declarative host and home configuration lives in `data/`. The in-repo framework (`lib/framework`, exposed as `frameworkLib`) reads this data and resolves it into NixOS/Home Manager config at evaluation time.
 
 ## Directory structure
 

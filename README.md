@@ -1,6 +1,6 @@
 # NixOS Dotfiles
 
-NixOS flake managing two machines for user `lucy`. Built on the [rivotril](https://github.com/flakesonnix/rivotril) framework for data-driven host and home composition.
+NixOS flake managing two machines for user `lucy`. Data-driven host and home composition via the in-repo framework (`lib/framework`, `frameworkLib`).
 
 ## Hosts
 
@@ -43,12 +43,34 @@ Network: `10.8.0.0/24` (+ `fd00:cafe:1::1/64` ULA) bridged on mireo. See [docs/h
 
 ## Common Commands
 
+A `justfile` provides friendly, discoverable recipes — run `just` to list them,
+or `just menu` for an interactive fzf launcher that runs any flake app.
+
+```bash
+just                 # list all recipes
+just menu            # interactive command picker
+just rebuild         # rebuild local x270 (via nh)
+just deploy-x270     # deploy x270 via deploy-rs (localhost)
+just deploy-mireo    # deploy mireo via deploy-rs (10.8.0.1)
+just deploy-all      # deploy both hosts via deploy-rs
+just check-light     # fast eval-surface checks
+just update          # update flake inputs
+just fmt             # format with alejandra
+just lint            # lint with statix
+```
+
+Equivalent raw flake commands still work:
+
 ```bash
 # Rebuild (local, via nh)
 nix run .#rebuild
 
-# Deploy to a remote host
-nix run .#deploy-mireo
+# Deploy via deploy-rs
+nix run .#deploy-x270   # x270 to localhost
+nix run .#deploy-mireo  # mireo to 10.8.0.1
+
+# Interactive launcher
+nix run .#menu
 
 # CI checks
 nix run .#check-light   # Fast: eval surfaces only

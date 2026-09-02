@@ -63,11 +63,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    framework = {
-      url = "github:flakesonnix/rivotril";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     yammat = {
       url = "git+https://gitea.c3d2.de/c3d2/yammat?ref=master";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -104,7 +99,6 @@
     nixos-hardware,
     nixGaming,
     nur,
-    framework,
     yammat,
     deploy-rs,
     nix-topology,
@@ -126,19 +120,18 @@
         inherit modules specialArgs;
       };
 
+    frameworkLib = import ./lib/framework;
+
     x270SpecialArgs = {
-      inherit wrappers stylix nix-flatpak nixos-hardware nixGaming;
-      frameworkLib = framework.lib;
+      inherit wrappers stylix nix-flatpak nixos-hardware nixGaming frameworkLib;
     };
 
     serverSpecialArgs = {
-      inherit wrappers;
-      frameworkLib = framework.lib;
+      inherit wrappers frameworkLib;
     };
 
     mireoSpecialArgs = {
-      inherit wrappers yammat nixpkgs;
-      frameworkLib = framework.lib;
+      inherit wrappers yammat nixpkgs frameworkLib;
     };
 
     x270-config = mkHost {
@@ -214,8 +207,8 @@
           frameworkChecks =
             builtins.removeAttrs
             (
-              import "${framework.outPath}/lib/flake/checks.nix" {
-                inherit self pkgs framework x270-config;
+              import ./lib/framework/flake/checks.nix {
+                inherit self pkgs x270-config;
               }
             ).checks ["webui-unit"];
           deployChecks = deploy-rs.lib.${system}.deployChecks self.deploy;
@@ -271,7 +264,33 @@
             name = "update";
             text = "nix flake update";
           };
-        in let
+
+          # Curated, human-labeled command list used by the interactive
+          # `menu` launcher. Single source of truth for what's discoverable.
+          menuEntries = {
+            rebuild = "Rebuild local x270 via nh";
+            "deploy-x270" = "Deploy x270 via deploy-rs to localhost";
+            "deploy-mireo" = "Deploy mireo via deploy-rs to 10.8.0.1";
+            check = "Run nix flake check";
+            "check-light" = "Fast eval-surface checks";
+            "check-full" = "Full CI check builds";
+            update = "Update flake inputs";
+            "setup-sops" = "Generate sops-nix age key pair";
+            topology = "Build network/host topology SVGs";
+            homectl = "homectl CLI (status, health)";
+          };
+          menuApp = pkgs.writeShellApplication {
+            name = "menu";
+            runtimeInputs = [pkgs.fzf];
+            text = ''
+              entries='${pkgs.lib.concatStringsSep "\n" (pkgs.lib.mapAttrsToList (n: d: "${n}|${d}") menuEntries)}'
+              choice=$(printf '%s\n' "$entries" | fzf --delimiter='|' --with-nth=2 --prompt='run> ')
+              [ -z "$choice" ] && exit 0
+              name=''${choice%%|*}
+              exec nix run ".#$name"
+            '';
+          };
+
           homectlPkgs = import ./homectl/default.nix {inherit pkgs;};
         in
           {
@@ -284,7 +303,12 @@
                 nix-tree
                 go
                 nodejs_22
+                just
+                fzf
               ];
+              shellHook = ''
+                echo "dotfiles devShell — run 'just' to list commands, or 'just menu' for an interactive launcher."
+              '';
             };
 
             topology.modules = [./topology.nix];
@@ -343,13 +367,13 @@
               };
               deploy-x270 = {
                 type = "app";
-                program = "${rebuildApp}/bin/rebuild";
-                meta.description = "Rebuild x270 locally via nh";
+                program = "${deployApp "x270"}/bin/deploy-x270";
+                meta.description = "Deploy x270 via deploy-rs to localhost";
               };
               deploy-mireo = {
                 type = "app";
                 program = "${deployApp "mireo"}/bin/deploy-mireo";
-                meta.description = "Deploy mireo via deploy-rs to 192.168.178.25";
+                meta.description = "Deploy mireo via deploy-rs to 10.8.0.1";
               };
               setup-sops = {
                 type = "app";
@@ -372,6 +396,11 @@
                 }}/bin/homectl-manifest";
                 meta.description = "Evaluate the homectl artifacts";
               };
+              menu = {
+                type = "app";
+                program = "${menuApp}/bin/menu";
+                meta.description = "Interactive command launcher (fzf)";
+              };
             };
           }
           // {
@@ -384,7 +413,7 @@
       }
       // {
         flake = {
-          inherit (framework) lib;
+          lib = import ./lib/framework;
 
           nixosModules = {
             nixos = import ./modules/nixos/default.nix;
@@ -397,7 +426,7 @@
           };
 
           homectlArtifacts = import ./homectl/manifest.nix {
-            lib = nixpkgs.lib;
+            inherit (nixpkgs) lib;
             pkgs = pkgsForPatch;
             configurations = self.nixosConfigurations;
             deployNodes = self.deploy.nodes or {};
@@ -420,6 +449,14 @@
               nixosConfig.config.system.build.toplevel
               "${nixPathEnv} $PROFILE/bin/switch-to-configuration switch";
           in {
+            x270 = {
+              hostname = "localhost";
+              sshUser = "root";
+              profiles.system = {
+                user = "root";
+                path = activateNixosWithNixPath self.nixosConfigurations.x270;
+              };
+            };
             mireo = {
               hostname = "10.8.0.1";
               sshUser = "root";
