@@ -1,206 +1,644 @@
-# NixOS Dotfiles
+# 🐾 NixOS Homelab — `flakesonnix`
 
-NixOS flake managing two machines for user `lucy`. Data-driven host and home composition via the in-repo framework (`lib/framework`, `frameworkLib`).
+> 🐱 **Declarative NixOS infrastructure, fleet management, and way too much Nix. Meow.**
 
-## Hosts
+My personal NixOS infrastructure, built as a **data-driven, modular homelab framework**.
 
-| Host | Role | Hardware | Notes |
-|------|------|----------|-------|
-| `x270` | Desktop / gaming laptop | Lenovo ThinkPad X270, i7-7600U | Primary machine. Niri compositor, eww bar, Secure Boot |
-| `mireo` | Home server / router | Mini-PC, 4-port NIC | NAT gateway, IPv6 (FritzBox PD), NFS, iVentoy PXE, microvms |
+It manages my machines, networking, services, desktop configuration, secrets, deployments and more — all from one Nix flake.
 
-Network: `10.8.0.0/24` (+ `fd00:cafe:1::1/64` ULA) bridged on mireo. See [docs/hosts.md](docs/hosts.md) for full details.
+And because apparently Nix wasn't complicated enough, this repository is also becoming the home of **Purr** 🐾 — my own declarative infrastructure language that compiles to Nix.
+
+```text
+        🐾 Purr
+          │
+          ▼
+      🧠 Compiler
+          │
+          ▼
+        Nix
+          │
+          ▼
+       NixOS
+          │
+     ┌────┴────┐
+     ▼         ▼
+   💻 x270   🖥️ mireo
+```
+
+---
+
+## 🐱 What is this?
+
+This started as my NixOS dotfiles.
+
+It grew.
+
+Then it grew some more.
+
+Now it is basically:
+
+* 🏠 personal homelab
+* 🧩 reusable NixOS/Home Manager framework
+* 🖥️ multi-host configuration
+* 🌐 network infrastructure
+* 🔐 secret management
+* 🚀 deployment tooling
+* 📡 fleet management
+* 🐾 Purr language/compiler
+
+The infrastructure is **real and actually runs my machines**.
+
+The framework is being designed so that reusable parts don't depend on my personal infrastructure.
+
+---
+
+# 💻 Hosts
+
+| Host        | Role                    | Hardware                       | Notes                                         |
+| ----------- | ----------------------- | ------------------------------ | --------------------------------------------- |
+| 🐾 `x270`   | Desktop / gaming laptop | Lenovo ThinkPad X270, i7-7600U | Primary machine, Niri, eww, Secure Boot       |
+| 🖥️ `mireo` | Home server / router    | Mini-PC, 4-port NIC            | NAT gateway, IPv6, NFS, iVentoy PXE, microvms |
+
+### 🌐 Network
+
+```text
+10.8.0.0/24
+fd00:cafe:1::1/64
+```
+
+The network is bridged on `mireo`.
+
+See [`docs/hosts.md`](docs/hosts.md) for the full hardware and network documentation.
 
 ![Niri on x270 — 2026-09-02](docs/images/niri-x270-2026-09-02.png)
 
-*ThinkPad X270 running Niri (2026-09-02) — Alt+Enter terminal, Alt+D fuzzel, Stylix cyberdeck theme.*
+*🐾 ThinkPad X270 running Niri — Alt+Enter terminal, Alt+D fuzzel, Stylix cyberdeck theme.*
 
-## Layout
+---
 
+# 🧩 Data-Driven Configuration
+
+Instead of copy-pasting configuration between hosts, the framework builds machines from structured data.
+
+```text
+data/
+ │
+ ├── 🎭 roles/
+ ├── 📦 bundles/
+ ├── 🎮 presets/
+ ├── 📚 packages/
+ ├── 🖥️ hosts/
+ └── 🏠 home/
+       │
+       ▼
+  lib/framework
+       │
+       ▼
+ ┌───────────────┐
+ │ NixOS modules │
+ │ Home modules  │
+ │ Packages      │
+ │ Host config   │
+ └───────────────┘
 ```
+
+## 🎭 Roles
+
+Roles describe **what something is supposed to do**.
+
+Current examples:
+
+```text
+core
+desktop
+dev
+gaming
+llm
+```
+
+A role can define:
+
+* required roles
+* conflicting roles
+* target type
+* module flags
+* package tags
+* presets
+* bundles
+
+So instead of repeating a giant configuration everywhere:
+
+```text
+host → gaming
+host → dev
+host → desktop
+```
+
+the framework resolves the actual configuration.
+
+Meow-powered dependency management. 🐱
+
+---
+
+## 📦 Bundles
+
+Bundles are Home Manager configuration groups.
+
+Current bundles include:
+
+```text
+core
+desktop
+dev
+```
+
+They provide reusable chunks of user configuration without turning every host into a giant pile of options.
+
+---
+
+## 🎮 Presets
+
+Presets group host-level configuration.
+
+Current examples:
+
+```text
+gaming-base
+gaming-performance
+gaming-steam
+```
+
+Presets make it possible to compose larger configurations without duplicating every individual module option.
+
+---
+
+## 📚 Package Registries
+
+Packages are organised through tagged registries:
+
+```text
+data/packages/system.nix
+data/packages/home.nix
+```
+
+Roles reference package tags and the framework resolves the final package set.
+
+---
+
+# 🧱 Repository Layout
+
+```text
 .
-├── flake.nix               # Flake inputs, host configs, deploy nodes, apps
-├── nix-settings.nix        # Global nix daemon settings (substituters, caches)
-├── profiles/
-│   ├── base.nix            # Shared NixOS base (imported by all hosts)
-│   └── desktop.nix         # Desktop additions on top of base
-├── data/
-│   ├── roles/              # Role definitions (desktop, dev, gaming, llm, core)
-│   ├── bundles/            # Home Manager bundle definitions (core, desktop, dev)
-│   ├── presets/            # Host preset definitions (gaming-base, -performance, -steam)
-│   ├── packages/
-│   │   ├── system.nix      # Tagged system package registry
-│   │   └── home.nix        # Tagged home package registry
-│   ├── hosts/<host>/       # Per-host settings, roles, module flags
-│   └── home/lucy/          # Per-user bundles, roles, settings
-├── modules/
-│   ├── nixos/              # Reusable NixOS modules
-│   └── home/               # Reusable Home Manager modules
-├── hosts/
-│   ├── x270/               # Hardware config + framework host.nix
-│   └── mireo/              # + microvm definitions (7 VMs: grafana, monerod, network-services, yammat, cups, sshkeys, aptcache)
-├── home/lucy/              # User composition entry point
-├── keys/                   # SSH public keys
-├── lib/                    # Shared Nix functions
-└── .sops.yaml              # sops encryption rules
+├── 🧊 flake.nix
+├── ⚙️ nix-settings.nix
+│
+├── 📁 profiles/
+│   ├── base.nix
+│   └── desktop.nix
+│
+├── 📁 data/
+│   ├── 🎭 roles/
+│   ├── 📦 bundles/
+│   ├── 🎮 presets/
+│   ├── 📚 packages/
+│   ├── 🖥️ hosts/
+│   └── 🏠 home/
+│
+├── 📁 modules/
+│   ├── 🐧 nixos/
+│   └── 🏠 home/
+│
+├── 📁 hosts/
+│   ├── 💻 x270/
+│   └── 🖥️ mireo/
+│
+├── 📁 home/
+│   └── 🐾 lucy/
+│
+├── 🔑 keys/
+├── 🧠 lib/
+├── 🚀 nixfleet/
+├── 🐾 purr/
+├── 🧪 tests/
+├── 📚 docs/
+│
+└── 🔐 .sops.yaml
 ```
 
-## Common Commands
+---
 
-A `justfile` provides friendly, discoverable recipes — run `just` to list them,
-or `just menu` for an interactive fzf launcher that runs any flake app.
+# 🛠️ Common Commands
+
+A `justfile` provides friendly commands.
+
+Run:
 
 ```bash
-just                 # list all recipes
-just menu            # interactive command picker
-just rebuild         # rebuild local x270 (via nh)
-just deploy-x270     # deploy x270 via deploy-rs (localhost)
-just deploy-mireo    # deploy mireo via deploy-rs (10.8.0.1)
-just deploy-all      # deploy both hosts via deploy-rs
-just check-light     # fast eval-surface checks
-just update          # update flake inputs
-just fmt             # format with alejandra
-just lint            # lint with statix
+just
 ```
 
-Equivalent raw flake commands still work:
+to see everything.
+
+Or summon the interactive menu:
 
 ```bash
-# Rebuild (local, via nh)
+just menu
+```
+
+### 🐾 Everyday commands
+
+```bash
+just                 # 📋 list recipes
+just menu             # 🐱 interactive fzf launcher
+just rebuild          # 🔄 rebuild local x270
+just deploy-x270      # 🚀 deploy x270
+just deploy-mireo     # 🚀 deploy mireo
+just deploy-all       # 🚀 deploy everything
+just check-light      # 🧪 fast checks
+just update           # ⬆️ update flake inputs
+just fmt              # ✨ format Nix
+just lint             # 🔎 run statix
+```
+
+Raw flake commands work too:
+
+```bash
 nix run .#rebuild
-
-# Deploy via deploy-rs
-nix run .#deploy-x270   # x270 to localhost
-nix run .#deploy-mireo  # mireo to 10.8.0.1
-
-# Interactive launcher
+nix run .#deploy-x270
+nix run .#deploy-mireo
 nix run .#menu
 
-# CI checks
-nix run .#check-light   # Fast: eval surfaces only
-nix run .#check-full    # Full: build all CI checks
+nix run .#check-light
+nix run .#check-full
 
-# Update inputs
 nix run .#update
 
-# Direct nixos-rebuild
 nixos-rebuild switch --flake .#x270
 ```
 
-Shell aliases available on x270: `rebuild`, `nix-rebuild`, `nix-clean`, `nix-update`.
+Because sometimes you just want to speak directly to the Nix gods. 🙏🐈
 
-## Data Model
+---
 
-Configuration is declared in `data/` and applied by the framework. See [docs/data-model.md](docs/data-model.md).
+# 🐾 NixFleet
 
-**Roles** (`data/roles/`) declare what a host or home should activate. Each role lists required/conflicting roles, target types, and maps to module flags, package tags, presets, or bundles.
+**NixFleet** is the homelab's in-repo runtime control plane.
 
-**Bundles** (`data/bundles/`) declare Home Manager program toggles and settings for a slice of the home config.
+The idea:
 
-**Presets** (`data/presets/`) declare sets of module flag values applied at the host level.
+```text
+Nix
+ │
+ ▼
+📜 manifest.nix
+ │
+ ▼
+📄 manifest.json / ui.json
+ │
+ ▼
+🐹 Go API + Agent
+ │
+ ▼
+⚛️ React UI
+```
 
-**Package registries** (`data/packages/`) are attr sets of tagged packages. Roles reference tags; the framework resolves which packages end up in the system.
+The goal is to combine **Nix-first declarative infrastructure** with useful runtime visibility.
 
-## Modules
+## 🚀 M1
 
-All custom NixOS and Home Manager modules live in `modules/`. See [docs/modules.md](docs/modules.md) for options reference.
+M1 provides the first real vertical slice.
 
-Key modules:
-- `nixos/base.nix` — `lucy.base.*`: SSH, timezone, locale, sudo, firewall, libvirtd
-- `nixos/asterisk.nix` — `services.asteriskLocal.*`: Local SIP PBX
-- `nixos/niri.nix` — `niri.users`: Niri + greetd/tuigreet host integration
-- `nixos/gaming.nix` — aggregate: Steam, GameMode, Gamescope, performance tuning
-- `home/niri.nix` — `programs.niri.enable`: Full KDL config, lock screen, wlogout
-- `home/waybar.nix` — `programs.waybar.enable`: Styled bar with mpris, battery, CPU
+### 🖥️ Hosts
 
-## NixFleet — Mireo Runtime Control Plane (M1)
+```text
+GET /api/v1/hosts
+GET /api/v1/hosts/:host/health
+GET /api/v1/hosts/:host/resources
+GET /api/v1/hosts/:host/network
+GET /api/v1/hosts/:host/vms
+GET /api/v1/hosts/:host/systemd/failed
+```
 
-`nixfleet` is the in-repo control plane for the homelab. Architecture is **Nix → `nixfleet/manifest.nix` → `manifest.json`/`ui.json` → Go API/Agent → React**.
+The API gets host information from the Nix-generated manifest rather than hardcoding the infrastructure.
 
-M1 implements the first real vertical slice: **declarative inventory (manifest) merged with live runtime from the mireo agent**.
+### 📊 Runtime information
 
-**Manifest fixes (M1):**
-- `hasVms` now correctly uses `attrNames vmCatalog` (was `hostsVms`, always false) — `/vms` navigation now appears.
-- `hostRoles` now uses `hasAttr "roles.nix"` (was `? roles.nix`, invalid due to dot) — `x270` now correctly exposes `roles [desktop dev gaming]`, `bundles [desktop dev]`, `presets [gaming-*]`. `mireo` intentionally has no `roles.nix` (server profile, roles `[]`).
+The agent collects things such as:
 
-**Host `mireo` (M1):**
-- `lucy.nixfleet.enable = true; role = "api"` in `data/hosts/mireo/settings.nix` — both `nixfleet-api` (8443, serves `manifest.json`/`ui.json` + `nixfleet-web` when built) and `nixfleet-agent` (`systemd`+`journal`+`metrics` plugins) run as `DynamicUser` services.
-- Firewall: `br0` now allows `8443`.
-- Module `lucy.nixfleet` no longer gates services on `role` — any host with `enable` and a package runs the corresponding service, so `mireo` as `api` can also run the agent.
+* CPU usage
+* load
+* memory
+* storage
+* network interfaces
+* routes
+* VM state
+* systemd failures
+* kernel
+* OS
+* uptime
 
-**M1 API (extends `/api/v1/health` + `/api/v1/meta`, same `shared/proto` envelope conventions):**
-- `GET /api/v1/hosts` — hosts from manifest (no hardcoding)
-- `GET /api/v1/hosts/:host/health` — `health` (`healthy|degraded|critical|unknown`), `agent` (`connected|unavailable`), `kernel`, `os`, `uptimeS`, `failedUnits`
-- `GET /api/v1/hosts/:host/resources` — CPU (logical, usage via `/proc/stat`), load (`/proc/loadavg`), memory (`/proc/meminfo`), storage (`statfs` for `/`, `/data`, `/nix/store`, `/boot`)
-- `GET /api/v1/hosts/:host/network` — `ip -j link/addr/route` (fixed args, fallback to `/proc/net/dev`), `br0` + VM taps visible
-- `GET /api/v1/hosts/:host/vms` — merged `configured` (from manifest) + `runtime` (`systemctl is-active microvm@<name>` validated via `isValidVMName`) + `health`
-- `GET /api/v1/hosts/:host/systemd/failed` — `systemctl --failed` (bounded, no arbitrary args)
+No external monitoring dependency is required for these basics.
 
-Validation: host must exist in manifest (404), VM name validated against manifest (no `microvm@userInput` injection), non-local host → `503 AGENT_UNAVAILABLE` (M1 only collects for the host where the API runs). Health/resources use Linux interfaces (`/proc`, `syscall`, `ip -j`) — no external monitoring dependency.
+### 🖥️ Web UI
 
-**Frontend (M1, dark dense admin UI):**
-- `HostOverview` — mireo header (online/health/agent, kernel, uptime), CPU/load, memory/storage bars, network table (monospace IPs), systemd failed list
-- `VMTable` — dense table `Name | IP | State | vCPU | RAM | Health | Ports` (monospace, `configured` vs `runtime` separated)
-- `SystemdFailed` — `0 failed` healthy state or table of failed units
-- Dashboard now shows `HostOverview` + `VMTable` for `mireo`; `/vms` and `/network` routes reuse the same components; no charts/terminal/deploy yet (observability first, operations after).
+The current UI provides:
 
-Build via `nix build .#nixfleet-web` / `nix build .#nixfleet-api` / `nix build .#nixfleet-agent`; tests: `go test ./...` (manifest, runtime parsers, HTTP validation).
+* 🏠 host overview
+* 🖥️ VM table
+* 🌐 network information
+* ⚙️ failed systemd units
+* 💚 health state
+* 📊 resource information
 
-See `nixfleet/docs/architecture.md` (M0-M5 roadmap, Nix-First) and `docs/hosts.md` (mireo nixfleet).
+Operations such as deployment and terminal access come later.
 
-## Secrets
+**Observability first. Operations second.** 🐾
 
-Uses sops-nix with age keys. See [docs/secrets.md](docs/secrets.md).
+See [`nixfleet/docs/architecture.md`](nixfleet/docs/architecture.md).
+
+---
+
+# 🔐 Secrets
+
+Secrets are managed using:
+
+* 🔒 sops-nix
+* 🔑 age
+* 🧩 declarative secret configuration
+
+See [`docs/secrets.md`](docs/secrets.md).
 
 Quick setup:
+
 ```bash
 nix run .#setup-sops x270
-SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/x270/secrets.yaml
+
+SOPS_AGE_KEY_FILE=.sops/keys.txt \
+  sops hosts/x270/secrets.yaml
 ```
 
-## CI
+The goal is simple:
 
-GitHub Actions (`.github/workflows/ci.yml`) runs four jobs on every push/PR:
+> 🔐 Secrets should not accidentally become Nix store contents.
 
-| Job | What it checks |
-|-----|---------------|
-| `check-light` | Evaluates formatter, devShell, and app derivation paths |
-| `check-full` | Builds `full-ci-checks` (framework checks + deploy-rs schema checks + dotfiles tests) |
-| `eval` | Evaluates `nixosConfigurations.x270.config.system.build.toplevel` |
-| `topology` | Regenerates `docs/topology/` SVGs and commits them (master pushes only) |
+---
 
-## Network Topology
+# 🌐 Networking
 
-Infrastructure and network diagrams generated by [nix-topology](https://github.com/oddlama/nix-topology). Updated automatically on every push to master.
+`mireo` acts as the central network machine.
 
-| Diagram | View |
-|---------|------|
-| Hosts & services | ![main topology](docs/topology/main.svg) |
-| Network layout | ![network topology](docs/topology/network.svg) |
+Current infrastructure includes:
 
-Build locally:
+* 🌐 IPv4 networking
+* 🌍 IPv6
+* 🔀 NAT
+* 🌉 bridging
+* 📡 PXE/iVentoy
+* 📂 NFS
+* 🖥️ microVM networking
+
+The network configuration is declarative and generated from the same repository as the rest of the infrastructure.
+
+Future work also includes stronger management separation using:
+
+* 🔐 SOPS
+* 🐝 Tailscale
+* 🔑 trusted SSH interfaces
+* 🧱 interface-aware firewall rules
+
+---
+
+# 🐾 Purr
+
+And then there is **Purr**.
+
+Because apparently writing Nix wasn't enough.
+
+Purr is a new declarative systems/infrastructure language that compiles to Nix.
+
+It is being implemented in **Zig**.
+
+```text
+.purr
+  │
+  ▼
+🐾 Lexer
+  │
+  ▼
+🌳 Parser / AST
+  │
+  ▼
+🧠 Semantic validation
+  │
+  ▼
+📦 Nix code generation
+  │
+  ▼
+❄️ Nix
+```
+
+Purr is intended to make concepts such as:
+
+```text
+host
+service
+network
+role
+package
+secret
+certificate
+deployment
+```
+
+easier to express directly.
+
+The important part:
+
+**Purr is not supposed to be just Nix with different punctuation.**
+
+The language should have its own concepts, validation and developer experience.
+
+And yes:
+
+```text
+meow
+nya
+🐾
+```
+
+are allowed to be actual language concepts. 😼
+
+### 🦀 Why Zig?
+
+The compiler is written in **Zig** deliberately.
+
+The goal is to learn and use a different systems programming language rather than automatically reaching for something already familiar.
+
+Purr itself remains independent from Zig.
+
+---
+
+# 🧪 CI
+
+GitHub Actions run checks on pushes and pull requests.
+
+| Job           | 🐾 Purpose                            |
+| ------------- | ------------------------------------- |
+| `check-light` | ⚡ Fast evaluation checks              |
+| `check-full`  | 🧪 Full framework + deployment checks |
+| `eval`        | ❄️ NixOS evaluation                   |
+| `topology`    | 🌐 Regenerate topology                |
+
+The goal is to catch broken infrastructure **before deploying it to an actual machine**.
+
+---
+
+# 🌐 Network Topology
+
+Topology diagrams are generated using `nix-topology`.
 
 ```bash
-nix build .#topology        # SVGs → ./result/
-xdg-open result/main.svg
+nix build .#topology
 ```
 
-To add custom annotations (extra services, links, icons), create `topology.nix` and wire it into `perSystem.topology.modules` in `flake.nix`.
+Generated diagrams:
 
-## Dev Shell
+| Diagram          | 🗺️                                            |
+| ---------------- | ---------------------------------------------- |
+| Hosts & services | ![main topology](docs/topology/main.svg)       |
+| Network layout   | ![network topology](docs/topology/network.svg) |
+
+The topology is generated from the infrastructure configuration instead of being maintained manually.
+
+Less drawing.
+
+More Nix.
+
+🐱
+
+---
+
+# 🧰 Development
+
+Enter the reproducible development environment:
 
 ```bash
 nix develop
-# provides: alejandra, statix, nix-tree
 ```
 
-Formatter: `nix fmt` (alejandra). Linter: `statix check`.
+Available tools include:
 
-## Documentation
+```text
+✨ alejandra
+🔎 statix
+🌳 nix-tree
+```
 
-- [docs/hosts.md](docs/hosts.md) — Per-host hardware, roles, and network details
-- [docs/data-model.md](docs/data-model.md) — Role, bundle, preset, and package registry shapes
-- [docs/modules.md](docs/modules.md) — All nixos/ and home/ module options
-- [docs/secrets.md](docs/secrets.md) — sops-nix key setup and rotation
-- [docs/gaming-x270.md](docs/gaming-x270.md) — Gaming stack details for x270
-- [docs/printing.md](docs/printing.md) — Epson ET-2860 printer setup on NixOS and other distros
+Format:
+
+```bash
+nix fmt
+```
+
+Lint:
+
+```bash
+statix check
+```
+
+---
+
+# 📚 Documentation
+
+The documentation is split into focused areas:
+
+* 🖥️ [`docs/hosts.md`](docs/hosts.md) — hardware, hosts, roles and networking
+* 🧩 [`docs/data-model.md`](docs/data-model.md) — roles, bundles, presets and packages
+* 🧱 [`docs/modules.md`](docs/modules.md) — NixOS/Home Manager modules
+* 🔐 [`docs/secrets.md`](docs/secrets.md) — sops-nix and age
+* 🎮 [`docs/gaming-x270.md`](docs/gaming-x270.md) — x270 gaming setup
+* 🖨️ [`docs/printing.md`](docs/printing.md) — printer setup
+* 🐾 [`nixfleet/docs/architecture.md`](nixfleet/docs/architecture.md) — NixFleet architecture
+
+---
+
+# 🐱 Design Philosophy
+
+### ❄️ Nix everything
+
+If it can reasonably be declared, it should be declared.
+
+### 🧩 Compose, don't copy
+
+Common configuration belongs in reusable modules, roles, bundles and presets.
+
+### 🔐 Secure by default
+
+Secrets and management access should have explicit security boundaries.
+
+### 🧠 Make abstractions understandable
+
+An abstraction isn't useful if you need to understand three other abstractions to use it.
+
+### 🧪 Test before deployment
+
+Broken configuration should fail in CI rather than on the actual machine.
+
+### 🐾 Keep it weird
+
+Infrastructure can be serious without being boring.
+
+### 😼 Meow
+
+This is still a personal project.
+
+It is allowed to have personality.
+
+---
+
+# 🚧 Status
+
+This repository is **actively evolving**.
+
+The NixOS infrastructure is real and running.
+
+The framework is being cleaned up and made increasingly reusable.
+
+NixFleet is under active development.
+
+Purr is experimental and very much a work in progress.
+
+Expect:
+
+```text
+🧪 experiments
+🔨 refactors
+🐛 bugs
+✨ new features
+💥 occasional breaking changes
+🐱 excessive meowing
+```
+
+If something looks unnecessarily complicated:
+
+**it probably means I haven't refactored it yet.**
+
+---
+
+# 🐾 Why?
+
+Because apparently:
+
+> "I'll just make some NixOS dotfiles"
+
+was a lie.
+
+It became a homelab.
+
+Then a framework.
+
+Then a fleet manager.
+
+And now I'm writing a programming language.
+
+**meow.** 🐱💻❄️
