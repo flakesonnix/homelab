@@ -79,19 +79,43 @@ Right now it's mostly about seeing what's happening:
 
 Deployment and terminal access can come later.
 
-## Purr 🐱
+## Purr 🐱 — Nix DSL compiler (Zig)
 
-Purr is a little language I'm experimenting with.
-
-The idea is simple:
+Purr is a declarative systems language that compiles to Nix. It describes **what a host is** (roles, bundles, presets, packages) rather than raw NixOS options, with strict diagnostics before Nix eval.
 
 ```text
-Purr → Nix
+.purr → lexer → parser → AST → resolver → semantic → Nix → NixOS
 ```
 
-I don't really like writing everything directly in Nix, so I'm experimenting with a language that can describe infrastructure in a way that makes more sense to me.
+**Compiler:** Zig 0.16, `purr/` has its own flake (`nix develop` → `zig build`, `zig build test`). Also built from root flake via `purr`.
 
-The compiler is written in Zig.
+**CLI:**
+
+```bash
+purr check file.purr                # parse + semantic (no Nix)
+purr compile file.purr --out out.nix # generate deterministic Nix
+# examples
+purr check purr/examples/minimal.purr
+purr compile purr/examples/hosts/x270.purr --out /tmp/x270.nix
+bash purr/tests/e2e.sh              # .purr → Nix → alejandra + import edge cases
+```
+
+**Language (v0.1):** `role`, `host`, `bundle`, `preset`, `package`, `import "path.purr";`, `nix { ... }` escape, `string`/`int`/`bool`/`list`, `//`/`/* */` comments, `;` terminated.
+
+```purr
+import "roles/desktop.purr";
+
+role desktop {
+    description = "Desktop";
+    host { presets = ["gaming-base"]; tags = ["desktop"]; }
+    home { bundles = ["desktop"]; }
+}
+host x270 { use desktop; package "git"; preset gaming-performance; }
+```
+
+**Diagnostics:** `purr error[E042]: unknown role "gamign" — did you mean "gaming"?` with file:line:col + context + help (E001 parse, E002 lex, E010 duplicate, E042/E043/E044 unknown).
+
+**Status:** v0.1 on branch `meow` — 13 unit+golden tests + E2E (`cyclic/duplicate/transitive/missing` imports, `alejandra` syntax). See `docs/purr/design.md` and `purr/examples/`.
 
 ## Why?
 
