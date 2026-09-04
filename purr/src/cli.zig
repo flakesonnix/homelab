@@ -6,7 +6,7 @@ const semantic = @import("semantic.zig");
 const nix = @import("nix.zig");
 const resolver = @import("resolver.zig");
 
-const Command = enum { check, compile, help };
+const Command = enum { check, compile, fmt, help };
 
 pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
     const allocator = init.gpa;
@@ -17,7 +17,7 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
         return 0;
     }
     const cmd_str = args[1];
-    const cmd: Command = if (std.mem.eql(u8, cmd_str, "check")) .check else if (std.mem.eql(u8, cmd_str, "compile")) .compile else if (std.mem.eql(u8, cmd_str, "help") or std.mem.eql(u8, cmd_str, "--help") or std.mem.eql(u8, cmd_str, "-h")) .help else {
+    const cmd: Command = if (std.mem.eql(u8, cmd_str, "check")) .check else if (std.mem.eql(u8, cmd_str, "compile")) .compile else if (std.mem.eql(u8, cmd_str, "fmt")) .fmt else if (std.mem.eql(u8, cmd_str, "help") or std.mem.eql(u8, cmd_str, "--help") or std.mem.eql(u8, cmd_str, "-h")) .help else {
         std.debug.print("purr error: unknown command `{s}`\n", .{cmd_str});
         try printHelp(io);
         return 1;
@@ -53,11 +53,13 @@ fn printHelp(io: std.Io) !void {
         \\Usage:
         \\  purr check <file.purr>              Parse + semantic check
         \\  purr compile <file.purr> [--out out.nix]   Generate Nix
+        \\  purr fmt <file.purr>                Format (currently stub, validates syntax)
         \\  purr help
         \\
         \\Examples:
         \\  purr check examples/minimal.purr
         \\  purr compile hosts/x270.purr --out generated.nix
+        \\  purr fmt examples/minimal.purr
         \\
     ;
     std.debug.print("{s}", .{msg});
@@ -131,6 +133,9 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
             // write to stdout via debug print (for now)
             std.debug.print("{s}", .{nix_source});
         }
+    } else if (cmd == .fmt) {
+        // stub: validate syntax, report formatted (future: re-print AST)
+        std.debug.print("purr: fmt {s} ok — formatted (stub, validates syntax)\n", .{file});
     }
 
     return 0;
