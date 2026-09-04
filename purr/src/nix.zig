@@ -9,91 +9,20 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
     try buf.appendSlice(allocator, "  imports = [];\n");
     try buf.appendSlice(allocator, "  config = {\n");
 
+    // For deterministic Nix, hosts are sorted by name (forward refs)
+    var hosts: std.ArrayList(ast.Host) = .empty;
+    defer hosts.deinit(allocator);
+    for (program.decls) |decl| if (decl == .host) try hosts.append(allocator, decl.host);
+    std.mem.sort(ast.Host, hosts.items, {}, struct {
+        pub fn lessThan(_: void, a: ast.Host, b: ast.Host) bool {
+            return std.mem.order(u8, a.name.name, b.name.name) == .lt;
+        }
+    }.lessThan);
+
+    // Emit non-host decls in declaration order
     for (program.decls) |decl| {
         switch (decl) {
-            .host => |h| {
-                try buf.appendSlice(allocator, "    # host ");
-                try buf.appendSlice(allocator, h.name.name);
-                try buf.appendSlice(allocator, "\n");
-                try buf.appendSlice(allocator, "    networking.hostName = \"");
-                try buf.appendSlice(allocator, h.name.name);
-                try buf.appendSlice(allocator, "\";\n");
-                // collect packages to emit aggregated systemPackages (avoid duplicate attr)
-                var pkgs: std.ArrayList([]const u8) = .empty;
-                defer pkgs.deinit(allocator);
-                for (h.stmts) |stmt| if (stmt == .package) try pkgs.append(allocator, stmt.package);
-                if (pkgs.items.len > 0) {
-                    for (pkgs.items) |p| {
-                        try buf.appendSlice(allocator, "    # package \"");
-                        try buf.appendSlice(allocator, p);
-                        try buf.appendSlice(allocator, "\"\n");
-                    }
-                    try buf.appendSlice(allocator, "    environment.systemPackages = with pkgs; [ ");
-                    for (pkgs.items, 0..) |p, idx| {
-                        if (idx > 0) try buf.appendSlice(allocator, " ");
-                        try buf.appendSlice(allocator, p);
-                    }
-                    try buf.appendSlice(allocator, " ];\n");
-                }
-                for (h.stmts) |stmt| {
-                    switch (stmt) {
-                        .use_role => |ident| {
-                            try buf.appendSlice(allocator, "    # use role ");
-                            try buf.appendSlice(allocator, ident.name);
-                            try buf.appendSlice(allocator, "\n");
-                            // map roles to flakesonnix presets/tags via framework
-                            // for now emit comment and placeholder
-                            if (std.mem.eql(u8, ident.name, "desktop")) {
-                                try buf.appendSlice(allocator, "    flakesonnix.fonts.inter = true;\n");
-                                try buf.appendSlice(allocator, "    niri.users = [ \"lucy\" ];\n");
-                            } else if (std.mem.eql(u8, ident.name, "gaming")) {
-                                try buf.appendSlice(allocator, "    flakesonnix.gaming.enable = true;\n");
-                            }
-                        },
-                        .preset => |ident| {
-                            try buf.appendSlice(allocator, "    # preset ");
-                            try buf.appendSlice(allocator, ident.name);
-                            try buf.appendSlice(allocator, "\n");
-                            if (std.mem.eql(u8, ident.name, "gaming-base")) {
-                                try buf.appendSlice(allocator, "    flakesonnix.gaming.enable = true;\n");
-                            } else if (std.mem.eql(u8, ident.name, "gaming-performance")) {
-                                try buf.appendSlice(allocator, "    flakesonnix.gaming.performance.enable = true;\n");
-                            } else if (std.mem.eql(u8, ident.name, "gaming-steam")) {
-                                try buf.appendSlice(allocator, "    flakesonnix.gaming.steam.enable = true;\n");
-                            }
-                        },
-                        .package => {}, // already emitted aggregated above
-                        .packages_assign => |tags| {
-                            try buf.appendSlice(allocator, "    # packages tags: ");
-                            for (tags, 0..) |t, i| {
-                                if (i > 0) try buf.appendSlice(allocator, ", ");
-                                try buf.appendSlice(allocator, t);
-                            }
-                            try buf.appendSlice(allocator, "\n");
-                        },
-                        .setting => |s| {
-                            if (std.mem.eql(u8, s.path, "nix_raw")) {
-                                // raw nix escape inside host
-                                try buf.appendSlice(allocator, "    # nix raw inside host\n");
-                                switch (s.value) {
-                                    .string => |raw| try buf.appendSlice(allocator, raw),
-                                    else => try writeValueBuf(&buf, allocator, s.value),
-                                }
-                                try buf.appendSlice(allocator, "\n");
-                            } else {
-                                try buf.appendSlice(allocator, "    # setting ");
-                                try buf.appendSlice(allocator, s.path);
-                                try buf.appendSlice(allocator, "\n");
-                                try buf.appendSlice(allocator, "    ");
-                                try buf.appendSlice(allocator, s.path);
-                                try buf.appendSlice(allocator, " = ");
-                                try writeValueBuf(&buf, allocator, s.value);
-                                try buf.appendSlice(allocator, ";\n");
-                            }
-                        },
-                    }
-                }
-            },
+            .host => continue,
             .role => |r| {
                 try buf.appendSlice(allocator, "    # role ");
                 try buf.appendSlice(allocator, r.name.name);
@@ -103,7 +32,6 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
                     try buf.appendSlice(allocator, d);
                     try buf.appendSlice(allocator, "\n");
                 }
-                // roles themselves don't emit Nix directly; hosts consume them
             },
             .bundle => |b| {
                 try buf.appendSlice(allocator, "    # bundle ");
@@ -158,6 +86,90 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
                 try buf.appendSlice(allocator, n.content);
                 try buf.appendSlice(allocator, "\n");
             },
+        }
+    }
+    // Emit sorted hosts
+    for (hosts.items) |h| {
+        try buf.appendSlice(allocator, "    # host ");
+        try buf.appendSlice(allocator, h.name.name);
+        try buf.appendSlice(allocator, "\n");
+        try buf.appendSlice(allocator, "    networking.hostName = \"");
+        try buf.appendSlice(allocator, h.name.name);
+        try buf.appendSlice(allocator, "\";\n");
+        // collect packages to emit aggregated systemPackages (avoid duplicate attr)
+        var pkgs: std.ArrayList([]const u8) = .empty;
+        defer pkgs.deinit(allocator);
+        for (h.stmts) |stmt| if (stmt == .package) try pkgs.append(allocator, stmt.package);
+        if (pkgs.items.len > 0) {
+            for (pkgs.items) |p| {
+                try buf.appendSlice(allocator, "    # package \"");
+                try buf.appendSlice(allocator, p);
+                try buf.appendSlice(allocator, "\"\n");
+            }
+            try buf.appendSlice(allocator, "    environment.systemPackages = with pkgs; [ ");
+            for (pkgs.items, 0..) |p, idx| {
+                if (idx > 0) try buf.appendSlice(allocator, " ");
+                try buf.appendSlice(allocator, p);
+            }
+            try buf.appendSlice(allocator, " ];\n");
+        }
+        for (h.stmts) |stmt| {
+            switch (stmt) {
+                .use_role => |ident| {
+                    try buf.appendSlice(allocator, "    # use role ");
+                    try buf.appendSlice(allocator, ident.name);
+                    try buf.appendSlice(allocator, "\n");
+                    // map roles to flakesonnix presets/tags via framework
+                    // for now emit comment and placeholder
+                    if (std.mem.eql(u8, ident.name, "desktop")) {
+                        try buf.appendSlice(allocator, "    flakesonnix.fonts.inter = true;\n");
+                        try buf.appendSlice(allocator, "    niri.users = [ \"lucy\" ];\n");
+                    } else if (std.mem.eql(u8, ident.name, "gaming")) {
+                        try buf.appendSlice(allocator, "    flakesonnix.gaming.enable = true;\n");
+                    }
+                },
+                .preset => |ident| {
+                    try buf.appendSlice(allocator, "    # preset ");
+                    try buf.appendSlice(allocator, ident.name);
+                    try buf.appendSlice(allocator, "\n");
+                    if (std.mem.eql(u8, ident.name, "gaming-base")) {
+                        try buf.appendSlice(allocator, "    flakesonnix.gaming.enable = true;\n");
+                    } else if (std.mem.eql(u8, ident.name, "gaming-performance")) {
+                        try buf.appendSlice(allocator, "    flakesonnix.gaming.performance.enable = true;\n");
+                    } else if (std.mem.eql(u8, ident.name, "gaming-steam")) {
+                        try buf.appendSlice(allocator, "    flakesonnix.gaming.steam.enable = true;\n");
+                    }
+                },
+                .package => {}, // already emitted aggregated above
+                .packages_assign => |tags| {
+                    try buf.appendSlice(allocator, "    # packages tags: ");
+                    for (tags, 0..) |t, i| {
+                        if (i > 0) try buf.appendSlice(allocator, ", ");
+                        try buf.appendSlice(allocator, t);
+                    }
+                    try buf.appendSlice(allocator, "\n");
+                },
+                .setting => |s| {
+                    if (std.mem.eql(u8, s.path, "nix_raw")) {
+                        // raw nix escape inside host
+                        try buf.appendSlice(allocator, "    # nix raw inside host\n");
+                        switch (s.value) {
+                            .string => |raw| try buf.appendSlice(allocator, raw),
+                            else => try writeValueBuf(&buf, allocator, s.value),
+                        }
+                        try buf.appendSlice(allocator, "\n");
+                    } else {
+                        try buf.appendSlice(allocator, "    # setting ");
+                        try buf.appendSlice(allocator, s.path);
+                        try buf.appendSlice(allocator, "\n");
+                        try buf.appendSlice(allocator, "    ");
+                        try buf.appendSlice(allocator, s.path);
+                        try buf.appendSlice(allocator, " = ");
+                        try writeValueBuf(&buf, allocator, s.value);
+                        try buf.appendSlice(allocator, ";\n");
+                    }
+                },
+            }
         }
     }
 
