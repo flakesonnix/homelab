@@ -50,7 +50,7 @@ in {
     version = "0.1.0";
     src = ./web/frontend;
     nodejs = pkgs.nodejs_22;
-    npmDepsHash = "sha256-uE9e7fPpYT9Jyuf2D/yxPpTJ9D3F2zLGYoDL6ga2NJg=";
+    npmDepsHash = "sha256-ndztypvWBoJZOYb6XcQqNfjq8bSRgEn7+I0u9CArAmU=";
     buildPhase = "npm run build";
     installPhase = "mkdir -p $out && cp -r dist/* $out/";
   };
