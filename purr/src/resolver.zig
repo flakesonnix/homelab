@@ -376,3 +376,126 @@ test "resolver no imports" {
     try std.testing.expect(resolved.decls.len == 1);
     try std.testing.expect(resolved.imports.len == 0);
 }
+
+test "resolver host extends basic" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "host base { use desktop; } host web extends base { use gaming; }";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var p = parser.Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try p.parseProgram();
+    var resolver = Resolver.init(alloc, undefined, undefined, &diag, &arena);
+    defer resolver.deinit();
+    const resolved = try resolver.resolve("test.purr", &prog);
+    // Find web host
+    var web_host: ?ast.Host = null;
+    for (resolved.decls) |d| {
+        if (d == .host and std.mem.eql(u8, d.host.name.name, "web")) web_host = d.host;
+    }
+    try std.testing.expect(web_host != null);
+    // web should have 2 use stmts: desktop (from base) + gaming (own)
+    var use_count: usize = 0;
+    for (web_host.?.stmts) |s| {
+        if (s == .use_role) use_count += 1;
+    }
+    try std.testing.expect(use_count == 2);
+    try std.testing.expect(!diag.hasErrors());
+}
+
+test "resolver host extends unknown parent" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "host web extends missing {}";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var p = parser.Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try p.parseProgram();
+    var resolver = Resolver.init(alloc, undefined, undefined, &diag, &arena);
+    defer resolver.deinit();
+    _ = try resolver.resolve("test.purr", &prog);
+    try std.testing.expect(diag.hasErrors());
+    var found = false;
+    for (diag.list.items) |d| {
+        if (d.code == .unknown_parent) found = true;
+    }
+    try std.testing.expect(found);
+}
+
+test "resolver host extends self" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "host a extends a {}";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var p = parser.Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try p.parseProgram();
+    var resolver = Resolver.init(alloc, undefined, undefined, &diag, &arena);
+    defer resolver.deinit();
+    _ = try resolver.resolve("test.purr", &prog);
+    var found = false;
+    for (diag.list.items) |d| {
+        if (d.code == .self_inheritance) found = true;
+    }
+    try std.testing.expect(found);
+}
+
+test "resolver host extends cycle" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "host a extends b {} host b extends a {}";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var p = parser.Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try p.parseProgram();
+    var resolver = Resolver.init(alloc, undefined, undefined, &diag, &arena);
+    defer resolver.deinit();
+    _ = try resolver.resolve("test.purr", &prog);
+    var found = false;
+    for (diag.list.items) |d| {
+        if (d.code == .inheritance_cycle) found = true;
+    }
+    try std.testing.expect(found);
+}
+
+test "resolver host extends deterministic" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source1 = "host base { packages = [\"a\"]; } host child extends base { packages = [\"b\"]; }";
+    const source2 = "host child extends base { packages = [\"b\"]; } host base { packages = [\"a\"]; }";
+    const sources = [_][]const u8{ source1, source2 };
+    for (sources) |src| {
+        var arena2 = std.heap.ArenaAllocator.init(alloc);
+        defer arena2.deinit();
+        var diag = diagnostics.Diagnostics.init(arena2.allocator(), "test.purr", src);
+        var lex = lexer.Lexer.init(src, "test.purr", &diag);
+        const toks = try lex.lexAll(arena2.allocator());
+        var p = parser.Parser.initWithSource(toks, &diag, &arena2, src);
+        var prog = try p.parseProgram();
+        var resolver = Resolver.init(alloc, undefined, undefined, &diag, &arena2);
+        defer resolver.deinit();
+        const resolved = try resolver.resolve("test.purr", &prog);
+        // Find child host packages
+        for (resolved.decls) |d| {
+            if (d == .host and std.mem.eql(u8, d.host.name.name, "child")) {
+                var found = false;
+                for (d.host.stmts) |s| {
+                    if (s == .packages_assign) {
+                        // Should be ["a", "b"] in both cases
+                        if (s.packages_assign.len == 2 and std.mem.eql(u8, s.packages_assign[0], "a") and std.mem.eql(u8, s.packages_assign[1], "b")) found = true;
+                    }
+                }
+                try std.testing.expect(found);
+            }
+        }
+    }
+}
