@@ -5,6 +5,7 @@ const parser = @import("parser.zig");
 const semantic = @import("semantic.zig");
 const nix = @import("nix.zig");
 const resolver = @import("resolver.zig");
+const fmt = @import("fmt.zig");
 
 const Command = enum { check, compile, fmt, help };
 
@@ -34,7 +35,7 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
     }
     const file = args[2];
     var out_path: ?[]const u8 = null;
-    if (cmd == .compile) {
+    if (cmd == .compile or cmd == .fmt) {
         for (args, 0..) |a, i| {
             if (std.mem.eql(u8, a, "--out") or std.mem.eql(u8, a, "-o")) {
                 if (i + 1 < args.len) out_path = args[i + 1];
@@ -134,8 +135,21 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
             std.debug.print("{s}", .{nix_source});
         }
     } else if (cmd == .fmt) {
-        // stub: validate syntax, report formatted (future: re-print AST)
-        std.debug.print("purr: fmt {s} ok — formatted (stub, validates syntax)\n", .{file});
+        const formatted = try fmt.format(&prog, allocator);
+        defer allocator.free(formatted);
+        if (out_path) |out| {
+            try cwd.writeFile(io, .{ .sub_path = out, .data = formatted });
+            std.debug.print("purr: fmt {s} -> {s} ({d} bytes)\n", .{ file, out, formatted.len });
+        } else {
+            // check if already formatted: if formatted == source, say ok else print diff hint
+            if (std.mem.eql(u8, formatted, source)) {
+                std.debug.print("purr: fmt {s} ok — already formatted\n", .{file});
+            } else {
+                // write formatted to stdout for now (real fmt would overwrite)
+                std.debug.print("{s}", .{formatted});
+                std.debug.print("purr: fmt {s} — formatted output above (use --out to write)\n", .{file});
+            }
+        }
     }
 
     return 0;
