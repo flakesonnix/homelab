@@ -10,6 +10,7 @@ pub const Semantic = struct {
     // known roles for suggestions; in real use would be from data/roles
     known_roles: []const []const u8,
     known_presets: []const []const u8,
+    known_bundles: []const []const u8,
 
     pub fn init(program: *const ast.Program, diag: *diagnostics.Diagnostics, allocator: std.mem.Allocator) Semantic {
         return .{
@@ -18,6 +19,7 @@ pub const Semantic = struct {
             .allocator = allocator,
             .known_roles = &.{ "core", "desktop", "dev", "gaming", "llm" },
             .known_presets = &.{ "gaming-base", "gaming-performance", "gaming-steam" },
+            .known_bundles = &.{ "core", "desktop", "dev" },
         };
     }
 
@@ -93,6 +95,68 @@ pub const Semantic = struct {
         // second pass: validate references
         for (self.program.decls) |decl| {
             switch (decl) {
+                .role => |r| {
+                    // validate presets in role.host block
+                    if (r.host) |hb| {
+                        for (hb.presets) |pname| {
+                            var found = false;
+                            for (self.known_presets) |k| if (std.mem.eql(u8, k, pname)) {
+                                found = true;
+                                break;
+                            };
+                            if (!found) {
+                                for (self.program.decls) |d| if (d == .preset and std.mem.eql(u8, d.preset.name.name, pname)) {
+                                    found = true;
+                                    break;
+                                };
+                            }
+                            if (!found) {
+                                try self.diag.push(.{
+                                    .severity = .err,
+                                    .code = .unknown_preset,
+                                    .message = try std.fmt.allocPrint(self.allocator, "unknown preset `{s}` in role `{s}`", .{ pname, r.name.name }),
+                                    .span = hb.span,
+                                    .help = "available presets: gaming-base, gaming-performance, gaming-steam",
+                                });
+                            }
+                        }
+                    }
+                    // validate bundles in role.home block
+                    if (r.home) |hb| {
+                        for (hb.bundles) |bname| {
+                            var found = false;
+                            for (self.known_bundles) |k| if (std.mem.eql(u8, k, bname)) {
+                                found = true;
+                                break;
+                            };
+                            if (!found) {
+                                for (self.program.decls) |d| if (d == .bundle and std.mem.eql(u8, d.bundle.name.name, bname)) {
+                                    found = true;
+                                    break;
+                                };
+                            }
+                            if (!found) {
+                                var help: ?[]const u8 = null;
+                                var cands: std.ArrayList([]const u8) = .empty;
+                                for (self.known_bundles) |k| try cands.append(self.allocator, k);
+                                var it = bundle_names.keyIterator();
+                                while (it.next()) |k| try cands.append(self.allocator, k.*);
+                                if (try diagnostics.Diagnostics.suggest(bname, cands.items, self.allocator)) |s| help = s;
+                                if (help == null) {
+                                    const avail = try std.mem.join(self.allocator, ", ", self.known_bundles);
+                                    help = try std.fmt.allocPrint(self.allocator, "available bundles: {s}", .{avail});
+                                }
+                                try self.diag.push(.{
+                                    .severity = .err,
+                                    .code = .unknown_bundle,
+                                    .message = try std.fmt.allocPrint(self.allocator, "unknown bundle `{s}` in role `{s}`", .{ bname, r.name.name }),
+                                    .span = hb.span,
+                                    .help = help,
+                                });
+                            }
+                        }
+                    }
+                },
                 .host => |h| {
                     for (h.stmts) |stmt| {
                         switch (stmt) {
