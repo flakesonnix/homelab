@@ -1,0 +1,2 @@
+host a extends b {}
+host b extends a {}
