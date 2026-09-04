@@ -82,7 +82,7 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
         return 1;
     };
 
-    var p = parser.Parser.init(tokens, &diag, &arena);
+    var p = parser.Parser.initWithSource(tokens, &diag, &arena, source);
     var prog = p.parseProgram() catch {
         var aw: std.Io.Writer.Allocating = .init(allocator);
         defer aw.deinit();

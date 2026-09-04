@@ -10,14 +10,20 @@ pub const Parser = struct {
     diag: *diagnostics.Diagnostics,
     arena: *std.heap.ArenaAllocator,
     allocator: std.mem.Allocator,
+    source: []const u8,
 
     pub fn init(tokens: []lexer.Token, diag: *diagnostics.Diagnostics, arena: *std.heap.ArenaAllocator) Parser {
+        return initWithSource(tokens, diag, arena, "");
+    }
+
+    pub fn initWithSource(tokens: []lexer.Token, diag: *diagnostics.Diagnostics, arena: *std.heap.ArenaAllocator, source: []const u8) Parser {
         return .{
             .tokens = tokens,
             .pos = 0,
             .diag = diag,
             .arena = arena,
             .allocator = arena.allocator(),
+            .source = source,
         };
     }
 
@@ -624,22 +630,26 @@ pub const Parser = struct {
     fn parseNix(self: *Parser) !ast.NixBlock {
         const kw = try self.expect(.keyword_nix);
         const l = try self.expect(.l_brace);
-        // capture raw until matching }
         var depth: usize = 1;
-        const start_pos = self.tokens[self.pos - 1].span.end; // after {
-        // we need source slice: reconstruct from tokens? Instead capture from source via span positions
-        // For now, collect lexemes
-        var buf: std.ArrayList(u8) = .empty;
-        while (!self.isAtEnd() and depth > 0) {
-            const t = self.advance();
-            if (t.kind == .l_brace) depth += 1 else if (t.kind == .r_brace) {
-                depth -= 1;
-                if (depth == 0) break;
+        const start_off = l.span.end; // byte offset after '{'
+        var end_off: usize = start_off;
+        // track depth to find matching '}' ; use token spans for raw slice if source available
+        var content: []const u8 = "";
+        // First, find matching brace via token walk without consuming for slice path
+        const probe_pos = self.pos;
+        var d: usize = 1;
+        var idx = self.pos;
+        while (idx < self.tokens.len and d > 0) : (idx += 1) {
+            const k = self.tokens[idx].kind;
+            if (k == .l_brace) d += 1 else if (k == .r_brace) {
+                d -= 1;
+                if (d == 0) {
+                    end_off = self.tokens[idx].span.start;
+                    break;
+                }
             }
-            try buf.appendSlice(self.allocator, t.lexeme);
-            try buf.append(self.allocator, ' ');
         }
-        if (depth != 0) {
+        if (d != 0) {
             try self.diag.push(.{
                 .severity = .err,
                 .code = .parse_error,
@@ -649,8 +659,30 @@ pub const Parser = struct {
             });
             return error.ParseError;
         }
-        const content = try buf.toOwnedSlice(self.allocator);
-        _ = start_pos;
+        // If we have source, slice it directly to preserve formatting
+        if (self.source.len > 0 and end_off <= self.source.len and start_off <= end_off) {
+            const raw = self.source[start_off..end_off];
+            content = try self.allocator.dupe(u8, raw);
+        } else {
+            // fallback: collect lexemes (for tests without source)
+            var buf: std.ArrayList(u8) = .empty;
+            while (!self.isAtEnd() and depth > 0) {
+                const t = self.advance();
+                if (t.kind == .l_brace) depth += 1 else if (t.kind == .r_brace) {
+                    depth -= 1;
+                    if (depth == 0) break;
+                }
+                try buf.appendSlice(self.allocator, t.lexeme);
+                try buf.append(self.allocator, ' ');
+            }
+            content = try buf.toOwnedSlice(self.allocator);
+            return .{ .content = content, .span = kw.span };
+        }
+        // consume tokens up to matching '}' (we probed without consuming)
+        while (self.pos < idx) _ = self.advance();
+        // consume the closing '}'
+        _ = self.advance();
+        _ = probe_pos;
         return .{ .content = content, .span = kw.span };
     }
 };
