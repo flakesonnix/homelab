@@ -141,6 +141,12 @@
       inherit wrappers yammat nixpkgs frameworkLib;
     };
 
+    liveSpecialArgs =
+      x270SpecialArgs
+      // {
+        inherit nixpkgs yammat;
+      };
+
     x270-config = mkHost {
       specialArgs = x270SpecialArgs;
       modules = [
@@ -194,6 +200,24 @@
         ({lib, ...}: {
           lucy.nixfleet.api.package = lib.mkDefault nixfleetPkgs.api;
           lucy.nixfleet.agent.package = lib.mkDefault nixfleetPkgs.agent;
+        })
+      ];
+    };
+    live-config = mkHost {
+      specialArgs = liveSpecialArgs;
+      modules = [
+        ./nix-settings.nix
+        ./hosts/live-iso
+        ./modules/nixos/fonts.nix
+        ./modules/nixos/niri.nix
+        ./modules/nixos/waybar.nix
+        ./modules/nixos/hm-base.nix
+        home-manager.nixosModules.home-manager
+        sops-nix.nixosModules.sops
+        lanzaboote.nixosModules.lanzaboote
+        ({lib, ...}: {
+          boot.loader.systemd-boot.enable = lib.mkForce false;
+          boot.loader.grub.enable = lib.mkForce false;
         })
       ];
     };
@@ -344,6 +368,7 @@
               nixfleet-web = nixfleetPkgs.web;
               nixfleet-manifest = pkgs.writeText "manifest.json" self.nixfleetArtifacts.manifestJson;
               nixfleet-ui = pkgs.writeText "ui.json" self.nixfleetArtifacts.uiJson;
+              live-iso = self.nixosConfigurations.live.config.system.build.isoImage;
             };
 
             apps = {
@@ -430,6 +455,7 @@
           nixosConfigurations = {
             x270 = x270-config;
             mireo = mireo-config;
+            live = live-config;
           };
 
           nixfleetArtifacts = import ./nixfleet/manifest.nix {
