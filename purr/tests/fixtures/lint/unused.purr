@@ -1,0 +1,5 @@
+import "role_a.purr";
+
+host x270 {
+    use desktop;
+}
