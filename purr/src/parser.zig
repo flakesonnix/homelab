@@ -498,30 +498,119 @@ pub const Parser = struct {
         const kw = try self.expect(.keyword_bundle);
         const name = try self.parseIdent();
         _ = try self.expect(.l_brace);
-        // simplified: just parse ignored content until }
-        const pkg_toggles: std.ArrayList([]const u8) = .empty;
-        _ = pkg_toggles;
+        var description: ?[]const u8 = null;
+        var programs: std.ArrayList([]const u8) = .empty;
+        var toggles: std.ArrayList([]const u8) = .empty;
         while (self.peekKind() != .r_brace and !self.isAtEnd()) {
-            const t = self.advance();
-            _ = t;
-            // skip
-            if (self.peekKind() == .semicolon) _ = self.advance();
+            switch (self.peekKind()) {
+                .keyword_description => {
+                    _ = self.advance();
+                    _ = try self.expect(.equal);
+                    const s = try self.expect(.string_lit);
+                    description = try self.unquote(s.lexeme);
+                    _ = try self.expect(.semicolon);
+                },
+                else => {
+                    const t = self.peek();
+                    if (std.mem.eql(u8, t.lexeme, "programs")) {
+                        _ = self.advance();
+                        _ = try self.expect(.equal);
+                        const list = try self.parseStringList();
+                        for (list) |v| try programs.append(self.allocator, v);
+                        _ = try self.expect(.semicolon);
+                    } else if (std.mem.eql(u8, t.lexeme, "packages") or std.mem.eql(u8, t.lexeme, "packageToggles") or std.mem.eql(u8, t.lexeme, "toggles")) {
+                        _ = self.advance();
+                        _ = try self.expect(.equal);
+                        const list = try self.parseStringList();
+                        for (list) |v| try toggles.append(self.allocator, v);
+                        _ = try self.expect(.semicolon);
+                    } else {
+                        const tt = self.advance();
+                        try self.diag.push(.{
+                            .severity = .err,
+                            .code = .parse_error,
+                            .message = try std.fmt.allocPrint(self.allocator, "unexpected `{s}` in bundle", .{tt.lexeme}),
+                            .span = tt.span,
+                            .help = "expected `description`, `programs` or `packages`",
+                        });
+                        // recovery: skip to ; or }
+                        while (!self.isAtEnd() and self.peekKind() != .semicolon and self.peekKind() != .r_brace) _ = self.advance();
+                        _ = self.consumeIf(.semicolon);
+                    }
+                },
+            }
         }
         _ = try self.expect(.r_brace);
-        return .{ .name = name, .description = null, .programs = &.{}, .package_toggles = &.{}, .span = kw.span };
+        return .{
+            .name = name,
+            .description = description,
+            .programs = try programs.toOwnedSlice(self.allocator),
+            .package_toggles = try toggles.toOwnedSlice(self.allocator),
+            .span = kw.span,
+        };
     }
 
     fn parsePreset(self: *Parser) !ast.Preset {
         const kw = try self.expect(.keyword_preset);
         const name = try self.parseIdent();
         _ = try self.expect(.l_brace);
+        var description: ?[]const u8 = null;
         var flags: std.ArrayList(ast.Setting) = .empty;
         while (self.peekKind() != .r_brace and !self.isAtEnd()) {
-            // parse flags block simplified
-            _ = self.advance();
+            switch (self.peekKind()) {
+                .keyword_description => {
+                    _ = self.advance();
+                    _ = try self.expect(.equal);
+                    const s = try self.expect(.string_lit);
+                    description = try self.unquote(s.lexeme);
+                    _ = try self.expect(.semicolon);
+                },
+                else => {
+                    const t = self.peek();
+                    if (std.mem.eql(u8, t.lexeme, "flags")) {
+                        _ = self.advance();
+                        _ = try self.expect(.l_brace);
+                        while (self.peekKind() != .r_brace and !self.isAtEnd()) {
+                            // flags block: setting `path = value;`
+                            const path_tok = self.peek();
+                            if (path_tok.kind != .ident and !isKeywordIdent(path_tok.kind)) {
+                                const tt = self.advance();
+                                try self.diag.push(.{
+                                    .severity = .err,
+                                    .code = .parse_error,
+                                    .message = try std.fmt.allocPrint(self.allocator, "expected setting path, found `{s}`", .{tt.lexeme}),
+                                    .span = tt.span,
+                                    .help = null,
+                                });
+                                while (!self.isAtEnd() and self.peekKind() != .semicolon and self.peekKind() != .r_brace) _ = self.advance();
+                                _ = self.consumeIf(.semicolon);
+                                continue;
+                            }
+                            _ = self.advance();
+                            _ = try self.expect(.equal);
+                            const val = try self.parseValue();
+                            _ = try self.expect(.semicolon);
+                            const path = try self.dup(path_tok.lexeme);
+                            try flags.append(self.allocator, .{ .path = path, .value = val, .span = path_tok.span });
+                        }
+                        _ = try self.expect(.r_brace);
+                    } else {
+                        const tt = self.advance();
+                        try self.diag.push(.{
+                            .severity = .err,
+                            .code = .parse_error,
+                            .message = try std.fmt.allocPrint(self.allocator, "unexpected `{s}` in preset", .{tt.lexeme}),
+                            .span = tt.span,
+                            .help = "expected `description` or `flags { ... }`",
+                        });
+                        while (!self.isAtEnd() and self.peekKind() != .semicolon and self.peekKind() != .r_brace) _ = self.advance();
+                        _ = self.consumeIf(.semicolon);
+                    }
+                },
+            }
         }
         _ = try self.expect(.r_brace);
-        return .{ .name = name, .description = null, .flags = try flags.toOwnedSlice(self.allocator), .span = kw.span };
+        return .{ .name = name, .description = description, .flags = try flags.toOwnedSlice(self.allocator), .span = kw.span };
     }
 
     fn parsePackage(self: *Parser) !ast.Package {

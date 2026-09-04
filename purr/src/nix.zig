@@ -105,13 +105,58 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
                 }
                 // roles themselves don't emit Nix directly; hosts consume them
             },
+            .bundle => |b| {
+                try buf.appendSlice(allocator, "    # bundle ");
+                try buf.appendSlice(allocator, b.name.name);
+                try buf.appendSlice(allocator, "\n");
+                if (b.description) |d| {
+                    try buf.appendSlice(allocator, "    # description: ");
+                    try buf.appendSlice(allocator, d);
+                    try buf.appendSlice(allocator, "\n");
+                }
+                if (b.programs.len > 0) {
+                    try buf.appendSlice(allocator, "    # programs: ");
+                    for (b.programs, 0..) |p, idx| {
+                        if (idx > 0) try buf.appendSlice(allocator, ", ");
+                        try buf.appendSlice(allocator, p);
+                    }
+                    try buf.appendSlice(allocator, "\n");
+                }
+                if (b.package_toggles.len > 0) {
+                    try buf.appendSlice(allocator, "    # packageToggles: ");
+                    for (b.package_toggles, 0..) |t, idx| {
+                        if (idx > 0) try buf.appendSlice(allocator, ", ");
+                        try buf.appendSlice(allocator, t);
+                    }
+                    try buf.appendSlice(allocator, "\n");
+                }
+            },
+            .preset => |p| {
+                try buf.appendSlice(allocator, "    # preset ");
+                try buf.appendSlice(allocator, p.name.name);
+                try buf.appendSlice(allocator, "\n");
+                if (p.description) |d| {
+                    try buf.appendSlice(allocator, "    # description: ");
+                    try buf.appendSlice(allocator, d);
+                    try buf.appendSlice(allocator, "\n");
+                }
+                for (p.flags) |f| {
+                    try buf.appendSlice(allocator, "    ");
+                    try buf.appendSlice(allocator, f.path);
+                    try buf.appendSlice(allocator, " = ");
+                    try writeValueBuf(&buf, allocator, f.value);
+                    try buf.appendSlice(allocator, ";\n");
+                }
+            },
+            .package_decl => |pkg| {
+                try buf.appendSlice(allocator, "    # package decl \"");
+                try buf.appendSlice(allocator, pkg.name);
+                try buf.appendSlice(allocator, "\"\n");
+            },
             .nix => |n| {
                 try buf.appendSlice(allocator, "    # nix escape hatch\n");
                 try buf.appendSlice(allocator, n.content);
                 try buf.appendSlice(allocator, "\n");
-            },
-            else => {
-                try buf.appendSlice(allocator, "    # (other decl)\n");
             },
         }
     }

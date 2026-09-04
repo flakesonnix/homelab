@@ -1,0 +1,14 @@
+// preset.purr — defines a preset (host moduleFlags)
+preset gaming-performance {
+    description = "Gaming performance tweaks";
+    flags {
+        gaming.performance.enable = true;
+        gaming.steam.enable = true;
+    }
+}
+
+preset gaming-steam {
+    flags {
+        gaming.steam.enable = true;
+    }
+}
