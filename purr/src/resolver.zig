@@ -91,7 +91,7 @@ pub const Resolver = struct {
                 continue;
             };
 
-            var p = parser.Parser.init(toks, self.diag, self.arena);
+            var p = parser.Parser.initWithSource(toks, self.diag, self.arena, src);
             var imported_prog = p.parseProgram() catch {
                 // parse errors already in diag
                 continue;
