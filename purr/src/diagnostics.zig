@@ -14,6 +14,9 @@ pub const Code = enum {
     unused_import,
     empty_decl,
     unformatted,
+    unknown_parent,
+    inheritance_cycle,
+    self_inheritance,
 };
 
 pub const Span = struct {
@@ -107,6 +110,9 @@ pub const Diagnostics = struct {
                 .unused_import => "W001",
                 .empty_decl => "W002",
                 .unformatted => "W003",
+                .unknown_parent => "E050",
+                .inheritance_cycle => "E051",
+                .self_inheritance => "E052",
             };
             try writer.print("purr {s}[{s}]: {s}\n", .{ sev, code, d.message });
             if (d.span) |sp| {
