@@ -1,0 +1,9 @@
+role desktop {
+    description = "Desktop";
+    targets = ["host"];
+}
+
+host x270 {
+    use desktop;
+    package "git";
+}

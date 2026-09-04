@@ -1,0 +1,15 @@
+bundle dev-bundle {
+    description = "Dev bundle";
+    programs = ["git", "helix"];
+    packages = ["dev"];
+}
+preset gaming-base {
+    description = "Base gaming";
+    flags {
+        gaming.enable = true;
+    }
+}
+host testhost {
+    use desktop;
+    preset gaming-base;
+}
