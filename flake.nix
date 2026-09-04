@@ -435,7 +435,8 @@
           nixfleetArtifacts = import ./nixfleet/manifest.nix {
             inherit (nixpkgs) lib;
             pkgs = pkgsForPatch;
-            configurations = self.nixosConfigurations;
+            # live is an installer ISO, not a fleet host — exclude from nixfleet catalog
+            configurations = builtins.removeAttrs self.nixosConfigurations ["live"];
             deployNodes = self.deploy.nodes or {};
           };
 
