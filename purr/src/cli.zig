@@ -168,7 +168,7 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
             std.debug.print("{s}", .{nix_source});
         }
     } else if (cmd == .fmt) {
-        const formatted = try fmt.format(&prog, allocator);
+        const formatted = try fmt.format(&original_prog, allocator);
         defer allocator.free(formatted);
         if (out_path) |out| {
             try cwd.writeFile(io, .{ .sub_path = out, .data = formatted });

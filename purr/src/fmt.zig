@@ -119,6 +119,10 @@ fn formatRole(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, r: ast.Role
 fn formatHost(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, h: ast.Host) !void {
     try buf.appendSlice(allocator, "host ");
     try buf.appendSlice(allocator, h.name.name);
+    if (h.extends) |parent| {
+        try buf.appendSlice(allocator, " extends ");
+        try buf.appendSlice(allocator, parent.name);
+    }
     try buf.appendSlice(allocator, " {\n");
     for (h.stmts) |stmt| {
         switch (stmt) {
