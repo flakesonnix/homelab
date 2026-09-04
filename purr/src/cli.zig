@@ -4,6 +4,7 @@ const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 const semantic = @import("semantic.zig");
 const nix = @import("nix.zig");
+const resolver = @import("resolver.zig");
 
 const Command = enum { check, compile, help };
 
@@ -90,6 +91,21 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
         std.debug.print("{s}", .{aw.written()});
         return 1;
     };
+
+    // Resolve imports (flatten transitive)
+    var res = resolver.Resolver.init(allocator, io, cwd, &diag, &arena);
+    defer res.deinit();
+    const resolved = res.resolve(file, &prog) catch |err| {
+        std.debug.print("purr error: resolver failed: {s}\n", .{@errorName(err)});
+        var aw: std.Io.Writer.Allocating = .init(allocator);
+        defer aw.deinit();
+        const writer = &aw.writer;
+        try diag.render(writer);
+        std.debug.print("{s}", .{aw.written()});
+        return 1;
+    };
+    // use resolved program for semantic + codegen
+    prog = resolved;
 
     var sem = semantic.Semantic.init(&prog, &diag, arena_alloc);
     try sem.analyze();
