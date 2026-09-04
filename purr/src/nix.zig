@@ -170,7 +170,16 @@ fn writeValueBuf(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, v: ast.V
     switch (v) {
         .string => |s| {
             try buf.appendSlice(allocator, "\"");
-            try buf.appendSlice(allocator, s);
+            for (s) |c| {
+                switch (c) {
+                    '"' => try buf.appendSlice(allocator, "\\\""),
+                    '\\' => try buf.appendSlice(allocator, "\\\\"),
+                    '\n' => try buf.appendSlice(allocator, "\\n"),
+                    '\t' => try buf.appendSlice(allocator, "\\t"),
+                    '\r' => try buf.appendSlice(allocator, "\\r"),
+                    else => try buf.append(allocator, c),
+                }
+            }
             try buf.appendSlice(allocator, "\"");
         },
         .integer => |i| {
@@ -291,4 +300,30 @@ test "nix golden bundle preset" {
     try std.testing.expect(std.mem.indexOf(u8, out, "# preset gaming-base") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "gaming.enable = true;") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "networking.hostName = \"testhost\"") != null);
+}
+
+test "nix string escaping" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\preset esc {
+        \\    flags {
+        \\        a = "hello \"world\"";
+        \\        b = "back\\slash";
+        \\        c = "line\nbreak";
+        \\    }
+        \\}
+    ;
+    const diagnostics = @import("diagnostics.zig");
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "esc.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "esc.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.init(toks, &diag, &arena);
+    var prog = try parser.parseProgram();
+    const out = try generate(&prog, arena.allocator());
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"hello \\\"world\\\"\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"back\\\\slash\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"line\\nbreak\"") != null);
 }
