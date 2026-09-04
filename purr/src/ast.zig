@@ -69,6 +69,7 @@ pub const Setting = struct {
 
 pub const Host = struct {
     name: Ident,
+    extends: ?Ident, // parent host for `host child extends parent { ... }`
     stmts: []HostStmt,
     span: Span,
 };

@@ -21,6 +21,7 @@ pub const TokenKind = enum {
     keyword_bundles,
     keyword_true,
     keyword_false,
+    keyword_extends,
     string_lit,
     integer,
     l_brace,
@@ -212,6 +213,7 @@ pub const Lexer = struct {
         if (std.mem.eql(u8, lexeme, "presets")) return .keyword_presets;
         if (std.mem.eql(u8, lexeme, "tags")) return .keyword_tags;
         if (std.mem.eql(u8, lexeme, "bundles")) return .keyword_bundles;
+        if (std.mem.eql(u8, lexeme, "extends")) return .keyword_extends;
         if (std.mem.eql(u8, lexeme, "true")) return .keyword_true;
         if (std.mem.eql(u8, lexeme, "false")) return .keyword_false;
         return null;

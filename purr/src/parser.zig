@@ -172,7 +172,7 @@ pub const Parser = struct {
     }
 
     fn isKeywordIdent(k: lexer.TokenKind) bool {
-        return k == .keyword_role or k == .keyword_host or k == .keyword_bundle or k == .keyword_preset or k == .keyword_package or k == .keyword_import or k == .keyword_use or k == .keyword_nix or k == .keyword_description or k == .keyword_targets;
+        return k == .keyword_role or k == .keyword_host or k == .keyword_bundle or k == .keyword_preset or k == .keyword_package or k == .keyword_import or k == .keyword_use or k == .keyword_nix or k == .keyword_description or k == .keyword_targets or k == .keyword_extends;
     }
 
     fn parseRole(self: *Parser) !ast.Role {
@@ -371,6 +371,11 @@ pub const Parser = struct {
     fn parseHost(self: *Parser) !ast.Host {
         const kw = try self.expect(.keyword_host);
         const name = try self.parseIdent();
+        var extends: ?ast.Ident = null;
+        if (self.peekKind() == .keyword_extends) {
+            _ = self.advance();
+            extends = try self.parseIdent();
+        }
         _ = try self.expect(.l_brace);
         var stmts: std.ArrayList(ast.HostStmt) = .empty;
         while (self.peekKind() != .r_brace and !self.isAtEnd()) {
@@ -442,7 +447,7 @@ pub const Parser = struct {
             }
         }
         _ = try self.expect(.r_brace);
-        return .{ .name = name, .stmts = try stmts.toOwnedSlice(self.allocator), .span = kw.span };
+        return .{ .name = name, .extends = extends, .stmts = try stmts.toOwnedSlice(self.allocator), .span = kw.span };
     }
 
     fn parseValue(self: *Parser) anyerror!ast.Value {
