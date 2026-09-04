@@ -11,6 +11,9 @@ pub const Code = enum {
     lex_error,
     unknown_ident,
     duplicate_import,
+    unused_import,
+    empty_decl,
+    unformatted,
 };
 
 pub const Span = struct {
@@ -101,6 +104,9 @@ pub const Diagnostics = struct {
                 .lex_error => "E002",
                 .unknown_ident => "E003",
                 .duplicate_import => "E011",
+                .unused_import => "W001",
+                .empty_decl => "W002",
+                .unformatted => "W003",
             };
             try writer.print("purr {s}[{s}]: {s}\n", .{ sev, code, d.message });
             if (d.span) |sp| {

@@ -6,8 +6,9 @@ const semantic = @import("semantic.zig");
 const nix = @import("nix.zig");
 const resolver = @import("resolver.zig");
 const fmt = @import("fmt.zig");
+const lint = @import("lint.zig");
 
-const Command = enum { check, compile, fmt, help };
+const Command = enum { check, compile, fmt, lint, help };
 
 pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
     const allocator = init.gpa;
@@ -18,7 +19,7 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
         return 0;
     }
     const cmd_str = args[1];
-    const cmd: Command = if (std.mem.eql(u8, cmd_str, "check")) .check else if (std.mem.eql(u8, cmd_str, "compile")) .compile else if (std.mem.eql(u8, cmd_str, "fmt")) .fmt else if (std.mem.eql(u8, cmd_str, "help") or std.mem.eql(u8, cmd_str, "--help") or std.mem.eql(u8, cmd_str, "-h")) .help else {
+    const cmd: Command = if (std.mem.eql(u8, cmd_str, "check")) .check else if (std.mem.eql(u8, cmd_str, "compile")) .compile else if (std.mem.eql(u8, cmd_str, "fmt")) .fmt else if (std.mem.eql(u8, cmd_str, "lint")) .lint else if (std.mem.eql(u8, cmd_str, "help") or std.mem.eql(u8, cmd_str, "--help") or std.mem.eql(u8, cmd_str, "-h")) .help else {
         std.debug.print("purr error: unknown command `{s}`\n", .{cmd_str});
         try printHelp(io);
         return 1;
@@ -28,6 +29,11 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
         return 0;
     }
 
+    // handle `purr <cmd> --help` as help
+    if (args.len >= 3 and (std.mem.eql(u8, args[2], "--help") or std.mem.eql(u8, args[2], "-h"))) {
+        try printHelp(io);
+        return 0;
+    }
     if (args.len < 3) {
         std.debug.print("purr error: missing file argument\n", .{});
         try printHelp(io);
@@ -54,13 +60,15 @@ fn printHelp(io: std.Io) !void {
         \\Usage:
         \\  purr check <file.purr>              Parse + semantic check
         \\  purr compile <file.purr> [--out out.nix]   Generate Nix
-        \\  purr fmt <file.purr>                Format (currently stub, validates syntax)
+        \\  purr fmt <file.purr> [--out out.purr]     Format
+        \\  purr lint <file.purr>               Lint (unused/duplicate/empty/unformatted)
         \\  purr help
         \\
         \\Examples:
         \\  purr check examples/minimal.purr
         \\  purr compile hosts/x270.purr --out generated.nix
         \\  purr fmt examples/minimal.purr
+        \\  purr lint examples/minimal.purr
         \\
     ;
     std.debug.print("{s}", .{msg});
@@ -94,7 +102,7 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
         std.debug.print("{s}", .{aw.written()});
         return 1;
     };
-
+    const original_prog = prog;
     // Resolve imports (flatten transitive)
     var res = resolver.Resolver.init(allocator, io, cwd, &diag, &arena);
     defer res.deinit();
@@ -113,6 +121,12 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
     var sem = semantic.Semantic.init(&prog, &diag, arena_alloc);
     try sem.analyze();
 
+    // Lint checks (always run, even if hasErrors? but only emit warnings if no parse errors)
+    if (cmd == .lint) {
+        var l = lint.Lint.init(&original_prog, &prog, source, file, &diag, arena_alloc);
+        try l.run();
+    }
+
     if (diag.hasErrors()) {
         var aw: std.Io.Writer.Allocating = .init(allocator);
         defer aw.deinit();
@@ -120,6 +134,25 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
         try diag.render(writer);
         std.debug.print("{s}", .{aw.written()});
         return 1;
+    }
+
+    // For lint, report warnings but exit 0 if only warnings
+    if (cmd == .lint) {
+        var has_warnings = false;
+        for (diag.list.items) |d| {
+            if (d.severity == .warning) has_warnings = true;
+        }
+        if (has_warnings) {
+            var aw: std.Io.Writer.Allocating = .init(allocator);
+            defer aw.deinit();
+            const writer = &aw.writer;
+            try diag.render(writer);
+            std.debug.print("{s}", .{aw.written()});
+            std.debug.print("purr: lint {s} — {d} warning(s)\n", .{ file, diag.list.items.len });
+        } else {
+            std.debug.print("purr: lint {s} ok — no warnings\n", .{file});
+        }
+        return 0;
     }
 
     std.debug.print("purr: {s} ok ({d} decls, {d} imports)\n", .{ file, prog.decls.len, prog.imports.len });
