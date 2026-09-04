@@ -7,6 +7,7 @@ comptime {
     _ = @import("nix.zig");
     _ = @import("resolver.zig");
     _ = @import("fmt.zig");
+    _ = @import("lint.zig");
 }
 test {
     std.testing.refAllDecls(@This());
