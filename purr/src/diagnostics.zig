@@ -36,18 +36,41 @@ pub const Diagnostics = struct {
     list: std.ArrayListUnmanaged(Diagnostic),
     source: []const u8,
     file: []const u8,
+    // multi-file source map for resolver (file -> source). Initialized lazily.
+    source_map: ?std.StringHashMap([]const u8) = null,
 
     pub fn init(allocator: std.mem.Allocator, file: []const u8, source: []const u8) Diagnostics {
-        return .{
+        var self = Diagnostics{
             .allocator = allocator,
             .list = .empty,
             .source = source,
             .file = file,
+            .source_map = std.StringHashMap([]const u8).init(allocator),
         };
+        // seed map with primary file
+        self.source_map.?.put(file, source) catch {};
+        return self;
     }
 
     pub fn deinit(self: *Diagnostics) void {
         self.list.deinit(self.allocator);
+        if (self.source_map) |*m| m.deinit();
+    }
+
+    pub fn addSource(self: *Diagnostics, file: []const u8, source: []const u8) !void {
+        if (self.source_map == null) {
+            self.source_map = std.StringHashMap([]const u8).init(self.allocator);
+        }
+        try self.source_map.?.put(file, source);
+    }
+
+    fn lookupSource(self: *const Diagnostics, file: []const u8) []const u8 {
+        if (self.source_map) |m| {
+            if (m.get(file)) |src| return src;
+        }
+        // fallback: if requested file matches primary, return primary source
+        if (std.mem.eql(u8, file, self.file)) return self.source;
+        return self.source;
     }
 
     pub fn push(self: *Diagnostics, d: Diagnostic) !void {
@@ -83,18 +106,19 @@ pub const Diagnostics = struct {
             if (d.span) |sp| {
                 try writer.print("  --> {s}:{d}:{d}\n", .{ sp.file, sp.line, sp.col });
                 // print line context if available
-                if (sp.start < self.source.len) {
+                const src = self.lookupSource(sp.file);
+                if (sp.start < src.len) {
                     const line_start = blk: {
                         var i = sp.start;
-                        while (i > 0 and self.source[i - 1] != '\n') : (i -= 1) {}
+                        while (i > 0 and src[i - 1] != '\n') : (i -= 1) {}
                         break :blk i;
                     };
                     const line_end = blk: {
                         var i = sp.start;
-                        while (i < self.source.len and self.source[i] != '\n') : (i += 1) {}
+                        while (i < src.len and src[i] != '\n') : (i += 1) {}
                         break :blk i;
                     };
-                    const line = self.source[line_start..line_end];
+                    const line = src[line_start..line_end];
                     try writer.print("   |\n{d} | {s}\n", .{ sp.line, line });
                     try writer.print("   | {s}{s}\n", .{ " " ** 0, "" });
                     // underline

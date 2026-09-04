@@ -5,6 +5,7 @@ comptime {
     _ = @import("parser.zig");
     _ = @import("semantic.zig");
     _ = @import("nix.zig");
+    _ = @import("resolver.zig");
 }
 test {
     std.testing.refAllDecls(@This());
