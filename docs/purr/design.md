@@ -1,6 +1,6 @@
-# Meow — Personal Nix DSL — Design Proposal (Zig compiler)
+# Purr (Meow) — Personal Nix DSL — Design & Implementation (Zig)
 
-> Status: draft v0.1, branch `meow`. Compiler language Zig 0.16.0 pinned via nixpkgs. Meow syntax independent of Zig.
+> Status: **implemented v0.1**, branch `meow` (PR #8). Compiler in Zig 0.16.0 via `nixpkgs#zig`. Language is Purr (`.purr`), design doc originally “Meow” — same project. `purr/` has its own flake (`nix develop` → `zig build`/`zig build test`), 13 tests + `purr/tests/e2e.sh` E2E (`.purr → Nix → alejandra`). Generated Nix is deterministic; `purr check`/`compile` work end-to-end (see `README.md` Purr section, `purr/examples/`).
 
 ## 1. Philosophy — What is Meow? Why Nix backend?
 
@@ -41,7 +41,7 @@ Composition over inheritance: `host x270 { use desktop; use dev; }` rather than 
 
 **Principles:** Structured, C++-like explicit blocks, readable declarations, declarative. Beginners see `host`/`role`/`package` without `lib.*`. `meow`/`nya` only where meaningful: `meow` = CLI/project name, `nya` = maybe alias for `use`? Decided: keep `use` for clarity, reserve `nya` for future `nya check` diagnostic alias — not keyword spam.
 
-**File extension:** `.meow`. Module naming: file path = module name. Entry: `main.meow` or `meow.toml` (project). v0.1: single file or `import "path.meow"` relative.
+**File extension:** `.purr` (implemented; design said `.meow` — both refer to same DSL). Module naming: file path = module name. Entry: `main.purr` or `meow.toml` (project). v0.1: single file or `import "path.purr"` relative (resolver flattens transitive, `seen` dedup, cycle-safe, `source_map` for diagnostics).
 
 **Proposed syntax (BNF-like):**
 
@@ -278,12 +278,11 @@ Distinguish parse/semantic/nix errors.
 
 Fixtures in `compiler/tests/fixtures/`.
 
-## 18. v0.1 scope (must)
+## 18. v0.1 scope (must) — current
 
-- `program`, `import`, `host`, `role`, `package`, `preset`, `nix` block, basic values, `use`
-- Lexer/parser/AST/semantic/nix gen/CLI check/compile
-
-Deferred: `bundle` full, `service`, `types`, `functions`, `formatter`, `repl`.
+- **Done:** `program`, `import` (transitive, dedup, cycle-safe), `host` (`use`/`preset`/`package`/`packages`/`setting`/`nix`), `role` (`description`/`targets`/`host`{presets,tags}/`home`{bundles}), `bundle` (`description`, `programs`, `packages`/`packageToggles`), `preset` (`description`, `flags { path=value; }`), `package "str";`, `nix { raw }` (source slice, nested braces), `string`/`int`/`bool`/`list`, `//`/`/* */`, `;`
+- Lexer/parser/AST/diagnostics(`source_map`)/resolver/semantic(duplicate + unknown role/preset/bundle with `did you mean?`)/nix deterministic (+golden `tests/golden/*.purr→*.nix`)/CLI `check`/`compile --out`/E2E `tests/e2e.sh` (cyclic/duplicate/transitive/missing + `alejandra` parse)
+- Deferred: `service`, `types`/`functions`, `formatter` (`purr fmt`), `repl`, `map`/`network`/`secret` types.
 
 ## 19. Real-world validation
 
@@ -298,26 +297,26 @@ One host (`x270`) + one role (`desktop`) + few packages → generate Nix → `ni
 ## 21. Project structure (Zig)
 
 ```
-compiler/
-├── build.zig
-├── build.zig.zon
+purr/
+├── flake.nix           // devShell (zig 0.16) + package + checks.purr-tests
+├── build.zig / build.zig.zon
 ├── src/
 │   ├── main.zig        // CLI dispatch
+│   ├── cli.zig
 │   ├── lexer.zig
-│   ├── parser.zig
+│   ├── parser.zig      // bundle/preset real, nix raw via source slice
 │   ├── ast.zig
-│   ├── semantic.zig
-│   ├── resolver.zig    // import resolution
-│   ├── diagnostics.zig
-│   ├── nix.zig         // generator
-│   └── cli.zig
+│   ├── diagnostics.zig // source_map multi-file
+│   ├── resolver.zig    // transitive, seen, cycle-safe
+│   ├── semantic.zig    // duplicate + unknown bundle/preset/role
+│   └── nix.zig         // deterministic, string escaping, raw preserve
 ├── tests/
-│   ├── lexer_test.zig
-│   ├── parser_test.zig
-│   ├── semantic_test.zig
-│   └── fixtures/
+│   ├── fixtures/       // unknown-role, duplicate-host, unknown-bundle/preset
+│   ├── golden/         // minimal, bundle_preset .purr→.nix
+│   └── e2e.sh          // .purr→Nix→alejandra + import edge cases
 └── examples/
-    └── minimal.meow
+    ├── minimal.purr, bundle.purr, preset.purr
+    └── hosts/x270.purr, roles/{desktop,dev}.purr
 ```
 
 Adapt if cleaner.
