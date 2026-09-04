@@ -1,0 +1,3 @@
+host x270 {
+    use gamign; // typo — should suggest gaming
+}
