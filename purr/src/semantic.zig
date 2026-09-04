@@ -26,6 +26,10 @@ pub const Semantic = struct {
         defer role_names.deinit();
         var host_names = std.StringHashMap(diagnostics.Span).init(self.allocator);
         defer host_names.deinit();
+        var bundle_names = std.StringHashMap(diagnostics.Span).init(self.allocator);
+        defer bundle_names.deinit();
+        var preset_names = std.StringHashMap(diagnostics.Span).init(self.allocator);
+        defer preset_names.deinit();
 
         // first pass: collect declarations, detect duplicates
         for (self.program.decls) |decl| {
@@ -54,6 +58,32 @@ pub const Semantic = struct {
                         });
                     } else {
                         try host_names.put(h.name.name, h.name.span);
+                    }
+                },
+                .bundle => |b| {
+                    if (bundle_names.get(b.name.name)) |prev| {
+                        try self.diag.push(.{
+                            .severity = .err,
+                            .code = .duplicate_decl,
+                            .message = try std.fmt.allocPrint(self.allocator, "duplicate bundle `{s}`", .{b.name.name}),
+                            .span = b.name.span,
+                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                        });
+                    } else {
+                        try bundle_names.put(b.name.name, b.name.span);
+                    }
+                },
+                .preset => |p| {
+                    if (preset_names.get(p.name.name)) |prev| {
+                        try self.diag.push(.{
+                            .severity = .err,
+                            .code = .duplicate_decl,
+                            .message = try std.fmt.allocPrint(self.allocator, "duplicate preset `{s}`", .{p.name.name}),
+                            .span = p.name.span,
+                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                        });
+                    } else {
+                        try preset_names.put(p.name.name, p.name.span);
                     }
                 },
                 else => {},

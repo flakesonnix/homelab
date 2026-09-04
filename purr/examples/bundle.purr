@@ -1,0 +1,11 @@
+// bundle.purr — defines a bundle (HM programs + package toggles)
+bundle desktop {
+    description = "Desktop bundle — Niri, Waybar, fonts";
+    programs = ["git", "helix", "foot"];
+    packages = ["desktop", "fonts"];
+}
+
+bundle dev {
+    programs = ["git", "lazygit"];
+    packages = ["dev"];
+}
