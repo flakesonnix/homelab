@@ -285,3 +285,91 @@ test "fmt roundtrip" {
     try std.testing.expect(std.mem.indexOf(u8, out, "host x270") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "use desktop;") != null);
 }
+
+test "fmt golden" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const input =
+        \\host x270{use desktop;package "git";preset gaming-performance;}
+        \\role desktop{description="x";host{presets=["gaming-base"];tags=[];}home{bundles=["desktop"];}}
+        \\bundle b{programs=["a"];packages=[];}
+        \\preset p{flags{a=true;b="hello \"world\"";c="a\\b\nc\td";}}
+        \\nix{services.foo.enable=true;}
+    ;
+    const expected =
+        \\host x270 {
+        \\    use desktop;
+        \\    package "git";
+        \\    preset gaming-performance;
+        \\}
+        \\
+        \\role desktop {
+        \\    description = "x";
+        \\    host {
+        \\        presets = ["gaming-base"];
+        \\    }
+        \\    home {
+        \\        bundles = ["desktop"];
+        \\    }
+        \\}
+        \\
+        \\bundle b {
+        \\    programs = ["a"];
+        \\}
+        \\
+        \\preset p {
+        \\    flags {
+        \\        a = true;
+        \\        b = "hello \"world\"";
+        \\        c = "a\\b\nc\td";
+        \\    }
+        \\}
+        \\
+        \\nix {
+        \\services.foo.enable=true;
+        \\}
+        \\
+    ;
+    const diagnostics = @import("diagnostics.zig");
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "input.purr", input);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(input, "input.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, input);
+    var prog = try parser.parseProgram();
+    const out = try format(&prog, arena.allocator());
+    try std.testing.expectEqualStrings(expected, out);
+    // idempotency: formatting twice gives same
+    var diag2 = diagnostics.Diagnostics.init(arena.allocator(), "out.purr", out);
+    var lex2 = lexer.Lexer.init(out, "out.purr", &diag2);
+    const toks2 = try lex2.lexAll(arena.allocator());
+    var arena2 = std.heap.ArenaAllocator.init(alloc);
+    defer arena2.deinit();
+    var parser2 = @import("parser.zig").Parser.initWithSource(toks2, &diag2, &arena2, out);
+    var prog2 = try parser2.parseProgram();
+    const out2 = try format(&prog2, arena.allocator());
+    try std.testing.expectEqualStrings(out, out2);
+}
+
+test "fmt edge multiple nix" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\host a { nix{services.a.enable=true;} }
+        \\host b { nix{services.b.enable=false;} }
+    ;
+    const diagnostics = @import("diagnostics.zig");
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    const out = try format(&prog, arena.allocator());
+    try std.testing.expect(std.mem.indexOf(u8, out, "host a") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "host b") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "services.a.enable=true;") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "services.b.enable=false;") != null);
+}

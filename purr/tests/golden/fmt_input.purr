@@ -1,0 +1,2 @@
+host x270{use desktop;package "git";}
+role desktop{description="x";host{presets=["gaming-base"];}}
