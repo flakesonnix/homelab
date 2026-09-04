@@ -1,0 +1,12 @@
+import "../roles/desktop.purr";
+import "../roles/dev.purr";
+
+host x270 {
+    use desktop;
+    use dev;
+    use gaming;
+
+    packages = ["dev", "network"];
+    preset gaming-performance;
+    package "git";
+}

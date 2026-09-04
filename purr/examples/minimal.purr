@@ -1,0 +1,25 @@
+// minimal.purr — smallest valid Purr program
+// demonstrates: role + host + package + preset + nix escape
+role desktop {
+    description = "Lucy desktop — Niri + Waybar + fonts";
+    targets = ["host", "home"];
+    host {
+        presets = ["gaming-base"];
+        tags = ["desktop"];
+    }
+    home {
+        bundles = ["desktop"];
+    }
+}
+
+host x270 {
+    use desktop;
+    preset gaming-performance;
+    package "git";
+    package "vim";
+    // generic setting
+    // services.printing.enable = true;
+    nix {
+        services.printing.enable = true;
+    }
+}

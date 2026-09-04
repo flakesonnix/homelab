@@ -25,3 +25,8 @@ nix/
 .ai/
 AGENTS.md
 CLAUDE.md
+
+# Purr build outputs
+purr/.zig-cache/
+purr/zig-out/
+purr/zig-cache/
