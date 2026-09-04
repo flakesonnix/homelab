@@ -705,3 +705,19 @@ test "parser host" {
     try std.testing.expect(prog.decls.len == 1);
     try std.testing.expect(prog.decls[0] == .host);
 }
+
+test "parser host extends" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "host web extends base { use gaming; } host base { use desktop; }";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = Parser.initWithSource(toks, &diag, &arena, source);
+    const prog = try parser.parseProgram();
+    try std.testing.expect(prog.decls.len == 2);
+    try std.testing.expect(prog.decls[0].host.extends != null);
+    try std.testing.expectEqualStrings("base", prog.decls[0].host.extends.?.name);
+    try std.testing.expect(prog.decls[1].host.extends == null);
+}

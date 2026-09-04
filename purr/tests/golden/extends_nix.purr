@@ -1,0 +1,9 @@
+host base {
+    use desktop;
+    packages = ["curl", "git"];
+}
+
+host web extends base {
+    use gaming;
+    packages = ["nginx"];
+}
