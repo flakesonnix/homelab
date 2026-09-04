@@ -1,0 +1,7 @@
+host x270 {
+    use desktop;
+}
+
+role desktop {
+    description = "x";
+}

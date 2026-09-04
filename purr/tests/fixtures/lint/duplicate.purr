@@ -1,0 +1,6 @@
+import "role_a.purr";
+import "role_a.purr";
+
+host x270 {
+    use a;
+}
