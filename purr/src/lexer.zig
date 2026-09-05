@@ -22,13 +22,32 @@ pub const TokenKind = enum {
     keyword_true,
     keyword_false,
     keyword_extends,
+    keyword_let,
     string_lit,
     integer,
     l_brace,
     r_brace,
     l_bracket,
     r_bracket,
+    l_paren,
+    r_paren,
     equal,
+    equal_equal,
+    bang_equal,
+    bang,
+    plus,
+    minus,
+    star,
+    slash,
+    percent,
+    amp_amp,
+    pipe_pipe,
+    lt,
+    gt,
+    lte,
+    gte,
+    dot,
+    colon,
     semicolon,
     comma,
     eof,
@@ -134,9 +153,73 @@ pub const Lexer = struct {
             '}' => return .{ .kind = .r_brace, .lexeme = "}", .span = self.makeSpan(start, start_line, start_col, self.pos) },
             '[' => return .{ .kind = .l_bracket, .lexeme = "[", .span = self.makeSpan(start, start_line, start_col, self.pos) },
             ']' => return .{ .kind = .r_bracket, .lexeme = "]", .span = self.makeSpan(start, start_line, start_col, self.pos) },
-            '=' => return .{ .kind = .equal, .lexeme = "=", .span = self.makeSpan(start, start_line, start_col, self.pos) },
+            '(' => return .{ .kind = .l_paren, .lexeme = "(", .span = self.makeSpan(start, start_line, start_col, self.pos) },
+            ')' => return .{ .kind = .r_paren, .lexeme = ")", .span = self.makeSpan(start, start_line, start_col, self.pos) },
             ';' => return .{ .kind = .semicolon, .lexeme = ";", .span = self.makeSpan(start, start_line, start_col, self.pos) },
             ',' => return .{ .kind = .comma, .lexeme = ",", .span = self.makeSpan(start, start_line, start_col, self.pos) },
+            '.' => return .{ .kind = .dot, .lexeme = ".", .span = self.makeSpan(start, start_line, start_col, self.pos) },
+            ':' => return .{ .kind = .colon, .lexeme = ":", .span = self.makeSpan(start, start_line, start_col, self.pos) },
+            '+' => return .{ .kind = .plus, .lexeme = "+", .span = self.makeSpan(start, start_line, start_col, self.pos) },
+            '-' => return .{ .kind = .minus, .lexeme = "-", .span = self.makeSpan(start, start_line, start_col, self.pos) },
+            '*' => return .{ .kind = .star, .lexeme = "*", .span = self.makeSpan(start, start_line, start_col, self.pos) },
+            '/' => return .{ .kind = .slash, .lexeme = "/", .span = self.makeSpan(start, start_line, start_col, self.pos) },
+            '%' => return .{ .kind = .percent, .lexeme = "%", .span = self.makeSpan(start, start_line, start_col, self.pos) },
+            '!' => {
+                if (self.peek() == '=') {
+                    _ = self.advance();
+                    return .{ .kind = .bang_equal, .lexeme = "!=", .span = self.makeSpan(start, start_line, start_col, self.pos) };
+                }
+                return .{ .kind = .bang, .lexeme = "!", .span = self.makeSpan(start, start_line, start_col, self.pos) };
+            },
+            '=' => {
+                if (self.peek() == '=') {
+                    _ = self.advance();
+                    return .{ .kind = .equal_equal, .lexeme = "==", .span = self.makeSpan(start, start_line, start_col, self.pos) };
+                }
+                return .{ .kind = .equal, .lexeme = "=", .span = self.makeSpan(start, start_line, start_col, self.pos) };
+            },
+            '<' => {
+                if (self.peek() == '=') {
+                    _ = self.advance();
+                    return .{ .kind = .lte, .lexeme = "<=", .span = self.makeSpan(start, start_line, start_col, self.pos) };
+                }
+                return .{ .kind = .lt, .lexeme = "<", .span = self.makeSpan(start, start_line, start_col, self.pos) };
+            },
+            '>' => {
+                if (self.peek() == '=') {
+                    _ = self.advance();
+                    return .{ .kind = .gte, .lexeme = ">=", .span = self.makeSpan(start, start_line, start_col, self.pos) };
+                }
+                return .{ .kind = .gt, .lexeme = ">", .span = self.makeSpan(start, start_line, start_col, self.pos) };
+            },
+            '&' => {
+                if (self.peek() == '&') {
+                    _ = self.advance();
+                    return .{ .kind = .amp_amp, .lexeme = "&&", .span = self.makeSpan(start, start_line, start_col, self.pos) };
+                }
+                try self.diagnostics.push(.{
+                    .severity = .err,
+                    .code = .lex_error,
+                    .message = "invalid character '&' (expected '&&')",
+                    .span = self.makeSpan(start, start_line, start_col, self.pos),
+                    .help = null,
+                });
+                return .{ .kind = .invalid, .lexeme = "&", .span = self.makeSpan(start, start_line, start_col, self.pos) };
+            },
+            '|' => {
+                if (self.peek() == '|') {
+                    _ = self.advance();
+                    return .{ .kind = .pipe_pipe, .lexeme = "||", .span = self.makeSpan(start, start_line, start_col, self.pos) };
+                }
+                try self.diagnostics.push(.{
+                    .severity = .err,
+                    .code = .lex_error,
+                    .message = "invalid character '|' (expected '||')",
+                    .span = self.makeSpan(start, start_line, start_col, self.pos),
+                    .help = null,
+                });
+                return .{ .kind = .invalid, .lexeme = "|", .span = self.makeSpan(start, start_line, start_col, self.pos) };
+            },
             '"' => {
                 // string literal
                 var buf: std.ArrayList(u8) = .empty;
@@ -178,7 +261,7 @@ pub const Lexer = struct {
                 return .{ .kind = .integer, .lexeme = lexeme, .span = self.makeSpan(start, start_line, start_col, self.pos) };
             },
             'A'...'Z', 'a'...'z', '_' => {
-                while (!self.isAtEnd() and (std.ascii.isAlphanumeric(self.peek()) or self.peek() == '_' or self.peek() == '-' or self.peek() == '.')) _ = self.advance();
+                while (!self.isAtEnd() and (std.ascii.isAlphanumeric(self.peek()) or self.peek() == '_' or self.peek() == '-')) _ = self.advance();
                 const lexeme = self.source[start..self.pos];
                 const kind: TokenKind = keywordKind(lexeme) orelse .ident;
                 return .{ .kind = kind, .lexeme = lexeme, .span = self.makeSpan(start, start_line, start_col, self.pos) };
@@ -214,6 +297,7 @@ pub const Lexer = struct {
         if (std.mem.eql(u8, lexeme, "tags")) return .keyword_tags;
         if (std.mem.eql(u8, lexeme, "bundles")) return .keyword_bundles;
         if (std.mem.eql(u8, lexeme, "extends")) return .keyword_extends;
+        if (std.mem.eql(u8, lexeme, "let")) return .keyword_let;
         if (std.mem.eql(u8, lexeme, "true")) return .keyword_true;
         if (std.mem.eql(u8, lexeme, "false")) return .keyword_false;
         return null;

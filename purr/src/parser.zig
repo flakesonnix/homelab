@@ -368,6 +368,22 @@ pub const Parser = struct {
         return .{ .bundles = try bundles.toOwnedSlice(self.allocator), .span = end.span };
     }
 
+    fn parseDottedPath(self: *Parser) !struct { path: []const u8, span: Span } {
+        const first = try self.parseIdent();
+        var buf: std.ArrayList(u8) = .empty;
+        try buf.appendSlice(self.allocator, first.name);
+        var span = first.span;
+        while (self.peekKind() == .dot) {
+            _ = self.advance();
+            const next = try self.parseIdent();
+            try buf.append(self.allocator, '.');
+            try buf.appendSlice(self.allocator, next.name);
+            span.len = @intCast((next.span.start + next.span.len) - span.start);
+            span.end = next.span.end;
+        }
+        return .{ .path = try buf.toOwnedSlice(self.allocator), .span = span };
+    }
+
     fn parseHost(self: *Parser) !ast.Host {
         const kw = try self.expect(.keyword_host);
         const name = try self.parseIdent();
@@ -400,30 +416,25 @@ pub const Parser = struct {
                     try stmts.append(self.allocator, .{ .package = pkg });
                 },
                 .ident => {
-                    // packages = [...] or setting
-                    const ident_tok = self.peek();
-                    // lookahead for =
-                    if (self.pos + 1 < self.tokens.len and self.tokens[self.pos + 1].kind == .equal) {
-                        _ = self.advance();
+                    const path_info = try self.parseDottedPath();
+                    if (self.peekKind() == .equal) {
                         _ = self.advance(); // =
-                        if (std.mem.eql(u8, ident_tok.lexeme, "packages")) {
+                        if (std.mem.eql(u8, path_info.path, "packages")) {
                             const list = try self.parseStringList();
                             _ = try self.expect(.semicolon);
                             try stmts.append(self.allocator, .{ .packages_assign = list });
                         } else {
-                            // generic setting with value
                             const val = try self.parseValue();
                             _ = try self.expect(.semicolon);
-                            const path = try self.dup(ident_tok.lexeme);
-                            try stmts.append(self.allocator, .{ .setting = .{ .path = path, .value = val, .span = ident_tok.span } });
+                            const path = try self.dup(path_info.path);
+                            try stmts.append(self.allocator, .{ .setting = .{ .path = path, .value = val, .span = path_info.span } });
                         }
                     } else {
-                        const t = self.advance();
                         try self.diag.push(.{
                             .severity = .err,
                             .code = .parse_error,
-                            .message = try std.fmt.allocPrint(self.allocator, "unexpected `{s}` in host", .{t.lexeme}),
-                            .span = t.span,
+                            .message = try std.fmt.allocPrint(self.allocator, "unexpected `{s}` in host, expected `=`", .{path_info.path}),
+                            .span = path_info.span,
                             .help = null,
                         });
                         return error.ParseError;
@@ -582,9 +593,8 @@ pub const Parser = struct {
                         _ = self.advance();
                         _ = try self.expect(.l_brace);
                         while (self.peekKind() != .r_brace and !self.isAtEnd()) {
-                            // flags block: setting `path = value;`
-                            const path_tok = self.peek();
-                            if (path_tok.kind != .ident and !isKeywordIdent(path_tok.kind)) {
+                            // flags block: setting `path = value;` with dotted path
+                            const path_info = self.parseDottedPath() catch {
                                 const tt = self.advance();
                                 try self.diag.push(.{
                                     .severity = .err,
@@ -596,13 +606,12 @@ pub const Parser = struct {
                                 while (!self.isAtEnd() and self.peekKind() != .semicolon and self.peekKind() != .r_brace) _ = self.advance();
                                 _ = self.consumeIf(.semicolon);
                                 continue;
-                            }
-                            _ = self.advance();
+                            };
                             _ = try self.expect(.equal);
                             const val = try self.parseValue();
                             _ = try self.expect(.semicolon);
-                            const path = try self.dup(path_tok.lexeme);
-                            try flags.append(self.allocator, .{ .path = path, .value = val, .span = path_tok.span });
+                            const path = try self.dup(path_info.path);
+                            try flags.append(self.allocator, .{ .path = path, .value = val, .span = path_info.span });
                         }
                         _ = try self.expect(.r_brace);
                     } else {
