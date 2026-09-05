@@ -171,6 +171,7 @@ pub const Resolver = struct {
                         try new_decls.append(arena_alloc, decl);
                     }
                 },
+                .let_decl => try new_decls.append(arena_alloc, decl),
                 else => try new_decls.append(arena_alloc, decl),
             }
         }
@@ -296,6 +297,7 @@ pub const Resolver = struct {
                     try merged.append(arena_alloc, stmt);
                     try setting_map.put(s.path, idx);
                 },
+                .let_decl => try merged.append(arena_alloc, stmt),
                 else => try merged.append(arena_alloc, stmt),
             }
         }
@@ -346,6 +348,7 @@ pub const Resolver = struct {
                         try merged.append(arena_alloc, stmt);
                     }
                 },
+                .let_decl => try merged.append(arena_alloc, stmt),
                 else => try merged.append(arena_alloc, stmt),
             }
         }

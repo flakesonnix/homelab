@@ -30,6 +30,13 @@ pub fn format(program: *const ast.Program, allocator: std.mem.Allocator) ![]cons
                 if (n.content.len == 0 or n.content[n.content.len - 1] != '\n') try buf.appendSlice(allocator, "\n");
                 try buf.appendSlice(allocator, "}\n");
             },
+            .let_decl => |l| {
+                try buf.appendSlice(allocator, "let ");
+                try buf.appendSlice(allocator, l.name.name);
+                try buf.appendSlice(allocator, " = ");
+                try formatExpr(&buf, allocator, l.value);
+                try buf.appendSlice(allocator, ";\n");
+            },
         }
         if (idx + 1 < program.decls.len) try buf.appendSlice(allocator, "\n");
     }
@@ -154,7 +161,7 @@ fn formatHost(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, h: ast.Host
             .setting => |s| {
                 if (std.mem.eql(u8, s.path, "nix_raw")) {
                     try buf.appendSlice(allocator, "    nix {");
-                    switch (s.value) {
+                    switch (s.value.data) {
                         .string => |raw| {
                             if (raw.len > 0 and raw[0] != '\n') try buf.appendSlice(allocator, "\n");
                             try buf.appendSlice(allocator, raw);
@@ -162,7 +169,7 @@ fn formatHost(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, h: ast.Host
                         },
                         else => {
                             try buf.appendSlice(allocator, " ");
-                            try formatValue(buf, allocator, s.value);
+                            try formatExpr(buf, allocator, s.value);
                             try buf.appendSlice(allocator, " ");
                         },
                     }
@@ -171,9 +178,16 @@ fn formatHost(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, h: ast.Host
                     try buf.appendSlice(allocator, "    ");
                     try buf.appendSlice(allocator, s.path);
                     try buf.appendSlice(allocator, " = ");
-                    try formatValue(buf, allocator, s.value);
+                    try formatExpr(buf, allocator, s.value);
                     try buf.appendSlice(allocator, ";\n");
                 }
+            },
+            .let_decl => |l| {
+                try buf.appendSlice(allocator, "    let ");
+                try buf.appendSlice(allocator, l.name.name);
+                try buf.appendSlice(allocator, " = ");
+                try formatExpr(buf, allocator, l.value);
+                try buf.appendSlice(allocator, ";\n");
             },
         }
     }
@@ -227,7 +241,7 @@ fn formatPreset(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, p: ast.Pr
             try buf.appendSlice(allocator, "        ");
             try buf.appendSlice(allocator, f.path);
             try buf.appendSlice(allocator, " = ");
-            try formatValue(buf, allocator, f.value);
+            try formatExpr(buf, allocator, f.value);
             try buf.appendSlice(allocator, ";\n");
         }
         try buf.appendSlice(allocator, "    }\n");
@@ -256,6 +270,64 @@ fn formatValue(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, v: ast.Val
                 try formatValue(buf, allocator, item);
             }
             try buf.appendSlice(allocator, "]");
+        },
+    }
+}
+
+fn formatExpr(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, e: ast.Expr) !void {
+    switch (e.data) {
+        .string => |s| {
+            try buf.appendSlice(allocator, "\"");
+            try escapeString(buf, allocator, s);
+            try buf.appendSlice(allocator, "\"");
+        },
+        .integer => |i| {
+            const s = try std.fmt.allocPrint(allocator, "{d}", .{i});
+            defer allocator.free(s);
+            try buf.appendSlice(allocator, s);
+        },
+        .boolean => |b| try buf.appendSlice(allocator, if (b) "true" else "false"),
+        .ident => |id| try buf.appendSlice(allocator, id.name),
+        .list => |lst| {
+            try buf.appendSlice(allocator, "[");
+            for (lst, 0..) |item, idx| {
+                if (idx > 0) try buf.appendSlice(allocator, ", ");
+                try formatExpr(buf, allocator, item);
+            }
+            try buf.appendSlice(allocator, "]");
+        },
+        .binary => |b| {
+            try formatExpr(buf, allocator, b.lhs.*);
+            try buf.appendSlice(allocator, " ");
+            try buf.appendSlice(allocator, switch (b.op) {
+                .add => "+",
+                .sub => "-",
+                .mul => "*",
+                .div => "/",
+                .mod => "%",
+                .eq => "==",
+                .neq => "!=",
+                .logical_and => "&&",
+                .logical_or => "||",
+                .lt => "<",
+                .gt => ">",
+                .lte => "<=",
+                .gte => ">=",
+            });
+            try buf.appendSlice(allocator, " ");
+            try formatExpr(buf, allocator, b.rhs.*);
+        },
+        .unary => |u| {
+            try buf.appendSlice(allocator, switch (u.op) {
+                .not => "!",
+                .neg => "-",
+            });
+            try formatExpr(buf, allocator, u.expr.*);
+        },
+        .paren => |p| {
+            try buf.appendSlice(allocator, "(");
+            try formatExpr(buf, allocator, p.*);
+            try buf.appendSlice(allocator, ")");
         },
     }
 }

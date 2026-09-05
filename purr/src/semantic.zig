@@ -88,6 +88,7 @@ pub const Semantic = struct {
                         try preset_names.put(p.name.name, p.name.span);
                     }
                 },
+                .let_decl => {},
                 else => {},
             }
         }
@@ -95,6 +96,7 @@ pub const Semantic = struct {
         // second pass: validate references
         for (self.program.decls) |decl| {
             switch (decl) {
+                .let_decl => {},
                 .role => |r| {
                     // validate presets in role.host block
                     if (r.host) |hb| {
@@ -160,6 +162,7 @@ pub const Semantic = struct {
                 .host => |h| {
                     for (h.stmts) |stmt| {
                         switch (stmt) {
+                            .let_decl => {},
                             .use_role => |ident| {
                                 const in_declared = role_names.contains(ident.name);
                                 var in_known = false;
