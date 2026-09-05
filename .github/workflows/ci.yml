@@ -69,6 +69,21 @@ jobs:
       - run: nix eval .#nixosConfigurations.x270.config.system.build.toplevel.outPath --raw
         name: Evaluate NixOS config
 
+  purr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-nix
+      - uses: actions/cache@v4
+        with:
+          path: /nix/store
+          key: nix-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-keys: |
+            nix-store-${{ runner.os }}-
+      - run: nix develop ./purr -c zig build test
+        name: Purr tests (23)
+
   nixfleet:
     runs-on: ubuntu-latest
     timeout-minutes: 10
