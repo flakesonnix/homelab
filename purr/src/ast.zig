@@ -15,6 +15,43 @@ pub const Value = union(enum) {
     ident: Ident,
 };
 
+pub const Expr = struct {
+    span: Span,
+    data: Data,
+    pub const Data = union(enum) {
+        string: []const u8,
+        integer: i64,
+        boolean: bool,
+        ident: Ident,
+        list: []Expr,
+        binary: Binary,
+        unary: Unary,
+        paren: *Expr,
+    };
+};
+
+pub const BinaryOp = enum { add, sub, mul, div, mod, eq, neq, logical_and, logical_or, lt, gt, lte, gte };
+pub const UnaryOp = enum { not, neg };
+
+pub const Binary = struct {
+    op: BinaryOp,
+    lhs: *Expr,
+    rhs: *Expr,
+    span: Span,
+};
+
+pub const Unary = struct {
+    op: UnaryOp,
+    expr: *Expr,
+    span: Span,
+};
+
+pub const Let = struct {
+    name: Ident,
+    value: Expr,
+    span: Span,
+};
+
 pub const Import = struct {
     path: []const u8,
     span: Span,
@@ -59,11 +96,12 @@ pub const HostStmt = union(enum) {
     package: []const u8,
     packages_assign: [][]const u8,
     setting: Setting,
+    let_decl: Let,
 };
 
 pub const Setting = struct {
     path: []const u8, // dotted path e.g. "services.printing.enable"
-    value: Value,
+    value: Expr,
     span: Span,
 };
 
@@ -101,6 +139,7 @@ pub const Decl = union(enum) {
     preset: Preset,
     package_decl: Package,
     nix: NixBlock,
+    let_decl: Let,
 };
 
 pub const Package = struct {
