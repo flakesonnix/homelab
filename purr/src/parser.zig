@@ -378,7 +378,7 @@ pub const Parser = struct {
             const next = try self.parseIdent();
             try buf.append(self.allocator, '.');
             try buf.appendSlice(self.allocator, next.name);
-            span.len = @intCast((next.span.start + next.span.len) - span.start);
+            span.len = @as(u32, @intCast((next.span.start + next.span.len) - span.start));
             span.end = next.span.end;
         }
         return .{ .path = try buf.toOwnedSlice(self.allocator), .span = span };
@@ -442,7 +442,7 @@ pub const Parser = struct {
                 },
                 .keyword_nix => {
                     const nix_block = try self.parseNix();
-                    try stmts.append(self.allocator, .{ .setting = .{ .path = "nix_raw", .value = .{ .string = nix_block.content }, .span = nix_block.span } });
+                    try stmts.append(self.allocator, .{ .setting = .{ .path = "nix_raw", .value = .{ .span = nix_block.span, .data = .{ .string = nix_block.content } }, .span = nix_block.span } });
                 },
                 else => {
                     const t = self.advance();
@@ -461,35 +461,78 @@ pub const Parser = struct {
         return .{ .name = name, .extends = extends, .stmts = try stmts.toOwnedSlice(self.allocator), .span = kw.span };
     }
 
-    fn parseValue(self: *Parser) anyerror!ast.Value {
+    fn parseValue(self: *Parser) anyerror!ast.Expr {
+        return self.parseExpr(0);
+    }
+
+    fn parseExpr(self: *Parser, min_prec: u8) anyerror!ast.Expr {
+        var lhs = try self.parsePrimary();
+        while (true) {
+            const op_prec = self.getPrecedence(self.peekKind());
+            if (op_prec == null or op_prec.? < min_prec) break;
+            const op_token = self.advance();
+            const op = self.tokenToBinaryOp(op_token.kind) orelse break;
+            const next_min = op_prec.? + 1;
+            const rhs = try self.parseExpr(next_min);
+            const span: Span = .{ .file = lhs.span.file, .line = lhs.span.line, .col = lhs.span.col, .len = @as(u32, @intCast((rhs.span.end - lhs.span.start))), .start = lhs.span.start, .end = rhs.span.end };
+            const lhs_ptr = try self.allocator.create(ast.Expr);
+            lhs_ptr.* = lhs;
+            const rhs_ptr = try self.allocator.create(ast.Expr);
+            rhs_ptr.* = rhs;
+            lhs = .{ .span = span, .data = .{ .binary = .{ .op = op, .lhs = lhs_ptr, .rhs = rhs_ptr, .span = span } } };
+        }
+        return lhs;
+    }
+
+    fn parsePrimary(self: *Parser) anyerror!ast.Expr {
         const t = self.peek();
         switch (t.kind) {
             .string_lit => {
                 _ = self.advance();
                 const s = try self.unquote(t.lexeme);
-                return .{ .string = s };
+                return .{ .span = t.span, .data = .{ .string = s } };
             },
             .integer => {
                 _ = self.advance();
                 const v = try std.fmt.parseInt(i64, t.lexeme, 10);
-                return .{ .integer = v };
+                return .{ .span = t.span, .data = .{ .integer = v } };
             },
             .keyword_true => {
                 _ = self.advance();
-                return .{ .boolean = true };
+                return .{ .span = t.span, .data = .{ .boolean = true } };
             },
             .keyword_false => {
                 _ = self.advance();
-                return .{ .boolean = false };
+                return .{ .span = t.span, .data = .{ .boolean = false } };
             },
             .l_bracket => {
-                const list = try self.parseValueList();
-                return .{ .list = list };
+                const list = try self.parseExprList();
+                return .{ .span = t.span, .data = .{ .list = list } };
+            },
+            .l_paren => {
+                const l_span = t.span;
+                _ = self.advance();
+                const expr = try self.parseExpr(0);
+                _ = try self.expect(.r_paren);
+                const r_span = self.tokens[self.pos - 1].span;
+                const span: Span = .{ .file = l_span.file, .line = l_span.line, .col = l_span.col, .len = @as(u32, @intCast((r_span.end - l_span.start))), .start = l_span.start, .end = r_span.end };
+                const ptr = try self.allocator.create(ast.Expr);
+                ptr.* = expr;
+                return .{ .span = span, .data = .{ .paren = ptr } };
             },
             .ident => {
                 _ = self.advance();
                 const id = ast.Ident{ .name = try self.dup(t.lexeme), .span = t.span };
-                return .{ .ident = id };
+                return .{ .span = t.span, .data = .{ .ident = id } };
+            },
+            .bang, .minus => {
+                const op_tok = self.advance();
+                const op: ast.UnaryOp = if (op_tok.kind == .bang) .not else .neg;
+                const expr = try self.parsePrimary();
+                const span: Span = .{ .file = op_tok.span.file, .line = op_tok.span.line, .col = op_tok.span.col, .len = @as(u32, @intCast((expr.span.end - op_tok.span.start))), .start = op_tok.span.start, .end = expr.span.end };
+                const ptr = try self.allocator.create(ast.Expr);
+                ptr.* = expr;
+                return .{ .span = span, .data = .{ .unary = .{ .op = op, .expr = ptr, .span = span } } };
             },
             else => {
                 try self.diag.push(.{
@@ -504,12 +547,64 @@ pub const Parser = struct {
         }
     }
 
+    fn getPrecedence(self: *Parser, kind: lexer.TokenKind) ?u8 {
+        _ = self;
+        return switch (kind) {
+            .pipe_pipe => 1,
+            .amp_amp => 2,
+            .equal_equal, .bang_equal => 3,
+            .lt, .gt, .lte, .gte => 4,
+            .plus, .minus => 5,
+            .star, .slash, .percent => 6,
+            else => null,
+        };
+    }
+
+    fn tokenToBinaryOp(self: *Parser, kind: lexer.TokenKind) ?ast.BinaryOp {
+        _ = self;
+        return switch (kind) {
+            .plus => .add,
+            .minus => .sub,
+            .star => .mul,
+            .slash => .div,
+            .percent => .mod,
+            .equal_equal => .eq,
+            .bang_equal => .neq,
+            .amp_amp => .logical_and,
+            .pipe_pipe => .logical_or,
+            .lt => .lt,
+            .gt => .gt,
+            .lte => .lte,
+            .gte => .gte,
+            else => null,
+        };
+    }
+
+    fn parseExprList(self: *Parser) anyerror![]ast.Expr {
+        _ = try self.expect(.l_bracket);
+        var list: std.ArrayList(ast.Expr) = .empty;
+        while (self.peekKind() != .r_bracket and !self.isAtEnd()) {
+            const v = try self.parseExpr(0);
+            try list.append(self.allocator, v);
+            _ = self.consumeIf(.comma);
+        }
+        _ = try self.expect(.r_bracket);
+        return try list.toOwnedSlice(self.allocator);
+    }
+
     fn parseValueList(self: *Parser) anyerror![]ast.Value {
         _ = try self.expect(.l_bracket);
         var list: std.ArrayList(ast.Value) = .empty;
         while (self.peekKind() != .r_bracket and !self.isAtEnd()) {
             const v = try self.parseValue();
-            try list.append(self.allocator, v);
+            const val: ast.Value = switch (v.data) {
+                .string => |s| .{ .string = s },
+                .integer => |i| .{ .integer = i },
+                .boolean => |b| .{ .boolean = b },
+                .ident => |id| .{ .ident = id },
+                else => .{ .string = "" }, // fallback for binary etc.
+            };
+            try list.append(self.allocator, val);
             _ = self.consumeIf(.comma);
         }
         _ = try self.expect(.r_bracket);
