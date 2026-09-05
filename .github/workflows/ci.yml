@@ -1,5 +1,9 @@
 name: CI
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches:
@@ -9,9 +13,16 @@ on:
 jobs:
   check-light:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-nix
+      - uses: actions/cache@v4
+        with:
+          path: /nix/store
+          key: nix-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-keys: |
+            nix-store-${{ runner.os }}-
       - run: nix eval .#formatter.x86_64-linux.drvPath --raw
         name: Evaluate formatter output
       - run: nix eval .#devShells.x86_64-linux.default.drvPath --raw
@@ -21,6 +32,7 @@ jobs:
 
   check-full:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: jlumbroso/free-disk-space@main
@@ -33,22 +45,42 @@ jobs:
           docker-images: true
           swap-storage: false
       - uses: ./.github/actions/setup-nix
+      - uses: actions/cache@v4
+        with:
+          path: /nix/store
+          key: nix-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-keys: |
+            nix-store-${{ runner.os }}-
       - run: nix build .#full-ci-checks --fallback
         name: Run full CI checks
 
   eval:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-nix
+      - uses: actions/cache@v4
+        with:
+          path: /nix/store
+          key: nix-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-keys: |
+            nix-store-${{ runner.os }}-
       - run: nix eval .#nixosConfigurations.x270.config.system.build.toplevel.outPath --raw
         name: Evaluate NixOS config
 
   nixfleet:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-nix
+      - uses: actions/cache@v4
+        with:
+          path: /nix/store
+          key: nix-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-keys: |
+            nix-store-${{ runner.os }}-
       - run: nix build .#checks.x86_64-linux.nixfleet-tests --fallback
         name: Build and test Go code
       - run: nix build .#nixfleet-web --fallback
