@@ -30,3 +30,4 @@ CLAUDE.md
 purr/.zig-cache/
 purr/zig-out/
 purr/zig-cache/
+purr/flake.lock
