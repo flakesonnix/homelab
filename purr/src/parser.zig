@@ -103,7 +103,7 @@ pub const Parser = struct {
                     const imp = try self.parseImport();
                     try imports.append(self.allocator, imp);
                 },
-                .keyword_role, .keyword_host, .keyword_bundle, .keyword_preset, .keyword_package, .keyword_nix => {
+                .keyword_let, .keyword_role, .keyword_host, .keyword_bundle, .keyword_preset, .keyword_package, .keyword_nix => {
                     const decl = try self.parseDecl();
                     try decls.append(self.allocator, decl);
                 },
@@ -139,6 +139,15 @@ pub const Parser = struct {
         return .{ .path = path, .span = kw.span };
     }
 
+    fn parseLet(self: *Parser) !ast.Let {
+        const kw = try self.expect(.keyword_let);
+        const name = try self.parseIdent();
+        _ = try self.expect(.equal);
+        const value = try self.parseExpr(0);
+        _ = try self.expect(.semicolon);
+        return .{ .name = name, .value = value, .span = kw.span };
+    }
+
     fn parseDecl(self: *Parser) !ast.Decl {
         switch (self.peekKind()) {
             .keyword_role => return .{ .role = try self.parseRole() },
@@ -150,6 +159,7 @@ pub const Parser = struct {
                 return .{ .package_decl = pkg };
             },
             .keyword_nix => return .{ .nix = try self.parseNix() },
+            .keyword_let => return .{ .let_decl = try self.parseLet() },
             else => unreachable,
         }
     }
@@ -396,6 +406,10 @@ pub const Parser = struct {
         var stmts: std.ArrayList(ast.HostStmt) = .empty;
         while (self.peekKind() != .r_brace and !self.isAtEnd()) {
             switch (self.peekKind()) {
+                .keyword_let => {
+                    const l = try self.parseLet();
+                    try stmts.append(self.allocator, .{ .let_decl = l });
+                },
                 .keyword_use => {
                     _ = self.advance();
                     const id = try self.parseIdent();
@@ -420,11 +434,36 @@ pub const Parser = struct {
                     if (self.peekKind() == .equal) {
                         _ = self.advance(); // =
                         if (std.mem.eql(u8, path_info.path, "packages")) {
-                            const list = try self.parseStringList();
+                            // packages can be list or ident (for let)
+                            const expr = try self.parseExpr(0);
                             _ = try self.expect(.semicolon);
-                            try stmts.append(self.allocator, .{ .packages_assign = list });
+                            // If expr is ident, treat as single-element packages_assign for now
+                            // otherwise expect list
+                            if (expr.data == .ident) {
+                                const ident_name = expr.data.ident.name;
+                                // Need to handle single ident as packages_assign with one element
+                                // But for now, treat as packages_assign with the ident's string
+                                var list: std.ArrayList([]const u8) = .empty;
+                                try list.append(self.allocator, try self.allocator.dupe(u8, ident_name));
+                                try stmts.append(self.allocator, .{ .packages_assign = try list.toOwnedSlice(self.allocator) });
+                            } else if (expr.data == .list) {
+                                // Convert Expr list to []const u8 for packages_assign (only string/ident)
+                                var list: std.ArrayList([]const u8) = .empty;
+                                for (expr.data.list) |item| {
+                                    switch (item.data) {
+                                        .string => |s| try list.append(self.allocator, try self.allocator.dupe(u8, s)),
+                                        .ident => |id| try list.append(self.allocator, try self.allocator.dupe(u8, id.name)),
+                                        else => {},
+                                    }
+                                }
+                                try stmts.append(self.allocator, .{ .packages_assign = try list.toOwnedSlice(self.allocator) });
+                            } else {
+                                // For other expr types (binary etc.), treat as setting with packages path
+                                const path = try self.dup(path_info.path);
+                                try stmts.append(self.allocator, .{ .setting = .{ .path = path, .value = expr, .span = path_info.span } });
+                            }
                         } else {
-                            const val = try self.parseValue();
+                            const val = try self.parseExpr(0);
                             _ = try self.expect(.semicolon);
                             const path = try self.dup(path_info.path);
                             try stmts.append(self.allocator, .{ .setting = .{ .path = path, .value = val, .span = path_info.span } });

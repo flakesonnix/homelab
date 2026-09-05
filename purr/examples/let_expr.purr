@@ -1,0 +1,6 @@
+let base = "x270";
+
+host x270 {
+    packages = ["git", "helix"];
+    gaming.enable = base == "x270";
+}
