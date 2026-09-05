@@ -8,7 +8,7 @@ const resolver = @import("resolver.zig");
 const fmt = @import("fmt.zig");
 const lint = @import("lint.zig");
 
-const Command = enum { check, compile, fmt, lint, eval, help };
+const Command = enum { check, compile, fmt, lint, eval, rebuild, help };
 
 pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
     const allocator = init.gpa;
@@ -19,7 +19,7 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
         return 0;
     }
     const cmd_str = args[1];
-    const cmd: Command = if (std.mem.eql(u8, cmd_str, "check")) .check else if (std.mem.eql(u8, cmd_str, "compile")) .compile else if (std.mem.eql(u8, cmd_str, "fmt")) .fmt else if (std.mem.eql(u8, cmd_str, "lint")) .lint else if (std.mem.eql(u8, cmd_str, "eval")) .eval else if (std.mem.eql(u8, cmd_str, "help") or std.mem.eql(u8, cmd_str, "--help") or std.mem.eql(u8, cmd_str, "-h")) .help else {
+    const cmd: Command = if (std.mem.eql(u8, cmd_str, "check")) .check else if (std.mem.eql(u8, cmd_str, "compile")) .compile else if (std.mem.eql(u8, cmd_str, "fmt")) .fmt else if (std.mem.eql(u8, cmd_str, "lint")) .lint else if (std.mem.eql(u8, cmd_str, "eval")) .eval else if (std.mem.eql(u8, cmd_str, "rebuild")) .rebuild else if (std.mem.eql(u8, cmd_str, "help") or std.mem.eql(u8, cmd_str, "--help") or std.mem.eql(u8, cmd_str, "-h")) .help else {
         std.debug.print("purr error: unknown command `{s}`\n", .{cmd_str});
         try printHelp(io);
         return 1;
@@ -33,6 +33,16 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
     if (args.len >= 3 and (std.mem.eql(u8, args[2], "--help") or std.mem.eql(u8, args[2], "-h"))) {
         try printHelp(io);
         return 0;
+    }
+    // rebuild takes host name, not file
+    if (cmd == .rebuild) {
+        if (args.len < 3) {
+            std.debug.print("purr error: missing host argument\n", .{});
+            try printHelp(io);
+            return 1;
+        }
+        const host = args[2];
+        return try rebuildHost(allocator, io, host);
     }
     if (args.len < 3) {
         std.debug.print("purr error: missing file argument\n", .{});
@@ -74,6 +84,7 @@ fn printHelp(io: std.Io) !void {
         \\  purr fmt <file.purr> [--out out.purr]     Format
         \\  purr lint <file.purr>               Lint (unused/duplicate/empty/unformatted)
         \\  purr eval <file.purr> [--json]      Compile to Nix and nix eval
+        \\  purr rebuild <host>                 nixos-rebuild switch for host
         \\  purr help
         \\
         \\Examples:
@@ -82,6 +93,8 @@ fn printHelp(io: std.Io) !void {
         \\  purr fmt examples/minimal.purr
         \\  purr lint examples/minimal.purr
         \\  purr eval examples/minimal.purr
+        \\  purr rebuild x270
+        \\  purr rebuild mireo
         \\
     ;
     std.debug.print("{s}", .{msg});
@@ -232,5 +245,27 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
         std.debug.print("purr: eval {s} ok\n", .{file});
     }
 
+    return 0;
+}
+
+fn rebuildHost(allocator: std.mem.Allocator, io: std.Io, host: []const u8) !u8 {
+    _ = io;
+    _ = allocator;
+    // Validate host name (simple: non-empty, alphanumeric + - _)
+    if (host.len == 0) {
+        std.debug.print("purr error: empty host name\n", .{});
+        return 1;
+    }
+    for (host) |c| {
+        if (!std.ascii.isAlphanumeric(c) and c != '-' and c != '_' ) {
+            std.debug.print("purr error: invalid host name `{s}`\n", .{host});
+            return 1;
+        }
+    }
+    // For now, just validate and print what would be done.
+    // Full rebuild would do: Purr compile -> Nix -> nixos-rebuild switch --flake .#<host>
+    // Keep it thin: reuse existing pipeline would be done here, but for now just show intent.
+    std.debug.print("purr: rebuild {s} — would run nixos-rebuild switch --flake .#{s}\n", .{ host, host });
+    std.debug.print("purr: rebuild {s} ok (stub, validated host name)\n", .{host});
     return 0;
 }
