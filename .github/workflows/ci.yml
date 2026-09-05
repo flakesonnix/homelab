@@ -81,7 +81,7 @@ jobs:
           key: nix-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}
           restore-keys: |
             nix-store-${{ runner.os }}-
-      - run: nix develop ./purr -c zig build test
+      - run: nix build ./purr#checks.x86_64-linux.purr-tests --fallback
         name: Purr tests (23)
 
   nixfleet:
