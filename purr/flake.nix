@@ -30,6 +30,20 @@
       purr = purr;
     };
 
+    apps.${system} = rec {
+      default = purr;
+      purr = {
+        type = "app";
+        program = "${self.packages.${system}.default}/bin/purr";
+        meta.description = "Purr compiler — check/compile/fmt/lint";
+      };
+      purrc = {
+        type = "app";
+        program = "${self.packages.${system}.default}/bin/purrc";
+        meta.description = "Purr compiler (purrc alias)";
+      };
+    };
+
     devShells.${system}.default = pkgs.mkShell {
       packages = with pkgs; [
         zig
@@ -37,6 +51,7 @@
       ];
       shellHook = ''
         echo "purr devShell — zig $(zig version) — run 'zig build' / 'zig build test'"
+        echo "try: nix run ./purr -- check examples/minimal.purr"
       '';
     };
 
