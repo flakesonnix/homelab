@@ -72,7 +72,7 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
                     try buf.appendSlice(allocator, "    ");
                     try buf.appendSlice(allocator, f.path);
                     try buf.appendSlice(allocator, " = ");
-                    try writeValueBuf(&buf, allocator, f.value);
+                    try writeExprBuf(&buf, allocator, f.value);
                     try buf.appendSlice(allocator, ";\n");
                 }
             },
@@ -85,6 +85,13 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
                 try buf.appendSlice(allocator, "    # nix escape hatch\n");
                 try buf.appendSlice(allocator, n.content);
                 try buf.appendSlice(allocator, "\n");
+            },
+            .let_decl => |l| {
+                try buf.appendSlice(allocator, "    # let ");
+                try buf.appendSlice(allocator, l.name.name);
+                try buf.appendSlice(allocator, " = ");
+                try writeExprBuf(&buf, allocator, l.value);
+                try buf.appendSlice(allocator, ";\n");
             },
         }
     }
@@ -153,9 +160,9 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
                     if (std.mem.eql(u8, s.path, "nix_raw")) {
                         // raw nix escape inside host
                         try buf.appendSlice(allocator, "    # nix raw inside host\n");
-                        switch (s.value) {
+                        switch (s.value.data) {
                             .string => |raw| try buf.appendSlice(allocator, raw),
-                            else => try writeValueBuf(&buf, allocator, s.value),
+                            else => try writeExprBuf(&buf, allocator, s.value),
                         }
                         try buf.appendSlice(allocator, "\n");
                     } else {
@@ -165,9 +172,16 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
                         try buf.appendSlice(allocator, "    ");
                         try buf.appendSlice(allocator, s.path);
                         try buf.appendSlice(allocator, " = ");
-                        try writeValueBuf(&buf, allocator, s.value);
+                        try writeExprBuf(&buf, allocator, s.value);
                         try buf.appendSlice(allocator, ";\n");
                     }
+                },
+                .let_decl => |l| {
+                    try buf.appendSlice(allocator, "    # let ");
+                    try buf.appendSlice(allocator, l.name.name);
+                    try buf.appendSlice(allocator, " = ");
+                    try writeExprBuf(&buf, allocator, l.value);
+                    try buf.appendSlice(allocator, ";\n");
                 },
             }
         }
@@ -212,6 +226,73 @@ fn writeValueBuf(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, v: ast.V
                 try writeValueBuf(buf, allocator, item);
             }
             try buf.appendSlice(allocator, " ]");
+        },
+    }
+}
+
+fn writeExprBuf(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, e: ast.Expr) !void {
+    switch (e.data) {
+        .string => |s| {
+            try buf.appendSlice(allocator, "\"");
+            for (s) |c| {
+                switch (c) {
+                    '"' => try buf.appendSlice(allocator, "\\\""),
+                    '\\' => try buf.appendSlice(allocator, "\\\\"),
+                    '\n' => try buf.appendSlice(allocator, "\\n"),
+                    '\t' => try buf.appendSlice(allocator, "\\t"),
+                    '\r' => try buf.appendSlice(allocator, "\\r"),
+                    else => try buf.append(allocator, c),
+                }
+            }
+            try buf.appendSlice(allocator, "\"");
+        },
+        .integer => |i| {
+            const s = try std.fmt.allocPrint(allocator, "{d}", .{i});
+            defer allocator.free(s);
+            try buf.appendSlice(allocator, s);
+        },
+        .boolean => |b| try buf.appendSlice(allocator, if (b) "true" else "false"),
+        .ident => |id| try buf.appendSlice(allocator, id.name),
+        .list => |lst| {
+            try buf.appendSlice(allocator, "[");
+            for (lst, 0..) |item, idx| {
+                if (idx > 0) try buf.appendSlice(allocator, ", ");
+                try writeExprBuf(buf, allocator, item);
+            }
+            try buf.appendSlice(allocator, "]");
+        },
+        .binary => |b| {
+            try writeExprBuf(buf, allocator, b.lhs.*);
+            try buf.appendSlice(allocator, " ");
+            try buf.appendSlice(allocator, switch (b.op) {
+                .add => "+",
+                .sub => "-",
+                .mul => "*",
+                .div => "/",
+                .mod => "%",
+                .eq => "==",
+                .neq => "!=",
+                .logical_and => "&&",
+                .logical_or => "||",
+                .lt => "<",
+                .gt => ">",
+                .lte => "<=",
+                .gte => ">=",
+            });
+            try buf.appendSlice(allocator, " ");
+            try writeExprBuf(buf, allocator, b.rhs.*);
+        },
+        .unary => |u| {
+            try buf.appendSlice(allocator, switch (u.op) {
+                .not => "!",
+                .neg => "-",
+            });
+            try writeExprBuf(buf, allocator, u.expr.*);
+        },
+        .paren => |p| {
+            try buf.appendSlice(allocator, "(");
+            try writeExprBuf(buf, allocator, p.*);
+            try buf.appendSlice(allocator, ")");
         },
     }
 }

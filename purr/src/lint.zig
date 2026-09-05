@@ -108,6 +108,7 @@ pub const Lint = struct {
                     .preset => |p| p.name.span.file,
                     .package_decl => |pkg| pkg.span.file,
                     .nix => |n| n.span.file,
+                    .let_decl => |l| l.name.span.file,
                 };
                 if (!std.mem.eql(u8, decl_file, joined)) continue;
                 defines_any = true;
@@ -116,6 +117,7 @@ pub const Lint = struct {
                     .role => |r| r.name.name,
                     .bundle => |b| b.name.name,
                     .preset => |p| p.name.name,
+                    .let_decl => |l| l.name.name,
                     else => null,
                 };
                 if (name) |n| {
@@ -192,6 +194,7 @@ pub const Lint = struct {
                         });
                     }
                 },
+                .let_decl => {},
                 else => {},
             }
         }
