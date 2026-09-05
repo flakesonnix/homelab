@@ -41,8 +41,17 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
             try printHelp(io);
             return 1;
         }
-        const host = args[2];
-        return try rebuildHost(allocator, io, host);
+        var host: ?[]const u8 = null;
+        var dry_run = false;
+        for (args[2..]) |a| {
+            if (std.mem.eql(u8, a, "--dry-run")) dry_run = true else if (host == null and a[0] != '-') host = a;
+        }
+        if (host == null) {
+            std.debug.print("purr error: missing host argument\n", .{});
+            try printHelp(io);
+            return 1;
+        }
+        return try rebuildHost(allocator, io, host.?, dry_run);
     }
     if (args.len < 3) {
         std.debug.print("purr error: missing file argument\n", .{});
@@ -248,9 +257,7 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
     return 0;
 }
 
-fn rebuildHost(allocator: std.mem.Allocator, io: std.Io, host: []const u8) !u8 {
-    _ = io;
-    _ = allocator;
+fn rebuildHost(allocator: std.mem.Allocator, io: std.Io, host: []const u8, dry_run: bool) !u8 {
     // Validate host name (simple: non-empty, alphanumeric + - _)
     if (host.len == 0) {
         std.debug.print("purr error: empty host name\n", .{});
@@ -262,10 +269,34 @@ fn rebuildHost(allocator: std.mem.Allocator, io: std.Io, host: []const u8) !u8 {
             return 1;
         }
     }
-    // For now, just validate and print what would be done.
-    // Full rebuild would do: Purr compile -> Nix -> nixos-rebuild switch --flake .#<host>
-    // Keep it thin: reuse existing pipeline would be done here, but for now just show intent.
-    std.debug.print("purr: rebuild {s} — would run nixos-rebuild switch --flake .#{s}\n", .{ host, host });
-    std.debug.print("purr: rebuild {s} ok (stub, validated host name)\n", .{host});
+    if (dry_run) {
+        std.debug.print("nixos-rebuild switch --flake .#{s}\n", .{host});
+        return 0;
+    }
+    std.debug.print("purr: rebuild {s} — running nixos-rebuild switch --flake .#{s}\n", .{ host, host });
+    const flake_ref = try std.fmt.allocPrint(allocator, ".#{s}", .{host});
+    defer allocator.free(flake_ref);
+    const argv = [_][]const u8{ "nixos-rebuild", "switch", "--flake", flake_ref };
+    const result = std.process.run(allocator, io, .{ .argv = &argv }) catch |err| {
+        std.debug.print("purr error: cannot spawn nixos-rebuild: {s}\n", .{@errorName(err)});
+        return 1;
+    };
+    defer allocator.free(result.stdout);
+    defer allocator.free(result.stderr);
+    if (result.stderr.len > 0) std.debug.print("{s}", .{result.stderr});
+    if (result.stdout.len > 0) std.debug.print("{s}\n", .{result.stdout});
+    switch (result.term) {
+        .exited => |code| {
+            if (code != 0) {
+                std.debug.print("purr: rebuild {s} failed with code {d}\n", .{ host, code });
+                return code;
+            }
+        },
+        else => {
+            std.debug.print("purr error: nixos-rebuild terminated abnormally\n", .{});
+            return 1;
+        },
+    }
+    std.debug.print("purr: rebuild {s} ok\n", .{host});
     return 0;
 }
