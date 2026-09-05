@@ -8,7 +8,7 @@ const resolver = @import("resolver.zig");
 const fmt = @import("fmt.zig");
 const lint = @import("lint.zig");
 
-const Command = enum { check, compile, fmt, lint, help };
+const Command = enum { check, compile, fmt, lint, eval, help };
 
 pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
     const allocator = init.gpa;
@@ -19,7 +19,7 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
         return 0;
     }
     const cmd_str = args[1];
-    const cmd: Command = if (std.mem.eql(u8, cmd_str, "check")) .check else if (std.mem.eql(u8, cmd_str, "compile")) .compile else if (std.mem.eql(u8, cmd_str, "fmt")) .fmt else if (std.mem.eql(u8, cmd_str, "lint")) .lint else if (std.mem.eql(u8, cmd_str, "help") or std.mem.eql(u8, cmd_str, "--help") or std.mem.eql(u8, cmd_str, "-h")) .help else {
+    const cmd: Command = if (std.mem.eql(u8, cmd_str, "check")) .check else if (std.mem.eql(u8, cmd_str, "compile")) .compile else if (std.mem.eql(u8, cmd_str, "fmt")) .fmt else if (std.mem.eql(u8, cmd_str, "lint")) .lint else if (std.mem.eql(u8, cmd_str, "eval")) .eval else if (std.mem.eql(u8, cmd_str, "help") or std.mem.eql(u8, cmd_str, "--help") or std.mem.eql(u8, cmd_str, "-h")) .help else {
         std.debug.print("purr error: unknown command `{s}`\n", .{cmd_str});
         try printHelp(io);
         return 1;
@@ -41,6 +41,7 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
     }
     const file = args[2];
     var out_path: ?[]const u8 = null;
+    var json_flag = false;
     if (cmd == .compile or cmd == .fmt) {
         for (args, 0..) |a, i| {
             if (std.mem.eql(u8, a, "--out") or std.mem.eql(u8, a, "-o")) {
@@ -48,8 +49,18 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
             }
         }
     }
+    if (cmd == .eval) {
+        for (args) |a| {
+            if (std.mem.eql(u8, a, "--json")) json_flag = true;
+        }
+        for (args, 0..) |a, i| {
+            if (std.mem.eql(u8, a, "--out") or std.mem.eql(u8, a, "-o")) {
+                if (i + 1 < args.len) out_path = args[i + 1];
+            }
+        }
+    }
 
-    return try processFile(allocator, io, file, cmd, out_path);
+    return try processFile(allocator, io, file, cmd, out_path, json_flag);
 }
 
 fn printHelp(io: std.Io) !void {
@@ -62,6 +73,7 @@ fn printHelp(io: std.Io) !void {
         \\  purr compile <file.purr> [--out out.nix]   Generate Nix
         \\  purr fmt <file.purr> [--out out.purr]     Format
         \\  purr lint <file.purr>               Lint (unused/duplicate/empty/unformatted)
+        \\  purr eval <file.purr> [--json]      Compile to Nix and nix eval
         \\  purr help
         \\
         \\Examples:
@@ -69,12 +81,13 @@ fn printHelp(io: std.Io) !void {
         \\  purr compile hosts/x270.purr --out generated.nix
         \\  purr fmt examples/minimal.purr
         \\  purr lint examples/minimal.purr
+        \\  purr eval examples/minimal.purr
         \\
     ;
     std.debug.print("{s}", .{msg});
 }
 
-fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: Command, out_path: ?[]const u8) !u8 {
+fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: Command, out_path: ?[]const u8, json_flag: bool) !u8 {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
     const arena_alloc = arena.allocator();
@@ -183,6 +196,40 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
                 std.debug.print("purr: fmt {s} — formatted output above (use --out to write)\n", .{file});
             }
         }
+    } else if (cmd == .eval) {
+        const nix_source = try nix.generate(&prog, allocator);
+        defer allocator.free(nix_source);
+        // Write to temp file and nix eval
+        const tmp_path = "/tmp/purr-eval.nix";
+        cwd.writeFile(io, .{ .sub_path = tmp_path, .data = nix_source }) catch |err| {
+            std.debug.print("purr error: cannot write temp {s}: {s}\n", .{ tmp_path, @errorName(err) });
+            return 1;
+        };
+        defer cwd.deleteFile(io, tmp_path) catch {};
+        std.debug.print("purr: eval {s} -> {s} ({d} bytes generated)\n", .{ file, tmp_path, nix_source.len });
+        std.debug.print("purr: running nix eval --file {s}{s}\n", .{ tmp_path, if (json_flag) " --json" else "" });
+        const argv = if (json_flag) &[_][]const u8{ "nix", "eval", "--file", tmp_path, "--json" } else &[_][]const u8{ "nix", "eval", "--file", tmp_path };
+        const result = std.process.run(allocator, io, .{ .argv = argv }) catch |err| {
+            std.debug.print("purr error: cannot run nix eval: {s}\n", .{@errorName(err)});
+            std.debug.print("generated Nix at {s}:\n{s}\n", .{ tmp_path, nix_source });
+            return 1;
+        };
+        defer allocator.free(result.stdout);
+        defer allocator.free(result.stderr);
+        if (result.stderr.len > 0) std.debug.print("{s}", .{result.stderr});
+        if (result.stdout.len > 0) std.debug.print("{s}\n", .{result.stdout});
+        switch (result.term) {
+            .exited => |code| if (code != 0) {
+                std.debug.print("purr error: nix eval failed with code {d}\n", .{code});
+                std.debug.print("generated Nix kept at {s} for debugging\n", .{tmp_path});
+                return 1;
+            },
+            else => {
+                std.debug.print("purr error: nix eval terminated abnormally\n", .{});
+                return 1;
+            },
+        }
+        std.debug.print("purr: eval {s} ok\n", .{file});
     }
 
     return 0;
