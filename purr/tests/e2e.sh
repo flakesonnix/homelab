@@ -69,4 +69,34 @@ import "a.purr";
 host h { use a; }
 EOP
 ./zig-out/bin/purr check /tmp/e2e_dup/main.purr && echo "duplicate import: ok (warning suppressed)" || (echo "duplicate import: fail" && exit 1)
+echo "=== check --json ==="
+./zig-out/bin/purr check examples/minimal.purr --json > /tmp/check_min.json
+cat /tmp/check_min.json | nix shell nixpkgs#jq -c jq -e '.ok == true and .diagnostics == []' > /dev/null && echo "check --json minimal: ok" || (echo "check --json minimal: fail" && cat /tmp/check_min.json && exit 1)
+# error case: unknown role -> E042, ok false, exit 1, stdout JSON, stderr empty
+if ./zig-out/bin/purr check tests/fixtures/unknown-role.purr --json > /tmp/check_unknown.json 2> /tmp/check_unknown.stderr; then echo "check --json unknown-role: wrong exit (expected 1)" && exit 1; fi
+cat /tmp/check_unknown.json | nix shell nixpkgs#jq -c jq -e '.ok == false and .diagnostics[0].code == "E042" and .diagnostics[0].codeName == "unknown_role"' > /dev/null && echo "check --json unknown-role: ok" || (echo "check --json unknown-role: fail" && cat /tmp/check_unknown.json && exit 1)
+test ! -s /tmp/check_unknown.stderr || (echo "check --json unknown-role: stderr not empty" && cat /tmp/check_unknown.stderr && exit 1)
+# duplicate host -> E010
+if ./zig-out/bin/purr check tests/fixtures/duplicate-host.purr --json > /tmp/check_dup.json 2> /tmp/check_dup.stderr; then echo "check --json duplicate: wrong exit (expected 1)" && exit 1; fi
+cat /tmp/check_dup.json | nix shell nixpkgs#jq -c jq -e '.ok == false and .diagnostics[0].code == "E010"' > /dev/null && echo "check --json duplicate: ok" || (echo "check --json duplicate: fail" && cat /tmp/check_dup.json && exit 1)
+# unknown ident -> E003
+cat > /tmp/check_unknown_ident.purr <<'EOP'
+host x270 { s = unknown; }
+EOP
+if ./zig-out/bin/purr check /tmp/check_unknown_ident.purr --json > /tmp/check_unknown_ident.json 2> /tmp/check_unknown_ident.stderr; then echo "check --json unknown_ident: wrong exit (expected 1)" && exit 1; fi
+cat /tmp/check_unknown_ident.json | nix shell nixpkgs#jq -c jq -e '.ok == false and .diagnostics[0].code == "E003"' > /dev/null && echo "check --json unknown_ident: ok" || (echo "check --json unknown_ident: fail" && cat /tmp/check_unknown_ident.json && exit 1)
+# unused let -> W004, ok true, exit 0, warning
+cat > /tmp/check_unused.purr <<'EOP'
+let unused = "x";
+
+host x270 {
+    s = "hello";
+}
+EOP
+./zig-out/bin/purr check /tmp/check_unused.purr --json > /tmp/check_unused.json 2> /tmp/check_unused.stderr; test $? -eq 0 || (echo "check --json unused: wrong exit" && exit 1)
+cat /tmp/check_unused.json | nix shell nixpkgs#jq -c jq -e '.ok == true and .diagnostics[0].code == "W004" and .diagnostics[0].codeName == "unused_let"' > /dev/null && echo "check --json unused_let: ok" || (echo "check --json unused_let: fail" && cat /tmp/check_unused.json && exit 1)
+test ! -s /tmp/check_unused.stderr || (echo "check --json unused: stderr not empty" && cat /tmp/check_unused.stderr && exit 1)
+# stdout exclusively JSON: ensure no extra "purr:" lines in stdout
+./zig-out/bin/purr check examples/minimal.purr --json > /tmp/check_stdout.json 2> /tmp/check_stdout.stderr
+cat /tmp/check_stdout.json | nix shell nixpkgs#jq -c jq -e 'has("file") and has("ok") and has("diagnostics")' > /dev/null && echo "check --json stdout exclusively JSON: ok" || (echo "check --json stdout not pure JSON" && cat /tmp/check_stdout.json && exit 1)
 echo "=== all E2E passed ==="
