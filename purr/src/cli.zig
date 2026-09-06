@@ -68,6 +68,11 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
             }
         }
     }
+    if (cmd == .check) {
+        for (args) |a| {
+            if (std.mem.eql(u8, a, "--json")) json_flag = true;
+        }
+    }
     if (cmd == .eval) {
         for (args) |a| {
             if (std.mem.eql(u8, a, "--json")) json_flag = true;
@@ -88,7 +93,7 @@ fn printHelp(io: std.Io) !void {
         \\purr — Lucy's Nix DSL compiler (Zig 0.16.0, purrc)
         \\
         \\Usage:
-        \\  purr check <file.purr>              Parse + semantic check
+        \\  purr check <file.purr> [--json]      Parse + semantic check
         \\  purr compile <file.purr> [--out out.nix]   Generate Nix
         \\  purr fmt <file.purr> [--out out.purr]     Format
         \\  purr lint <file.purr>               Lint (unused/duplicate/empty/unformatted)
@@ -98,6 +103,7 @@ fn printHelp(io: std.Io) !void {
         \\
         \\Examples:
         \\  purr check examples/minimal.purr
+        \\  purr check examples/minimal.purr --json
         \\  purr compile hosts/x270.purr --out generated.nix
         \\  purr fmt examples/minimal.purr
         \\  purr lint examples/minimal.purr
@@ -107,6 +113,10 @@ fn printHelp(io: std.Io) !void {
         \\
     ;
     std.debug.print("{s}", .{msg});
+}
+
+fn writeStdout(io: std.Io, bytes: []const u8) !void {
+    try std.Io.File.stdout().writeStreamingAll(io, bytes);
 }
 
 fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: Command, out_path: ?[]const u8, json_flag: bool) !u8 {
@@ -124,12 +134,28 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
     var diag = diagnostics.Diagnostics.init(arena_alloc, file, source);
     var lex = lexer.Lexer.init(source, file, &diag);
     const tokens = lex.lexAll(arena_alloc) catch |err| {
+        if (cmd == .check and json_flag) {
+            var aw: std.Io.Writer.Allocating = .init(allocator);
+            defer aw.deinit();
+            try diag.renderJson(&aw.writer);
+            try writeStdout(io, aw.written());
+            try writeStdout(io, "\n");
+            return 1;
+        }
         std.debug.print("lex error: {s}\n", .{@errorName(err)});
         return 1;
     };
 
     var p = parser.Parser.initWithSource(tokens, &diag, &arena, source);
     var prog = p.parseProgram() catch {
+        if (cmd == .check and json_flag) {
+            var aw: std.Io.Writer.Allocating = .init(allocator);
+            defer aw.deinit();
+            try diag.renderJson(&aw.writer);
+            try writeStdout(io, aw.written());
+            try writeStdout(io, "\n");
+            return 1;
+        }
         var aw: std.Io.Writer.Allocating = .init(allocator);
         defer aw.deinit();
         const writer = &aw.writer;
@@ -142,6 +168,14 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
     var res = resolver.Resolver.init(allocator, io, cwd, &diag, &arena);
     defer res.deinit();
     const resolved = res.resolve(file, &prog) catch |err| {
+        if (cmd == .check and json_flag) {
+            var aw: std.Io.Writer.Allocating = .init(allocator);
+            defer aw.deinit();
+            try diag.renderJson(&aw.writer);
+            try writeStdout(io, aw.written());
+            try writeStdout(io, "\n");
+            return 1;
+        }
         std.debug.print("purr error: resolver failed: {s}\n", .{@errorName(err)});
         var aw: std.Io.Writer.Allocating = .init(allocator);
         defer aw.deinit();
@@ -156,6 +190,11 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
     var sem = semantic.Semantic.init(&prog, &diag, arena_alloc);
     try sem.analyze();
 
+    if (cmd == .check and json_flag) {
+        var l = lint.Lint.init(&original_prog, &prog, source, file, &diag, arena_alloc);
+        try l.checkUnusedLets();
+    }
+
     // Lint checks (always run, even if hasErrors? but only emit warnings if no parse errors)
     if (cmd == .lint) {
         var l = lint.Lint.init(&original_prog, &prog, source, file, &diag, arena_alloc);
@@ -163,12 +202,29 @@ fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: 
     }
 
     if (diag.hasErrors()) {
+        if (cmd == .check and json_flag) {
+            var aw: std.Io.Writer.Allocating = .init(allocator);
+            defer aw.deinit();
+            try diag.renderJson(&aw.writer);
+            try writeStdout(io, aw.written());
+            try writeStdout(io, "\n");
+            return 1;
+        }
         var aw: std.Io.Writer.Allocating = .init(allocator);
         defer aw.deinit();
         const writer = &aw.writer;
         try diag.render(writer);
         std.debug.print("{s}", .{aw.written()});
         return 1;
+    }
+
+    if (cmd == .check and json_flag) {
+        var aw: std.Io.Writer.Allocating = .init(allocator);
+        defer aw.deinit();
+        try diag.renderJson(&aw.writer);
+        try writeStdout(io, aw.written());
+        try writeStdout(io, "\n");
+        return 0;
     }
 
     // For lint, report warnings but exit 0 if only warnings
