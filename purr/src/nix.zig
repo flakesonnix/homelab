@@ -7,7 +7,6 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
     try buf.appendSlice(allocator, "# Source: Purr DSL -> Nix\n");
     try buf.appendSlice(allocator, "{\n");
     try buf.appendSlice(allocator, "  imports = [];\n");
-    try buf.appendSlice(allocator, "  config = {\n");
 
     // For deterministic Nix, hosts are sorted by name (forward refs)
     var hosts: std.ArrayList(ast.Host) = .empty;
@@ -18,6 +17,35 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
             return std.mem.order(u8, a.name.name, b.name.name) == .lt;
         }
     }.lessThan);
+
+    // Collect lets for Nix `let ... in` wrapper (top-level + host-local for determinism)
+    var top_lets: std.ArrayList(ast.Let) = .empty;
+    defer top_lets.deinit(allocator);
+    var host_lets: std.ArrayList(ast.Let) = .empty;
+    defer host_lets.deinit(allocator);
+    for (program.decls) |decl| if (decl == .let_decl) try top_lets.append(allocator, decl.let_decl);
+    for (hosts.items) |h| for (h.stmts) |stmt| if (stmt == .let_decl) try host_lets.append(allocator, stmt.let_decl);
+    const has_lets = top_lets.items.len + host_lets.items.len > 0;
+    if (has_lets) {
+        try buf.appendSlice(allocator, "  config = let\n");
+        for (top_lets.items) |l| {
+            try buf.appendSlice(allocator, "    ");
+            try buf.appendSlice(allocator, l.name.name);
+            try buf.appendSlice(allocator, " = ");
+            try writeExprBuf(&buf, allocator, l.value);
+            try buf.appendSlice(allocator, ";\n");
+        }
+        for (host_lets.items) |l| {
+            try buf.appendSlice(allocator, "    ");
+            try buf.appendSlice(allocator, l.name.name);
+            try buf.appendSlice(allocator, " = ");
+            try writeExprBuf(&buf, allocator, l.value);
+            try buf.appendSlice(allocator, ";\n");
+        }
+        try buf.appendSlice(allocator, "  in {\n");
+    } else {
+        try buf.appendSlice(allocator, "  config = {\n");
+    }
 
     // Emit non-host decls in declaration order
     for (program.decls) |decl| {
@@ -86,13 +114,7 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
                 try buf.appendSlice(allocator, n.content);
                 try buf.appendSlice(allocator, "\n");
             },
-            .let_decl => |l| {
-                try buf.appendSlice(allocator, "    # let ");
-                try buf.appendSlice(allocator, l.name.name);
-                try buf.appendSlice(allocator, " = ");
-                try writeExprBuf(&buf, allocator, l.value);
-                try buf.appendSlice(allocator, ";\n");
-            },
+            .let_decl => continue,
         }
     }
     // Emit sorted hosts
@@ -176,13 +198,7 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
                         try buf.appendSlice(allocator, ";\n");
                     }
                 },
-                .let_decl => |l| {
-                    try buf.appendSlice(allocator, "    # let ");
-                    try buf.appendSlice(allocator, l.name.name);
-                    try buf.appendSlice(allocator, " = ");
-                    try writeExprBuf(&buf, allocator, l.value);
-                    try buf.appendSlice(allocator, ";\n");
-                },
+                .let_decl => continue,
             }
         }
     }

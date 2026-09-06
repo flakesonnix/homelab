@@ -32,6 +32,9 @@ pub const Semantic = struct {
         defer bundle_names.deinit();
         var preset_names = std.StringHashMap(diagnostics.Span).init(self.allocator);
         defer preset_names.deinit();
+        // Scope for let bindings (simple flat map for now, lexical)
+        var scope = std.StringHashMap(diagnostics.Span).init(self.allocator);
+        defer scope.deinit();
 
         // first pass: collect declarations, detect duplicates
         for (self.program.decls) |decl| {
@@ -88,15 +91,33 @@ pub const Semantic = struct {
                         try preset_names.put(p.name.name, p.name.span);
                     }
                 },
-                .let_decl => {},
+                .let_decl => |l| {
+                    if (scope.get(l.name.name)) |prev| {
+                        try self.diag.push(.{
+                            .severity = .err,
+                            .code = .duplicate_decl,
+                            .message = try std.fmt.allocPrint(self.allocator, "duplicate let `{s}`", .{l.name.name}),
+                            .span = l.name.span,
+                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                        });
+                    } else {
+                        try scope.put(l.name.name, l.name.span);
+                    }
+                },
                 else => {},
             }
         }
 
-        // second pass: validate references
+        // second pass: validate references (including let scope) - sequential
+        var ordered_scope = std.StringHashMap(diagnostics.Span).init(self.allocator);
+        defer ordered_scope.deinit();
         for (self.program.decls) |decl| {
             switch (decl) {
-                .let_decl => {},
+                .let_decl => |l| {
+                    try self.checkExpr(l.value, &ordered_scope);
+                    // put after check so self-reference and forward ref are errors; don't overwrite on duplicate
+                    if (!ordered_scope.contains(l.name.name)) try ordered_scope.put(l.name.name, l.name.span);
+                },
                 .role => |r| {
                     // validate presets in role.host block
                     if (r.host) |hb| {
@@ -160,9 +181,27 @@ pub const Semantic = struct {
                     }
                 },
                 .host => |h| {
+                    // Build host-local scope for let (only lets declared before this host)
+                    var host_scope = std.StringHashMap(diagnostics.Span).init(self.allocator);
+                    defer host_scope.deinit();
+                    var scope_it = ordered_scope.keyIterator();
+                    while (scope_it.next()) |k| try host_scope.put(k.*, ordered_scope.get(k.*).?);
                     for (h.stmts) |stmt| {
                         switch (stmt) {
-                            .let_decl => {},
+                            .let_decl => |l| {
+                                if (host_scope.get(l.name.name)) |prev| {
+                                    try self.diag.push(.{
+                                        .severity = .err,
+                                        .code = .duplicate_decl,
+                                        .message = try std.fmt.allocPrint(self.allocator, "duplicate let `{s}` in host `{s}`", .{ l.name.name, h.name.name }),
+                                        .span = l.name.span,
+                                        .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                                    });
+                                } else {
+                                    try self.checkExpr(l.value, &host_scope);
+                                    try host_scope.put(l.name.name, l.name.span);
+                                }
+                            },
                             .use_role => |ident| {
                                 const in_declared = role_names.contains(ident.name);
                                 var in_known = false;
@@ -216,12 +255,48 @@ pub const Semantic = struct {
                                     });
                                 }
                             },
-                            else => {},
+                            .setting => |s| try self.checkExpr(s.value, &host_scope),
+                            .package => {},
+                            .packages_assign => {},
                         }
                     }
+                    // Also check host-level let values for top-level scope? No, host_scope already handled
                 },
                 else => {},
             }
+        }
+    }
+
+    fn checkExpr(self: *Semantic, expr: ast.Expr, scope: *std.StringHashMap(diagnostics.Span)) !void {
+        switch (expr.data) {
+            .ident => |ident| {
+                if (!scope.contains(ident.name)) {
+                    // Also check if it's a known role/bundle/preset? For now, only check let scope
+                    // Unknown ident will be reported as unknown_ident with suggestion if close
+                    var help: ?[]const u8 = null;
+                    var candidates: std.ArrayList([]const u8) = .empty;
+                    var it = scope.keyIterator();
+                    while (it.next()) |k| try candidates.append(self.allocator, k.*);
+                    if (candidates.items.len > 0) {
+                        if (try diagnostics.Diagnostics.suggest(ident.name, candidates.items, self.allocator)) |s| help = s;
+                    }
+                    try self.diag.push(.{
+                        .severity = .err,
+                        .code = .unknown_ident,
+                        .message = try std.fmt.allocPrint(self.allocator, "unknown identifier `{s}`", .{ident.name}),
+                        .span = ident.span,
+                        .help = help,
+                    });
+                }
+            },
+            .binary => |b| {
+                try self.checkExpr(b.lhs.*, scope);
+                try self.checkExpr(b.rhs.*, scope);
+            },
+            .unary => |u| try self.checkExpr(u.expr.*, scope),
+            .paren => |p| try self.checkExpr(p.*, scope),
+            .list => |lst| for (lst) |item| try self.checkExpr(item, scope),
+            .string, .integer, .boolean => {},
         }
     }
 };
