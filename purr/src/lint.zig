@@ -33,6 +33,7 @@ pub const Lint = struct {
         try self.checkDuplicateImports();
         try self.checkUnusedImports();
         try self.checkEmptyDecls();
+        try self.checkUnusedLets();
         try self.checkFormatting();
         // deterministic ordering: sort diagnostics by file, line, col
         // we sort only the lint warnings added in this run, but for simplicity sort all
@@ -197,6 +198,63 @@ pub const Lint = struct {
                 .let_decl => {},
                 else => {},
             }
+        }
+    }
+
+    fn checkUnusedLets(self: *Lint) !void {
+        // Collect all let names and check if used in any Expr
+        var let_spans = std.StringHashMap(diagnostics.Span).init(self.allocator);
+        defer let_spans.deinit();
+        var used = std.StringHashMap(void).init(self.allocator);
+        defer used.deinit();
+
+        // collect lets
+        for (self.resolved.decls) |decl| {
+            switch (decl) {
+                .let_decl => |l| try let_spans.put(l.name.name, l.name.span),
+                .host => |h| for (h.stmts) |stmt| if (stmt == .let_decl) try let_spans.put(stmt.let_decl.name.name, stmt.let_decl.name.span),
+                .preset => |p| for (p.flags) |f| try collectIdents(f.value, &used),
+                else => {},
+            }
+        }
+        // also need to collect idents from let values themselves? No, that's definition, not use; but if let a = b; then b is use
+        for (self.resolved.decls) |decl| {
+            switch (decl) {
+                .let_decl => |l| try collectIdents(l.value, &used),
+                .preset => |p| for (p.flags) |f| try collectIdents(f.value, &used),
+                .host => |h| for (h.stmts) |stmt| switch (stmt) {
+                    .let_decl => |l| try collectIdents(l.value, &used),
+                    .setting => |s| try collectIdents(s.value, &used),
+                    else => {},
+                },
+                else => {},
+            }
+        }
+        var it = let_spans.iterator();
+        while (it.next()) |entry| {
+            if (!used.contains(entry.key_ptr.*)) {
+                try self.diag.push(.{
+                    .severity = .warning,
+                    .code = .unused_let,
+                    .message = try std.fmt.allocPrint(self.allocator, "unused let `{s}`", .{entry.key_ptr.*}),
+                    .span = entry.value_ptr.*,
+                    .help = "remove or use the binding",
+                });
+            }
+        }
+    }
+
+    fn collectIdents(expr: ast.Expr, used: *std.StringHashMap(void)) !void {
+        switch (expr.data) {
+            .ident => |id| try used.put(id.name, {}),
+            .binary => |b| {
+                try collectIdents(b.lhs.*, used);
+                try collectIdents(b.rhs.*, used);
+            },
+            .unary => |u| try collectIdents(u.expr.*, used),
+            .paren => |p| try collectIdents(p.*, used),
+            .list => |lst| for (lst) |item| try collectIdents(item, used),
+            .string, .integer, .boolean => {},
         }
     }
 
