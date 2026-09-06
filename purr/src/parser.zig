@@ -434,29 +434,32 @@ pub const Parser = struct {
                     if (self.peekKind() == .equal) {
                         _ = self.advance(); // =
                         if (std.mem.eql(u8, path_info.path, "packages")) {
-                            // packages can be list or ident (for let)
                             const expr = try self.parseExpr(0);
                             _ = try self.expect(.semicolon);
-                            // If expr is ident, treat as single-element packages_assign for now
-                            // otherwise expect list
                             if (expr.data == .ident) {
-                                const ident_name = expr.data.ident.name;
-                                // Need to handle single ident as packages_assign with one element
-                                // But for now, treat as packages_assign with the ident's string
-                                var list: std.ArrayList([]const u8) = .empty;
-                                try list.append(self.allocator, try self.allocator.dupe(u8, ident_name));
-                                try stmts.append(self.allocator, .{ .packages_assign = try list.toOwnedSlice(self.allocator) });
+                                // preserve let ref as Setting, not stringified packages_assign
+                                const path = try self.dup(path_info.path);
+                                try stmts.append(self.allocator, .{ .setting = .{ .path = path, .value = expr, .span = path_info.span } });
                             } else if (expr.data == .list) {
-                                // Convert Expr list to []const u8 for packages_assign (only string/ident)
-                                var list: std.ArrayList([]const u8) = .empty;
+                                // If list is all string literals, keep packages_assign for backwards compat
+                                var all_strings = true;
                                 for (expr.data.list) |item| {
-                                    switch (item.data) {
-                                        .string => |s| try list.append(self.allocator, try self.allocator.dupe(u8, s)),
-                                        .ident => |id| try list.append(self.allocator, try self.allocator.dupe(u8, id.name)),
-                                        else => {},
-                                    }
+                                    if (item.data != .string) all_strings = false;
                                 }
-                                try stmts.append(self.allocator, .{ .packages_assign = try list.toOwnedSlice(self.allocator) });
+                                if (all_strings) {
+                                    var list: std.ArrayList([]const u8) = .empty;
+                                    for (expr.data.list) |item| {
+                                        switch (item.data) {
+                                            .string => |s| try list.append(self.allocator, try self.allocator.dupe(u8, s)),
+                                            else => {},
+                                        }
+                                    }
+                                    try stmts.append(self.allocator, .{ .packages_assign = try list.toOwnedSlice(self.allocator) });
+                                } else {
+                                    // list contains ident/expr -> preserve as Setting with Expr
+                                    const path = try self.dup(path_info.path);
+                                    try stmts.append(self.allocator, .{ .setting = .{ .path = path, .value = expr, .span = path_info.span } });
+                                }
                             } else {
                                 // For other expr types (binary etc.), treat as setting with packages path
                                 const path = try self.dup(path_info.path);
