@@ -48,7 +48,8 @@ Composition over inheritance: `host x270 { use desktop; use dev; }` rather than 
 ```
 Program   := Import* Decl*
 Import    := 'import' StringLit ';'
-Decl      := RoleDecl | HostDecl | BundleDecl | PresetDecl | PackageDecl | NixBlock
+Decl      := RoleDecl | HostDecl | BundleDecl | PresetDecl | PackageDecl | NixBlock | LetDecl
+LetDecl   := 'let' Ident '=' Expr ';'      // top-level or inside host (lexical, sequential)
 RoleDecl  := 'role' Ident '{' RoleField* '}'
 RoleField := 'description' '=' StringLit ';'
            | 'targets' '=' List ';'        // ["host","home"]
@@ -56,18 +57,22 @@ RoleField := 'description' '=' StringLit ';'
            | 'conflicts' '=' List ';'
            | 'host' Block
            | 'home' Block
-HostDecl  := 'host' Ident '{' HostStmt* '}'
+HostDecl  := 'host' Ident ('extends' Ident)? '{' HostStmt* '}'
 HostStmt  := 'use' Ident ';'               // role name
            | 'preset' Ident ';'
            | 'package' StringLit ';'       // direct package name
-           | 'packages' '=' List ';'       // tags
-           | 'setting' Path '=' Value ';'  // escape for simple settings
+           | 'packages' '=' Expr ';'       // tags, supports let refs: `packages = myPkgs` or `["git", my]`
+           | 'setting' Path '=' Expr ';'   // Expr includes binary `base == "x270"`, lists with idents
+           | LetDecl
 BundleDecl:= 'bundle' Ident '{' ... '}'    // programs, packageToggles
 PresetDecl:= 'preset' Ident '{' 'flags' Block '}'
+FlagsBlock:= 'flags' '{' (Path '=' Expr ';')* '}'
 NixBlock  := 'nix' Block                    // raw Nix for advanced
 Block     := '{' (Stmt|Decl)* '}'
-List      := '[' (Value (',' Value)*)? ']'
-Value     := StringLit | Integer | Boolean | List | Ident
+List      := '[' (Expr (',' Expr)*)? ']'
+Expr      := Primary (BinaryOp Primary)*   // Pratt, prec: || < && < == != < < > <= >= < + - < * / %
+Primary   := StringLit | Integer | Boolean | Ident | List | '(' Expr ')' | UnaryOp Primary
+Value     := StringLit | Integer | Boolean | List | Ident  // legacy, now Expr
 ```
 
 **Alternatives considered:**
