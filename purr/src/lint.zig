@@ -201,7 +201,7 @@ pub const Lint = struct {
         }
     }
 
-    fn checkUnusedLets(self: *Lint) !void {
+    pub fn checkUnusedLets(self: *Lint) !void {
         // Collect all let names and check if used in any Expr
         var let_spans = std.StringHashMap(diagnostics.Span).init(self.allocator);
         defer let_spans.deinit();

@@ -91,31 +91,60 @@ pub const Diagnostics = struct {
         return false;
     }
 
+    pub fn severityString(sev: Severity) []const u8 {
+        return switch (sev) {
+            .err => "error",
+            .warning => "warning",
+            .info => "info",
+        };
+    }
+
+    pub fn codeString(code: Code) []const u8 {
+        return switch (code) {
+            .unknown_role => "E042",
+            .duplicate_decl => "E010",
+            .unknown_preset => "E043",
+            .unknown_bundle => "E044",
+            .unknown_package => "E045",
+            .parse_error => "E001",
+            .lex_error => "E002",
+            .unknown_ident => "E003",
+            .duplicate_import => "E011",
+            .unused_import => "W001",
+            .empty_decl => "W002",
+            .unformatted => "W003",
+            .unknown_parent => "E050",
+            .inheritance_cycle => "E051",
+            .self_inheritance => "E052",
+            .unused_let => "W004",
+        };
+    }
+
+    pub fn sortDiagnostics(self: *Diagnostics) void {
+        const items = self.list.items;
+        for (0..items.len) |i| {
+            for (i + 1..items.len) |j| {
+                const a = items[i].span orelse Span{ .file = "", .line = 0, .col = 0, .len = 0, .start = 0, .end = 0 };
+                const b = items[j].span orelse Span{ .file = "", .line = 0, .col = 0, .len = 0, .start = 0, .end = 0 };
+                const cmp = blk: {
+                    const file_cmp = std.mem.order(u8, a.file, b.file);
+                    if (file_cmp != .eq) break :blk file_cmp == .lt;
+                    if (a.line != b.line) break :blk a.line < b.line;
+                    break :blk a.col < b.col;
+                };
+                if (!cmp) {
+                    const tmp = items[i];
+                    items[i] = items[j];
+                    items[j] = tmp;
+                }
+            }
+        }
+    }
+
     pub fn render(self: *const Diagnostics, writer: anytype) !void {
         for (self.list.items) |d| {
-            const sev = switch (d.severity) {
-                .err => "error",
-                .warning => "warning",
-                .info => "info",
-            };
-            const code = switch (d.code) {
-                .unknown_role => "E042",
-                .duplicate_decl => "E010",
-                .unknown_preset => "E043",
-                .unknown_bundle => "E044",
-                .unknown_package => "E045",
-                .parse_error => "E001",
-                .lex_error => "E002",
-                .unknown_ident => "E003",
-                .duplicate_import => "E011",
-                .unused_import => "W001",
-                .empty_decl => "W002",
-                .unformatted => "W003",
-                .unknown_parent => "E050",
-                .inheritance_cycle => "E051",
-                .self_inheritance => "E052",
-                .unused_let => "W004",
-            };
+            const sev = severityString(d.severity);
+            const code = codeString(d.code);
             try writer.print("purr {s}[{s}]: {s}\n", .{ sev, code, d.message });
             if (d.span) |sp| {
                 try writer.print("  --> {s}:{d}:{d}\n", .{ sp.file, sp.line, sp.col });
@@ -148,6 +177,62 @@ pub const Diagnostics = struct {
             }
             try writer.writeAll("\n");
         }
+    }
+
+    pub fn renderJson(self: *Diagnostics, writer: anytype) !void {
+        // deterministic ordering: file -> line -> col
+        self.sortDiagnostics();
+        try writer.writeAll("{\"file\":");
+        try writeJsonString(writer, self.file);
+        try writer.print(",\"ok\":{},\"diagnostics\":[", .{!self.hasErrors()});
+        for (self.list.items, 0..) |d, idx| {
+            if (idx > 0) try writer.writeAll(",");
+            try writer.writeAll("{\"severity\":");
+            try writeJsonString(writer, severityString(d.severity));
+            try writer.writeAll(",\"code\":");
+            try writeJsonString(writer, codeString(d.code));
+            try writer.writeAll(",\"codeName\":");
+            try writeJsonString(writer, @tagName(d.code));
+            try writer.writeAll(",\"message\":");
+            try writeJsonString(writer, d.message);
+            try writer.writeAll(",\"span\":");
+            if (d.span) |sp| {
+                try writer.writeAll("{\"file\":");
+                try writeJsonString(writer, sp.file);
+                try writer.print(",\"line\":{d},\"col\":{d},\"len\":{d},\"start\":{d},\"end\":{d}}}", .{ sp.line, sp.col, sp.len, sp.start, sp.end });
+            } else {
+                try writer.writeAll("null");
+            }
+            try writer.writeAll(",\"help\":");
+            if (d.help) |h| {
+                try writeJsonString(writer, h);
+            } else {
+                try writer.writeAll("null");
+            }
+            try writer.writeAll("}");
+        }
+        try writer.writeAll("]}");
+    }
+
+    fn writeJsonString(writer: anytype, s: []const u8) !void {
+        try writer.writeAll("\"");
+        for (s) |c| {
+            switch (c) {
+                '"' => try writer.writeAll("\\\""),
+                '\\' => try writer.writeAll("\\\\"),
+                '\n' => try writer.writeAll("\\n"),
+                '\r' => try writer.writeAll("\\r"),
+                '\t' => try writer.writeAll("\\t"),
+                0x08 => try writer.writeAll("\\b"),
+                0x0C => try writer.writeAll("\\f"),
+                else => if (c < 0x20) {
+                    try writer.print("\\u{x:0>4}", .{c});
+                } else {
+                    try writer.writeByte(c);
+                },
+            }
+        }
+        try writer.writeAll("\"");
     }
 
     // levenshtein distance for suggestions (small strings, simple DP)
@@ -193,4 +278,65 @@ test "levenshtein suggest" {
     defer if (help) |h| alloc.free(h);
     try std.testing.expect(help != null);
     try std.testing.expect(std.mem.indexOf(u8, help.?, "gaming") != null);
+}
+
+test "renderJson success" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    var diag = Diagnostics.init(arena.allocator(), "test.purr", "host x {}");
+    var aw: std.Io.Writer.Allocating = .init(alloc);
+    defer aw.deinit();
+    try diag.renderJson(&aw.writer);
+    const out = aw.written();
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"file\":\"test.purr\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"ok\":true") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"diagnostics\":[]") != null);
+}
+
+test "renderJson error" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    var diag = Diagnostics.init(arena.allocator(), "test.purr", "host x {}");
+    try diag.push(.{
+        .severity = .err,
+        .code = .unknown_role,
+        .message = "unknown role `gamign`",
+        .span = .{ .file = "test.purr", .line = 2, .col = 9, .len = 6, .start = 20, .end = 26 },
+        .help = "did you mean `gaming`?",
+    });
+    var aw: std.Io.Writer.Allocating = .init(alloc);
+    defer aw.deinit();
+    try diag.renderJson(&aw.writer);
+    const out = aw.written();
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"ok\":false") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"code\":\"E042\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"codeName\":\"unknown_role\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"message\":\"unknown role `gamign`\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"line\":2") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"col\":9") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"help\":\"did you mean") != null);
+}
+
+test "renderJson escaping" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    var diag = Diagnostics.init(arena.allocator(), "test.purr", "a");
+    try diag.push(.{
+        .severity = .err,
+        .code = .parse_error,
+        .message = "bad \"quote\" and \\ slash",
+        .span = null,
+        .help = "line\nbreak",
+    });
+    var aw: std.Io.Writer.Allocating = .init(alloc);
+    defer aw.deinit();
+    try diag.renderJson(&aw.writer);
+    const out = aw.written();
+    try std.testing.expect(std.mem.indexOf(u8, out, "\\\"quote\\\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\\\\ slash") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\"span\":null") != null);
 }
