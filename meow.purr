@@ -1,0 +1,10 @@
+import "purr/examples/roles/desktop.purr";
+import "purr/examples/roles/dev.purr";
+
+host meow {
+    use desktop;
+    use dev;
+
+    packages = ["dev"];
+    preset gaming-performance;
+}
