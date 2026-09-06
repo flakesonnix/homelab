@@ -53,38 +53,41 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
         }
         return try rebuildHost(allocator, io, host.?, dry_run);
     }
-    if (args.len < 3) {
-        std.debug.print("purr error: missing file argument\n", .{});
-        try printHelp(io);
-        return 1;
-    }
-    const file = args[2];
-    var out_path: ?[]const u8 = null;
+    // Parse file, --json, --out from args[2..] (file is first non-flag)
     var json_flag = false;
-    if (cmd == .compile or cmd == .fmt) {
-        for (args, 0..) |a, i| {
-            if (std.mem.eql(u8, a, "--out") or std.mem.eql(u8, a, "-o")) {
-                if (i + 1 < args.len) out_path = args[i + 1];
+    var out_path: ?[]const u8 = null;
+    var file: ?[]const u8 = null;
+    var idx: usize = 2;
+    while (idx < args.len) : (idx += 1) {
+        const a = args[idx];
+        if (std.mem.eql(u8, a, "--json")) {
+            json_flag = true;
+        } else if (std.mem.eql(u8, a, "--out") or std.mem.eql(u8, a, "-o")) {
+            if (idx + 1 < args.len) {
+                out_path = args[idx + 1];
+                idx += 1;
             }
-        }
-    }
-    if (cmd == .check) {
-        for (args) |a| {
-            if (std.mem.eql(u8, a, "--json")) json_flag = true;
-        }
-    }
-    if (cmd == .eval) {
-        for (args) |a| {
-            if (std.mem.eql(u8, a, "--json")) json_flag = true;
-        }
-        for (args, 0..) |a, i| {
-            if (std.mem.eql(u8, a, "--out") or std.mem.eql(u8, a, "-o")) {
-                if (i + 1 < args.len) out_path = args[i + 1];
-            }
+        } else if (a.len > 0 and a[0] == '-') {
+            // unknown flag, ignore
+        } else {
+            if (file == null) file = a;
         }
     }
 
-    return try processFile(allocator, io, file, cmd, out_path, json_flag);
+    var owned_file: ?[]const u8 = null;
+    defer if (owned_file) |f| allocator.free(f);
+    const actual_file = if (file) |f| f else blk: {
+        // No file arg: try meow.toml / meow.purr discovery (cwd → parents)
+        if (try findProjectFile(allocator, io)) |found| {
+            owned_file = found;
+            break :blk found;
+        }
+        std.debug.print("purr error: missing file argument\n", .{});
+        try printHelp(io);
+        return 1;
+    };
+
+    return try processFile(allocator, io, actual_file, cmd, out_path, json_flag);
 }
 
 fn printHelp(io: std.Io) !void {
@@ -117,6 +120,75 @@ fn printHelp(io: std.Io) !void {
 
 fn writeStdout(io: std.Io, bytes: []const u8) !void {
     try std.Io.File.stdout().writeStreamingAll(io, bytes);
+}
+
+fn findProjectFile(allocator: std.mem.Allocator, io: std.Io) !?[]const u8 {
+    // Search cwd and parents for meow.toml (with entry) or meow.purr fallback
+    var buf: [std.fs.max_path_bytes]u8 = undefined;
+    const cwd_ptr = std.c.getcwd(&buf, buf.len) orelse return null;
+    const cwd_slice = std.mem.span(@as([*:0]const u8, @ptrCast(cwd_ptr)));
+    const cwd_path = cwd_slice;
+    var current: ?[]const u8 = try allocator.dupe(u8, cwd_path);
+    defer if (current) |c| allocator.free(c);
+    var depth: usize = 0;
+    while (depth < 4) : (depth += 1) {
+        const cur = current.?;
+
+        // Try meow.toml in current dir
+        const meow_toml = try std.fs.path.join(allocator, &.{ cur, "meow.toml" });
+        defer allocator.free(meow_toml);
+        if (std.Io.Dir.cwd().statFile(io, meow_toml, .{}) catch null) |_| {
+            // found, try to read it
+            const content = std.Io.Dir.cwd().readFileAlloc(io, meow_toml, allocator, .limited(8192)) catch null;
+            if (content) |c| {
+                defer allocator.free(c);
+                if (try parseMeowTomlEntry(c, allocator)) |entry| {
+                    defer allocator.free(entry);
+                    if (std.fs.path.isAbsolute(entry)) return try allocator.dupe(u8, entry);
+                    return try std.fs.path.join(allocator, &.{ cur, entry });
+                }
+            }
+            // meow.toml exists but no entry -> default meow.purr in same dir
+            return try std.fs.path.join(allocator, &.{ cur, "meow.purr" });
+        }
+
+        // Try meow.purr directly
+        const meow_purr = try std.fs.path.join(allocator, &.{ cur, "meow.purr" });
+        defer allocator.free(meow_purr);
+        if (std.Io.Dir.cwd().statFile(io, meow_purr, .{}) catch null) |_| {
+            return try allocator.dupe(u8, meow_purr);
+        }
+
+        // Move to parent
+        if (std.fs.path.dirname(cur)) |parent| {
+            const new_cur = try allocator.dupe(u8, parent);
+            allocator.free(cur);
+            current = new_cur;
+        } else break;
+    }
+    return null;
+}
+
+fn parseMeowTomlEntry(content: []const u8, allocator: std.mem.Allocator) !?[]const u8 {
+    // Very small TOML subset: look for `entry = "value"` under [project] or top-level
+    var lines = std.mem.splitScalar(u8, content, '\n');
+    while (lines.next()) |line| {
+        const trimmed = std.mem.trim(u8, line, " \t\r");
+        if (trimmed.len == 0 or trimmed[0] == '#' or trimmed[0] == '[') continue;
+        if (std.mem.indexOf(u8, trimmed, "entry")) |_| {
+            if (std.mem.indexOf(u8, trimmed, "=")) |eq| {
+                const after = std.mem.trim(u8, trimmed[eq + 1 ..], " \t");
+                if (after.len >= 2 and after[0] == '"' and after[after.len - 1] == '"') {
+                    const val = after[1 .. after.len - 1];
+                    return try allocator.dupe(u8, val);
+                } else if (after.len >= 2 and after[0] == '\'' and after[after.len - 1] == '\'') {
+                    const val = after[1 .. after.len - 1];
+                    return try allocator.dupe(u8, val);
+                }
+            }
+        }
+    }
+    return null;
 }
 
 fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: Command, out_path: ?[]const u8, json_flag: bool) !u8 {
