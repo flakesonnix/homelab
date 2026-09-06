@@ -120,9 +120,16 @@ pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]co
         defer h_lets.deinit(allocator);
         for (h.stmts) |stmt| if (stmt == .let_decl) try h_lets.append(allocator, stmt.let_decl);
         // collect packages to emit aggregated systemPackages (avoid duplicate attr)
+        // includes both `package "git"` and `packages = ["git", "helix"]` (pure string list)
         var pkgs: std.ArrayList([]const u8) = .empty;
         defer pkgs.deinit(allocator);
-        for (h.stmts) |stmt| if (stmt == .package) try pkgs.append(allocator, stmt.package);
+        for (h.stmts) |stmt| {
+            switch (stmt) {
+                .package => |p| try pkgs.append(allocator, p),
+                .packages_assign => |tags| for (tags) |t| try pkgs.append(allocator, t),
+                else => {},
+            }
+        }
         if (pkgs.items.len > 0) {
             for (pkgs.items) |p| {
                 try buf.appendSlice(allocator, "    # package \"");
@@ -481,6 +488,9 @@ test "nix golden let" {
         \\  in {
         \\    # host x270
         \\    networking.hostName = "x270";
+        \\    # package "git"
+        \\    # package "helix"
+        \\    environment.systemPackages = with pkgs; [ git helix ];
         \\    # packages tags: git, helix
         \\    # setting gaming.enable
         \\    gaming.enable = base == "x270";
