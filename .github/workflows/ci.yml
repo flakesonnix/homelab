@@ -84,6 +84,56 @@ jobs:
       - run: nix build ./purr#checks.x86_64-linux.purr-tests --fallback
         name: Purr tests (23)
 
+  purr-check-json:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-nix
+      - uses: actions/cache@v4
+        with:
+          path: /nix/store
+          key: nix-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}
+          restore-keys: |
+            nix-store-${{ runner.os }}-
+      - run: nix build ./purr -o /tmp/purr-bin
+        name: Build purr
+      - name: Check --json contract
+        run: |
+          set -euo pipefail
+          echo "=== minimal (ok true, no diagnostics, exit 0, stderr empty) ==="
+          /tmp/purr-bin/bin/purr check purr/examples/minimal.purr --json > /tmp/min.json 2> /tmp/min.stderr
+          jq -e '.ok == true and .diagnostics == []' /tmp/min.json
+          test ! -s /tmp/min.stderr
+          echo "=== unknown-role (ok false, E042, exit 1, stderr empty) ==="
+          if /tmp/purr-bin/bin/purr check purr/tests/fixtures/unknown-role.purr --json > /tmp/unknown.json 2> /tmp/unknown.stderr; then echo "expected failure" && exit 1; fi
+          jq -e '.ok == false and .diagnostics[0].code == "E042" and .diagnostics[0].codeName == "unknown_role"' /tmp/unknown.json
+          test ! -s /tmp/unknown.stderr
+          echo "=== duplicate-host (E010) ==="
+          if /tmp/purr-bin/bin/purr check purr/tests/fixtures/duplicate-host.purr --json > /tmp/dup.json 2> /tmp/dup.stderr; then echo "expected failure" && exit 1; fi
+          jq -e '.ok == false and .diagnostics[0].code == "E010"' /tmp/dup.json
+          echo "=== unknown_ident (E003) ==="
+          cat > /tmp/check_unknown_ident.purr <<'EOP'
+          host x270 { s = unknown; }
+          EOP
+          if /tmp/purr-bin/bin/purr check /tmp/check_unknown_ident.purr --json > /tmp/unknown_ident.json 2> /tmp/unknown_ident.stderr; then echo "expected failure" && exit 1; fi
+          jq -e '.ok == false and .diagnostics[0].code == "E003"' /tmp/unknown_ident.json
+          echo "=== unused let (W004, ok true) ==="
+          cat > /tmp/check_unused.purr <<'EOP'
+          let unused = "x";
+
+          host x270 {
+              s = "hello";
+          }
+          EOP
+          /tmp/purr-bin/bin/purr check /tmp/check_unused.purr --json > /tmp/unused.json 2> /tmp/unused.stderr
+          jq -e '.ok == true and .diagnostics[0].code == "W004"' /tmp/unused.json
+          test ! -s /tmp/unused.stderr
+          echo "=== stdout exclusively JSON ==="
+          /tmp/purr-bin/bin/purr check purr/examples/minimal.purr --json > /tmp/stdout.json 2> /tmp/stderr.txt
+          jq -e 'has("file") and has("ok") and has("diagnostics")' /tmp/stdout.json
+          test ! -s /tmp/stderr.txt
+
   nixfleet:
     runs-on: ubuntu-latest
     timeout-minutes: 10
