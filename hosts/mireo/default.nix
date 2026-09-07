@@ -2,13 +2,7 @@
   imports = [
     ./hardware-configuration.nix
     ./host.nix
-    ./cups-microvm.nix
-    ./monerod-microvm.nix
-    ./network-services-microvm.nix
-    ./aptcache-microvm.nix
-    ./sshkeys-microvm.nix
-    ./yammat-microvm.nix
-  ];
+  ] ++ (if builtins.pathExists ./generated.nix then [ ./generated.nix ] else []);
 
   # All microvm tap interfaces join the LAN bridge.
   systemd.network.networks."24-lan-microvm" = {

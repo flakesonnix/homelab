@@ -1,12 +1,83 @@
 import "purr/examples/roles/desktop.purr";
 import "purr/examples/roles/dev.purr";
 
-// purr-native: single host → `purr` / `purr rebuild` without arg
-// legacy hosts (x270/mireo) gradually migrate here; flake still provides x270/mireo
+// purr-native: meow.purr is source-of-truth for homelab
+// hosts x270 + mireo defined here; Nix is backend artifact only
 host x270 {
     use desktop;
     use dev;
 
     packages = ["dev"];
     preset gaming-performance;
+}
+
+host mireo {
+    microvm grafana {
+        mem = 768;
+        cpu = 2;
+        net = "lan";
+        ip = "10.8.0.2";
+        volume {
+            image = "grafana-data.img";
+            mountPoint = "/var/lib/grafana";
+            size = 1024;
+        }
+        volume {
+            image = "prometheus-data.img";
+            mountPoint = "/var/lib/prometheus2";
+            size = 1024;
+        }
+    }
+
+    microvm monerod {
+        mem = 1024;
+        cpu = 2;
+        net = "lan";
+        ip = "10.8.0.4";
+    }
+
+    microvm network-services {
+        mem = 256;
+        cpu = 1;
+        net = "lan";
+        ip = "10.8.0.3";
+    }
+
+    microvm cups {
+        mem = 512;
+        cpu = 1;
+        net = "lan";
+        ip = "10.8.0.6";
+        volume {
+            image = "cups-etc.img";
+            mountPoint = "/etc/cups";
+            size = 256;
+        }
+    }
+
+    microvm aptcache {
+        mem = 512;
+        cpu = 1;
+        net = "lan";
+        ip = "10.8.0.8";
+        volume {
+            image = "aptcache-data.img";
+            mountPoint = "/var/cache/apt-cacher-ng";
+            size = 8192;
+        }
+    }
+
+    microvm sshkeys {
+        mem = 256;
+        cpu = 1;
+        net = "lan";
+        ip = "10.8.0.7";
+    }
+
+    microvm yammat {
+        mem = 1024;
+        cpu = 1;
+        net = "lan";
+        ip = "10.8.0.5";
+    }
 }
