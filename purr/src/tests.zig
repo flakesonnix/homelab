@@ -8,6 +8,7 @@ comptime {
     _ = @import("resolver.zig");
     _ = @import("fmt.zig");
     _ = @import("lint.zig");
+    _ = @import("cli.zig");
 }
 test {
     std.testing.refAllDecls(@This());
