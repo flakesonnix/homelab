@@ -76,13 +76,35 @@ EOF
 }
 EOF
     echo "Created $dir/ (default.nix, host.nix, hardware-configuration.nix) + data/hosts/$name/"
+    # auto-add to flake.nix if not already present
+    if ! grep -q "nixosConfigurations.$name" flake.nix; then
+      # Insert <name>-config before live-config (keep live last)
+      awk -v n="$name" '
+        $0 ~ /^    live-config = mkHost/ && !done {
+          print "    " n "-config = mkHost {";
+          print "      specialArgs = x270SpecialArgs;";
+          print "      modules = [ ./hosts/" n " ];";
+          print "    };";
+          done=1
+        }
+        { print }
+      ' flake.nix > /tmp/flake.nix.tmp && mv /tmp/flake.nix.tmp flake.nix
+      # Insert nixosConfigurations.<name> before live
+      awk -v n="$name" '
+        $0 ~ /live = live-config;/ && !done2 {
+          print "            " n " = " n "-config;";
+          done2=1
+        }
+        { print }
+      ' flake.nix > /tmp/flake.nix.tmp && mv /tmp/flake.nix.tmp flake.nix
+      echo "Added $name-config + nixosConfigurations.$name to flake.nix (add deploy.nodes.$name manually if needed)"
+    else
+      echo "flake.nix already contains $name (skipped auto-add)"
+    fi
     echo "Next:"
     echo "  1. Edit $dir/host.nix and $dir/hardware-configuration.nix"
-    echo "  2. Add to flake.nix: "
-    echo "       $name-config = mkHost { specialArgs = x270SpecialArgs; modules = [ ./hosts/$name ]; };"
-    echo "       nixosConfigurations.$name = $name-config;"
-    echo "  3. nix run ./purr -- check purr/examples/hosts/x270.purr  # or meow.purr"
-    echo "  4. just check-light"
+    echo "  2. just check-light && nix eval .#nixosConfigurations.$name.config.system.build.toplevel.outPath --raw"
+    echo "  3. purr check meow.purr --json | jq"
     ;;
   vm)
     if [[ ! -d "hosts/mireo" ]]; then echo "error: hosts/mireo not found" >&2; exit 1; fi
