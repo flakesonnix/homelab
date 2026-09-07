@@ -1,0 +1,6 @@
+role desktop {
+    description = "Desktop role — Niri + stylix";
+    targets = ["host", "home"];
+    host { presets = ["gaming-base"]; tags = ["desktop"]; }
+    home { bundles = ["desktop"]; }
+}

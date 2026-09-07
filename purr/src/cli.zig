@@ -185,6 +185,83 @@ fn parseMeowTomlEntry(content: []const u8, allocator: std.mem.Allocator) !?[]con
     return null;
 }
 
+fn parseMeowTomlHosts(content: []const u8, allocator: std.mem.Allocator, host: []const u8) !?[]const u8 {
+    // Look for [hosts] section and then `host = "path"` line
+    var lines = std.mem.splitScalar(u8, content, '\n');
+    var in_hosts = false;
+    while (lines.next()) |line| {
+        const trimmed = std.mem.trim(u8, line, " \t\r");
+        if (trimmed.len == 0 or trimmed[0] == '#') continue;
+        if (trimmed[0] == '[') {
+            // section header
+            if (std.mem.eql(u8, trimmed, "[hosts]")) in_hosts = true else in_hosts = false;
+            continue;
+        }
+        if (!in_hosts) continue;
+        // expect `host = "path"`
+        if (std.mem.indexOf(u8, trimmed, "=")) |eq| {
+            const key = std.mem.trim(u8, trimmed[0..eq], " \t");
+            if (!std.mem.eql(u8, key, host)) continue;
+            const after = std.mem.trim(u8, trimmed[eq + 1 ..], " \t");
+            if (after.len >= 2 and after[0] == '"' and after[after.len - 1] == '"') {
+                const val = after[1 .. after.len - 1];
+                return try allocator.dupe(u8, val);
+            } else if (after.len >= 2 and after[0] == '\'' and after[after.len - 1] == '\'') {
+                const val = after[1 .. after.len - 1];
+                return try allocator.dupe(u8, val);
+            }
+        }
+    }
+    return null;
+}
+
+fn findHostFile(allocator: std.mem.Allocator, io: std.Io, host: []const u8) !?[]const u8 {
+    var buf: [std.fs.max_path_bytes]u8 = undefined;
+    const cwd_ptr = std.c.getcwd(&buf, buf.len) orelse return null;
+    const cwd_slice = std.mem.span(@as([*:0]const u8, @ptrCast(cwd_ptr)));
+    const cwd_path = cwd_slice;
+    var current: ?[]const u8 = try allocator.dupe(u8, cwd_path);
+    defer if (current) |c| allocator.free(c);
+    var depth: usize = 0;
+    while (depth < 4) : (depth += 1) {
+        const cur = current.?;
+        const meow_toml = try std.fs.path.join(allocator, &.{ cur, "meow.toml" });
+        defer allocator.free(meow_toml);
+        if (std.Io.Dir.cwd().statFile(io, meow_toml, .{}) catch null) |_| {
+            const content = std.Io.Dir.cwd().readFileAlloc(io, meow_toml, allocator, .limited(8192)) catch null;
+            if (content) |c| {
+                defer allocator.free(c);
+                if (try parseMeowTomlHosts(c, allocator, host)) |entry| {
+                    defer allocator.free(entry);
+                    if (std.fs.path.isAbsolute(entry)) return try allocator.dupe(u8, entry);
+                    return try std.fs.path.join(allocator, &.{ cur, entry });
+                }
+            }
+            // Fallback: purr/hosts/<host>.purr relative to project root
+            const host_path = try std.fmt.allocPrint(allocator, "purr/hosts/{s}.purr", .{host});
+            defer allocator.free(host_path);
+            const try_path = try std.fs.path.join(allocator, &.{ cur, host_path });
+            defer allocator.free(try_path);
+            if (std.Io.Dir.cwd().statFile(io, try_path, .{}) catch null) |_| {
+                return try allocator.dupe(u8, try_path);
+            }
+            return null;
+        }
+        if (std.fs.path.dirname(cur)) |parent| {
+            const new_cur = try allocator.dupe(u8, parent);
+            allocator.free(cur);
+            current = new_cur;
+        } else break;
+    }
+    // Final fallback: try purr/hosts/<host>.purr relative to cwd
+    const fallback = try std.fmt.allocPrint(allocator, "purr/hosts/{s}.purr", .{host});
+    defer allocator.free(fallback);
+    if (std.Io.Dir.cwd().statFile(io, fallback, .{}) catch null) |_| {
+        return try allocator.dupe(u8, fallback);
+    }
+    return null;
+}
+
 fn processFile(allocator: std.mem.Allocator, io: std.Io, file: []const u8, cmd: Command, out_path: ?[]const u8, json_flag: bool) !u8 {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
@@ -395,15 +472,23 @@ fn rebuildHost(allocator: std.mem.Allocator, io: std.Io, host_opt: ?[]const u8, 
     }
 
     const host_display = host_opt orelse "(auto)";
-    std.debug.print("purr: rebuild {s} — resolving project (meow.toml → meow.purr)...\n", .{host_display});
+    std.debug.print("purr: rebuild {s} — resolving project (meow.toml → meow.purr / hosts/<host>.purr)...\n", .{host_display});
 
-    // 1. Find project entry (cwd → parents)
+    // 1. Find project entry (cwd → parents) — per-host file if host given via meow.toml [hosts] or purr/hosts/<host>.purr
     var owned_entry: ?[]const u8 = null;
     defer if (owned_entry) |e| allocator.free(e);
-    const entry = if (try findProjectFile(allocator, io)) |found| blk: {
-        owned_entry = found;
-        break :blk found;
-    } else {
+    const entry = blk: {
+        if (host_opt) |h| {
+            if (try findHostFile(allocator, io, h)) |hf| {
+                owned_entry = hf;
+                std.debug.print("purr: host entry → {s} (via meow.toml [hosts] / purr/hosts/{s}.purr)\n", .{ hf, h });
+                break :blk hf;
+            }
+        }
+        if (try findProjectFile(allocator, io)) |found| {
+            owned_entry = found;
+            break :blk found;
+        }
         std.debug.print("purr error: cannot find meow.toml / meow.purr (cwd→parents, 4 levels)\n", .{});
         std.debug.print("help: run from repo root or specify file via `purr check <file>` then `purr rebuild`\n", .{});
         return 1;

@@ -147,21 +147,29 @@ Future: `map`, `network` address type, `secret` opaque.
 
 ## 6. Imports & project model
 
-`import "relative/path.purr";` resolved relative to file, transitive, `seen` dedup, `source_map` for diagnostics. Project (as of `meow.purr` #22):
+`import "relative/path.purr";` resolved relative to file, transitive, `seen` dedup, `source_map` for diagnostics. Project (as of `meow.purr` #22, Phase 6 per-host modules):
 ```
 .
-├── meow.toml         # [project] entry = "meow.purr" (default)
-├── meow.purr         # entry: import "purr/examples/roles/..." + host meow (cute name as requested)
+├── meow.toml         # [project] entry = "meow.purr" (default) + [hosts] x270/mireo = "purr/hosts/*.purr" (Phase 6)
+├── meow.purr         # aggregator: import "purr/hosts/x270.purr"; import "purr/hosts/mireo.purr" (for `purr check` all hosts)
 ├── purr/
-│   ├── meow.purr (alt) / examples/
-│   └── hosts/x270.purr (example)
-└── hosts/x270/default.nix  # ++ pathExists ./generated.nix (purr-flake-integration #19)
+│   ├── hosts/
+│   │   ├── x270.purr   # host x270 { use desktop/dev/gaming; ... } (29 tok, imports roles)
+│   │   └── mireo.purr  # host mireo { 7 microVMs } (205 tok)
+│   ├── roles/{desktop,dev}.purr
+│   ├── vms/ (future: grafana.purr, monerod.purr, ...)
+│   └── examples/hosts/{x270,mireo}.purr
+└── hosts/{x270,mireo}/default.nix  # ++ pathExists ./generated.nix (purr-native temp artifact)
 ```
-`purr check`/`compile` without file arg walks `cwd`→parents for `meow.toml` → `entry` or `meow.purr` fallback (4 levels, `meow.purr` discovery). `meow.toml` minimal:
+`purr check`/`compile` without file arg walks `cwd`→parents for `meow.toml` → `entry` or `meow.purr` fallback (4 levels, `meow.purr` discovery). `purr rebuild <host>` prefers `meow.toml [hosts]` entry or `purr/hosts/<host>.purr` (29tok/205tok vs 230tok meow.purr aggregator) for per-host incremental evaluation. `meow.toml` minimal + Phase 6:
 ```toml
 [project]
 name = "homelab"
 entry = "meow.purr"  # default, can be omitted
+
+[hosts]
+x270 = "purr/hosts/x270.purr"
+mireo = "purr/hosts/mireo.purr"
 ```
 
 ## 7. AST — choices

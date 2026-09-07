@@ -1,3 +1,7 @@
 [project]
 name = "homelab"
 entry = "meow.purr"
+
+[hosts]
+x270 = "purr/hosts/x270.purr"
+mireo = "purr/hosts/mireo.purr"
