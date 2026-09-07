@@ -6,9 +6,14 @@ import "purr/examples/roles/dev.purr";
 host x270 {
     use desktop;
     use dev;
+    use gaming;
 
     packages = ["dev"];
     preset gaming-performance;
+
+    // x270 specific: framework will expand roles → bundles/presets/packages
+    // Purr models the intent, Nix backend emits flakesonnix.* and systemPackages
+    // hardware/bluetooth/niri etc. remain in host.nix until fully migrated
 }
 
 host mireo {
