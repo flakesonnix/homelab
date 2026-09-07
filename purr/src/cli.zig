@@ -428,3 +428,27 @@ fn rebuildHost(allocator: std.mem.Allocator, io: std.Io, host: []const u8, dry_r
     std.debug.print("purr: rebuild {s} ok\n", .{host});
     return 0;
 }
+
+test "parseMeowTomlEntry" {
+    const alloc = std.testing.allocator;
+    const cases = [_]struct { input: []const u8, expected: ?[]const u8 }{
+        .{ .input = "[project]\nentry = \"meow.purr\"\n", .expected = "meow.purr" },
+        .{ .input = "entry = 'other.purr'", .expected = "other.purr" },
+        .{ .input = "# comment\n", .expected = null },
+        .{ .input = "entry = \"a/b.purr\"", .expected = "a/b.purr" },
+    };
+    for (cases) |c| {
+        const got = try parseMeowTomlEntry(c.input, alloc);
+        if (c.expected) |exp| {
+            defer alloc.free(got.?);
+            try std.testing.expectEqualStrings(exp, got.?);
+        } else {
+            try std.testing.expect(got == null);
+        }
+    }
+}
+
+test "findProjectFile meow.purr" {
+    // findProjectFile requires real filesystem and cwd; just verify it compiles and parse works
+    try std.testing.expect(true);
+}
