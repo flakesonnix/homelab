@@ -103,7 +103,7 @@ pub const Parser = struct {
                     const imp = try self.parseImport();
                     try imports.append(self.allocator, imp);
                 },
-                .keyword_let, .keyword_role, .keyword_host, .keyword_bundle, .keyword_preset, .keyword_package, .keyword_nix => {
+                .keyword_let, .keyword_role, .keyword_host, .keyword_bundle, .keyword_preset, .keyword_package, .keyword_nix, .keyword_microvm => {
                     const decl = try self.parseDecl();
                     try decls.append(self.allocator, decl);
                 },
@@ -160,6 +160,7 @@ pub const Parser = struct {
             },
             .keyword_nix => return .{ .nix = try self.parseNix() },
             .keyword_let => return .{ .let_decl = try self.parseLet() },
+            .keyword_microvm => return .{ .microvm = try self.parseMicroVM() },
             else => unreachable,
         }
     }
@@ -481,6 +482,10 @@ pub const Parser = struct {
                         });
                         return error.ParseError;
                     }
+                },
+                .keyword_import => {
+                    const imp = try self.parseImport();
+                    try stmts.append(self.allocator, .{ .import = imp });
                 },
                 .keyword_microvm => {
                     const vm = try self.parseMicroVM();

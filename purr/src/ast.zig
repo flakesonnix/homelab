@@ -117,6 +117,7 @@ pub const HostStmt = union(enum) {
     setting: Setting,
     let_decl: Let,
     microvm: MicroVM,
+    import: Import,
 };
 
 pub const Setting = struct {
@@ -160,6 +161,7 @@ pub const Decl = union(enum) {
     package_decl: Package,
     nix: NixBlock,
     let_decl: Let,
+    microvm: MicroVM,
 };
 
 pub const Package = struct {

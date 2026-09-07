@@ -328,30 +328,42 @@ One host (`x270`) + one role (`desktop`) + few packages → generate Nix → `ni
 
 ```
 .
-├── meow.toml / meow.purr  // project entry (host x270, purr-native)
+├── meow.toml / meow.purr  // project entry (host x270+mireo aggregator) + [hosts] x270/mireo = "purr/hosts/*.purr" (Phase 6)
 ├── purr/
-│   ├── flake.nix           // devShell (zig 0.16) + package + checks.purr-tests (35+)
+│   ├── hosts/
+│   │   ├── x270.purr   # host x270 { use desktop/dev/gaming; ... } (imports roles)
+│   │   └── mireo.purr  # host mireo { import "../vms/grafana.purr"; ... } (7 VMs via purr/vms/)
+│   ├── roles/{desktop,dev}.purr
+│   ├── vms/
+│   │   ├── grafana.purr      # microvm grafana { mem=768; cpu=2; ip=10.8.0.2; volume { ... }×2 }
+│   │   ├── monerod.purr      # microvm monerod { mem=1024; cpu=2; ip=10.8.0.4; }
+│   │   ├── network-services.purr
+│   │   ├── cups.purr
+│   │   ├── aptcache.purr
+│   │   ├── sshkeys.purr
+│   │   └── yammat.purr
+│   ├── flake.nix           // devShell (zig 0.16) + package + checks.purr-tests (38)
 │   ├── build.zig / build.zig.zon  // link_libc for meow discovery
 │   ├── src/
 │   │   ├── main.zig        // CLI dispatch
-│   │   ├── cli.zig         // check/compile/fmt/lint/eval/rebuild + meow discovery + --json + writeStdout (rebuild orchestration)
-│   │   ├── lexer.zig       // let, Expr tokens + microvm
-│   │   ├── parser.zig      // let, Expr Pratt, packages = Expr, microvm
-│   │   ├── ast.zig         // Let, Expr, Setting(Expr), Host(extends, let, microvm), MicroVM
+│   │   ├── cli.zig         // check/compile/fmt/lint/eval/rebuild + meow discovery + --json + writeStdout (per-host entrypoints via [hosts], host import)
+│   │   ├── lexer.zig       // let, Expr tokens + microvm/volume
+│   │   ├── parser.zig      // let, Expr Pratt, packages = Expr, microvm (top-level + host), host import
+│   │   ├── ast.zig         // Let, Expr, Setting(Expr), Host(extends, let, microvm, import), MicroVM, Volume, Decl.microvm
 │   │   ├── diagnostics.zig // source_map, render/renderJson (codeString, sortDiagnostics, writeJsonString) + E060 invalid_microvm
-│   │   ├── resolver.zig    // transitive, seen, cycle-safe, host extends (microvm inherited)
-│   │   ├── semantic.zig    // duplicate + unknown (role/preset/bundle/ident/microvm) + ordered_scope/host_scope + W004 + E060
-│   │   ├── nix.zig         // deterministic, let top/per-setting, packages → systemPackages, microvm.vms.*, string escaping, generateFiltered
-│   │   ├── fmt.zig         // formatExpr, idempotent, microvm
-│   │   └── lint.zig        // W001/W002/W003/W004 (checkUnusedLets pub)
+│   │   ├── resolver.zig    // transitive, seen, cycle-safe, host extends + host imports (normalizePath, microVM extraction) (microvm inherited)
+│   │   ├── semantic.zig    // duplicate + unknown (role/preset/bundle/ident/microvm) + ordered_scope/host_scope + W004 + E060 + host import
+│   │   ├── nix.zig         // deterministic, let top/per-setting, packages → systemPackages, microvm.vms.* ip/volumes, string escaping, generateFiltered
+│   │   ├── fmt.zig         // formatExpr, idempotent, microvm/volume, host import
+│   │   └── lint.zig        // W001/W002/W003/W004 (checkUnusedLets pub) + microvm/host import
 │   ├── tests/
 │   │   ├── fixtures/       // unknown-role, duplicate-host, unknown-bundle/preset, extends/*, microvm/*
 │   │   ├── golden/         // minimal, bundle_preset, let (top/host/packages), microvm .purr→.nix
 │   │   └── e2e.sh          // .purr→Nix→alejandra + import edge + check --json contract
 │   └── examples/
 │       ├── minimal.purr, bundle.purr, preset.purr, let_expr.purr, microvm.purr
-│       └── hosts/{x270,mireo}.purr, roles/{desktop,dev}.purr (mireo has microvm grafana/monerod)
-└── hosts/x270/default.nix  // ++ pathExists ./generated.nix (purr-native temp artifact)
+│       └── hosts/{x270,mireo}.purr, roles/{desktop,dev}.purr
+└── hosts/{x270,mireo}/default.nix  // ++ pathExists ./generated.nix (purr-native temp artifact, mireo cutover done)
 ```
 
 Adapt if cleaner.

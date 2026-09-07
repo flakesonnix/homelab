@@ -1,0 +1,16 @@
+microvm grafana {
+    mem = 768;
+    cpu = 2;
+    net = "lan";
+    ip = "10.8.0.2";
+    volume {
+        image = "grafana-data.img";
+        mountPoint = "/var/lib/grafana";
+        size = 1024;
+    }
+    volume {
+        image = "prometheus-data.img";
+        mountPoint = "/var/lib/prometheus2";
+        size = 1024;
+    }
+}

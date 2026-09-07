@@ -16,6 +16,7 @@ bash tests/e2e.sh    # E2E: .purr -> Nix -> alejandra + import edge cases + chec
 ./zig-out/bin/purr check               # auto meow.purr discovery (cwd→parents)
 ./zig-out/bin/purr check purr/hosts/x270.purr
 ./zig-out/bin/purr check purr/hosts/mireo.purr
+./zig-out/bin/purr check purr/vms/grafana.purr
 ./zig-out/bin/purr compile examples/minimal.purr --out /tmp/out.nix
 ./zig-out/bin/purr compile purr/hosts/x270.purr --out /tmp/x270.nix
 ./zig-out/bin/purr compile purr/hosts/mireo.purr --out /tmp/mireo.nix
@@ -24,7 +25,8 @@ cat /tmp/out.nix
 cat meow.toml          # [project] entry = "meow.purr" + [hosts] x270/mireo = "purr/hosts/*.purr"
 cat meow.purr          # import "purr/hosts/x270.purr"; import "purr/hosts/mireo.purr" (aggregator for `purr check`)
 cat purr/hosts/x270.purr  # host x270 { use desktop/dev/gaming; ... }
-cat purr/hosts/mireo.purr # host mireo { 7 microVMs }
+cat purr/hosts/mireo.purr # host mireo { import "../vms/grafana.purr"; ... } (7 VMs via purr/vms/*.purr)
+cat purr/vms/grafana.purr # microvm grafana { mem=768; cpu=2; net="lan"; ip="10.8.0.2"; volume { ... } }
 # purr-native orchestration (meow.purr → Nix → System, no generated.nix in repo, per-host entrypoints)
 ./zig-out/bin/purr rebuild --dry-run   # full pipeline, writes /tmp/purr-x270.nix, shows nixos-rebuild cmd (auto host if single)
 ./zig-out/bin/purr rebuild x270 --dry-run   # loads purr/hosts/x270.purr via meow.toml [hosts] (29 tok, 3 decls)
@@ -41,12 +43,19 @@ cat purr/hosts/mireo.purr # host mireo { 7 microVMs }
 ├── purr/
 │   ├── hosts/
 │   │   ├── x270.purr   # host x270 { use desktop/dev/gaming; packages; preset; }
-│   │   └── mireo.purr  # host mireo { 7 microVMs (grafana 768/.2/vol×2, monerod 1024/.4, network-services 256/.3, cups 512/.6/cups-etc, aptcache 512/.8/aptcache, sshkeys 256/.7, yammat 1024/.5) }
+│   │   └── mireo.purr  # host mireo { import "../vms/*.purr" } (7 VMs via purr/vms/)
 │   ├── roles/ {desktop,dev}.purr  # role definitions (used by x270)
-│   ├── vms/ (future)   # per-VM modules: grafana.purr, monerod.purr, ... (Phase 6 next)
+│   ├── vms/
+│   │   ├── grafana.purr      # microvm grafana { mem=768; cpu=2; ip=10.8.0.2; volume { ... }×2 }
+│   │   ├── monerod.purr      # microvm monerod { mem=1024; cpu=2; ip=10.8.0.4; }
+│   │   ├── network-services.purr # microvm network-services { mem=256; cpu=1; ip=10.8.0.3; }
+│   │   ├── cups.purr         # microvm cups { mem=512; cpu=1; ip=10.8.0.6; volume { ... } }
+│   │   ├── aptcache.purr     # microvm aptcache { mem=512; cpu=1; ip=10.8.0.8; volume { ... } }
+│   │   ├── sshkeys.purr      # microvm sshkeys { mem=256; cpu=1; ip=10.8.0.7; }
+│   │   └── yammat.purr       # microvm yammat { mem=1024; cpu=1; ip=10.8.0.5; }
 │   ├── flake.nix   # devShell, package, checks.purr-tests (38 tests)
 │   ├── build.zig
-│   ├── src/        # main, cli (per-host entrypoints via meow.toml [hosts]), lexer, parser, ast, diagnostics, resolver, semantic, nix, fmt, lint (+microvm ip/volume)
+│   ├── src/        # main, cli (per-host entrypoints via meow.toml [hosts] + host import), lexer (microvm/volume), parser (host import, top-level microvm), ast (HostStmt.import, Decl.microvm), diagnostics (E060), resolver (host imports + cycle via normalizePath), semantic (host import, top-level microVM), nix (microvm.vms.* ip/volumes), fmt (microvm/volume, host import), lint (+microvm)
 │   ├── tests/{fixtures,golden,e2e.sh}  # + check --json matrix
 │   └── examples/{minimal,bundle,preset,hosts/{x270,mireo},roles/*,let_expr}.purr
 └── hosts/{x270,mireo}/default.nix  # ++ pathExists ./generated.nix (purr-native temp artifact, mireo cutover done)

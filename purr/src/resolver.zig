@@ -43,10 +43,11 @@ pub const Resolver = struct {
 
         for (program.imports) |imp| {
             const dir = std.fs.path.dirname(file) orelse ".";
-            const joined = if (std.fs.path.isAbsolute(imp.path))
+            const raw_joined = if (std.fs.path.isAbsolute(imp.path))
                 try arena_alloc.dupe(u8, imp.path)
             else
                 try std.fs.path.join(arena_alloc, &.{ dir, imp.path });
+            const joined = try normalizePath(arena_alloc, raw_joined);
 
             if (self.seen.contains(joined)) {
                 try self.diag.push(.{
@@ -119,9 +120,126 @@ pub const Resolver = struct {
             .decls = try merged_decls.toOwnedSlice(arena_alloc),
             .arena = self.arena.*,
         };
+        // Resolve host-local imports (import inside host) before host extends
+        prog_with_imports = try self.resolveHostImports(&prog_with_imports);
         // Resolve host inheritance (extends) after imports
         prog_with_imports = try self.resolveHosts(&prog_with_imports);
         return prog_with_imports;
+    }
+
+    fn resolveHostImports(self: *Resolver, program: *const ast.Program) anyerror!ast.Program {
+        const arena_alloc = self.arena.allocator();
+        var new_decls: std.ArrayList(ast.Decl) = .empty;
+        for (program.decls) |decl| {
+            switch (decl) {
+                .host => |h| {
+                    var new_stmts: std.ArrayList(ast.HostStmt) = .empty;
+                    // Use host's file as base for relative imports
+                    const host_file = h.name.span.file;
+                    const host_dir = std.fs.path.dirname(host_file) orelse ".";
+                    for (h.stmts) |stmt| {
+                        switch (stmt) {
+                            .import => |imp| {
+                                const raw_joined = if (std.fs.path.isAbsolute(imp.path))
+                                    try arena_alloc.dupe(u8, imp.path)
+                                else
+                                    try std.fs.path.join(arena_alloc, &.{ host_dir, imp.path });
+                            const joined = try normalizePath(arena_alloc, raw_joined);
+                                if (self.seen.contains(joined)) {
+                                    try self.diag.push(.{
+                                        .severity = .warning,
+                                        .code = .duplicate_import,
+                                        .message = try std.fmt.allocPrint(arena_alloc, "duplicate import `{s}` in host `{s}`", .{ imp.path, h.name.name }),
+                                        .span = imp.span,
+                                        .help = null,
+                                    });
+                                    continue;
+                                }
+                                // Check for import cycle: if we are already importing this host's file?
+                                // For host imports, cycle would be host A imports vm file B which imports host A
+                                // Use seen to prevent infinite loop; already recorded before recursing
+                                try self.seen.put(try arena_alloc.dupe(u8, joined), {});
+                                const src_raw = self.cwd.readFileAlloc(self.io, joined, self.allocator, .limited(10 * 1024 * 1024)) catch |err| {
+                                    try self.diag.push(.{
+                                        .severity = .err,
+                                        .code = .unknown_ident,
+                                        .message = try std.fmt.allocPrint(arena_alloc, "cannot read import `{s}` in host `{s}`: {s}", .{ imp.path, h.name.name, @errorName(err) }),
+                                        .span = imp.span,
+                                        .help = try std.fmt.allocPrint(arena_alloc, "resolved as `{s}` relative to `{s}`", .{ joined, host_file }),
+                                    });
+                                    continue;
+                                };
+                                const src = try arena_alloc.dupe(u8, src_raw);
+                                self.allocator.free(src_raw);
+                                try self.diag.addSource(joined, src);
+                                var lex = lexer.Lexer.init(src, joined, self.diag);
+                                const toks = lex.lexAll(arena_alloc) catch |e| {
+                                    try self.diag.push(.{
+                                        .severity = .err,
+                                        .code = .lex_error,
+                                        .message = try std.fmt.allocPrint(arena_alloc, "lex error in import `{s}`: {s}", .{ joined, @errorName(e) }),
+                                        .span = imp.span,
+                                        .help = null,
+                                    });
+                                    continue;
+                                };
+                                var p = parser.Parser.initWithSource(toks, self.diag, self.arena, src);
+                                var imported_prog = p.parseProgram() catch {
+                                    continue;
+                                };
+                                // Recursively resolve top-level imports of the imported file
+                                const resolved_imported = try self.resolve(joined, &imported_prog);
+                                // Extract microVMs from resolved imported program: top-level microvm decls become HostStmt
+                                for (resolved_imported.decls) |d| {
+                                    switch (d) {
+                                        .microvm => |vm| try new_stmts.append(arena_alloc, .{ .microvm = vm }),
+                                        .host => |other_host| {
+                                            // If imported file contains a host with same name, merge its microVMs?
+                                            // For now, if host name matches current host, import its microVMs
+                                            if (std.mem.eql(u8, other_host.name.name, h.name.name)) {
+                                                for (other_host.stmts) |hs| {
+                                                    // Only bring microVMs, not other host settings to avoid complexity
+                                                    if (hs == .microvm) try new_stmts.append(arena_alloc, hs);
+                                                }
+                                            } else {
+                                                // Different host, warn
+                                                try self.diag.push(.{
+                                                    .severity = .warning,
+                                                    .code = .unused_import,
+                                                    .message = try std.fmt.allocPrint(arena_alloc, "import `{s}` contains host `{s}` different from `{s}`", .{ imp.path, other_host.name.name, h.name.name }),
+                                                    .span = imp.span,
+                                                    .help = "host imports should contain microVMs for the same host",
+                                                });
+                                            }
+                                        },
+                                        else => {
+                                            // For other decls (role, etc.), ignore for host import
+                                            try self.diag.push(.{
+                                                .severity = .warning,
+                                                .code = .unused_import,
+                                                .message = try std.fmt.allocPrint(arena_alloc, "import `{s}` contains non-microVM decl, ignored in host", .{imp.path}),
+                                                .span = imp.span,
+                                                .help = null,
+                                            });
+                                        },
+                                    }
+                                }
+                            },
+                            else => try new_stmts.append(arena_alloc, stmt),
+                        }
+                    }
+                    var new_host = h;
+                    new_host.stmts = try new_stmts.toOwnedSlice(arena_alloc);
+                    try new_decls.append(arena_alloc, .{ .host = new_host });
+                },
+                else => try new_decls.append(arena_alloc, decl),
+            }
+        }
+        return ast.Program{
+            .imports = try arena_alloc.dupe(ast.Import, program.imports),
+            .decls = try new_decls.toOwnedSlice(arena_alloc),
+            .arena = self.arena.*,
+        };
     }
 
     fn resolveHosts(self: *Resolver, program: *const ast.Program) !ast.Program {
@@ -361,6 +479,33 @@ pub const Resolver = struct {
         };
     }
 };
+
+fn normalizePath(allocator: std.mem.Allocator, path: []const u8) ![]const u8 {
+    var parts: std.ArrayList([]const u8) = .empty;
+    defer parts.deinit(allocator);
+    var it = std.mem.splitScalar(u8, path, '/');
+    while (it.next()) |part| {
+        if (part.len == 0 or std.mem.eql(u8, part, ".")) continue;
+        if (std.mem.eql(u8, part, "..")) {
+            if (parts.items.len > 0) _ = parts.pop();
+            continue;
+        }
+        try parts.append(allocator, part);
+    }
+    if (parts.items.len == 0) return try allocator.dupe(u8, ".");
+    var buf: std.ArrayList(u8) = .empty;
+    for (parts.items, 0..) |p, i| {
+        if (i > 0) try buf.append(allocator, '/');
+        try buf.appendSlice(allocator, p);
+    }
+    if (path.len > 0 and path[0] == '/') {
+        // Insert leading slash
+        const with_slash = try std.fmt.allocPrint(allocator, "/{s}", .{buf.items});
+        buf.deinit(allocator);
+        return with_slash;
+    }
+    return try buf.toOwnedSlice(allocator);
+}
 
 test "resolver no imports" {
     const alloc = std.testing.allocator;

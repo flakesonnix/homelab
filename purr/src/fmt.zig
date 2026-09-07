@@ -37,6 +37,45 @@ pub fn format(program: *const ast.Program, allocator: std.mem.Allocator) ![]cons
                 try formatExpr(&buf, allocator, l.value);
                 try buf.appendSlice(allocator, ";\n");
             },
+            .microvm => |vm| {
+                try buf.appendSlice(allocator, "microvm ");
+                try buf.appendSlice(allocator, vm.name.name);
+                try buf.appendSlice(allocator, " {\n");
+                if (vm.mem) |m| {
+                    const s = try std.fmt.allocPrint(allocator, "    mem = {d};\n", .{m});
+                    defer allocator.free(s);
+                    try buf.appendSlice(allocator, s);
+                }
+                if (vm.cpu) |c| {
+                    const s = try std.fmt.allocPrint(allocator, "    cpu = {d};\n", .{c});
+                    defer allocator.free(s);
+                    try buf.appendSlice(allocator, s);
+                }
+                if (vm.net) |n| {
+                    try buf.appendSlice(allocator, "    net = \"");
+                    try escapeString(&buf, allocator, n);
+                    try buf.appendSlice(allocator, "\";\n");
+                }
+                if (vm.ip) |ip| {
+                    try buf.appendSlice(allocator, "    ip = \"");
+                    try escapeString(&buf, allocator, ip);
+                    try buf.appendSlice(allocator, "\";\n");
+                }
+                for (vm.volumes) |vol| {
+                    try buf.appendSlice(allocator, "    volume {\n");
+                    try buf.appendSlice(allocator, "        image = \"");
+                    try escapeString(&buf, allocator, vol.image);
+                    try buf.appendSlice(allocator, "\";\n");
+                    try buf.appendSlice(allocator, "        mountPoint = \"");
+                    try escapeString(&buf, allocator, vol.mountPoint);
+                    try buf.appendSlice(allocator, "\";\n");
+                    const s = try std.fmt.allocPrint(allocator, "        size = {d};\n", .{vol.size});
+                    defer allocator.free(s);
+                    try buf.appendSlice(allocator, s);
+                    try buf.appendSlice(allocator, "    }\n");
+                }
+                try buf.appendSlice(allocator, "}\n");
+            },
         }
         if (idx + 1 < program.decls.len) try buf.appendSlice(allocator, "\n");
     }
@@ -188,6 +227,11 @@ fn formatHost(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, h: ast.Host
                 try buf.appendSlice(allocator, " = ");
                 try formatExpr(buf, allocator, l.value);
                 try buf.appendSlice(allocator, ";\n");
+            },
+            .import => |imp| {
+                try buf.appendSlice(allocator, "    import \"");
+                try escapeString(buf, allocator, imp.path);
+                try buf.appendSlice(allocator, "\";\n");
             },
             .microvm => |vm| {
                 try buf.appendSlice(allocator, "    microvm ");

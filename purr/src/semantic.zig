@@ -37,6 +37,8 @@ pub const Semantic = struct {
         defer scope.deinit();
 
         // first pass: collect declarations, detect duplicates
+        var microvm_names_top = std.StringHashMap(diagnostics.Span).init(self.allocator);
+        defer microvm_names_top.deinit();
         for (self.program.decls) |decl| {
             switch (decl) {
                 .role => |r| {
@@ -102,6 +104,19 @@ pub const Semantic = struct {
                         });
                     } else {
                         try scope.put(l.name.name, l.name.span);
+                    }
+                },
+                .microvm => |vm| {
+                    if (microvm_names_top.get(vm.name.name)) |prev| {
+                        try self.diag.push(.{
+                            .severity = .err,
+                            .code = .duplicate_decl,
+                            .message = try std.fmt.allocPrint(self.allocator, "duplicate microvm `{s}`", .{vm.name.name}),
+                            .span = vm.name.span,
+                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                        });
+                    } else {
+                        try microvm_names_top.put(vm.name.name, vm.name.span);
                     }
                 },
                 else => {},
@@ -260,6 +275,7 @@ pub const Semantic = struct {
                             .setting => |s| try self.checkExpr(s.value, &host_scope),
                             .package => {},
                             .packages_assign => {},
+                            .import => {},
                             .microvm => |vm| {
                                 if (microvm_names.get(vm.name.name)) |prev| {
                                     try self.diag.push(.{
@@ -367,6 +383,28 @@ pub const Semantic = struct {
                         }
                     }
                     // Also check host-level let values for top-level scope? No, host_scope already handled
+                },
+                .microvm => |vm| {
+                    if (vm.mem) |m| if (m <= 0) {
+                        try self.diag.push(.{ .severity = .err, .code = .invalid_microvm, .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` mem must be positive", .{vm.name.name}), .span = vm.name.span, .help = "example: mem = 512;" });
+                    };
+                    if (vm.cpu) |c| if (c <= 0) {
+                        try self.diag.push(.{ .severity = .err, .code = .invalid_microvm, .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` cpu must be positive", .{vm.name.name}), .span = vm.name.span, .help = "example: cpu = 1;" });
+                    };
+                    if (vm.net) |n| if (n.len == 0) {
+                        try self.diag.push(.{ .severity = .err, .code = .invalid_microvm, .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` net must be non-empty", .{vm.name.name}), .span = vm.name.span, .help = "example: net = \"lan\";" });
+                    };
+                    if (vm.ip) |ip| if (!isValidIpv4(ip)) {
+                        try self.diag.push(.{ .severity = .err, .code = .invalid_microvm, .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` ip `{s}` is not valid ipv4", .{ vm.name.name, ip }), .span = vm.name.span, .help = "example: ip = \"10.8.0.2\";" });
+                    };
+                    for (vm.volumes) |vol| {
+                        if (vol.image.len == 0) {
+                            try self.diag.push(.{ .severity = .err, .code = .invalid_microvm, .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` volume missing image", .{vm.name.name}), .span = vol.span, .help = null });
+                        }
+                        if (vol.size <= 0) {
+                            try self.diag.push(.{ .severity = .err, .code = .invalid_microvm, .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` volume size must be positive", .{vm.name.name}), .span = vol.span, .help = null });
+                        }
+                    }
                 },
                 else => {},
             }

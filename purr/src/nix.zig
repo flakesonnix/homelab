@@ -114,6 +114,51 @@ pub fn generateFiltered(program: *const ast.Program, allocator: std.mem.Allocato
                 try buf.appendSlice(allocator, "\n");
             },
             .let_decl => continue,
+            .microvm => |vm| {
+                try buf.appendSlice(allocator, "    # microvm (top-level) ");
+                try buf.appendSlice(allocator, vm.name.name);
+                try buf.appendSlice(allocator, "\n");
+                try buf.appendSlice(allocator, "    microvm.vms.");
+                try buf.appendSlice(allocator, vm.name.name);
+                try buf.appendSlice(allocator, " = {\n");
+                try buf.appendSlice(allocator, "      autostart = true;\n");
+                try buf.appendSlice(allocator, "      config = {\n");
+                try buf.appendSlice(allocator, "        networking.hostName = \"");
+                try buf.appendSlice(allocator, vm.name.name);
+                try buf.appendSlice(allocator, "\";\n");
+                if (vm.mem) |m| {
+                    const s = try std.fmt.allocPrint(allocator, "        microvm.mem = {d};\n", .{m});
+                    defer allocator.free(s);
+                    try buf.appendSlice(allocator, s);
+                }
+                if (vm.cpu) |c| {
+                    const s = try std.fmt.allocPrint(allocator, "        microvm.vcpu = {d};\n", .{c});
+                    defer allocator.free(s);
+                    try buf.appendSlice(allocator, s);
+                }
+                if (vm.ip) |ip| {
+                    try buf.appendSlice(allocator, "        # ip = \"");
+                    try buf.appendSlice(allocator, ip);
+                    try buf.appendSlice(allocator, "\";\n");
+                }
+                if (vm.volumes.len > 0) {
+                    try buf.appendSlice(allocator, "        microvm.volumes = [\n");
+                    for (vm.volumes) |vol| {
+                        try buf.appendSlice(allocator, "          { image = \"");
+                        try buf.appendSlice(allocator, vol.image);
+                        try buf.appendSlice(allocator, "\"; mountPoint = \"");
+                        try buf.appendSlice(allocator, vol.mountPoint);
+                        try buf.appendSlice(allocator, "\"; size = ");
+                        const s = try std.fmt.allocPrint(allocator, "{d}", .{vol.size});
+                        defer allocator.free(s);
+                        try buf.appendSlice(allocator, s);
+                        try buf.appendSlice(allocator, "; }\n");
+                    }
+                    try buf.appendSlice(allocator, "        ];\n");
+                }
+                try buf.appendSlice(allocator, "      };\n");
+                try buf.appendSlice(allocator, "    };\n");
+            },
         }
     }
     // Emit sorted hosts
@@ -237,6 +282,7 @@ pub fn generateFiltered(program: *const ast.Program, allocator: std.mem.Allocato
                     }
                 },
                 .let_decl => continue,
+                .import => {},
                 .microvm => |vm| {
                     try buf.appendSlice(allocator, "    # microvm ");
                     try buf.appendSlice(allocator, vm.name.name);
