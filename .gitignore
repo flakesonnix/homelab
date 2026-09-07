@@ -31,3 +31,8 @@ purr/.zig-cache/
 purr/zig-out/
 purr/zig-cache/
 purr/flake.lock
+
+# Purr generated Nix (temp artifact via `purr rebuild` — never commit)
+hosts/*/generated.nix
+/tmp/purr-*.nix
+/tmp/purr-eval.nix

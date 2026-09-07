@@ -1,7 +1,9 @@
 import "purr/examples/roles/desktop.purr";
 import "purr/examples/roles/dev.purr";
 
-host meow {
+// purr-native: single host → `purr` / `purr rebuild` without arg
+// legacy hosts (x270/mireo) gradually migrate here; flake still provides x270/mireo
+host x270 {
     use desktop;
     use dev;
 

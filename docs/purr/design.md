@@ -266,13 +266,13 @@ Formatter operates on AST; comments preserved via attached `leading_comments`. v
 ## 16. CLI
 
 ```
-purr check <file> [--json]    // parse + semantic (+ W004 unused_let via check --json) → human or JSON {file,ok,diagnostics[{severity,code,codeName,message,span{file,line,col,len,start,end},help}]}
+purr check [<file>] [--json]    // parse + semantic (+ W004 unused_let via check --json) → human or JSON {file,ok,diagnostics[{severity,code,codeName,message,span{file,line,col,len,start,end},help}]}
 purr check                    // no file → meow.toml → meow.purr discovery (cwd→parents)
-purr compile <file> [--out generated.nix]  // deterministic Nix (let top → `let ... in {config}` + per-setting `let h in expr`, packages → systemPackages)
-purr fmt <file> [--out]       // idempotent, formatExpr
-purr lint <file>              // W001 duplicate_import, W002 empty_decl, W003 unformatted, W004 unused_let
-purr eval <file> [--json]     // compile → /tmp/purr-eval.nix → nix eval --file
-purr rebuild <host> [--dry-run] // nixos-rebuild switch --flake .#host
+purr compile [<file>] [--out generated.nix]  // deterministic Nix (let top → `let ... in {config}` + per-setting `let h in expr`, packages → systemPackages)
+purr fmt [<file>] [--out]       // idempotent, formatExpr
+purr lint [<file>]              // W001 duplicate_import, W002 empty_decl, W003 unformatted, W004 unused_let
+purr eval [<file>] [--json]     // compile → /tmp/purr-eval.nix → nix eval --file
+purr rebuild [<host>] [--dry-run] // meow.purr → AST → resolver → semantic → Nix (filtered host) → /tmp/purr-<host>.nix → temp hosts/<host>/generated.nix → nixos-rebuild switch --flake .#<host> → cleanup; auto host if single
 ```
 
 `--json` → stdout exclusively JSON, `stderr` empty, `ok = !hasErrors()` (warnings ok true), `exit 0`/`1`. Human `render` vs `renderJson` share `codeString` table. Distinguish parse/semantic/nix errors.
