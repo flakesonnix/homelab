@@ -688,3 +688,85 @@ test "resolver host extends deterministic" {
         }
     }
 }
+
+test "resolver duplicate host merging" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "host mireo { microvm grafana { mem = 512; cpu = 1; net = \"lan\"; } } host mireo { microvm monerod { mem = 1024; cpu = 2; net = \"lan\"; } }";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var p = parser.Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try p.parseProgram();
+    var resolver = Resolver.init(alloc, undefined, undefined, &diag, &arena);
+    defer resolver.deinit();
+    const resolved = try resolver.resolve("test.purr", &prog);
+    // Should have single host mireo with 2 microVMs after merging
+    var count: usize = 0;
+    var vm_count: usize = 0;
+    for (resolved.decls) |d| {
+        if (d == .host and std.mem.eql(u8, d.host.name.name, "mireo")) {
+            count += 1;
+            for (d.host.stmts) |s| {
+                if (s == .microvm) vm_count += 1;
+            }
+        }
+    }
+    try std.testing.expect(count == 1);
+    try std.testing.expect(vm_count == 2);
+    try std.testing.expect(!diag.hasErrors());
+}
+
+test "resolver module graph diamond" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    // Simulate diamond: A imports B and C, B and C import D (shared). We test via in-memory hosts: A has 2 imports that are same host fragment
+    // Instead, test duplicate host merging via multiple imports of same VM file: should dedup via seen
+    // Use real files in /tmp for import graph
+    const io = std.testing.io;
+    const cwd = std.Io.Dir.cwd();
+    const base = "/tmp/purr_diamond";
+    // Clean up previous
+    cwd.deleteFile(io, base ++ "/a.purr") catch {};
+    cwd.deleteFile(io, base ++ "/b.purr") catch {};
+    cwd.deleteFile(io, base ++ "/c.purr") catch {};
+    cwd.deleteFile(io, base ++ "/d.purr") catch {};
+    std.Io.Dir.cwd().createDirPath(io, base) catch {};
+    try cwd.writeFile(io, .{ .sub_path = base ++ "/d.purr", .data = "host d { microvm dm { mem = 256; cpu = 1; net = \"lan\"; } }" });
+    try cwd.writeFile(io, .{ .sub_path = base ++ "/b.purr", .data = "import \"d.purr\"; host b { microvm bm { mem = 256; cpu = 1; net = \"lan\"; } }" });
+    try cwd.writeFile(io, .{ .sub_path = base ++ "/c.purr", .data = "import \"d.purr\"; host c { microvm cm { mem = 256; cpu = 1; net = \"lan\"; } }" });
+    try cwd.writeFile(io, .{ .sub_path = base ++ "/a.purr", .data = "import \"b.purr\"; import \"c.purr\"; host a { microvm am { mem = 256; cpu = 1; net = \"lan\"; } }" });
+    const src = try cwd.readFileAlloc(io, base ++ "/a.purr", alloc, .limited(8192));
+    defer alloc.free(src);
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), base ++ "/a.purr", src);
+    var lex = lexer.Lexer.init(src, base ++ "/a.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var p = parser.Parser.initWithSource(toks, &diag, &arena, src);
+    var prog = try p.parseProgram();
+    var resolver = Resolver.init(alloc, io, cwd, &diag, &arena);
+    defer resolver.deinit();
+    const resolved = try resolver.resolve(base ++ "/a.purr", &prog);
+    // Should have hosts a, b, c, d (4) without duplicate, and no cycle
+    var host_count: usize = 0;
+    for (resolved.decls) |d| {
+        if (d == .host) host_count += 1;
+    }
+    try std.testing.expect(host_count == 4);
+    try std.testing.expect(!diag.hasErrors());
+    // Check duplicate import warning not error for b and c both importing d (should be deduped, not error)
+    var has_dup_warning = false;
+    for (diag.list.items) |d| {
+        if (d.code == .duplicate_import) has_dup_warning = true;
+    }
+    // Duplicate import for d should be warning (since both b and c import d, the second time d is seen it will be duplicate)
+    // But our seen is global, so second import of d will be duplicate
+    try std.testing.expect(has_dup_warning);
+    // Cleanup
+    cwd.deleteFile(io, base ++ "/a.purr") catch {};
+    cwd.deleteFile(io, base ++ "/b.purr") catch {};
+    cwd.deleteFile(io, base ++ "/c.purr") catch {};
+    cwd.deleteFile(io, base ++ "/d.purr") catch {};
+    cwd.deleteDir(io, base) catch {};
+}
