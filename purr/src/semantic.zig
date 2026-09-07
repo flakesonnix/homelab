@@ -186,6 +186,8 @@ pub const Semantic = struct {
                     defer host_scope.deinit();
                     var scope_it = ordered_scope.keyIterator();
                     while (scope_it.next()) |k| try host_scope.put(k.*, ordered_scope.get(k.*).?);
+                    var microvm_names = std.StringHashMap(diagnostics.Span).init(self.allocator);
+                    defer microvm_names.deinit();
                     for (h.stmts) |stmt| {
                         switch (stmt) {
                             .let_decl => |l| {
@@ -258,6 +260,61 @@ pub const Semantic = struct {
                             .setting => |s| try self.checkExpr(s.value, &host_scope),
                             .package => {},
                             .packages_assign => {},
+                            .microvm => |vm| {
+                                if (microvm_names.get(vm.name.name)) |prev| {
+                                    try self.diag.push(.{
+                                        .severity = .err,
+                                        .code = .duplicate_decl,
+                                        .message = try std.fmt.allocPrint(self.allocator, "duplicate microvm `{s}` in host `{s}`", .{ vm.name.name, h.name.name }),
+                                        .span = vm.name.span,
+                                        .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                                    });
+                                } else {
+                                    try microvm_names.put(vm.name.name, vm.name.span);
+                                }
+                                if (vm.mem) |m| {
+                                    if (m <= 0) {
+                                        try self.diag.push(.{
+                                            .severity = .err,
+                                            .code = .invalid_microvm,
+                                            .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` mem must be positive", .{vm.name.name}),
+                                            .span = vm.name.span,
+                                            .help = "example: mem = 512;",
+                                        });
+                                    }
+                                    if (m > 65536) {
+                                        try self.diag.push(.{
+                                            .severity = .err,
+                                            .code = .invalid_microvm,
+                                            .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` mem too large", .{vm.name.name}),
+                                            .span = vm.name.span,
+                                            .help = "max 65536 MiB",
+                                        });
+                                    }
+                                }
+                                if (vm.cpu) |c| {
+                                    if (c <= 0) {
+                                        try self.diag.push(.{
+                                            .severity = .err,
+                                            .code = .invalid_microvm,
+                                            .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` cpu must be positive", .{vm.name.name}),
+                                            .span = vm.name.span,
+                                            .help = "example: cpu = 1;",
+                                        });
+                                    }
+                                }
+                                if (vm.net) |n| {
+                                    if (n.len == 0) {
+                                        try self.diag.push(.{
+                                            .severity = .err,
+                                            .code = .invalid_microvm,
+                                            .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` net must be non-empty", .{vm.name.name}),
+                                            .span = vm.name.span,
+                                            .help = "example: net = \"lan\";",
+                                        });
+                                    }
+                                }
+                            },
                         }
                     }
                     // Also check host-level let values for top-level scope? No, host_scope already handled

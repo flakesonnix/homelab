@@ -189,6 +189,27 @@ fn formatHost(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, h: ast.Host
                 try formatExpr(buf, allocator, l.value);
                 try buf.appendSlice(allocator, ";\n");
             },
+            .microvm => |vm| {
+                try buf.appendSlice(allocator, "    microvm ");
+                try buf.appendSlice(allocator, vm.name.name);
+                try buf.appendSlice(allocator, " {\n");
+                if (vm.mem) |m| {
+                    const s = try std.fmt.allocPrint(allocator, "        mem = {d};\n", .{m});
+                    defer allocator.free(s);
+                    try buf.appendSlice(allocator, s);
+                }
+                if (vm.cpu) |c| {
+                    const s = try std.fmt.allocPrint(allocator, "        cpu = {d};\n", .{c});
+                    defer allocator.free(s);
+                    try buf.appendSlice(allocator, s);
+                }
+                if (vm.net) |n| {
+                    try buf.appendSlice(allocator, "        net = \"");
+                    try escapeString(buf, allocator, n);
+                    try buf.appendSlice(allocator, "\";\n");
+                }
+                try buf.appendSlice(allocator, "    }\n");
+            },
         }
     }
     try buf.appendSlice(allocator, "}\n");

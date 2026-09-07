@@ -18,6 +18,7 @@ pub const Code = enum {
     inheritance_cycle,
     self_inheritance,
     unused_let,
+    invalid_microvm,
 };
 
 pub const Span = struct {
@@ -117,6 +118,7 @@ pub const Diagnostics = struct {
             .inheritance_cycle => "E051",
             .self_inheritance => "E052",
             .unused_let => "W004",
+            .invalid_microvm => "E060",
         };
     }
 

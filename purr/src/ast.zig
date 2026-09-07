@@ -90,6 +90,14 @@ pub const Role = struct {
     span: Span,
 };
 
+pub const MicroVM = struct {
+    name: Ident,
+    mem: ?i64, // MiB, positive
+    cpu: ?i64, // vCPU count, positive
+    net: ?[]const u8, // network name, e.g. "lan"
+    span: Span,
+};
+
 pub const HostStmt = union(enum) {
     use_role: Ident,
     preset: Ident,
@@ -97,6 +105,7 @@ pub const HostStmt = union(enum) {
     packages_assign: [][]const u8,
     setting: Setting,
     let_decl: Let,
+    microvm: MicroVM,
 };
 
 pub const Setting = struct {

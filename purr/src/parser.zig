@@ -182,7 +182,7 @@ pub const Parser = struct {
     }
 
     fn isKeywordIdent(k: lexer.TokenKind) bool {
-        return k == .keyword_role or k == .keyword_host or k == .keyword_bundle or k == .keyword_preset or k == .keyword_package or k == .keyword_import or k == .keyword_use or k == .keyword_nix or k == .keyword_description or k == .keyword_targets or k == .keyword_extends;
+        return k == .keyword_role or k == .keyword_host or k == .keyword_bundle or k == .keyword_preset or k == .keyword_package or k == .keyword_import or k == .keyword_use or k == .keyword_nix or k == .keyword_description or k == .keyword_targets or k == .keyword_extends or k == .keyword_microvm;
     }
 
     fn parseRole(self: *Parser) !ast.Role {
@@ -482,6 +482,10 @@ pub const Parser = struct {
                         return error.ParseError;
                     }
                 },
+                .keyword_microvm => {
+                    const vm = try self.parseMicroVM();
+                    try stmts.append(self.allocator, .{ .microvm = vm });
+                },
                 .keyword_nix => {
                     const nix_block = try self.parseNix();
                     try stmts.append(self.allocator, .{ .setting = .{ .path = "nix_raw", .value = .{ .span = nix_block.span, .data = .{ .string = nix_block.content } }, .span = nix_block.span } });
@@ -501,6 +505,94 @@ pub const Parser = struct {
         }
         _ = try self.expect(.r_brace);
         return .{ .name = name, .extends = extends, .stmts = try stmts.toOwnedSlice(self.allocator), .span = kw.span };
+    }
+
+    fn parseMicroVM(self: *Parser) !ast.MicroVM {
+        const kw = try self.expect(.keyword_microvm);
+        const name = try self.parseIdent();
+        _ = try self.expect(.l_brace);
+        var mem: ?i64 = null;
+        var cpu: ?i64 = null;
+        var net: ?[]const u8 = null;
+        while (self.peekKind() != .r_brace and !self.isAtEnd()) {
+            // Expect field name as ident (mem/cpu/net). Allow any ident for forward compat, but validate
+            const field_tok = self.advance();
+            if (field_tok.kind != .ident and !isKeywordIdent(field_tok.kind)) {
+                try self.diag.push(.{
+                    .severity = .err,
+                    .code = .parse_error,
+                    .message = try std.fmt.allocPrint(self.allocator, "expected field name in microvm, found `{s}`", .{field_tok.lexeme}),
+                    .span = field_tok.span,
+                    .help = "expected `mem`, `cpu` or `net`",
+                });
+                return error.ParseError;
+            }
+            const field_name = field_tok.lexeme;
+            _ = try self.expect(.equal);
+            const val = try self.parseExpr(0);
+            _ = try self.expect(.semicolon);
+            if (std.mem.eql(u8, field_name, "mem")) {
+                const int_val = blk: {
+                    if (val.data == .integer) break :blk val.data.integer;
+                    if (val.data == .unary and val.data.unary.op == .neg and val.data.unary.expr.*.data == .integer) break :blk -val.data.unary.expr.*.data.integer;
+                    break :blk null;
+                };
+                if (int_val) |v| {
+                    mem = v;
+                } else {
+                    try self.diag.push(.{
+                        .severity = .err,
+                        .code = .parse_error,
+                        .message = "mem must be integer",
+                        .span = val.span,
+                        .help = "example: mem = 512;",
+                    });
+                    return error.ParseError;
+                }
+            } else if (std.mem.eql(u8, field_name, "cpu") or std.mem.eql(u8, field_name, "vcpu")) {
+                const int_val = blk: {
+                    if (val.data == .integer) break :blk val.data.integer;
+                    if (val.data == .unary and val.data.unary.op == .neg and val.data.unary.expr.*.data == .integer) break :blk -val.data.unary.expr.*.data.integer;
+                    break :blk null;
+                };
+                if (int_val) |v| {
+                    cpu = v;
+                } else {
+                    try self.diag.push(.{
+                        .severity = .err,
+                        .code = .parse_error,
+                        .message = "cpu must be integer",
+                        .span = val.span,
+                        .help = "example: cpu = 1;",
+                    });
+                    return error.ParseError;
+                }
+            } else if (std.mem.eql(u8, field_name, "net")) {
+                if (val.data == .string) {
+                    net = try self.dup(val.data.string);
+                } else {
+                    try self.diag.push(.{
+                        .severity = .err,
+                        .code = .parse_error,
+                        .message = "net must be string",
+                        .span = val.span,
+                        .help = "example: net = \"lan\";",
+                    });
+                    return error.ParseError;
+                }
+            } else {
+                try self.diag.push(.{
+                    .severity = .err,
+                    .code = .parse_error,
+                    .message = try std.fmt.allocPrint(self.allocator, "unknown microvm field `{s}`", .{field_name}),
+                    .span = field_tok.span,
+                    .help = "expected `mem`, `cpu`, `net`",
+                });
+                return error.ParseError;
+            }
+        }
+        _ = try self.expect(.r_brace);
+        return .{ .name = name, .mem = mem, .cpu = cpu, .net = net, .span = kw.span };
     }
 
     fn parseValue(self: *Parser) anyerror!ast.Expr {

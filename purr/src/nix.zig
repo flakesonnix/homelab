@@ -237,6 +237,36 @@ pub fn generateFiltered(program: *const ast.Program, allocator: std.mem.Allocato
                     }
                 },
                 .let_decl => continue,
+                .microvm => |vm| {
+                    try buf.appendSlice(allocator, "    # microvm ");
+                    try buf.appendSlice(allocator, vm.name.name);
+                    try buf.appendSlice(allocator, "\n");
+                    try buf.appendSlice(allocator, "    microvm.vms.");
+                    try buf.appendSlice(allocator, vm.name.name);
+                    try buf.appendSlice(allocator, " = {\n");
+                    try buf.appendSlice(allocator, "      autostart = true;\n");
+                    try buf.appendSlice(allocator, "      config = {\n");
+                    try buf.appendSlice(allocator, "        networking.hostName = \"");
+                    try buf.appendSlice(allocator, vm.name.name);
+                    try buf.appendSlice(allocator, "\";\n");
+                    if (vm.mem) |m| {
+                        const s = try std.fmt.allocPrint(allocator, "        microvm.mem = {d};\n", .{m});
+                        defer allocator.free(s);
+                        try buf.appendSlice(allocator, s);
+                    }
+                    if (vm.cpu) |c| {
+                        const s = try std.fmt.allocPrint(allocator, "        microvm.vcpu = {d};\n", .{c});
+                        defer allocator.free(s);
+                        try buf.appendSlice(allocator, s);
+                    }
+                    if (vm.net) |n| {
+                        try buf.appendSlice(allocator, "        # net = \"");
+                        try buf.appendSlice(allocator, n);
+                        try buf.appendSlice(allocator, "\";\n");
+                    }
+                    try buf.appendSlice(allocator, "      };\n");
+                    try buf.appendSlice(allocator, "    };\n");
+                },
             }
         }
     }
@@ -560,4 +590,63 @@ test "nix golden let packages expr" {
     const out = try generate(&prog, arena.allocator());
     try std.testing.expect(std.mem.indexOf(u8, out, "pkgs = [\"git\", \"helix\"];") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "environment.systemPackages = with pkgs; pkgs;") != null);
+}
+
+test "nix golden microvm" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\host mireo {
+        \\    microvm grafana {
+        \\        mem = 512;
+        \\        cpu = 1;
+        \\        net = "lan";
+        \\    }
+        \\}
+    ;
+    const diagnostics = @import("diagnostics.zig");
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "microvm.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "microvm.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    const out = try generate(&prog, arena.allocator());
+    try std.testing.expect(std.mem.indexOf(u8, out, "microvm.vms.grafana") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "microvm.mem = 512;") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "microvm.vcpu = 1;") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "networking.hostName = \"mireo\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "networking.hostName = \"grafana\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "# net = \"lan\"") != null);
+}
+
+test "nix golden microvm filtered" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\host mireo {
+        \\    microvm grafana { mem = 512; cpu = 1; net = "lan"; }
+        \\}
+        \\host x270 {
+        \\    use desktop;
+        \\}
+    ;
+    const diagnostics = @import("diagnostics.zig");
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "filtered.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "filtered.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    const out_all = try generate(&prog, arena.allocator());
+    try std.testing.expect(std.mem.indexOf(u8, out_all, "grafana") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out_all, "x270") != null);
+    const out_mireo = try generateFiltered(&prog, arena.allocator(), "mireo");
+    try std.testing.expect(std.mem.indexOf(u8, out_mireo, "grafana") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out_mireo, "x270") == null);
+    const out_x270 = try generateFiltered(&prog, arena.allocator(), "x270");
+    try std.testing.expect(std.mem.indexOf(u8, out_x270, "grafana") == null);
+    try std.testing.expect(std.mem.indexOf(u8, out_x270, "x270") != null);
 }

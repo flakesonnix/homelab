@@ -59,11 +59,16 @@ RoleField := 'description' '=' StringLit ';'
            | 'home' Block
 HostDecl  := 'host' Ident ('extends' Ident)? '{' HostStmt* '}'
 HostStmt  := 'use' Ident ';'               // role name
-           | 'preset' Ident ';'
-           | 'package' StringLit ';'       // direct package name
-           | 'packages' '=' Expr ';'       // tags, supports let refs: `packages = myPkgs` or `["git", my]`
-           | 'setting' Path '=' Expr ';'   // Expr includes binary `base == "x270"`, lists with idents
-           | LetDecl
+            | 'preset' Ident ';'
+            | 'package' StringLit ';'       // direct package name
+            | 'packages' '=' Expr ';'       // tags, supports let refs: `packages = myPkgs` or `["git", my]`
+            | 'setting' Path '=' Expr ';'   // Expr includes binary `base == "x270"`, lists with idents
+            | 'microvm' Ident '{' MicroVMField* '}' // child resource of Host, Phase 5
+            | LetDecl
+MicroVM   := 'microvm' Ident '{' MicroVMField* '}'
+MicroVMField := 'mem' '=' Integer ';'      // MiB, positive, e.g. 512
+             | 'cpu' '=' Integer ';'       // vCPU, positive, e.g. 1 (alias `vcpu`)
+             | 'net' '=' StringLit ';'     // network, e.g. "lan"
 BundleDecl:= 'bundle' Ident '{' ... '}'    // programs, packageToggles
 PresetDecl:= 'preset' Ident '{' 'flags' Block '}'
 FlagsBlock:= 'flags' '{' (Path '=' Expr ';')* '}'
@@ -290,8 +295,8 @@ Fixtures in `purr/tests/fixtures/` + `purr/tests/golden/`.
 
 ## 18. v0.1 scope (must) — current
 
-- **Done:** `program`, `import` (transitive, dedup, cycle-safe, `meow.purr` via `meow.toml`), `host` (`use`/`preset`/`package`/`packages = Expr`/`setting = Expr`/`nix` + `let` + `extends`), `role` (`description`/`targets`/`host`{presets,tags}/`home`{bundles}), `bundle` (`description`, `programs`, `packages`/`packageToggles`), `preset` (`description`, `flags { path = Expr; }`), `package "str";`, `nix { raw }` (source slice, nested braces), `string`/`int`/`bool`/`list`/`Expr` (`let`, `ident`, binary `+ - * / % == != && || < > <= >=`, unary `! -`, `()`), `//`/`/* */`, `;`, `meow.purr` discovery, `check --json` (nested `span`, `W004`)
-- Lexer/parser/AST/diagnostics(`source_map`, `render`/`renderJson` shared `codeString`, `sortDiagnostics`)/resolver/semantic(duplicate + unknown role/preset/bundle/ident with `did you mean?`, ordered_scope, host_scope, `W004`)/nix deterministic (`let top in {config}` + per-setting `let h in expr`, `packages` → `systemPackages`, string escaping)/fmt (`formatExpr`, idempotent)/lint (`W001`/`W002`/`W003`/`W004`, deterministic)/CLI `check`/`check --json` (meow discovery, stdout JSON, `ok`/`exit 0/1`)/`compile --out`/`fmt`/`lint`/`eval`/`rebuild`/E2E `tests/e2e.sh` (cyclic/duplicate/transitive/missing + `alejandra` + `check --json` contract)
+- **Done:** `program`, `import` (transitive, dedup, cycle-safe, `meow.purr` via `meow.toml`), `host` (`use`/`preset`/`package`/`packages = Expr`/`setting = Expr`/`nix` + `let` + `extends` + `microvm`), `microvm` (`mem`/`cpu`/`net`, child of `Host`), `role` (`description`/`targets`/`host`{presets,tags}/`home`{bundles}), `bundle` (`description`, `programs`, `packages`/`packageToggles`), `preset` (`description`, `flags { path = Expr; }`), `package "str";`, `nix { raw }` (source slice, nested braces), `string`/`int`/`bool`/`list`/`Expr` (`let`, `ident`, binary `+ - * / % == != && || < > <= >=`, unary `! -`, `()`), `//`/`/* */`, `;`, `meow.purr` discovery, `check --json` (nested `span`, `W004`, `E060` invalid_microvm)
+- Lexer/parser/AST/diagnostics(`source_map`, `render`/`renderJson` shared `codeString`, `sortDiagnostics`)/resolver/semantic(duplicate + unknown role/preset/bundle/ident/microvm with `did you mean?`, ordered_scope, host_scope, `W004`, `E060`)/nix deterministic (`let top in {config}` + per-setting `let h in expr`, `packages` → `systemPackages`, `microvm.vms.*`, string escaping)/fmt (`formatExpr`, idempotent, microvm)/lint (`W001`/`W002`/`W003`/`W004`, deterministic)/CLI `check`/`check --json` (meow discovery, stdout JSON, `ok`/`exit 0/1`)/`compile --out`/`fmt`/`lint`/`eval`/`rebuild` (meow.purr → Nix → temp `/tmp/purr-<host>.nix` → `hosts/<host>/generated.nix` → `nixos-rebuild` → cleanup)/E2E `tests/e2e.sh` (cyclic/duplicate/transitive/missing + `alejandra` + `check --json` contract)
 - Deferred: `service`, `types`/`functions`, `map`/`network`/`secret` types, `repl`.
 
 ## 19. Real-world validation
@@ -308,30 +313,30 @@ One host (`x270`) + one role (`desktop`) + few packages → generate Nix → `ni
 
 ```
 .
-├── meow.toml / meow.purr  // project entry (host meow, default)
+├── meow.toml / meow.purr  // project entry (host x270, purr-native)
 ├── purr/
-│   ├── flake.nix           // devShell (zig 0.16) + package + checks.purr-tests (35)
+│   ├── flake.nix           // devShell (zig 0.16) + package + checks.purr-tests (35+)
 │   ├── build.zig / build.zig.zon  // link_libc for meow discovery
 │   ├── src/
 │   │   ├── main.zig        // CLI dispatch
-│   │   ├── cli.zig         // check/compile/fmt/lint/eval/rebuild + meow discovery + --json + writeStdout
-│   │   ├── lexer.zig       // let, Expr tokens
-│   │   ├── parser.zig      // let, Expr Pratt, packages = Expr
-│   │   ├── ast.zig         // Let, Expr, Setting(Expr), Host(extends, let)
-│   │   ├── diagnostics.zig // source_map, render/renderJson (codeString, sortDiagnostics, writeJsonString)
-│   │   ├── resolver.zig    // transitive, seen, cycle-safe, host extends
-│   │   ├── semantic.zig    // duplicate + unknown (role/preset/bundle/ident) + ordered_scope/host_scope + W004
-│   │   ├── nix.zig         // deterministic, let top/per-setting, packages → systemPackages, string escaping
-│   │   ├── fmt.zig         // formatExpr, idempotent
+│   │   ├── cli.zig         // check/compile/fmt/lint/eval/rebuild + meow discovery + --json + writeStdout (rebuild orchestration)
+│   │   ├── lexer.zig       // let, Expr tokens + microvm
+│   │   ├── parser.zig      // let, Expr Pratt, packages = Expr, microvm
+│   │   ├── ast.zig         // Let, Expr, Setting(Expr), Host(extends, let, microvm), MicroVM
+│   │   ├── diagnostics.zig // source_map, render/renderJson (codeString, sortDiagnostics, writeJsonString) + E060 invalid_microvm
+│   │   ├── resolver.zig    // transitive, seen, cycle-safe, host extends (microvm inherited)
+│   │   ├── semantic.zig    // duplicate + unknown (role/preset/bundle/ident/microvm) + ordered_scope/host_scope + W004 + E060
+│   │   ├── nix.zig         // deterministic, let top/per-setting, packages → systemPackages, microvm.vms.*, string escaping, generateFiltered
+│   │   ├── fmt.zig         // formatExpr, idempotent, microvm
 │   │   └── lint.zig        // W001/W002/W003/W004 (checkUnusedLets pub)
 │   ├── tests/
-│   │   ├── fixtures/       // unknown-role, duplicate-host, unknown-bundle/preset, extends/*
-│   │   ├── golden/         // minimal, bundle_preset, let (top/host/packages) .purr→.nix
+│   │   ├── fixtures/       // unknown-role, duplicate-host, unknown-bundle/preset, extends/*, microvm/*
+│   │   ├── golden/         // minimal, bundle_preset, let (top/host/packages), microvm .purr→.nix
 │   │   └── e2e.sh          // .purr→Nix→alejandra + import edge + check --json contract
 │   └── examples/
-│       ├── minimal.purr, bundle.purr, preset.purr, let_expr.purr
-│       └── hosts/x270.purr, roles/{desktop,dev}.purr
-└── hosts/x270/default.nix  // ++ pathExists ./generated.nix
+│       ├── minimal.purr, bundle.purr, preset.purr, let_expr.purr, microvm.purr
+│       └── hosts/{x270,mireo}.purr, roles/{desktop,dev}.purr (mireo has microvm grafana/monerod)
+└── hosts/x270/default.nix  // ++ pathExists ./generated.nix (purr-native temp artifact)
 ```
 
 Adapt if cleaner.

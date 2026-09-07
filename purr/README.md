@@ -31,19 +31,19 @@ cat meow.purr          # import "purr/examples/roles/..." + host x270 (purr-nati
 ```
 .
 ├── meow.toml   # [project] entry = "meow.purr" (default)
-├── meow.purr   # project entry (host meow, imports purr/examples/roles/*)
+├── meow.purr   # project entry (host x270, imports purr/examples/roles/*)
 ├── purr/
-│   ├── flake.nix   # devShell, package, checks.purr-tests (35 tests)
+│   ├── flake.nix   # devShell, package, checks.purr-tests (37 tests)
 │   ├── build.zig
-│   ├── src/        # main, cli, lexer, parser, ast, diagnostics, resolver, semantic, nix, fmt, lint
+│   ├── src/        # main, cli, lexer, parser, ast, diagnostics, resolver, semantic, nix, fmt, lint (+microvm)
 │   ├── tests/{fixtures,golden,e2e.sh}  # + check --json matrix
-│   └── examples/{minimal,bundle,preset,hosts/x270,roles/*,let_expr}.purr
-└── hosts/x270/default.nix  # ++ pathExists ./generated.nix (purr-flake-integration)
+│   └── examples/{minimal,bundle,preset,hosts/{x270,mireo},roles/*,let_expr}.purr (mireo has microvm grafana/monerod)
+└── hosts/x270/default.nix  # ++ pathExists ./generated.nix (purr-native temp artifact)
 ```
 
 ## Status
 
-`master` `75ce574` → `bced3a6` → `2e3c976` → `purr-meow` → `purr-native` (this branch) — 35 tests + E2E green (check --json contract: `purr`/`purr-check-json` CI). Language: `role`/`host`/`bundle`/`preset`/`package`/`import`/`nix` + `let` + `Expr` (`+ - * / % == != && || < > <= >= ! - ()`), `bundle { programs, packages }`, `preset { flags { path = Expr; } }`, `host { use, preset, package, packages = Expr, let, setting }`, `host extends`, deterministic Nix (`let ... in {config}` + per-setting `let h in expr` for host-local, `packages` → `systemPackages`), `did you mean?` diagnostics, `check --json` (`ok`/`code`/`codeName`/`span` nested, `W004` unused_let), `meow.purr` discovery via `meow.toml` (cwd→parents), `purr rebuild` orchestration (`meow.purr` → AST → resolver → semantic → Nix → `/tmp/purr-<host>.nix` → temp `hosts/<host>/generated.nix` → `nixos-rebuild switch --flake .#<host>` → cleanup, `--dry-run`).
+`master` `75ce574` → `bced3a6` → `2e3c976` → `purr-meow` → `purr-native` (this branch) — 37 tests + E2E green (check --json contract: `purr`/`purr-check-json` CI). Language: `role`/`host`/`bundle`/`preset`/`package`/`import`/`nix` + `let` + `Expr` (`+ - * / % == != && || < > <= >= ! - ()`), `bundle { programs, packages }`, `preset { flags { path = Expr; } }`, `host { use, preset, package, packages = Expr, let, setting, microvm {mem,cpu,net} }`, `host extends`, `microvm` child of `Host` (Phase 5.1), deterministic Nix (`let ... in {config}` + per-setting `let h in expr` for host-local, `packages` → `systemPackages`, `microvm.vms.*`), `did you mean?` diagnostics, `check --json` (`ok`/`code`/`codeName`/`span` nested, `W004` unused_let, `E060` invalid_microvm), `meow.purr` discovery via `meow.toml` (cwd→parents), `purr rebuild` orchestration (`meow.purr` → AST → resolver → semantic → Nix → `/tmp/purr-<host>.nix` → temp `hosts/<host>/generated.nix` → `nixos-rebuild switch --flake .#<host>` → cleanup, `--dry-run`).
 
 Branch layout (purr-native plan):
 - `master` — clean shared base
