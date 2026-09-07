@@ -208,6 +208,34 @@ fn formatHost(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, h: ast.Host
                     try escapeString(buf, allocator, n);
                     try buf.appendSlice(allocator, "\";\n");
                 }
+                if (vm.ip) |ip| {
+                    try buf.appendSlice(allocator, "        ip = \"");
+                    try escapeString(buf, allocator, ip);
+                    try buf.appendSlice(allocator, "\";\n");
+                }
+                for (vm.volumes) |vol| {
+                    try buf.appendSlice(allocator, "        volume {\n");
+                    try buf.appendSlice(allocator, "            image = \"");
+                    try escapeString(buf, allocator, vol.image);
+                    try buf.appendSlice(allocator, "\";\n");
+                    try buf.appendSlice(allocator, "            mountPoint = \"");
+                    try escapeString(buf, allocator, vol.mountPoint);
+                    try buf.appendSlice(allocator, "\";\n");
+                    const s = try std.fmt.allocPrint(allocator, "            size = {d};\n", .{vol.size});
+                    defer allocator.free(s);
+                    try buf.appendSlice(allocator, s);
+                    if (vol.user) |u| {
+                        try buf.appendSlice(allocator, "            user = \"");
+                        try escapeString(buf, allocator, u);
+                        try buf.appendSlice(allocator, "\";\n");
+                    }
+                    if (vol.group) |g| {
+                        try buf.appendSlice(allocator, "            group = \"");
+                        try escapeString(buf, allocator, g);
+                        try buf.appendSlice(allocator, "\";\n");
+                    }
+                    try buf.appendSlice(allocator, "        }\n");
+                }
                 try buf.appendSlice(allocator, "    }\n");
             },
         }

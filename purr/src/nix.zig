@@ -264,6 +264,44 @@ pub fn generateFiltered(program: *const ast.Program, allocator: std.mem.Allocato
                         try buf.appendSlice(allocator, n);
                         try buf.appendSlice(allocator, "\";\n");
                     }
+                    if (vm.ip) |ip| {
+                        try buf.appendSlice(allocator, "        # ip = \"");
+                        try buf.appendSlice(allocator, ip);
+                        try buf.appendSlice(allocator, "\";\n");
+                        // For lan, hint at tap interface (real mireo uses mk-microvm.nix which sets ip via microvm-base)
+                        try buf.appendSlice(allocator, "        networking.interfaces.\"vm-");
+                        try buf.appendSlice(allocator, vm.name.name);
+                        try buf.appendSlice(allocator, "\".ipv4.addresses = [ { address = \"");
+                        try buf.appendSlice(allocator, ip);
+                        try buf.appendSlice(allocator, "\"; prefixLength = 24; } ];\n");
+                    }
+                    if (vm.volumes.len > 0) {
+                        try buf.appendSlice(allocator, "        microvm.volumes = [\n");
+                        for (vm.volumes) |vol| {
+                            try buf.appendSlice(allocator, "          {\n");
+                            try buf.appendSlice(allocator, "            image = \"");
+                            try buf.appendSlice(allocator, vol.image);
+                            try buf.appendSlice(allocator, "\";\n");
+                            try buf.appendSlice(allocator, "            mountPoint = \"");
+                            try buf.appendSlice(allocator, vol.mountPoint);
+                            try buf.appendSlice(allocator, "\";\n");
+                            const s = try std.fmt.allocPrint(allocator, "            size = {d};\n", .{vol.size});
+                            defer allocator.free(s);
+                            try buf.appendSlice(allocator, s);
+                            if (vol.user) |u| {
+                                try buf.appendSlice(allocator, "            user = \"");
+                                try buf.appendSlice(allocator, u);
+                                try buf.appendSlice(allocator, "\";\n");
+                            }
+                            if (vol.group) |g| {
+                                try buf.appendSlice(allocator, "            group = \"");
+                                try buf.appendSlice(allocator, g);
+                                try buf.appendSlice(allocator, "\";\n");
+                            }
+                            try buf.appendSlice(allocator, "          }\n");
+                        }
+                        try buf.appendSlice(allocator, "        ];\n");
+                    }
                     try buf.appendSlice(allocator, "      };\n");
                     try buf.appendSlice(allocator, "    };\n");
                 },
@@ -649,4 +687,38 @@ test "nix golden microvm filtered" {
     const out_x270 = try generateFiltered(&prog, arena.allocator(), "x270");
     try std.testing.expect(std.mem.indexOf(u8, out_x270, "grafana") == null);
     try std.testing.expect(std.mem.indexOf(u8, out_x270, "x270") != null);
+}
+
+test "nix golden microvm ip volume" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\host mireo {
+        \\    microvm grafana {
+        \\        mem = 512;
+        \\        cpu = 1;
+        \\        net = "lan";
+        \\        ip = "10.8.0.2";
+        \\        volume {
+        \\            image = "grafana-data.img";
+        \\            mountPoint = "/var/lib/grafana";
+        \\            size = 1024;
+        \\        }
+        \\    }
+        \\}
+    ;
+    const diagnostics = @import("diagnostics.zig");
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "ipvol.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "ipvol.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    const out = try generate(&prog, arena.allocator());
+    try std.testing.expect(std.mem.indexOf(u8, out, "10.8.0.2") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "grafana-data.img") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "mountPoint = \"/var/lib/grafana\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "size = 1024;") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "microvm.volumes") != null);
 }

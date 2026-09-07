@@ -314,6 +314,55 @@ pub const Semantic = struct {
                                         });
                                     }
                                 }
+                                if (vm.ip) |ip| {
+                                    if (!isValidIpv4(ip)) {
+                                        try self.diag.push(.{
+                                            .severity = .err,
+                                            .code = .invalid_microvm,
+                                            .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` ip `{s}` is not valid ipv4", .{ vm.name.name, ip }),
+                                            .span = vm.name.span,
+                                            .help = "example: ip = \"10.8.0.2\";",
+                                        });
+                                    }
+                                }
+                                for (vm.volumes) |vol| {
+                                    if (vol.image.len == 0) {
+                                        try self.diag.push(.{
+                                            .severity = .err,
+                                            .code = .invalid_microvm,
+                                            .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` volume missing image", .{vm.name.name}),
+                                            .span = vol.span,
+                                            .help = "example: volume { image = \"data.img\"; mountPoint = \"/var/lib/data\"; size = 1024; }",
+                                        });
+                                    }
+                                    if (vol.mountPoint.len == 0) {
+                                        try self.diag.push(.{
+                                            .severity = .err,
+                                            .code = .invalid_microvm,
+                                            .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` volume missing mountPoint", .{vm.name.name}),
+                                            .span = vol.span,
+                                            .help = null,
+                                        });
+                                    }
+                                    if (vol.size <= 0) {
+                                        try self.diag.push(.{
+                                            .severity = .err,
+                                            .code = .invalid_microvm,
+                                            .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` volume size must be positive", .{vm.name.name}),
+                                            .span = vol.span,
+                                            .help = "example: size = 1024;",
+                                        });
+                                    }
+                                    if (vol.size > 1024 * 1024) {
+                                        try self.diag.push(.{
+                                            .severity = .err,
+                                            .code = .invalid_microvm,
+                                            .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` volume size too large", .{vm.name.name}),
+                                            .span = vol.span,
+                                            .help = "max 1TiB",
+                                        });
+                                    }
+                                }
                             },
                         }
                     }
@@ -355,6 +404,34 @@ pub const Semantic = struct {
             .list => |lst| for (lst) |item| try self.checkExpr(item, scope),
             .string, .integer, .boolean => {},
         }
+    }
+
+    fn isValidIpv4(ip: []const u8) bool {
+        var parts: usize = 0;
+        var start: usize = 0;
+        var i: usize = 0;
+        while (i < ip.len) : (i += 1) {
+            const c = ip[i];
+            if (c == '.') {
+                if (i <= start) return false;
+                const part = ip[start..i];
+                if (part.len == 0 or part.len > 3) return false;
+                const val = std.fmt.parseInt(u16, part, 10) catch return false;
+                if (val > 255) return false;
+                parts += 1;
+                start = i + 1;
+            } else if (!std.ascii.isDigit(c)) {
+                return false;
+            }
+        }
+        // last part
+        if (start >= ip.len) return false;
+        const part = ip[start..];
+        if (part.len == 0 or part.len > 3) return false;
+        const val = std.fmt.parseInt(u16, part, 10) catch return false;
+        if (val > 255) return false;
+        parts += 1;
+        return parts == 4;
     }
 };
 

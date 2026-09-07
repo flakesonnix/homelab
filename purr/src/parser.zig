@@ -182,7 +182,7 @@ pub const Parser = struct {
     }
 
     fn isKeywordIdent(k: lexer.TokenKind) bool {
-        return k == .keyword_role or k == .keyword_host or k == .keyword_bundle or k == .keyword_preset or k == .keyword_package or k == .keyword_import or k == .keyword_use or k == .keyword_nix or k == .keyword_description or k == .keyword_targets or k == .keyword_extends or k == .keyword_microvm;
+        return k == .keyword_role or k == .keyword_host or k == .keyword_bundle or k == .keyword_preset or k == .keyword_package or k == .keyword_import or k == .keyword_use or k == .keyword_nix or k == .keyword_description or k == .keyword_targets or k == .keyword_extends or k == .keyword_microvm or k == .keyword_volume;
     }
 
     fn parseRole(self: *Parser) !ast.Role {
@@ -514,8 +514,102 @@ pub const Parser = struct {
         var mem: ?i64 = null;
         var cpu: ?i64 = null;
         var net: ?[]const u8 = null;
+        var ip: ?[]const u8 = null;
+        var volumes: std.ArrayList(ast.Volume) = .empty;
         while (self.peekKind() != .r_brace and !self.isAtEnd()) {
-            // Expect field name as ident (mem/cpu/net). Allow any ident for forward compat, but validate
+            // volume block: `volume { ... }`
+            if (self.peekKind() == .keyword_volume) {
+                _ = self.advance(); // volume
+                _ = try self.expect(.l_brace);
+                var image: ?[]const u8 = null;
+                var mountPoint: ?[]const u8 = null;
+                var size: ?i64 = null;
+                var user: ?[]const u8 = null;
+                var group: ?[]const u8 = null;
+                const vol_span = self.tokens[self.pos - 1].span; // volume keyword span
+                while (self.peekKind() != .r_brace and !self.isAtEnd()) {
+                    const f_tok = self.advance();
+                    if (f_tok.kind != .ident and !isKeywordIdent(f_tok.kind)) {
+                        try self.diag.push(.{
+                            .severity = .err,
+                            .code = .parse_error,
+                            .message = try std.fmt.allocPrint(self.allocator, "expected volume field, found `{s}`", .{f_tok.lexeme}),
+                            .span = f_tok.span,
+                            .help = "expected `image`, `mountPoint`, `size`, `user`, `group`",
+                        });
+                        return error.ParseError;
+                    }
+                    const fname = f_tok.lexeme;
+                    _ = try self.expect(.equal);
+                    const fval = try self.parseExpr(0);
+                    _ = try self.expect(.semicolon);
+                    if (std.mem.eql(u8, fname, "image")) {
+                        if (fval.data == .string) image = try self.dup(fval.data.string) else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "image must be string", .span = fval.span, .help = "example: image = \"data.img\";" });
+                            return error.ParseError;
+                        }
+                    } else if (std.mem.eql(u8, fname, "mountPoint") or std.mem.eql(u8, fname, "mount_point") or std.mem.eql(u8, fname, "mount")) {
+                        if (fval.data == .string) mountPoint = try self.dup(fval.data.string) else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "mountPoint must be string", .span = fval.span, .help = "example: mountPoint = \"/var/lib/data\";" });
+                            return error.ParseError;
+                        }
+                    } else if (std.mem.eql(u8, fname, "size")) {
+                        const iv = blk: {
+                            if (fval.data == .integer) break :blk fval.data.integer;
+                            if (fval.data == .unary and fval.data.unary.op == .neg and fval.data.unary.expr.*.data == .integer) break :blk -fval.data.unary.expr.*.data.integer;
+                            break :blk null;
+                        };
+                        if (iv) |v| size = v else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "size must be integer", .span = fval.span, .help = "example: size = 1024;" });
+                            return error.ParseError;
+                        }
+                    } else if (std.mem.eql(u8, fname, "user")) {
+                        if (fval.data == .string) user = try self.dup(fval.data.string) else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "user must be string", .span = fval.span, .help = null });
+                            return error.ParseError;
+                        }
+                    } else if (std.mem.eql(u8, fname, "group")) {
+                        if (fval.data == .string) group = try self.dup(fval.data.string) else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "group must be string", .span = fval.span, .help = null });
+                            return error.ParseError;
+                        }
+                    } else {
+                        try self.diag.push(.{
+                            .severity = .err,
+                            .code = .parse_error,
+                            .message = try std.fmt.allocPrint(self.allocator, "unknown volume field `{s}`", .{fname}),
+                            .span = f_tok.span,
+                            .help = "expected `image`, `mountPoint`, `size`",
+                        });
+                        return error.ParseError;
+                    }
+                }
+                _ = try self.expect(.r_brace);
+                // Validate required volume fields
+                if (image == null) {
+                    try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "volume missing `image`", .span = vol_span, .help = null });
+                    return error.ParseError;
+                }
+                if (mountPoint == null) {
+                    try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "volume missing `mountPoint`", .span = vol_span, .help = null });
+                    return error.ParseError;
+                }
+                if (size == null) {
+                    try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "volume missing `size`", .span = vol_span, .help = null });
+                    return error.ParseError;
+                }
+                try volumes.append(self.allocator, .{
+                    .image = image.?,
+                    .mountPoint = mountPoint.?,
+                    .size = size.?,
+                    .user = user,
+                    .group = group,
+                    .span = vol_span,
+                });
+                _ = self.consumeIf(.semicolon);
+                continue;
+            }
+            // Expect field name as ident (mem/cpu/net/ip)
             const field_tok = self.advance();
             if (field_tok.kind != .ident and !isKeywordIdent(field_tok.kind)) {
                 try self.diag.push(.{
@@ -523,7 +617,7 @@ pub const Parser = struct {
                     .code = .parse_error,
                     .message = try std.fmt.allocPrint(self.allocator, "expected field name in microvm, found `{s}`", .{field_tok.lexeme}),
                     .span = field_tok.span,
-                    .help = "expected `mem`, `cpu` or `net`",
+                    .help = "expected `mem`, `cpu`, `net`, `ip` or `volume`",
                 });
                 return error.ParseError;
             }
@@ -580,19 +674,32 @@ pub const Parser = struct {
                     });
                     return error.ParseError;
                 }
+            } else if (std.mem.eql(u8, field_name, "ip")) {
+                if (val.data == .string) {
+                    ip = try self.dup(val.data.string);
+                } else {
+                    try self.diag.push(.{
+                        .severity = .err,
+                        .code = .parse_error,
+                        .message = "ip must be string",
+                        .span = val.span,
+                        .help = "example: ip = \"10.8.0.2\";",
+                    });
+                    return error.ParseError;
+                }
             } else {
                 try self.diag.push(.{
                     .severity = .err,
                     .code = .parse_error,
                     .message = try std.fmt.allocPrint(self.allocator, "unknown microvm field `{s}`", .{field_name}),
                     .span = field_tok.span,
-                    .help = "expected `mem`, `cpu`, `net`",
+                    .help = "expected `mem`, `cpu`, `net`, `ip`, `volume`",
                 });
                 return error.ParseError;
             }
         }
         _ = try self.expect(.r_brace);
-        return .{ .name = name, .mem = mem, .cpu = cpu, .net = net, .span = kw.span };
+        return .{ .name = name, .mem = mem, .cpu = cpu, .net = net, .ip = ip, .volumes = try volumes.toOwnedSlice(self.allocator), .span = kw.span };
     }
 
     fn parseValue(self: *Parser) anyerror!ast.Expr {

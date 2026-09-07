@@ -69,6 +69,13 @@ MicroVM   := 'microvm' Ident '{' MicroVMField* '}'
 MicroVMField := 'mem' '=' Integer ';'      // MiB, positive, e.g. 512
              | 'cpu' '=' Integer ';'       // vCPU, positive, e.g. 1 (alias `vcpu`)
              | 'net' '=' StringLit ';'     // network, e.g. "lan"
+             | 'ip' '=' StringLit ';'      // ipv4, e.g. "10.8.0.2" (Phase 5.2)
+             | 'volume' '{' VolumeField* '}' // semantic volume, multiple allowed
+VolumeField := 'image' '=' StringLit ';'   // e.g. "grafana-data.img"
+            | 'mountPoint' '=' StringLit ';' // e.g. "/var/lib/grafana"
+            | 'size' '=' Integer ';'       // MiB, positive, e.g. 1024
+            | 'user' '=' StringLit ';'     // optional
+            | 'group' '=' StringLit ';'    // optional
 BundleDecl:= 'bundle' Ident '{' ... '}'    // programs, packageToggles
 PresetDecl:= 'preset' Ident '{' 'flags' Block '}'
 FlagsBlock:= 'flags' '{' (Path '=' Expr ';')* '}'
@@ -295,8 +302,8 @@ Fixtures in `purr/tests/fixtures/` + `purr/tests/golden/`.
 
 ## 18. v0.1 scope (must) — current
 
-- **Done:** `program`, `import` (transitive, dedup, cycle-safe, `meow.purr` via `meow.toml`), `host` (`use`/`preset`/`package`/`packages = Expr`/`setting = Expr`/`nix` + `let` + `extends` + `microvm`), `microvm` (`mem`/`cpu`/`net`, child of `Host`), `role` (`description`/`targets`/`host`{presets,tags}/`home`{bundles}), `bundle` (`description`, `programs`, `packages`/`packageToggles`), `preset` (`description`, `flags { path = Expr; }`), `package "str";`, `nix { raw }` (source slice, nested braces), `string`/`int`/`bool`/`list`/`Expr` (`let`, `ident`, binary `+ - * / % == != && || < > <= >=`, unary `! -`, `()`), `//`/`/* */`, `;`, `meow.purr` discovery, `check --json` (nested `span`, `W004`, `E060` invalid_microvm)
-- Lexer/parser/AST/diagnostics(`source_map`, `render`/`renderJson` shared `codeString`, `sortDiagnostics`)/resolver/semantic(duplicate + unknown role/preset/bundle/ident/microvm with `did you mean?`, ordered_scope, host_scope, `W004`, `E060`)/nix deterministic (`let top in {config}` + per-setting `let h in expr`, `packages` → `systemPackages`, `microvm.vms.*`, string escaping)/fmt (`formatExpr`, idempotent, microvm)/lint (`W001`/`W002`/`W003`/`W004`, deterministic)/CLI `check`/`check --json` (meow discovery, stdout JSON, `ok`/`exit 0/1`)/`compile --out`/`fmt`/`lint`/`eval`/`rebuild` (meow.purr → Nix → temp `/tmp/purr-<host>.nix` → `hosts/<host>/generated.nix` → `nixos-rebuild` → cleanup)/E2E `tests/e2e.sh` (cyclic/duplicate/transitive/missing + `alejandra` + `check --json` contract)
+- **Done:** `program`, `import` (transitive, dedup, cycle-safe, `meow.purr` via `meow.toml`), `host` (`use`/`preset`/`package`/`packages = Expr`/`setting = Expr`/`nix` + `let` + `extends` + `microvm`), `microvm` (`mem`/`cpu`/`net`/`ip`/`volume {image,mountPoint,size,user,group}`, child of `Host`), `role` (`description`/`targets`/`host`{presets,tags}/`home`{bundles}), `bundle` (`description`, `programs`, `packages`/`packageToggles`), `preset` (`description`, `flags { path = Expr; }`), `package "str";`, `nix { raw }` (source slice, nested braces), `string`/`int`/`bool`/`list`/`Expr` (`let`, `ident`, binary `+ - * / % == != && || < > <= >=`, unary `! -`, `()`), `//`/`/* */`, `;`, `meow.purr` discovery, `check --json` (nested `span`, `W004`, `E060` invalid_microvm)
+- Lexer/parser/AST/diagnostics(`source_map`, `render`/`renderJson` shared `codeString`, `sortDiagnostics`)/resolver/semantic(duplicate + unknown role/preset/bundle/ident/microvm/ip/volume with `did you mean?`, ordered_scope, host_scope, `W004`, `E060`)/nix deterministic (`let top in {config}` + per-setting `let h in expr`, `packages` → `systemPackages`, `microvm.vms.*` with ip/volumes, string escaping)/fmt (`formatExpr`, idempotent, microvm/volume)/lint (`W001`/`W002`/`W003`/`W004`, deterministic)/CLI `check`/`check --json` (meow discovery, stdout JSON, `ok`/`exit 0/1`)/`compile --out`/`fmt`/`lint`/`eval`/`rebuild` (meow.purr → Nix → temp `/tmp/purr-<host>.nix` → `hosts/<host>/generated.nix` → `nixos-rebuild` → cleanup)/E2E `tests/e2e.sh` (cyclic/duplicate/transitive/missing + `alejandra` + `check --json` contract)
 - Deferred: `service`, `types`/`functions`, `map`/`network`/`secret` types, `repl`.
 
 ## 19. Real-world validation

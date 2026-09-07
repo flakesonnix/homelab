@@ -90,11 +90,22 @@ pub const Role = struct {
     span: Span,
 };
 
+pub const Volume = struct {
+    image: []const u8,
+    mountPoint: []const u8,
+    size: i64, // MiB, positive
+    user: ?[]const u8,
+    group: ?[]const u8,
+    span: Span,
+};
+
 pub const MicroVM = struct {
     name: Ident,
     mem: ?i64, // MiB, positive
     cpu: ?i64, // vCPU count, positive
     net: ?[]const u8, // network name, e.g. "lan"
+    ip: ?[]const u8, // ipv4 string, e.g. "10.8.0.2"
+    volumes: []Volume,
     span: Span,
 };
 
