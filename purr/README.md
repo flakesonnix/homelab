@@ -7,29 +7,38 @@ Purr compiles `.purr` → deterministic Nix for NixOS/Home Manager. See `../READ
 ```bash
 nix develop          # zig 0.16 + alejandra
 zig build            # builds zig-out/bin/purr + purrc
-zig build test       # 13 tests (lexer/parser/semantic/nix + golden)
-bash tests/e2e.sh    # E2E: .purr -> Nix -> alejandra + import edge cases
+zig build test       # 35 tests (lexer/parser/semantic/nix + golden + check --json)
+bash tests/e2e.sh    # E2E: .purr -> Nix -> alejandra + import edge cases + check --json
 
-# check / compile
+# check / compile (with meow.purr project entry)
+./zig-out/bin/purr check meow.purr
+./zig-out/bin/purr check --json        # uses meow.toml → meow.purr, stdout JSON
 ./zig-out/bin/purr check examples/minimal.purr
 ./zig-out/bin/purr compile examples/minimal.purr --out /tmp/out.nix
 ./zig-out/bin/purr compile examples/hosts/x270.purr --out /tmp/x270.nix
 cat /tmp/out.nix
+# project entry (cute `meow.purr` name as requested)
+cat meow.toml          # [project] entry = "meow.purr"
+cat meow.purr          # import "purr/examples/roles/..." + host meow
 ```
 
 ## Layout
 
 ```
-purr/
-├── flake.nix   # devShell, package, checks.purr-tests
-├── build.zig
-├── src/        # main, cli, lexer, parser, ast, diagnostics, resolver, semantic, nix
-├── tests/{fixtures,golden,e2e.sh}
-└── examples/{minimal,bundle,preset,hosts/x270,roles/*}.purr
+.
+├── meow.toml   # [project] entry = "meow.purr" (default)
+├── meow.purr   # project entry (host meow, imports purr/examples/roles/*)
+├── purr/
+│   ├── flake.nix   # devShell, package, checks.purr-tests (35 tests)
+│   ├── build.zig
+│   ├── src/        # main, cli, lexer, parser, ast, diagnostics, resolver, semantic, nix, fmt, lint
+│   ├── tests/{fixtures,golden,e2e.sh}  # + check --json matrix
+│   └── examples/{minimal,bundle,preset,hosts/x270,roles/*,let_expr}.purr
+└── hosts/x270/default.nix  # ++ pathExists ./generated.nix (purr-flake-integration)
 ```
 
 ## Status
 
-v0.1 on branch `meow` (PR #8) — incremental, 10 commits, 13 tests + E2E green. Language: `role`/`host`/`bundle`/`preset`/`package`/`import`/`nix`, `bundle { programs, packages }`, `preset { flags { path = value; } }`, `host { use, preset, package }`, deterministic Nix, `did you mean?` diagnostics.
+`master` `75ce574` → `bced3a6` → `2e3c976` → current `purr-meow` — 35 tests + E2E green (check --json contract: `purr`/`purr-check-json` CI). Language: `role`/`host`/`bundle`/`preset`/`package`/`import`/`nix` + `let` + `Expr` (`+ - * / % == != && || < > <= >= ! - ()`), `bundle { programs, packages }`, `preset { flags { path = Expr; } }`, `host { use, preset, package, packages = Expr, let, setting }`, `host extends`, deterministic Nix (`let ... in {config}` + per-setting `let h in expr` for host-local, `packages` → `systemPackages`), `did you mean?` diagnostics, `check --json` (`ok`/`code`/`codeName`/`span` nested, `W004` unused_let), `meow.purr` discovery via `meow.toml` (cwd→parents).
 
-No `purr fmt` yet; `purr build` (nix eval) deferred. Target is “real language that feels like Lucy code”, not a Nix wrapper — see `docs/purr/design.md`.
+Target is “real language that feels like Lucy code”, not a Nix wrapper — see `docs/purr/design.md`.

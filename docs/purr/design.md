@@ -1,6 +1,6 @@
 # Purr (Meow) — Personal Nix DSL — Design & Implementation (Zig)
 
-> Status: **implemented v0.1**, branch `meow` (PR #8). Compiler in Zig 0.16.0 via `nixpkgs#zig`. Language is Purr (`.purr`), design doc originally “Meow” — same project. `purr/` has its own flake (`nix develop` → `zig build`/`zig build test`), 13 tests + `purr/tests/e2e.sh` E2E (`.purr → Nix → alejandra`). Generated Nix is deterministic; `purr check`/`compile` work end-to-end (see `README.md` Purr section, `purr/examples/`).
+> Status: **v0.1+** on `master` `75ce574` → `bced3a6` (`check --json` #20) + `2e3c976` (`packages` #21) + `meow.purr` #22. Compiler in Zig 0.16.0 via `nixpkgs#zig`. Language is Purr (`.purr`), design doc originally “Meow” — same project. `purr/` has its own flake (`nix develop` → `zig build`/`zig build test`), 35 tests + `purr/tests/e2e.sh` E2E (`.purr → Nix → alejandra` + `check --json` contract + `meow.purr` discovery). Generated Nix is deterministic (`let` top/per-setting, `packages` → `systemPackages`); `purr check`/`check --json`/`compile`/`fmt`/`lint`/`eval`/`rebuild` work end-to-end (see `purr/README.md`, `meow.purr`).
 
 ## 1. Philosophy — What is Meow? Why Nix backend?
 
@@ -135,20 +135,21 @@ Future: `map`, `network` address type, `secret` opaque.
 
 ## 6. Imports & project model
 
-v0.1: `import "relative/path.meow";` resolved relative to file, no package manager. Project:
+`import "relative/path.purr";` resolved relative to file, transitive, `seen` dedup, `source_map` for diagnostics. Project (as of `meow.purr` #22):
 ```
-project/
-├── main.meow
-├── roles/
-│   └── desktop.meow
-└── hosts/
-    └── x270.meow
+.
+├── meow.toml         # [project] entry = "meow.purr" (default)
+├── meow.purr         # entry: import "purr/examples/roles/..." + host meow (cute name as requested)
+├── purr/
+│   ├── meow.purr (alt) / examples/
+│   └── hosts/x270.purr (example)
+└── hosts/x270/default.nix  # ++ pathExists ./generated.nix (purr-flake-integration #19)
 ```
-Future `meow.toml`:
+`purr check`/`compile` without file arg walks `cwd`→parents for `meow.toml` → `entry` or `meow.purr` fallback (4 levels, `meow.purr` discovery). `meow.toml` minimal:
 ```toml
 [project]
 name = "homelab"
-entry = "main.meow"
+entry = "meow.purr"  # default, can be omitted
 ```
 
 ## 7. AST — choices
@@ -265,29 +266,33 @@ Formatter operates on AST; comments preserved via attached `leading_comments`. v
 ## 16. CLI
 
 ```
-meow check <file>    // parse + semantic, no nix emit
-meow compile <file> --out generated.nix
-meow build <project> // compile + nix eval (future)
-meow fmt <file>      // planned
+purr check <file> [--json]    // parse + semantic (+ W004 unused_let via check --json) → human or JSON {file,ok,diagnostics[{severity,code,codeName,message,span{file,line,col,len,start,end},help}]}
+purr check                    // no file → meow.toml → meow.purr discovery (cwd→parents)
+purr compile <file> [--out generated.nix]  // deterministic Nix (let top → `let ... in {config}` + per-setting `let h in expr`, packages → systemPackages)
+purr fmt <file> [--out]       // idempotent, formatExpr
+purr lint <file>              // W001 duplicate_import, W002 empty_decl, W003 unformatted, W004 unused_let
+purr eval <file> [--json]     // compile → /tmp/purr-eval.nix → nix eval --file
+purr rebuild <host> [--dry-run] // nixos-rebuild switch --flake .#host
 ```
 
-Distinguish parse/semantic/nix errors.
+`--json` → stdout exclusively JSON, `stderr` empty, `ok = !hasErrors()` (warnings ok true), `exit 0`/`1`. Human `render` vs `renderJson` share `codeString` table. Distinguish parse/semantic/nix errors.
 
 ## 17. Testing
 
-- Lexer: keywords, strings, comments, invalid chars
-- Parser: valid, nested, missing `;`, `}`
-- Semantic: unknown role, duplicate, conflicts
-- Codegen: golden `example.meow → example.nix`
-- Integration: compile `examples/hosts/minimal.meow` → `nix-instantiate --eval`
+- Lexer: keywords, strings, comments, invalid chars, `let`/`Expr` tokens
+- Parser: valid, nested, missing `;`, `}`, Pratt `Expr`, `let` top/host, `packages = Expr`
+- Semantic: unknown role/preset/bundle/ident (E042/E043/E044/E003) + suggest, duplicate host/role/let (E010), ordered_scope (forward/self ref), `host_scope` + `W004` unused_let
+- Codegen: golden `example.purr → example.nix` (minimal, bundle_preset, let top/host, packages Expr, string escaping) + deterministic
+- Integration: `purr/tests/e2e.sh` — `.purr → Nix → alejandra` + import edge (cyclic/duplicate/transitive/missing) + `check --json` contract (ok, E042/E010/E003/W004, stdout JSON, stderr empty, exit 0/1) + `meow.purr` discovery
+- CI: `purr` (35 tests) + `purr-check-json` (minimal/E042/E010/E003/W004 + has file/ok/diagnostics)
 
-Fixtures in `compiler/tests/fixtures/`.
+Fixtures in `purr/tests/fixtures/` + `purr/tests/golden/`.
 
 ## 18. v0.1 scope (must) — current
 
-- **Done:** `program`, `import` (transitive, dedup, cycle-safe), `host` (`use`/`preset`/`package`/`packages`/`setting`/`nix`), `role` (`description`/`targets`/`host`{presets,tags}/`home`{bundles}), `bundle` (`description`, `programs`, `packages`/`packageToggles`), `preset` (`description`, `flags { path=value; }`), `package "str";`, `nix { raw }` (source slice, nested braces), `string`/`int`/`bool`/`list`, `//`/`/* */`, `;`
-- Lexer/parser/AST/diagnostics(`source_map`)/resolver/semantic(duplicate + unknown role/preset/bundle with `did you mean?`)/nix deterministic (+golden `tests/golden/*.purr→*.nix`)/CLI `check`/`compile --out`/E2E `tests/e2e.sh` (cyclic/duplicate/transitive/missing + `alejandra` parse)
-- Deferred: `service`, `types`/`functions`, `formatter` (`purr fmt`), `repl`, `map`/`network`/`secret` types.
+- **Done:** `program`, `import` (transitive, dedup, cycle-safe, `meow.purr` via `meow.toml`), `host` (`use`/`preset`/`package`/`packages = Expr`/`setting = Expr`/`nix` + `let` + `extends`), `role` (`description`/`targets`/`host`{presets,tags}/`home`{bundles}), `bundle` (`description`, `programs`, `packages`/`packageToggles`), `preset` (`description`, `flags { path = Expr; }`), `package "str";`, `nix { raw }` (source slice, nested braces), `string`/`int`/`bool`/`list`/`Expr` (`let`, `ident`, binary `+ - * / % == != && || < > <= >=`, unary `! -`, `()`), `//`/`/* */`, `;`, `meow.purr` discovery, `check --json` (nested `span`, `W004`)
+- Lexer/parser/AST/diagnostics(`source_map`, `render`/`renderJson` shared `codeString`, `sortDiagnostics`)/resolver/semantic(duplicate + unknown role/preset/bundle/ident with `did you mean?`, ordered_scope, host_scope, `W004`)/nix deterministic (`let top in {config}` + per-setting `let h in expr`, `packages` → `systemPackages`, string escaping)/fmt (`formatExpr`, idempotent)/lint (`W001`/`W002`/`W003`/`W004`, deterministic)/CLI `check`/`check --json` (meow discovery, stdout JSON, `ok`/`exit 0/1`)/`compile --out`/`fmt`/`lint`/`eval`/`rebuild`/E2E `tests/e2e.sh` (cyclic/duplicate/transitive/missing + `alejandra` + `check --json` contract)
+- Deferred: `service`, `types`/`functions`, `map`/`network`/`secret` types, `repl`.
 
 ## 19. Real-world validation
 
@@ -302,26 +307,31 @@ One host (`x270`) + one role (`desktop`) + few packages → generate Nix → `ni
 ## 21. Project structure (Zig)
 
 ```
-purr/
-├── flake.nix           // devShell (zig 0.16) + package + checks.purr-tests
-├── build.zig / build.zig.zon
-├── src/
-│   ├── main.zig        // CLI dispatch
-│   ├── cli.zig
-│   ├── lexer.zig
-│   ├── parser.zig      // bundle/preset real, nix raw via source slice
-│   ├── ast.zig
-│   ├── diagnostics.zig // source_map multi-file
-│   ├── resolver.zig    // transitive, seen, cycle-safe
-│   ├── semantic.zig    // duplicate + unknown bundle/preset/role
-│   └── nix.zig         // deterministic, string escaping, raw preserve
-├── tests/
-│   ├── fixtures/       // unknown-role, duplicate-host, unknown-bundle/preset
-│   ├── golden/         // minimal, bundle_preset .purr→.nix
-│   └── e2e.sh          // .purr→Nix→alejandra + import edge cases
-└── examples/
-    ├── minimal.purr, bundle.purr, preset.purr
-    └── hosts/x270.purr, roles/{desktop,dev}.purr
+.
+├── meow.toml / meow.purr  // project entry (host meow, default)
+├── purr/
+│   ├── flake.nix           // devShell (zig 0.16) + package + checks.purr-tests (35)
+│   ├── build.zig / build.zig.zon  // link_libc for meow discovery
+│   ├── src/
+│   │   ├── main.zig        // CLI dispatch
+│   │   ├── cli.zig         // check/compile/fmt/lint/eval/rebuild + meow discovery + --json + writeStdout
+│   │   ├── lexer.zig       // let, Expr tokens
+│   │   ├── parser.zig      // let, Expr Pratt, packages = Expr
+│   │   ├── ast.zig         // Let, Expr, Setting(Expr), Host(extends, let)
+│   │   ├── diagnostics.zig // source_map, render/renderJson (codeString, sortDiagnostics, writeJsonString)
+│   │   ├── resolver.zig    // transitive, seen, cycle-safe, host extends
+│   │   ├── semantic.zig    // duplicate + unknown (role/preset/bundle/ident) + ordered_scope/host_scope + W004
+│   │   ├── nix.zig         // deterministic, let top/per-setting, packages → systemPackages, string escaping
+│   │   ├── fmt.zig         // formatExpr, idempotent
+│   │   └── lint.zig        // W001/W002/W003/W004 (checkUnusedLets pub)
+│   ├── tests/
+│   │   ├── fixtures/       // unknown-role, duplicate-host, unknown-bundle/preset, extends/*
+│   │   ├── golden/         // minimal, bundle_preset, let (top/host/packages) .purr→.nix
+│   │   └── e2e.sh          // .purr→Nix→alejandra + import edge + check --json contract
+│   └── examples/
+│       ├── minimal.purr, bundle.purr, preset.purr, let_expr.purr
+│       └── hosts/x270.purr, roles/{desktop,dev}.purr
+└── hosts/x270/default.nix  // ++ pathExists ./generated.nix
 ```
 
 Adapt if cleaner.
