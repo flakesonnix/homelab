@@ -1,11 +1,13 @@
-microvm cups {
-    mem = 512;
-    cpu = 1;
-    net = "lan";
-    ip = "10.8.0.6";
-    volume {
-        image = "cups-etc.img";
-        mountPoint = "/etc/cups";
-        size = 256;
+host mireo {
+    microvm cups {
+        mem = 512;
+        cpu = 1;
+        net = "lan";
+        ip = "10.8.0.6";
+        volume {
+            image = "cups-etc.img";
+            mountPoint = "/etc/cups";
+            size = 256;
+        }
     }
 }

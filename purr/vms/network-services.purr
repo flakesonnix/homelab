@@ -1,6 +1,8 @@
-microvm network-services {
-    mem = 256;
-    cpu = 1;
-    net = "lan";
-    ip = "10.8.0.3";
+host mireo {
+    microvm network-services {
+        mem = 256;
+        cpu = 1;
+        net = "lan";
+        ip = "10.8.0.3";
+    }
 }

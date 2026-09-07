@@ -1,9 +1,10 @@
+import "../vms/grafana.purr";
+import "../vms/monerod.purr";
+import "../vms/network-services.purr";
+import "../vms/cups.purr";
+import "../vms/aptcache.purr";
+import "../vms/sshkeys.purr";
+import "../vms/yammat.purr";
+
 host mireo {
-    import "../vms/grafana.purr";
-    import "../vms/monerod.purr";
-    import "../vms/network-services.purr";
-    import "../vms/cups.purr";
-    import "../vms/aptcache.purr";
-    import "../vms/sshkeys.purr";
-    import "../vms/yammat.purr";
 }

@@ -42,17 +42,17 @@ cat purr/vms/grafana.purr # microvm grafana { mem=768; cpu=2; net="lan"; ip="10.
 ├── meow.purr   # aggregator: import "purr/hosts/x270.purr"; import "purr/hosts/mireo.purr" (for `purr check` all hosts)
 ├── purr/
 │   ├── hosts/
-│   │   ├── x270.purr   # host x270 { use desktop/dev/gaming; packages; preset; }
-│   │   └── mireo.purr  # host mireo { import "../vms/*.purr" } (7 VMs via purr/vms/)
+│   │   ├── x270.purr   # host x270 { use desktop/dev/gaming; packages; preset; } (imports roles)
+│   │   └── mireo.purr  # import "../vms/grafana.purr"; ...; host mireo { } (7 VMs via host fragments in purr/vms/)
 │   ├── roles/ {desktop,dev}.purr  # role definitions (used by x270)
 │   ├── vms/
-│   │   ├── grafana.purr      # microvm grafana { mem=768; cpu=2; ip=10.8.0.2; volume { ... }×2 }
-│   │   ├── monerod.purr      # microvm monerod { mem=1024; cpu=2; ip=10.8.0.4; }
-│   │   ├── network-services.purr # microvm network-services { mem=256; cpu=1; ip=10.8.0.3; }
-│   │   ├── cups.purr         # microvm cups { mem=512; cpu=1; ip=10.8.0.6; volume { ... } }
-│   │   ├── aptcache.purr     # microvm aptcache { mem=512; cpu=1; ip=10.8.0.8; volume { ... } }
-│   │   ├── sshkeys.purr      # microvm sshkeys { mem=256; cpu=1; ip=10.8.0.7; }
-│   │   └── yammat.purr       # microvm yammat { mem=1024; cpu=1; ip=10.8.0.5; }
+│   │   ├── grafana.purr      # host mireo { microvm grafana { mem=768; cpu=2; ip=10.8.0.2; volume { ... }×2 } }
+│   │   ├── monerod.purr      # host mireo { microvm monerod { ... } }
+│   │   ├── network-services.purr # host mireo { microvm network-services { ... } }
+│   │   ├── cups.purr         # host mireo { microvm cups { ... } }
+│   │   ├── aptcache.purr     # host mireo { microvm aptcache { ... } }
+│   │   ├── sshkeys.purr      # host mireo { microvm sshkeys { ... } }
+│   │   └── yammat.purr       # host mireo { microvm yammat { ... } }
 │   ├── flake.nix   # devShell, package, checks.purr-tests (38 tests)
 │   ├── build.zig
 │   ├── src/        # main, cli (per-host entrypoints via meow.toml [hosts] + host import), lexer (microvm/volume), parser (host import, top-level microvm), ast (HostStmt.import, Decl.microvm), diagnostics (E060), resolver (host imports + cycle via normalizePath), semantic (host import, top-level microVM), nix (microvm.vms.* ip/volumes), fmt (microvm/volume, host import), lint (+microvm)

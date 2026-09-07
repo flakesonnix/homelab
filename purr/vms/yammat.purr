@@ -1,6 +1,8 @@
-microvm yammat {
-    mem = 1024;
-    cpu = 1;
-    net = "lan";
-    ip = "10.8.0.5";
+host mireo {
+    microvm yammat {
+        mem = 1024;
+        cpu = 1;
+        net = "lan";
+        ip = "10.8.0.5";
+    }
 }

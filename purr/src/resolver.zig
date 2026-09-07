@@ -244,14 +244,55 @@ pub const Resolver = struct {
 
     fn resolveHosts(self: *Resolver, program: *const ast.Program) !ast.Program {
         const arena_alloc = self.arena.allocator();
-        // Build map from host name to index
+        // First, merge duplicate hosts with same name (from different modules) by combining stmts
+        // This enables per-VM modules: purr/hosts/mireo.purr imports purr/vms/*.purr each with host mireo { microvm ... }
+        var merged_by_name = std.StringHashMap(ast.Host).init(self.allocator);
+        defer merged_by_name.deinit();
+        var host_order: std.ArrayList([]const u8) = .empty;
+        defer host_order.deinit(self.allocator);
+        var other_decls: std.ArrayList(ast.Decl) = .empty;
+        for (program.decls) |decl| {
+            switch (decl) {
+                .host => |h| {
+                    if (merged_by_name.get(h.name.name)) |existing| {
+                        // Merge stmts: existing + new
+                        var merged_stmts: std.ArrayList(ast.HostStmt) = .empty;
+                        for (existing.stmts) |s| try merged_stmts.append(arena_alloc, s);
+                        for (h.stmts) |s| try merged_stmts.append(arena_alloc, s);
+                        var merged_host = existing;
+                        merged_host.stmts = try merged_stmts.toOwnedSlice(arena_alloc);
+                        // Keep original name/span/extends from first, but merge stmts
+                        // If new host has extends and existing doesn't, use new's extends
+                        if (existing.extends == null and h.extends != null) merged_host.extends = h.extends;
+                        try merged_by_name.put(h.name.name, merged_host);
+                    } else {
+                        try merged_by_name.put(h.name.name, h);
+                        try host_order.append(self.allocator, h.name.name);
+                    }
+                },
+                else => try other_decls.append(arena_alloc, decl),
+            }
+        }
+        // Rebuild decls list with merged hosts (one per name) + other decls
+        var deduped_decls: std.ArrayList(ast.Decl) = .empty;
+        for (other_decls.items) |d| try deduped_decls.append(arena_alloc, d);
+        for (host_order.items) |name| {
+            const h = merged_by_name.get(name).?;
+            try deduped_decls.append(arena_alloc, .{ .host = h });
+        }
+        // Build new program with deduped hosts for further processing (extends)
+        var deduped_program = ast.Program{
+            .imports = try arena_alloc.dupe(ast.Import, program.imports),
+            .decls = try deduped_decls.toOwnedSlice(arena_alloc),
+            .arena = self.arena.*,
+        };
+        // Build map from host name to index for extends handling (now deduped, one per name)
         var host_map = std.StringHashMap(usize).init(self.allocator);
         defer host_map.deinit();
-        for (program.decls, 0..) |decl, idx| {
+        for (deduped_program.decls, 0..) |decl, idx| {
             if (decl == .host) {
                 const name = decl.host.name.name;
-                // Keep first occurrence for map (duplicates will be caught by semantic)
-                if (!host_map.contains(name)) try host_map.put(name, idx);
+                try host_map.put(name, idx);
             }
         }
         // Track visited states for cycle detection: 0=unvisited, 1=visiting, 2=visited
@@ -263,18 +304,18 @@ pub const Resolver = struct {
         var has_cycle = std.StringHashMap(bool).init(self.allocator);
         defer has_cycle.deinit();
 
-        for (program.decls) |decl| {
+        for (deduped_program.decls) |decl| {
             if (decl == .host) {
                 const name = decl.host.name.name;
                 if (state.get(name) == null) {
-                    try self.resolveHostDFS(name, &host_map, program, &state, &resolved_hosts, &has_cycle);
+                    try self.resolveHostDFS(name, &host_map, &deduped_program, &state, &resolved_hosts, &has_cycle);
                 }
             }
         }
 
         // Build new decls list with resolved hosts
         var new_decls: std.ArrayList(ast.Decl) = .empty;
-        for (program.decls) |decl| {
+        for (deduped_program.decls) |decl| {
             switch (decl) {
                 .host => |h| {
                     if (has_cycle.get(h.name.name) orelse false) {
@@ -294,7 +335,7 @@ pub const Resolver = struct {
             }
         }
         return ast.Program{
-            .imports = try arena_alloc.dupe(ast.Import, program.imports),
+            .imports = try arena_alloc.dupe(ast.Import, deduped_program.imports),
             .decls = try new_decls.toOwnedSlice(arena_alloc),
             .arena = self.arena.*,
         };

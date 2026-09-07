@@ -147,7 +147,7 @@ Future: `map`, `network` address type, `secret` opaque.
 
 ## 6. Imports & project model
 
-`import "relative/path.purr";` resolved relative to file, transitive, `seen` dedup, `source_map` for diagnostics. Project (as of `meow.purr` #22, Phase 6 per-host modules):
+`import "relative/path.purr";` resolved relative to file, transitive, `seen` dedup, `source_map` for diagnostics, `normalizePath` for `..` (Phase 7). Project (as of `meow.purr` #22, Phase 6 per-host + Phase 7 per-VM modules):
 ```
 .
 ├── meow.toml         # [project] entry = "meow.purr" (default) + [hosts] x270/mireo = "purr/hosts/*.purr" (Phase 6)
@@ -155,13 +155,20 @@ Future: `map`, `network` address type, `secret` opaque.
 ├── purr/
 │   ├── hosts/
 │   │   ├── x270.purr   # host x270 { use desktop/dev/gaming; ... } (29 tok, imports roles)
-│   │   └── mireo.purr  # host mireo { 7 microVMs } (205 tok)
+│   │   └── mireo.purr  # import "../vms/grafana.purr"; ...; host mireo { } (26 tok, 7 imports) → 7 host fragments merged
 │   ├── roles/{desktop,dev}.purr
-│   ├── vms/ (future: grafana.purr, monerod.purr, ...)
+│   ├── vms/
+│   │   ├── grafana.purr      # host mireo { microvm grafana { mem=768; ...; volume { ... }×2 } }
+│   │   ├── monerod.purr      # host mireo { microvm monerod { ... } }
+│   │   ├── network-services.purr
+│   │   ├── cups.purr
+│   │   ├── aptcache.purr
+│   │   ├── sshkeys.purr
+│   │   └── yammat.purr
 │   └── examples/hosts/{x270,mireo}.purr
 └── hosts/{x270,mireo}/default.nix  # ++ pathExists ./generated.nix (purr-native temp artifact)
 ```
-`purr check`/`compile` without file arg walks `cwd`→parents for `meow.toml` → `entry` or `meow.purr` fallback (4 levels, `meow.purr` discovery). `purr rebuild <host>` prefers `meow.toml [hosts]` entry or `purr/hosts/<host>.purr` (29tok/205tok vs 230tok meow.purr aggregator) for per-host incremental evaluation. `meow.toml` minimal + Phase 6:
+Module graph (Phase 7): `Module{path, imports[], decls[]}` → DFS → `seen` dedup → cycle detection → topo order → semantic. Imports are module-scoped (top-level), not declaration-scoped. `purr check`/`compile` without file arg walks `cwd`→parents for `meow.toml` → `entry` or `meow.purr` fallback (4 levels). `purr rebuild <host>` prefers `meow.toml [hosts]` entry or `purr/hosts/<host>.purr` (29tok/26tok vs 230tok meow.purr aggregator) for per-host incremental evaluation. Duplicate hosts with same name from different modules are merged (stmts combined) for per-VM fragments. `meow.toml` minimal + Phase 6/7:
 ```toml
 [project]
 name = "homelab"
@@ -332,7 +339,7 @@ One host (`x270`) + one role (`desktop`) + few packages → generate Nix → `ni
 ├── purr/
 │   ├── hosts/
 │   │   ├── x270.purr   # host x270 { use desktop/dev/gaming; ... } (imports roles)
-│   │   └── mireo.purr  # host mireo { import "../vms/grafana.purr"; ... } (7 VMs via purr/vms/)
+│   │   └── mireo.purr  # import "../vms/grafana.purr"; ...; host mireo { } (7 VMs via purr/vms/ host fragments)
 │   ├── roles/{desktop,dev}.purr
 │   ├── vms/
 │   │   ├── grafana.purr      # microvm grafana { mem=768; cpu=2; ip=10.8.0.2; volume { ... }×2 }

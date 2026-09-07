@@ -1,6 +1,8 @@
-microvm monerod {
-    mem = 1024;
-    cpu = 2;
-    net = "lan";
-    ip = "10.8.0.4";
+host mireo {
+    microvm monerod {
+        mem = 1024;
+        cpu = 2;
+        net = "lan";
+        ip = "10.8.0.4";
+    }
 }
