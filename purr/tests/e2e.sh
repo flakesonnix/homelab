@@ -14,7 +14,7 @@ echo "--- nix-instantiate --parse (syntax) ---"
 echo "parse: ok (via alejandra)"
 echo "=== import edge cases ==="
 ./zig-out/bin/purr check tests/fixtures/unknown-role.purr && echo "unexpected pass" && exit 1 || echo "unknown-role: correctly failed (E042)"
-./zig-out/bin/purr check tests/fixtures/duplicate-host.purr && echo "unexpected pass" && exit 1 || echo "duplicate-host: correctly failed (E010)"
+./zig-out/bin/purr check tests/fixtures/duplicate-host.purr && echo "duplicate-host: ok (merged, Phase 7)" || (echo "duplicate-host: fail" && exit 1)
 ./zig-out/bin/purr check tests/fixtures/unknown-bundle.purr && echo "unexpected pass" && exit 1 || echo "unknown-bundle: correctly failed (E044)"
 ./zig-out/bin/purr check tests/fixtures/unknown-preset.purr && echo "unexpected pass" && exit 1 || echo "unknown-preset: correctly failed (E043)"
 echo "=== cyclic / duplicate / transitive / missing ==="
@@ -76,9 +76,9 @@ cat /tmp/check_min.json | nix shell nixpkgs#jq -c jq -e '.ok == true and .diagno
 if ./zig-out/bin/purr check tests/fixtures/unknown-role.purr --json > /tmp/check_unknown.json 2> /tmp/check_unknown.stderr; then echo "check --json unknown-role: wrong exit (expected 1)" && exit 1; fi
 cat /tmp/check_unknown.json | nix shell nixpkgs#jq -c jq -e '.ok == false and .diagnostics[0].code == "E042" and .diagnostics[0].codeName == "unknown_role"' > /dev/null && echo "check --json unknown-role: ok" || (echo "check --json unknown-role: fail" && cat /tmp/check_unknown.json && exit 1)
 test ! -s /tmp/check_unknown.stderr || (echo "check --json unknown-role: stderr not empty" && cat /tmp/check_unknown.stderr && exit 1)
-# duplicate host -> E010
-if ./zig-out/bin/purr check tests/fixtures/duplicate-host.purr --json > /tmp/check_dup.json 2> /tmp/check_dup.stderr; then echo "check --json duplicate: wrong exit (expected 1)" && exit 1; fi
-cat /tmp/check_dup.json | nix shell nixpkgs#jq -c jq -e '.ok == false and .diagnostics[0].code == "E010"' > /dev/null && echo "check --json duplicate: ok" || (echo "check --json duplicate: fail" && cat /tmp/check_dup.json && exit 1)
+# duplicate host -> merged (Phase 7), not E010
+./zig-out/bin/purr check tests/fixtures/duplicate-host.purr --json > /tmp/check_dup.json 2> /tmp/check_dup.stderr || (echo "check --json duplicate: wrong exit" && exit 1)
+cat /tmp/check_dup.json | nix shell nixpkgs#jq -c jq -e '.ok == true and .diagnostics == []' > /dev/null && echo "check --json duplicate: ok (merged)" || (echo "check --json duplicate: fail" && cat /tmp/check_dup.json && exit 1)
 # unknown ident -> E003
 cat > /tmp/check_unknown_ident.purr <<'EOP'
 host x270 { s = unknown; }
