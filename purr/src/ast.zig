@@ -46,8 +46,29 @@ pub const Unary = struct {
     span: Span,
 };
 
+pub const Type = struct {
+    span: Span,
+    data: Data,
+    pub const Data = union(enum) {
+        bool,
+        i32,
+        i64,
+        u32,
+        u64,
+        usize,
+        string, // String / str
+        ipv4, // Ipv4
+        path, // Path
+        duration, // Duration
+        list: *Type, // List<T> / Vec<T>
+        option: *Type, // Option<T>
+        named: []const u8, // custom e.g. Volume, MicroVM, etc.
+    };
+};
+
 pub const Let = struct {
     name: Ident,
+    type_annot: ?Type = null,
     value: Expr,
     span: Span,
 };
@@ -91,6 +112,8 @@ pub const Role = struct {
 };
 
 pub const Volume = struct {
+    name: ?Ident = null, // for `volume data: Volume { ... }` name is "data"
+    type_annot: ?Type = null, // e.g. Volume
     image: []const u8,
     mountPoint: []const u8,
     size: i64, // MiB, positive
@@ -102,9 +125,13 @@ pub const Volume = struct {
 pub const MicroVM = struct {
     name: Ident,
     mem: ?i64, // MiB, positive
+    mem_type: ?Type = null,
     cpu: ?i64, // vCPU count, positive
+    cpu_type: ?Type = null,
     net: ?[]const u8, // network name, e.g. "lan"
+    net_type: ?Type = null,
     ip: ?[]const u8, // ipv4 string, e.g. "10.8.0.2"
+    ip_type: ?Type = null,
     volumes: []Volume,
     span: Span,
 };

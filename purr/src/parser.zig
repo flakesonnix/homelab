@@ -139,13 +139,48 @@ pub const Parser = struct {
         return .{ .path = path, .span = kw.span };
     }
 
+    fn parseType(self: *Parser) !ast.Type {
+        const start = self.peek().span;
+        const name_tok = try self.parseIdent();
+        const name = name_tok.name;
+        // Handle generic types like List<T>, Vec<T>, Option<T>
+        if (std.mem.eql(u8, name, "List") or std.mem.eql(u8, name, "Vec") or std.mem.eql(u8, name, "Option")) {
+            if (self.consumeIf(.lt) != null) {
+                const inner = try self.parseType();
+                _ = try self.expect(.gt);
+                const inner_ptr = try self.allocator.create(ast.Type);
+                inner_ptr.* = inner;
+                const data: ast.Type.Data = if (std.mem.eql(u8, name, "Option")) .{ .option = inner_ptr } else .{ .list = inner_ptr };
+                return .{ .span = start, .data = data };
+            }
+        }
+        const data: ast.Type.Data = blk: {
+            if (std.mem.eql(u8, name, "bool")) break :blk .bool;
+            if (std.mem.eql(u8, name, "i32")) break :blk .i32;
+            if (std.mem.eql(u8, name, "i64")) break :blk .i64;
+            if (std.mem.eql(u8, name, "u32")) break :blk .u32;
+            if (std.mem.eql(u8, name, "u64")) break :blk .u64;
+            if (std.mem.eql(u8, name, "usize")) break :blk .usize;
+            if (std.mem.eql(u8, name, "String") or std.mem.eql(u8, name, "string") or std.mem.eql(u8, name, "str")) break :blk .string;
+            if (std.mem.eql(u8, name, "Ipv4") or std.mem.eql(u8, name, "IPv4") or std.mem.eql(u8, name, "ip")) break :blk .ipv4;
+            if (std.mem.eql(u8, name, "Path")) break :blk .path;
+            if (std.mem.eql(u8, name, "Duration")) break :blk .duration;
+            break :blk .{ .named = try self.dup(name) };
+        };
+        return .{ .span = start, .data = data };
+    }
+
     fn parseLet(self: *Parser) !ast.Let {
         const kw = try self.expect(.keyword_let);
         const name = try self.parseIdent();
+        var type_annot: ?ast.Type = null;
+        if (self.consumeIf(.colon) != null) {
+            type_annot = try self.parseType();
+        }
         _ = try self.expect(.equal);
         const value = try self.parseExpr(0);
         _ = try self.expect(.semicolon);
-        return .{ .name = name, .value = value, .span = kw.span };
+        return .{ .name = name, .type_annot = type_annot, .value = value, .span = kw.span };
     }
 
     fn parseDecl(self: *Parser) !ast.Decl {
@@ -517,21 +552,64 @@ pub const Parser = struct {
         const name = try self.parseIdent();
         _ = try self.expect(.l_brace);
         var mem: ?i64 = null;
+        var mem_type: ?ast.Type = null;
         var cpu: ?i64 = null;
+        var cpu_type: ?ast.Type = null;
         var net: ?[]const u8 = null;
+        var net_type: ?ast.Type = null;
         var ip: ?[]const u8 = null;
+        var ip_type: ?ast.Type = null;
         var volumes: std.ArrayList(ast.Volume) = .empty;
         while (self.peekKind() != .r_brace and !self.isAtEnd()) {
-            // volume block: `volume { ... }`
             if (self.peekKind() == .keyword_volume) {
                 _ = self.advance(); // volume
+                var vol_name: ?ast.Ident = null;
+                var vol_type: ?ast.Type = null;
+                // optional volume name
+                if (self.peekKind() == .ident or isKeywordIdent(self.peekKind())) {
+                    // Check if next after ident is ":" or "{" — if "{" then it's name without type
+                    // Save position to peek
+                    const saved = self.pos;
+                    const ident = try self.parseIdent();
+                    if (self.peekKind() == .colon) {
+                        _ = self.advance(); // :
+                        if (self.peekKind() == .l_brace) {
+                            // volume data {  — actually data: without type, but we consumed ":", so this is volume data: { (no type)
+                            vol_name = ident;
+                        } else {
+                            // Try parse type
+                            const maybe_type: ?ast.Type = blk: {
+                                const save2 = self.pos;
+                                const t = self.parseType() catch {
+                                    self.pos = save2;
+                                    break :blk null;
+                                };
+                                break :blk t;
+                            };
+                            if (maybe_type) |t| {
+                                vol_type = t;
+                                vol_name = ident;
+                            } else {
+                                // Not a type, backtrack — treat as no name?
+                                self.pos = saved;
+                            }
+                        }
+                    } else if (self.peekKind() == .l_brace) {
+                        vol_name = ident;
+                    } else {
+                        // Not a volume name, backtrack
+                        self.pos = saved;
+                    }
+                } else if (self.consumeIf(.colon) != null) {
+                    vol_type = try self.parseType();
+                }
                 _ = try self.expect(.l_brace);
                 var image: ?[]const u8 = null;
                 var mountPoint: ?[]const u8 = null;
                 var size: ?i64 = null;
                 var user: ?[]const u8 = null;
                 var group: ?[]const u8 = null;
-                const vol_span = self.tokens[self.pos - 1].span; // volume keyword span
+                const vol_span = self.tokens[self.pos - 1].span;
                 while (self.peekKind() != .r_brace and !self.isAtEnd()) {
                     const f_tok = self.advance();
                     if (f_tok.kind != .ident and !isKeywordIdent(f_tok.kind)) {
@@ -545,7 +623,55 @@ pub const Parser = struct {
                         return error.ParseError;
                     }
                     const fname = f_tok.lexeme;
-                    _ = try self.expect(.equal);
+                    // volume field may be `field = value;` or `field: Type = value;` or `field: value;`
+                    var field_type: ?ast.Type = null;
+                    if (self.consumeIf(.colon) != null) {
+                        // Check if next is type or value
+                        // If next is ident that is known type and after that is "=", then it's type
+                        _ = blk: {
+                            if (self.peekKind() != .ident and !isKeywordIdent(self.peekKind())) break :blk false;
+                            const n = self.peek().lexeme;
+                            const known = std.mem.eql(u8, n, "String") or std.mem.eql(u8, n, "string") or std.mem.eql(u8, n, "str") or std.mem.eql(u8, n, "bool") or std.mem.eql(u8, n, "i32") or std.mem.eql(u8, n, "i64") or std.mem.eql(u8, n, "u32") or std.mem.eql(u8, n, "u64") or std.mem.eql(u8, n, "usize") or std.mem.eql(u8, n, "Path") or std.mem.eql(u8, n, "Ipv4") or std.mem.eql(u8, n, "Duration") or std.mem.eql(u8, n, "List") or std.mem.eql(u8, n, "Vec") or std.mem.eql(u8, n, "Option");
+                            if (!known) break :blk false;
+                            // Look ahead after type to see if "="
+                            // Save and try parse type
+                            const save = self.pos;
+                            const t = self.parseType() catch {
+                                self.pos = save;
+                                break :blk false;
+                            };
+                            if (self.peekKind() == .equal) {
+                                field_type = t;
+                                break :blk true;
+                            } else {
+                                self.pos = save;
+                                break :blk false;
+                            }
+                        };
+                            if (field_type == null) {
+                            if (self.consumeIf(.equal) != null) {
+                            } else {
+                                // No "=", value follows directly after ":"
+                            }
+                        } else {
+                            // field_type already set, now expect "="
+                            if (self.consumeIf(.equal) != null) {
+                            } else {
+                                // For `field: Type = value`, we need "="
+                                // If no "=", treat as error but allow value without "="
+                            }
+                        }
+                    } else if (self.consumeIf(.equal) != null) {
+                    } else {
+                        try self.diag.push(.{
+                            .severity = .err,
+                            .code = .parse_error,
+                            .message = try std.fmt.allocPrint(self.allocator, "expected `:` or `=` after field `{s}`", .{fname}),
+                            .span = f_tok.span,
+                            .help = null,
+                        });
+                        return error.ParseError;
+                    }
                     const fval = try self.parseExpr(0);
                     _ = try self.expect(.semicolon);
                     if (std.mem.eql(u8, fname, "image")) {
@@ -590,7 +716,6 @@ pub const Parser = struct {
                     }
                 }
                 _ = try self.expect(.r_brace);
-                // Validate required volume fields
                 if (image == null) {
                     try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "volume missing `image`", .span = vol_span, .help = null });
                     return error.ParseError;
@@ -604,6 +729,8 @@ pub const Parser = struct {
                     return error.ParseError;
                 }
                 try volumes.append(self.allocator, .{
+                    .name = vol_name,
+                    .type_annot = vol_type,
                     .image = image.?,
                     .mountPoint = mountPoint.?,
                     .size = size.?,
@@ -614,7 +741,6 @@ pub const Parser = struct {
                 _ = self.consumeIf(.semicolon);
                 continue;
             }
-            // Expect field name as ident (mem/cpu/net/ip)
             const field_tok = self.advance();
             if (field_tok.kind != .ident and !isKeywordIdent(field_tok.kind)) {
                 try self.diag.push(.{
@@ -627,6 +753,152 @@ pub const Parser = struct {
                 return error.ParseError;
             }
             const field_name = field_tok.lexeme;
+            var field_type: ?ast.Type = null;
+            if (self.consumeIf(.colon) != null) {
+                // Check if next is type
+                const is_known_type = blk: {
+                    if (self.peekKind() != .ident and !isKeywordIdent(self.peekKind())) break :blk false;
+                    const n = self.peek().lexeme;
+                    if (std.mem.eql(u8, n, "String") or std.mem.eql(u8, n, "string") or std.mem.eql(u8, n, "str") or std.mem.eql(u8, n, "bool") or std.mem.eql(u8, n, "i32") or std.mem.eql(u8, n, "i64") or std.mem.eql(u8, n, "u32") or std.mem.eql(u8, n, "u64") or std.mem.eql(u8, n, "usize") or std.mem.eql(u8, n, "Path") or std.mem.eql(u8, n, "Ipv4") or std.mem.eql(u8, n, "Duration") or std.mem.eql(u8, n, "List") or std.mem.eql(u8, n, "Vec") or std.mem.eql(u8, n, "Option")) break :blk true;
+                    break :blk false;
+                };
+                if (is_known_type) {
+                    const save = self.pos;
+                    const t: ?ast.Type = blk: {
+                        const tmp = self.parseType() catch {
+                            self.pos = save;
+                            break :blk null;
+                        };
+                        break :blk tmp;
+                    };
+                    if (t) |tt| {
+                        if (self.peekKind() == .equal) {
+                            field_type = tt;
+                            _ = self.advance(); // consume "="
+                        } else {
+                            // No "=", maybe it's just `mem: 768` without type? But we parsed type, and next is not "=", so this was not type
+                            self.pos = save;
+                            // Then value follows directly after ":", no type
+                            field_type = null;
+                        }
+                    }
+                    if (field_type == null) {
+                        // No type found, value follows after ":"
+                        // Do nothing, will parse value below
+                    }
+                }
+                if (field_type == null) {
+                    // For `mem: 768` or `mem: "lan"` where no type, we already consumed ":", now parse value
+                    // No "=" needed
+                }
+                // If we consumed "=", we already have field_type and "=", else we need to parse value
+                // For `mem: u32 = 768`, we consumed ":" + type + "=", now parse value
+                // For `mem: 768`, we consumed ":", now parse value
+                // So if we haven't yet consumed "=", and we are in `mem: u32 =` case, we already consumed "="
+                // For `mem: 768` case, we need to parse value directly
+                // For `mem = 768` case (old), we wouldn't be in this branch (we would have taken equal branch)
+                // So handle accordingly
+                if (field_type == null) {
+                    // No type, parse value after ":"
+                    const val = try self.parseExpr(0);
+                    _ = try self.expect(.semicolon);
+                    if (std.mem.eql(u8, field_name, "mem")) {
+                        const int_val = blk: {
+                            if (val.data == .integer) break :blk val.data.integer;
+                            if (val.data == .unary and val.data.unary.op == .neg and val.data.unary.expr.*.data == .integer) break :blk -val.data.unary.expr.*.data.integer;
+                            break :blk null;
+                        };
+                        if (int_val) |v| {
+                            mem = v;
+                        } else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "mem must be integer", .span = val.span, .help = "example: mem = 512; or mem: u32 = 512;" });
+                            return error.ParseError;
+                        }
+                    } else if (std.mem.eql(u8, field_name, "cpu") or std.mem.eql(u8, field_name, "vcpu")) {
+                        const int_val = blk: {
+                            if (val.data == .integer) break :blk val.data.integer;
+                            if (val.data == .unary and val.data.unary.op == .neg and val.data.unary.expr.*.data == .integer) break :blk -val.data.unary.expr.*.data.integer;
+                            break :blk null;
+                        };
+                        if (int_val) |v| {
+                            cpu = v;
+                        } else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "cpu must be integer", .span = val.span, .help = "example: cpu = 1;" });
+                            return error.ParseError;
+                        }
+                    } else if (std.mem.eql(u8, field_name, "net")) {
+                        if (val.data == .string) {
+                            net = try self.dup(val.data.string);
+                        } else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "net must be string", .span = val.span, .help = "example: net = \"lan\";" });
+                            return error.ParseError;
+                        }
+                    } else if (std.mem.eql(u8, field_name, "ip")) {
+                        if (val.data == .string) {
+                            ip = try self.dup(val.data.string);
+                        } else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "ip must be string", .span = val.span, .help = "example: ip = \"10.8.0.2\";" });
+                            return error.ParseError;
+                        }
+                    } else {
+                        try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = try std.fmt.allocPrint(self.allocator, "unknown microvm field `{s}`", .{field_name}), .span = field_tok.span, .help = "expected `mem`, `cpu`, `net`, `ip`, `volume`" });
+                        return error.ParseError;
+                    }
+                    continue;
+                } else {
+                    // field_type is set, we already consumed "=", now parse value
+                    const val = try self.parseExpr(0);
+                    _ = try self.expect(.semicolon);
+                    if (std.mem.eql(u8, field_name, "mem")) {
+                        const int_val = blk: {
+                            if (val.data == .integer) break :blk val.data.integer;
+                            if (val.data == .unary and val.data.unary.op == .neg and val.data.unary.expr.*.data == .integer) break :blk -val.data.unary.expr.*.data.integer;
+                            break :blk null;
+                        };
+                        if (int_val) |v| {
+                            mem = v;
+                            mem_type = field_type;
+                        } else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "mem must be integer", .span = val.span, .help = "example: mem = 512; or mem: u32 = 512;" });
+                            return error.ParseError;
+                        }
+                    } else if (std.mem.eql(u8, field_name, "cpu") or std.mem.eql(u8, field_name, "vcpu")) {
+                        const int_val = blk: {
+                            if (val.data == .integer) break :blk val.data.integer;
+                            if (val.data == .unary and val.data.unary.op == .neg and val.data.unary.expr.*.data == .integer) break :blk -val.data.unary.expr.*.data.integer;
+                            break :blk null;
+                        };
+                        if (int_val) |v| {
+                            cpu = v;
+                            cpu_type = field_type;
+                        } else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "cpu must be integer", .span = val.span, .help = "example: cpu = 1;" });
+                            return error.ParseError;
+                        }
+                    } else if (std.mem.eql(u8, field_name, "net")) {
+                        if (val.data == .string) {
+                            net = try self.dup(val.data.string);
+                            net_type = field_type;
+                        } else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "net must be string", .span = val.span, .help = "example: net = \"lan\";" });
+                            return error.ParseError;
+                        }
+                    } else if (std.mem.eql(u8, field_name, "ip")) {
+                        if (val.data == .string) {
+                            ip = try self.dup(val.data.string);
+                            ip_type = field_type;
+                        } else {
+                            try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "ip must be string", .span = val.span, .help = "example: ip = \"10.8.0.2\";" });
+                            return error.ParseError;
+                        }
+                    } else {
+                        try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = try std.fmt.allocPrint(self.allocator, "unknown microvm field `{s}`", .{field_name}), .span = field_tok.span, .help = "expected `mem`, `cpu`, `net`, `ip`, `volume`" });
+                        return error.ParseError;
+                    }
+                    continue;
+                }
+            }
+            // old syntax `mem = 768;` (equal without colon)
             _ = try self.expect(.equal);
             const val = try self.parseExpr(0);
             _ = try self.expect(.semicolon);
@@ -639,13 +911,7 @@ pub const Parser = struct {
                 if (int_val) |v| {
                     mem = v;
                 } else {
-                    try self.diag.push(.{
-                        .severity = .err,
-                        .code = .parse_error,
-                        .message = "mem must be integer",
-                        .span = val.span,
-                        .help = "example: mem = 512;",
-                    });
+                    try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "mem must be integer", .span = val.span, .help = "example: mem = 512;" });
                     return error.ParseError;
                 }
             } else if (std.mem.eql(u8, field_name, "cpu") or std.mem.eql(u8, field_name, "vcpu")) {
@@ -657,54 +923,30 @@ pub const Parser = struct {
                 if (int_val) |v| {
                     cpu = v;
                 } else {
-                    try self.diag.push(.{
-                        .severity = .err,
-                        .code = .parse_error,
-                        .message = "cpu must be integer",
-                        .span = val.span,
-                        .help = "example: cpu = 1;",
-                    });
+                    try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "cpu must be integer", .span = val.span, .help = "example: cpu = 1;" });
                     return error.ParseError;
                 }
             } else if (std.mem.eql(u8, field_name, "net")) {
                 if (val.data == .string) {
                     net = try self.dup(val.data.string);
                 } else {
-                    try self.diag.push(.{
-                        .severity = .err,
-                        .code = .parse_error,
-                        .message = "net must be string",
-                        .span = val.span,
-                        .help = "example: net = \"lan\";",
-                    });
+                    try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "net must be string", .span = val.span, .help = "example: net = \"lan\";" });
                     return error.ParseError;
                 }
             } else if (std.mem.eql(u8, field_name, "ip")) {
                 if (val.data == .string) {
                     ip = try self.dup(val.data.string);
                 } else {
-                    try self.diag.push(.{
-                        .severity = .err,
-                        .code = .parse_error,
-                        .message = "ip must be string",
-                        .span = val.span,
-                        .help = "example: ip = \"10.8.0.2\";",
-                    });
+                    try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = "ip must be string", .span = val.span, .help = "example: ip = \"10.8.0.2\";" });
                     return error.ParseError;
                 }
             } else {
-                try self.diag.push(.{
-                    .severity = .err,
-                    .code = .parse_error,
-                    .message = try std.fmt.allocPrint(self.allocator, "unknown microvm field `{s}`", .{field_name}),
-                    .span = field_tok.span,
-                    .help = "expected `mem`, `cpu`, `net`, `ip`, `volume`",
-                });
+                try self.diag.push(.{ .severity = .err, .code = .parse_error, .message = try std.fmt.allocPrint(self.allocator, "unknown microvm field `{s}`", .{field_name}), .span = field_tok.span, .help = "expected `mem`, `cpu`, `net`, `ip`, `volume`" });
                 return error.ParseError;
             }
         }
         _ = try self.expect(.r_brace);
-        return .{ .name = name, .mem = mem, .cpu = cpu, .net = net, .ip = ip, .volumes = try volumes.toOwnedSlice(self.allocator), .span = kw.span };
+        return .{ .name = name, .mem = mem, .mem_type = mem_type, .cpu = cpu, .cpu_type = cpu_type, .net = net, .net_type = net_type, .ip = ip, .ip_type = ip_type, .volumes = try volumes.toOwnedSlice(self.allocator), .span = kw.span };
     }
 
     fn parseValue(self: *Parser) anyerror!ast.Expr {
@@ -1070,4 +1312,163 @@ test "parser host extends" {
     try std.testing.expect(prog.decls[0].host.extends != null);
     try std.testing.expectEqualStrings("base", prog.decls[0].host.extends.?.name);
     try std.testing.expect(prog.decls[1].host.extends == null);
+}
+
+test "parser let typed primitives" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const cases = [_]struct { src: []const u8, type_name: []const u8 }{
+        .{ .src = "let x: u32 = 1;", .type_name = "u32" },
+        .{ .src = "let s: String = \"foo\";", .type_name = "String" },
+        .{ .src = "let b: bool = true;", .type_name = "bool" },
+        .{ .src = "let v: Ipv4 = \"10.8.0.2\";", .type_name = "Ipv4" },
+        .{ .src = "let p: Path = \"/var/lib/data\";", .type_name = "Path" },
+    };
+    for (cases) |c| {
+        var arena2 = std.heap.ArenaAllocator.init(alloc);
+        defer arena2.deinit();
+        var diag = diagnostics.Diagnostics.init(arena2.allocator(), "test.purr", c.src);
+        var lex = lexer.Lexer.init(c.src, "test.purr", &diag);
+        const toks = try lex.lexAll(arena2.allocator());
+        var parser = Parser.initWithSource(toks, &diag, &arena2, c.src);
+        const prog = try parser.parseProgram();
+        try std.testing.expect(prog.decls.len == 1);
+        try std.testing.expect(prog.decls[0] == .let_decl);
+        try std.testing.expect(prog.decls[0].let_decl.type_annot != null);
+        try std.testing.expect(!diag.hasErrors());
+    }
+}
+
+test "parser microvm typed fields" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\microvm grafana {
+        \\    mem: u32 = 768;
+        \\    cpu: u32 = 2;
+        \\    ip: Ipv4 = "10.8.0.2";
+        \\    net: String = "lan";
+        \\}
+    ;
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = Parser.initWithSource(toks, &diag, &arena, source);
+    const prog = try parser.parseProgram();
+    try std.testing.expect(prog.decls.len == 1);
+    const vm = prog.decls[0].microvm;
+    try std.testing.expect(vm.mem != null);
+    try std.testing.expect(vm.mem.? == 768);
+    try std.testing.expect(vm.mem_type != null);
+    try std.testing.expect(vm.mem_type.?.data == .u32);
+    try std.testing.expect(vm.cpu_type != null);
+    try std.testing.expect(vm.ip_type != null);
+    try std.testing.expect(vm.ip_type.?.data == .ipv4);
+    try std.testing.expect(vm.net_type != null);
+    try std.testing.expect(vm.net_type.?.data == .string);
+    try std.testing.expect(!diag.hasErrors());
+}
+
+test "parser volume typed struct" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\microvm grafana {
+        \\    mem: u32 = 768;
+        \\    volume data: Volume {
+        \\        image: "grafana";
+        \\        mount_point: "/var/lib/grafana";
+        \\        size: 10240;
+        \\    }
+        \\}
+    ;
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = Parser.initWithSource(toks, &diag, &arena, source);
+    const prog = try parser.parseProgram();
+    try std.testing.expect(prog.decls.len == 1);
+    const vm = prog.decls[0].microvm;
+    try std.testing.expect(vm.volumes.len == 1);
+    const vol = vm.volumes[0];
+    try std.testing.expect(vol.name != null);
+    try std.testing.expectEqualStrings("data", vol.name.?.name);
+    try std.testing.expect(vol.type_annot != null);
+    try std.testing.expect(vol.type_annot.?.data == .named);
+    try std.testing.expectEqualStrings("Volume", vol.type_annot.?.data.named);
+    try std.testing.expectEqualStrings("grafana", vol.image);
+    try std.testing.expectEqualStrings("/var/lib/grafana", vol.mountPoint);
+    try std.testing.expect(vol.size == 10240);
+    try std.testing.expect(!diag.hasErrors());
+}
+
+test "parser generic types List and Option" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const cases = [_]struct { src: []const u8, outer: []const u8 }{
+        .{ .src = "let x: List<u32> = [1, 2, 3];", .outer = "list" },
+        .{ .src = "let y: Option<String> = \"foo\";", .outer = "option" },
+        .{ .src = "let z: Vec<u64> = [1];", .outer = "list" },
+    };
+    for (cases) |c| {
+        var arena2 = std.heap.ArenaAllocator.init(alloc);
+        defer arena2.deinit();
+        var diag = diagnostics.Diagnostics.init(arena2.allocator(), "test.purr", c.src);
+        var lex = lexer.Lexer.init(c.src, "test.purr", &diag);
+        const toks = try lex.lexAll(arena2.allocator());
+        var parser = Parser.initWithSource(toks, &diag, &arena2, c.src);
+        const prog = try parser.parseProgram();
+        try std.testing.expect(prog.decls[0] == .let_decl);
+        const ty = prog.decls[0].let_decl.type_annot.?;
+        if (std.mem.eql(u8, c.outer, "list")) {
+            try std.testing.expect(ty.data == .list);
+        } else {
+            try std.testing.expect(ty.data == .option);
+        }
+        try std.testing.expect(!diag.hasErrors());
+    }
+}
+
+test "parser typed let and microvm backward compat" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    // Old syntax without types should still parse
+    const source1 = "let x = 1;";
+    var diag1 = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source1);
+    var lex1 = lexer.Lexer.init(source1, "test.purr", &diag1);
+    const toks1 = try lex1.lexAll(arena.allocator());
+    var p1 = Parser.initWithSource(toks1, &diag1, &arena, source1);
+    const prog1 = try p1.parseProgram();
+    try std.testing.expect(prog1.decls[0].let_decl.type_annot == null);
+    try std.testing.expect(!diag1.hasErrors());
+
+    const source2 = "microvm grafana { mem = 512; volume { image = \"a.img\"; mountPoint = \"/a\"; size = 1024; } }";
+    var arena3 = std.heap.ArenaAllocator.init(alloc);
+    defer arena3.deinit();
+    var diag2 = diagnostics.Diagnostics.init(arena3.allocator(), "test.purr", source2);
+    var lex2 = lexer.Lexer.init(source2, "test.purr", &diag2);
+    const toks2 = try lex2.lexAll(arena3.allocator());
+    var p2 = Parser.initWithSource(toks2, &diag2, &arena3, source2);
+    const prog2 = try p2.parseProgram();
+    try std.testing.expect(prog2.decls[0].microvm.mem_type == null);
+    try std.testing.expect(!diag2.hasErrors());
+}
+
+test "parser typed syntax errors" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    // Missing type after colon should error
+    const source = "let x: = 1;";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = Parser.initWithSource(toks, &diag, &arena, source);
+    _ = parser.parseProgram() catch {};
+    try std.testing.expect(diag.hasErrors());
 }
