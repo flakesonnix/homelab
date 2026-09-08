@@ -1,6 +1,10 @@
 const std = @import("std");
 const ast = @import("ast.zig");
 
+// 8.5: Nix backend consumes typed semantic model (Type-annotated Let/MicroVM/Volume)
+// For typed Purr, semantic has already validated types (E100). Nix emitter uses
+// the underlying values (vm.mem, vol.image, etc.) and ignores type annotations,
+// ensuring byte-compatible output with untyped Purr (except for # struct comments).
 pub fn generate(program: *const ast.Program, allocator: std.mem.Allocator) ![]const u8 {
     return generateFiltered(program, allocator, null);
 }
@@ -772,4 +776,70 @@ test "nix golden microvm ip volume" {
     try std.testing.expect(std.mem.indexOf(u8, out, "mountPoint = \"/var/lib/grafana\"") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "size = 1024;") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "microvm.volumes") != null);
+}
+
+test "nix typed microvm compatible" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const untyped =
+        \\host mireo {
+        \\    microvm grafana {
+        \\        mem = 768;
+        \\        cpu = 2;
+        \\        ip = "10.8.0.2";
+        \\        volume {
+        \\            image = "grafana";
+        \\            mountPoint = "/var/lib/grafana";
+        \\            size = 10240;
+        \\        }
+        \\    }
+        \\}
+    ;
+    const typed =
+        \\struct Volume {
+        \\    image: String,
+        \\    mount_point: Path,
+        \\    size: u64,
+        \\}
+        \\let mem_val: u32 = 768;
+        \\host mireo {
+        \\    microvm grafana {
+        \\        mem: u32 = 768;
+        \\        cpu: u32 = 2;
+        \\        ip: Ipv4 = "10.8.0.2";
+        \\        volume data: Volume {
+        \\            image: "grafana";
+        \\            mount_point: "/var/lib/grafana";
+        \\            size: 10240;
+        \\        }
+        \\    }
+        \\}
+    ;
+    const diagnostics = @import("diagnostics.zig");
+    var diag1 = diagnostics.Diagnostics.init(arena.allocator(), "untyped.purr", untyped);
+    var lex1 = @import("lexer.zig").Lexer.init(untyped, "untyped.purr", &diag1);
+    const toks1 = try lex1.lexAll(arena.allocator());
+    var p1 = @import("parser.zig").Parser.initWithSource(toks1, &diag1, &arena, untyped);
+    var prog1 = try p1.parseProgram();
+    const out1 = try generate(&prog1, arena.allocator());
+    var arena2 = std.heap.ArenaAllocator.init(alloc);
+    defer arena2.deinit();
+    var diag2 = diagnostics.Diagnostics.init(arena2.allocator(), "typed.purr", typed);
+    var lex2 = @import("lexer.zig").Lexer.init(typed, "typed.purr", &diag2);
+    const toks2 = try lex2.lexAll(arena2.allocator());
+    var p2 = @import("parser.zig").Parser.initWithSource(toks2, &diag2, &arena2, typed);
+    var prog2 = try p2.parseProgram();
+    const out2 = try generate(&prog2, arena2.allocator());
+    // Typed should contain same core microvm settings, ignoring type annotations and struct comment
+    try std.testing.expect(std.mem.indexOf(u8, out1, "microvm.mem = 768;") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out2, "microvm.mem = 768;") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out1, "microvm.vcpu = 2;") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out2, "microvm.vcpu = 2;") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out1, "grafana") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out2, "grafana") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out1, "mountPoint = \"/var/lib/grafana\"") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out2, "mountPoint = \"/var/lib/grafana\"") != null);
+    // Typed will have extra # struct comment, but core should match
+    try std.testing.expect(std.mem.indexOf(u8, out2, "# struct Volume") != null);
 }
