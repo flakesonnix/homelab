@@ -8,4 +8,16 @@ host x270 {
 
     packages = ["dev"];
     preset gaming-performance;
+
+    // settings.nix
+    niri.users = ["lucy"];
+    networking.networkmanager.enable = true;
+    hardware.bluetooth.enable = true;
+    hardware.bluetooth.powerOnBoot = true;
+    services.blueman.enable = true;
+    hq.deskflow.enable = true;
+    virtualisation.libvirtd.enable = false;
+
+    lucy.topology.icon = "devices.laptop";
+    lucy.topology.hardware.info = "Lenovo ThinkPad X270 · i7-7600U";
 }
