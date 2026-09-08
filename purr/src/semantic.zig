@@ -123,6 +123,9 @@ pub const Semantic = struct {
                                 .help = try std.fmt.allocPrint(self.allocator, "expected {s}, got {s}", .{ self.typeToString(ty), self.exprTypeName(l.value) }),
                             });
                         }
+                    } else {
+                        // 8.4a: infer type for let without annotation (no diagnostic, just ensure inference works)
+                        _ = try self.inferExprType(l.value);
                     }
                     if (!ordered_scope.contains(l.name.name)) try ordered_scope.put(l.name.name, l.name.span);
                     // also track in ordered_let_scope for host inheritance? Not needed
@@ -215,6 +218,8 @@ pub const Semantic = struct {
                                                 .help = try std.fmt.allocPrint(self.allocator, "expected {s}, got {s}", .{ self.typeToString(ty), self.exprTypeName(l.value) }),
                                             });
                                         }
+                                    } else {
+                                        _ = try self.inferExprType(l.value);
                                     }
                                     _ = try host_scope_sym.define(l.name.name, .let_decl, l.name.span);
                                     try ordered_scope.put(l.name.name, l.name.span);
@@ -605,6 +610,53 @@ pub const Semantic = struct {
             .paren => "paren",
         };
     }
+
+    fn inferExprType(self: *Semantic, expr: ast.Expr) !?ast.Type {
+        const span = expr.span;
+        switch (expr.data) {
+            .string => return ast.Type{ .span = span, .data = .string },
+            .boolean => return ast.Type{ .span = span, .data = .bool },
+            .integer => {
+                // For 8.4a, infer as u32 for non-negative small, else i64
+                // Keep simple: infer as u32 if fits, else i64
+                const v = expr.data.integer;
+                if (v >= 0 and v <= 4294967295) {
+                    return ast.Type{ .span = span, .data = .u32 };
+                } else {
+                    return ast.Type{ .span = span, .data = .i64 };
+                }
+            },
+            .list => |lst| {
+                if (lst.len == 0) return null;
+                // Infer inner from first element, ensure all same
+                const first_ty = try self.inferExprType(lst[0]);
+                if (first_ty == null) return null;
+                // For now, assume homogeneous and return List<first>
+                const inner_ptr = try self.allocator.create(ast.Type);
+                inner_ptr.* = first_ty.?;
+                return ast.Type{ .span = span, .data = .{ .list = inner_ptr } };
+            },
+            .ident => |ident| {
+                // Could be reference to let - try to lookup inferred type from ordered scope?
+                // For 8.4a, not yet handling cross-let inference, return null
+                _ = ident;
+                return null;
+            },
+            .binary => |b| {
+                // For binary, try to infer via lhs/rhs if both same
+                const lhs_ty = try self.inferExprType(b.lhs.*);
+                const rhs_ty = try self.inferExprType(b.rhs.*);
+                if (lhs_ty != null and rhs_ty != null and std.meta.eql(lhs_ty.?, rhs_ty.?)) return lhs_ty;
+                return lhs_ty orelse rhs_ty;
+            },
+            .unary => |u| return try self.inferExprType(u.expr.*),
+            .paren => |e| return try self.inferExprType(e.*),
+        }
+    }
+
+    pub fn inferLetType(self: *Semantic, expr: ast.Expr) !?ast.Type {
+        return try self.inferExprType(expr);
+    }
 };
 
 test "semantic unknown role" {
@@ -754,5 +806,100 @@ test "semantic type mismatch List" {
     var found = false;
     for (diag.list.items) |d| { if (d.code == .type_mismatch) found = true; }
     try std.testing.expect(found);
+}
+
+test "semantic infer let integer" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "let x = 768;";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    const expr = prog.decls[0].let_decl.value;
+    const ty = try sem.inferExprType(expr);
+    try std.testing.expect(ty != null);
+    try std.testing.expect(ty.?.data == .u32 or ty.?.data == .i64);
+    try std.testing.expect(!diag.hasErrors());
+}
+
+test "semantic infer let string" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "let s = \"foo\";";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    const expr = prog.decls[0].let_decl.value;
+    const ty = try sem.inferExprType(expr);
+    try std.testing.expect(ty != null);
+    try std.testing.expect(ty.?.data == .string);
+}
+
+test "semantic infer let bool" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "let b = true;";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    const expr = prog.decls[0].let_decl.value;
+    const ty = try sem.inferExprType(expr);
+    try std.testing.expect(ty != null);
+    try std.testing.expect(ty.?.data == .bool);
+}
+
+test "semantic infer let list" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "let xs = [1, 2, 3];";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    const expr = prog.decls[0].let_decl.value;
+    const ty = try sem.inferExprType(expr);
+    try std.testing.expect(ty != null);
+    try std.testing.expect(ty.?.data == .list);
+    try std.testing.expect(ty.?.data.list.*.data == .u32 or ty.?.data.list.*.data == .i64);
+}
+
+test "semantic infer explicit dominant" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "let x: u32 = 768;";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    try std.testing.expect(prog.decls[0].let_decl.type_annot != null);
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    try std.testing.expect(!diag.hasErrors());
+    // inferred should still work for explicit, but explicit is checked separately
+    const expr = prog.decls[0].let_decl.value;
+    const inferred = try sem.inferExprType(expr);
+    try std.testing.expect(inferred != null);
 }
 
