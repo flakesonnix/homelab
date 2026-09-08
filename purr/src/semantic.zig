@@ -1,6 +1,7 @@
 const std = @import("std");
 const ast = @import("ast.zig");
 const diagnostics = @import("diagnostics.zig");
+const symbol = @import("symbol.zig");
 
 pub const Semantic = struct {
     program: *const ast.Program,
@@ -24,130 +25,106 @@ pub const Semantic = struct {
     }
 
     pub fn analyze(self: *Semantic) !void {
-        var role_names = std.StringHashMap(diagnostics.Span).init(self.allocator);
-        defer role_names.deinit();
-        var host_names = std.StringHashMap(diagnostics.Span).init(self.allocator);
-        defer host_names.deinit();
-        var bundle_names = std.StringHashMap(diagnostics.Span).init(self.allocator);
-        defer bundle_names.deinit();
-        var preset_names = std.StringHashMap(diagnostics.Span).init(self.allocator);
-        defer preset_names.deinit();
-        // Scope for let bindings (simple flat map for now, lexical)
-        var scope = std.StringHashMap(diagnostics.Span).init(self.allocator);
-        defer scope.deinit();
+        // Phase 8.1: use symbol.Scope for module-level declarations
+        const mod_scope = try symbol.Scope.init(self.allocator, .module, null);
+        defer mod_scope.deinit();
 
-        // first pass: collect declarations, detect duplicates
-        var microvm_names_top = std.StringHashMap(diagnostics.Span).init(self.allocator);
-        defer microvm_names_top.deinit();
+        // Scope for let bindings sequential (for forward ref checks) - kept separate for ordered semantics
+        var ordered_let_scope = std.StringHashMap(diagnostics.Span).init(self.allocator);
+        defer ordered_let_scope.deinit();
+
+        // first pass: collect declarations, detect duplicates via Scope
         for (self.program.decls) |decl| {
             switch (decl) {
                 .role => |r| {
-                    if (role_names.get(r.name.name)) |prev| {
+                    if (try mod_scope.define(r.name.name, .role, r.name.span)) |prev| {
                         try self.diag.push(.{
                             .severity = .err,
                             .code = .duplicate_decl,
                             .message = try std.fmt.allocPrint(self.allocator, "duplicate role `{s}`", .{r.name.name}),
                             .span = r.name.span,
-                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.span.file, prev.span.line, prev.span.col }),
                         });
-                    } else {
-                        try role_names.put(r.name.name, r.name.span);
                     }
                 },
                 .host => |h| {
-                    if (host_names.get(h.name.name)) |prev| {
+                    if (try mod_scope.define(h.name.name, .host, h.name.span)) |prev| {
                         try self.diag.push(.{
                             .severity = .err,
                             .code = .duplicate_decl,
                             .message = try std.fmt.allocPrint(self.allocator, "duplicate host `{s}`", .{h.name.name}),
                             .span = h.name.span,
-                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.span.file, prev.span.line, prev.span.col }),
                         });
-                    } else {
-                        try host_names.put(h.name.name, h.name.span);
                     }
                 },
                 .bundle => |b| {
-                    if (bundle_names.get(b.name.name)) |prev| {
+                    if (try mod_scope.define(b.name.name, .bundle, b.name.span)) |prev| {
                         try self.diag.push(.{
                             .severity = .err,
                             .code = .duplicate_decl,
                             .message = try std.fmt.allocPrint(self.allocator, "duplicate bundle `{s}`", .{b.name.name}),
                             .span = b.name.span,
-                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.span.file, prev.span.line, prev.span.col }),
                         });
-                    } else {
-                        try bundle_names.put(b.name.name, b.name.span);
                     }
                 },
                 .preset => |p| {
-                    if (preset_names.get(p.name.name)) |prev| {
+                    if (try mod_scope.define(p.name.name, .preset, p.name.span)) |prev| {
                         try self.diag.push(.{
                             .severity = .err,
                             .code = .duplicate_decl,
                             .message = try std.fmt.allocPrint(self.allocator, "duplicate preset `{s}`", .{p.name.name}),
                             .span = p.name.span,
-                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.span.file, prev.span.line, prev.span.col }),
                         });
-                    } else {
-                        try preset_names.put(p.name.name, p.name.span);
                     }
                 },
                 .let_decl => |l| {
-                    if (scope.get(l.name.name)) |prev| {
+                    if (try mod_scope.define(l.name.name, .let_decl, l.name.span)) |prev| {
                         try self.diag.push(.{
                             .severity = .err,
                             .code = .duplicate_decl,
                             .message = try std.fmt.allocPrint(self.allocator, "duplicate let `{s}`", .{l.name.name}),
                             .span = l.name.span,
-                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.span.file, prev.span.line, prev.span.col }),
                         });
-                    } else {
-                        try scope.put(l.name.name, l.name.span);
                     }
                 },
                 .microvm => |vm| {
-                    if (microvm_names_top.get(vm.name.name)) |prev| {
+                    if (try mod_scope.define(vm.name.name, .microvm, vm.name.span)) |prev| {
                         try self.diag.push(.{
                             .severity = .err,
                             .code = .duplicate_decl,
                             .message = try std.fmt.allocPrint(self.allocator, "duplicate microvm `{s}`", .{vm.name.name}),
                             .span = vm.name.span,
-                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.span.file, prev.span.line, prev.span.col }),
                         });
-                    } else {
-                        try microvm_names_top.put(vm.name.name, vm.name.span);
                     }
                 },
                 else => {},
             }
         }
 
-        // second pass: validate references (including let scope) - sequential
+        // second pass: validate references (including let scope) - sequential via ordered_let_scope + mod_scope lookups
         var ordered_scope = std.StringHashMap(diagnostics.Span).init(self.allocator);
         defer ordered_scope.deinit();
         for (self.program.decls) |decl| {
             switch (decl) {
                 .let_decl => |l| {
                     try self.checkExpr(l.value, &ordered_scope);
-                    // put after check so self-reference and forward ref are errors; don't overwrite on duplicate
                     if (!ordered_scope.contains(l.name.name)) try ordered_scope.put(l.name.name, l.name.span);
+                    // also track in ordered_let_scope for host inheritance? Not needed
+                    if (!ordered_let_scope.contains(l.name.name)) try ordered_let_scope.put(l.name.name, l.name.span);
                 },
                 .role => |r| {
-                    // validate presets in role.host block
                     if (r.host) |hb| {
                         for (hb.presets) |pname| {
-                            var found = false;
-                            for (self.known_presets) |k| if (std.mem.eql(u8, k, pname)) {
-                                found = true;
-                                break;
+                            const found = blk: {
+                                for (self.known_presets) |k| if (std.mem.eql(u8, k, pname)) break :blk true;
+                                if (mod_scope.lookup(pname, .preset) != null) break :blk true;
+                                break :blk false;
                             };
-                            if (!found) {
-                                for (self.program.decls) |d| if (d == .preset and std.mem.eql(u8, d.preset.name.name, pname)) {
-                                    found = true;
-                                    break;
-                                };
-                            }
                             if (!found) {
                                 try self.diag.push(.{
                                     .severity = .err,
@@ -159,26 +136,20 @@ pub const Semantic = struct {
                             }
                         }
                     }
-                    // validate bundles in role.home block
                     if (r.home) |hb| {
                         for (hb.bundles) |bname| {
-                            var found = false;
-                            for (self.known_bundles) |k| if (std.mem.eql(u8, k, bname)) {
-                                found = true;
-                                break;
+                            const found = blk: {
+                                for (self.known_bundles) |k| if (std.mem.eql(u8, k, bname)) break :blk true;
+                                if (mod_scope.lookup(bname, .bundle) != null) break :blk true;
+                                break :blk false;
                             };
-                            if (!found) {
-                                for (self.program.decls) |d| if (d == .bundle and std.mem.eql(u8, d.bundle.name.name, bname)) {
-                                    found = true;
-                                    break;
-                                };
-                            }
                             if (!found) {
                                 var help: ?[]const u8 = null;
                                 var cands: std.ArrayList([]const u8) = .empty;
                                 for (self.known_bundles) |k| try cands.append(self.allocator, k);
-                                var it = bundle_names.keyIterator();
-                                while (it.next()) |k| try cands.append(self.allocator, k.*);
+                                const bundle_syms = try mod_scope.collectKind(.bundle, self.allocator);
+                                defer self.allocator.free(bundle_syms);
+                                for (bundle_syms) |s| try cands.append(self.allocator, s);
                                 if (try diagnostics.Diagnostics.suggest(bname, cands.items, self.allocator)) |s| help = s;
                                 if (help == null) {
                                     const avail = try std.mem.join(self.allocator, ", ", self.known_bundles);
@@ -196,42 +167,52 @@ pub const Semantic = struct {
                     }
                 },
                 .host => |h| {
-                    // Build host-local scope for let (only lets declared before this host)
-                    var host_scope = std.StringHashMap(diagnostics.Span).init(self.allocator);
-                    defer host_scope.deinit();
+                    // Build host-local scope: parent is mod_scope, plus ordered lets before this host
+                    // For simplicity, create temporary host scope that can see module lets via parent
+                    const host_scope_sym = try symbol.Scope.init(self.allocator, .host, mod_scope);
+                    // host_scope owned by mod_scope, not deferred individually (mod_scope.deinit will clean children)
+                    // Import ordered lets into host scope via define (shadowing allowed)
                     var scope_it = ordered_scope.keyIterator();
-                    while (scope_it.next()) |k| try host_scope.put(k.*, ordered_scope.get(k.*).?);
+                    while (scope_it.next()) |k| {
+                        // define in host_scope if not already? Use direct put without duplicate check for now
+                        _ = try host_scope_sym.define(k.*, .let_decl, ordered_scope.get(k.*).?);
+                    }
+                    // Track microVM names for duplicate within host
                     var microvm_names = std.StringHashMap(diagnostics.Span).init(self.allocator);
                     defer microvm_names.deinit();
                     for (h.stmts) |stmt| {
                         switch (stmt) {
                             .let_decl => |l| {
-                                if (host_scope.get(l.name.name)) |prev| {
+                                if (host_scope_sym.lookupLocal(l.name.name, .let_decl) != null) {
+                                    const prev = host_scope_sym.lookupLocal(l.name.name, .let_decl).?;
                                     try self.diag.push(.{
                                         .severity = .err,
                                         .code = .duplicate_decl,
                                         .message = try std.fmt.allocPrint(self.allocator, "duplicate let `{s}` in host `{s}`", .{ l.name.name, h.name.name }),
                                         .span = l.name.span,
-                                        .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                                        .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.span.file, prev.span.line, prev.span.col }),
                                     });
                                 } else {
-                                    try self.checkExpr(l.value, &host_scope);
-                                    try host_scope.put(l.name.name, l.name.span);
+                                    try self.checkExpr(l.value, &ordered_scope); // check against ordered_scope for let expr? Use ordered_scope map for expr checks
+                                    // For Scope-based let, we should also check via host_scope, but keep existing map for checkExpr
+                                    // Define in host_scope
+                                    _ = try host_scope_sym.define(l.name.name, .let_decl, l.name.span);
+                                    try ordered_scope.put(l.name.name, l.name.span); // not strictly needed but keep for later
                                 }
                             },
                             .use_role => |ident| {
-                                const in_declared = role_names.contains(ident.name);
+                                const in_declared = mod_scope.lookup(ident.name, .role) != null;
                                 var in_known = false;
                                 for (self.known_roles) |k| {
                                     if (std.mem.eql(u8, k, ident.name)) in_known = true;
                                 }
                                 if (!in_declared and !in_known) {
-                                    // check against known + declared for suggestion
                                     var help: ?[]const u8 = null;
                                     var candidates: std.ArrayList([]const u8) = .empty;
                                     for (self.known_roles) |k| try candidates.append(self.allocator, k);
-                                    var it = role_names.keyIterator();
-                                    while (it.next()) |k| try candidates.append(self.allocator, k.*);
+                                    const role_syms = try mod_scope.collectKind(.role, self.allocator);
+                                    defer self.allocator.free(role_syms);
+                                    for (role_syms) |s| try candidates.append(self.allocator, s);
                                     if (try diagnostics.Diagnostics.suggest(ident.name, candidates.items, self.allocator)) |s| {
                                         help = s;
                                     }
@@ -250,18 +231,11 @@ pub const Semantic = struct {
                                 }
                             },
                             .preset => |ident| {
-                                var found = false;
-                                for (self.known_presets) |p| if (std.mem.eql(u8, p, ident.name)) {
-                                    found = true;
-                                    break;
+                                const found = blk: {
+                                    for (self.known_presets) |p| if (std.mem.eql(u8, p, ident.name)) break :blk true;
+                                    if (mod_scope.lookup(ident.name, .preset) != null) break :blk true;
+                                    break :blk false;
                                 };
-                                if (!found) {
-                                    // also check if preset declared in program?
-                                    for (self.program.decls) |d| if (d == .preset and std.mem.eql(u8, d.preset.name.name, ident.name)) {
-                                        found = true;
-                                        break;
-                                    };
-                                }
                                 if (!found) {
                                     try self.diag.push(.{
                                         .severity = .err,
@@ -272,7 +246,19 @@ pub const Semantic = struct {
                                     });
                                 }
                             },
-                            .setting => |s| try self.checkExpr(s.value, &host_scope),
+                            .setting => |s| {
+                                // For setting values, need to check expr against host let scope
+                                // Build a temporary map for checkExpr from host_scope's let symbols
+                                var tmp_map = std.StringHashMap(diagnostics.Span).init(self.allocator);
+                                defer tmp_map.deinit();
+                                // Populate with host_scope let symbols (including parent)
+                                // Simple: use ordered_scope as before plus host local
+                                var it = ordered_scope.keyIterator();
+                                while (it.next()) |k| try tmp_map.put(k.*, ordered_scope.get(k.*).?);
+                                // Add host local lets that are not yet in ordered_scope? Already in host_scope_sym but not in ordered_scope unless defined earlier
+                                // For now, just use ordered_scope + host let just defined? We already handled let above.
+                                try self.checkExpr(s.value, &tmp_map);
+                            },
                             .package => {},
                             .packages_assign => {},
                             .import => {},
@@ -382,7 +368,6 @@ pub const Semantic = struct {
                             },
                         }
                     }
-                    // Also check host-level let values for top-level scope? No, host_scope already handled
                 },
                 .microvm => |vm| {
                     if (vm.mem) |m| if (m <= 0) {
