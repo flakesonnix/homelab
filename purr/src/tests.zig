@@ -9,6 +9,7 @@ comptime {
     _ = @import("fmt.zig");
     _ = @import("lint.zig");
     _ = @import("cli.zig");
+    _ = @import("symbol.zig");
 }
 test {
     std.testing.refAllDecls(@This());
