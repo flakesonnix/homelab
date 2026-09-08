@@ -33,9 +33,26 @@ pub fn format(program: *const ast.Program, allocator: std.mem.Allocator) ![]cons
             .let_decl => |l| {
                 try buf.appendSlice(allocator, "let ");
                 try buf.appendSlice(allocator, l.name.name);
+                if (l.type_annot) |ty| {
+                    try buf.appendSlice(allocator, ": ");
+                    try formatType(&buf, allocator, ty);
+                }
                 try buf.appendSlice(allocator, " = ");
                 try formatExpr(&buf, allocator, l.value);
                 try buf.appendSlice(allocator, ";\n");
+            },
+            .struct_decl => |s| {
+                try buf.appendSlice(allocator, "struct ");
+                try buf.appendSlice(allocator, s.name.name);
+                try buf.appendSlice(allocator, " {\n");
+                for (s.fields) |field| {
+                    try buf.appendSlice(allocator, "    ");
+                    try buf.appendSlice(allocator, field.name.name);
+                    try buf.appendSlice(allocator, ": ");
+                    try formatType(&buf, allocator, field.type_annot);
+                    try buf.appendSlice(allocator, ",\n");
+                }
+                try buf.appendSlice(allocator, "}\n");
             },
             .microvm => |vm| {
                 try buf.appendSlice(allocator, "microvm ");
@@ -224,6 +241,10 @@ fn formatHost(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, h: ast.Host
             .let_decl => |l| {
                 try buf.appendSlice(allocator, "    let ");
                 try buf.appendSlice(allocator, l.name.name);
+                if (l.type_annot) |ty| {
+                    try buf.appendSlice(allocator, ": ");
+                    try formatType(buf, allocator, ty);
+                }
                 try buf.appendSlice(allocator, " = ");
                 try formatExpr(buf, allocator, l.value);
                 try buf.appendSlice(allocator, ";\n");
@@ -422,6 +443,32 @@ fn formatExpr(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, e: ast.Expr
             try formatExpr(buf, allocator, p.*);
             try buf.appendSlice(allocator, ")");
         },
+    }
+}
+
+fn formatType(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, ty: ast.Type) !void {
+    switch (ty.data) {
+        .bool => try buf.appendSlice(allocator, "bool"),
+        .i32 => try buf.appendSlice(allocator, "i32"),
+        .i64 => try buf.appendSlice(allocator, "i64"),
+        .u32 => try buf.appendSlice(allocator, "u32"),
+        .u64 => try buf.appendSlice(allocator, "u64"),
+        .usize => try buf.appendSlice(allocator, "usize"),
+        .string => try buf.appendSlice(allocator, "String"),
+        .ipv4 => try buf.appendSlice(allocator, "Ipv4"),
+        .path => try buf.appendSlice(allocator, "Path"),
+        .duration => try buf.appendSlice(allocator, "Duration"),
+        .list => |inner| {
+            try buf.appendSlice(allocator, "List<");
+            try formatType(buf, allocator, inner.*);
+            try buf.appendSlice(allocator, ">");
+        },
+        .option => |inner| {
+            try buf.appendSlice(allocator, "Option<");
+            try formatType(buf, allocator, inner.*);
+            try buf.appendSlice(allocator, ">");
+        },
+        .named => |name| try buf.appendSlice(allocator, name),
     }
 }
 

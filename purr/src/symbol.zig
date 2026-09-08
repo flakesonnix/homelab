@@ -10,6 +10,7 @@ pub const SymbolKind = enum {
     package,
     let_decl,
     microvm,
+    struct_decl,
 };
 
 pub const ScopeKind = enum {
@@ -18,6 +19,7 @@ pub const ScopeKind = enum {
     role,
     bundle,
     preset,
+    struct_decl,
 };
 
 pub const Symbol = struct {
@@ -153,6 +155,9 @@ pub const Scope = struct {
                 },
                 .microvm => |vm| {
                     _ = try mod.defineWithIdx(vm.name.name, .microvm, vm.name.span, idx);
+                },
+                .struct_decl => |s| {
+                    _ = try mod.defineWithIdx(s.name.name, .struct_decl, s.name.span, idx);
                 },
                 else => {},
             }

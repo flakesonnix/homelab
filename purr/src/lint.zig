@@ -111,6 +111,7 @@ pub const Lint = struct {
                     .nix => |n| n.span.file,
                     .let_decl => |l| l.name.span.file,
                     .microvm => |vm| vm.name.span.file,
+                    .struct_decl => |s| s.name.span.file,
                 };
                 if (!std.mem.eql(u8, decl_file, joined)) continue;
                 defines_any = true;

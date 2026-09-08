@@ -34,7 +34,7 @@ pub const Semantic = struct {
         defer ordered_let_scope.deinit();
 
         // first pass: collect declarations, detect duplicates via Scope
-        for (self.program.decls) |decl| {
+        for (self.program.decls, 0..) |decl, idx| {
             switch (decl) {
                 .role => |r| {
                     if (try mod_scope.define(r.name.name, .role, r.name.span)) |prev| {
@@ -102,6 +102,34 @@ pub const Semantic = struct {
                         });
                     }
                 },
+                .struct_decl => |s| {
+                    if (try mod_scope.defineWithIdx(s.name.name, .struct_decl, s.name.span, idx)) |prev| {
+                        try self.diag.push(.{
+                            .severity = .err,
+                            .code = .duplicate_decl,
+                            .message = try std.fmt.allocPrint(self.allocator, "duplicate struct `{s}`", .{s.name.name}),
+                            .span = s.name.span,
+                            .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.span.file, prev.span.line, prev.span.col }),
+                        });
+                    } else {
+                        // Check duplicate field names within struct
+                        var field_names = std.StringHashMap(diagnostics.Span).init(self.allocator);
+                        defer field_names.deinit();
+                        for (s.fields) |field| {
+                            if (field_names.get(field.name.name)) |prev| {
+                                try self.diag.push(.{
+                                    .severity = .err,
+                                    .code = .duplicate_decl,
+                                    .message = try std.fmt.allocPrint(self.allocator, "duplicate field `{s}` in struct `{s}`", .{ field.name.name, s.name.name }),
+                                    .span = field.name.span,
+                                    .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.file, prev.line, prev.col }),
+                                });
+                            } else {
+                                try field_names.put(field.name.name, field.name.span);
+                            }
+                        }
+                    }
+                },
                 else => {},
             }
         }
@@ -114,6 +142,18 @@ pub const Semantic = struct {
                 .let_decl => |l| {
                     try self.checkExpr(l.value, &ordered_scope);
                     if (l.type_annot) |ty| {
+                        // Check unknown struct for named types
+                        if (ty.data == .named) {
+                            if (mod_scope.lookup(ty.data.named, .struct_decl) == null) {
+                                try self.diag.push(.{
+                                    .severity = .err,
+                                    .code = .unknown_ident,
+                                    .message = try std.fmt.allocPrint(self.allocator, "unknown type `{s}`", .{ty.data.named}),
+                                    .span = ty.span,
+                                    .help = "define struct or check name",
+                                });
+                            }
+                        }
                         if (!self.typeMatchesExpr(ty, l.value)) {
                             try self.diag.push(.{
                                 .severity = .err,
@@ -449,6 +489,136 @@ pub const Semantic = struct {
                                             .span = vol.span,
                                             .help = "max 1TiB",
                                         });
+                                    }
+                                    // 8.4b struct checks for volume with type_annot
+                                    if (vol.type_annot) |vol_ty| {
+                                        if (vol_ty.data == .named) {
+                                            const struct_name = vol_ty.data.named;
+                                            const struct_sym = mod_scope.lookup(struct_name, .struct_decl);
+                                            if (struct_sym == null) {
+                                                try self.diag.push(.{
+                                                    .severity = .err,
+                                                    .code = .unknown_ident,
+                                                    .message = try std.fmt.allocPrint(self.allocator, "unknown struct `{s}` for volume `{s}`", .{ struct_name, if (vol.name) |n| n.name else vol.image }),
+                                                    .span = vol.span,
+                                                    .help = "define struct or check name",
+                                                });
+                                            } else {
+                                                // Find struct decl by name (since define may not have stored idx)
+                                                var struct_decl: ?ast.Struct = null;
+                                                for (self.program.decls) |d| {
+                                                    if (d == .struct_decl and std.mem.eql(u8, d.struct_decl.name.name, struct_name)) {
+                                                        struct_decl = d.struct_decl;
+                                                        break;
+                                                    }
+                                                }
+                                                const sdecl = struct_decl orelse {
+                                                    // Should not happen since we found symbol
+                                                    continue;
+                                                };
+                                                // Check unknown field, missing field, wrong type
+                                                // Build map of struct fields for quick lookup
+                                                var struct_fields = std.StringHashMap(ast.StructField).init(self.allocator);
+                                                defer struct_fields.deinit();
+                                                for (sdecl.fields) |field| {
+                                                    try struct_fields.put(field.name.name, field);
+                                                }
+                                                // Check for unknown field: volume has image/mountPoint/size but struct may have different
+                                                // For volume, we treat image, mount_point/mountPoint, size as fields
+                                                // Normalize mount_point
+                                                const vol_fields = [_]struct { name: []const u8, span: diagnostics.Span, value_str: []const u8, value_int: ?i64 }{
+                                                    .{ .name = "image", .span = vol.span, .value_str = vol.image, .value_int = null },
+                                                    .{ .name = "mount_point", .span = vol.span, .value_str = vol.mountPoint, .value_int = null },
+                                                    .{ .name = "size", .span = vol.span, .value_str = "", .value_int = vol.size },
+                                                };
+                                                for (vol_fields) |vf| {
+                                                    // Normalize mount_point vs mountPoint
+                                                    const normalized = if (std.mem.eql(u8, vf.name, "mount_point")) "mount_point" else vf.name;
+                                                    var found = false;
+                                                    var field_ty: ?ast.Type = null;
+                                                    for (sdecl.fields) |sf| {
+                                                        const sf_norm = if (std.mem.eql(u8, sf.name.name, "mountPoint") or std.mem.eql(u8, sf.name.name, "mount_point")) "mount_point" else sf.name.name;
+                                                        if (std.mem.eql(u8, sf_norm, normalized)) {
+                                                            found = true;
+                                                            field_ty = sf.type_annot;
+                                                            break;
+                                                        }
+                                                    }
+                                                    if (!found) {
+                                                        // Check if struct has field with different naming for mount
+                                                        // If not found, it might be unknown field, but for now we only check if struct has this field
+                                                        // If volume has mountPoint but struct has mount_point, we consider found via normalization above
+                                                        // So if still not found, report unknown field
+                                                        // For volume's mountPoint, we already normalized, so if struct has mount_point, it will be found
+                                                        // If not found, then check if vol field is actually present in struct via original names
+                                                        var has_field = false;
+                                                        for (sdecl.fields) |sf| {
+                                                            if (std.mem.eql(u8, sf.name.name, vf.name) or (std.mem.eql(u8, vf.name, "mount_point") and (std.mem.eql(u8, sf.name.name, "mountPoint") or std.mem.eql(u8, sf.name.name, "mount_point")))) {
+                                                                has_field = true;
+                                                                break;
+                                                            }
+                                                        }
+                                                        if (!has_field) {
+                                                            try self.diag.push(.{
+                                                                .severity = .err,
+                                                                .code = .unknown_ident,
+                                                                .message = try std.fmt.allocPrint(self.allocator, "unknown field `{s}` for struct `{s}`", .{ vf.name, struct_name }),
+                                                                .span = vol.span,
+                                                                .help = "check struct definition",
+                                                            });
+                                                        }
+                                                    } else if (field_ty) |fty| {
+                                                        // Check type of value vs field type
+                                                        const is_int = vf.value_int != null;
+                                                        const is_str = vf.value_str.len > 0;
+                                                        const expects_int = self.isIntegerType(fty);
+                                                        const expects_str = self.isStringType(fty);
+                                                        if (expects_int and !is_int) {
+                                                            try self.diag.push(.{
+                                                                .severity = .err,
+                                                                .code = .type_mismatch,
+                                                                .message = try std.fmt.allocPrint(self.allocator, "field `{s}` type mismatch in struct `{s}`", .{ vf.name, struct_name }),
+                                                                .span = vol.span,
+                                                                .help = try std.fmt.allocPrint(self.allocator, "expected {s}, got String", .{self.typeToString(fty)}),
+                                                            });
+                                                        } else if (expects_str and !is_str) {
+                                                            try self.diag.push(.{
+                                                                .severity = .err,
+                                                                .code = .type_mismatch,
+                                                                .message = try std.fmt.allocPrint(self.allocator, "field `{s}` type mismatch in struct `{s}`", .{ vf.name, struct_name }),
+                                                                .span = vol.span,
+                                                                .help = try std.fmt.allocPrint(self.allocator, "expected {s}, got int", .{self.typeToString(fty)}),
+                                                            });
+                                                        }
+                                                    }
+                                                }
+                                                // Check missing fields: for each struct field, ensure volume has it
+                                                for (sdecl.fields) |sf| {
+                                                    const sf_norm = if (std.mem.eql(u8, sf.name.name, "mountPoint") or std.mem.eql(u8, sf.name.name, "mount_point")) "mount_point" else sf.name.name;
+                                                    var has_vol_field = false;
+                                                    for (vol_fields) |vf| {
+                                                        const vf_norm = vf.name;
+                                                        if (std.mem.eql(u8, sf_norm, vf_norm) or (std.mem.eql(u8, sf_norm, "mount_point") and std.mem.eql(u8, vf_norm, "mount_point"))) {
+                                                            // Check if vol field is present (for size, check size != 0? but size is always present via required check above)
+                                                            // For image/mountPoint, check len >0
+                                                            if (std.mem.eql(u8, vf_norm, "image") and vol.image.len > 0) has_vol_field = true;
+                                                            if (std.mem.eql(u8, vf_norm, "mount_point") and vol.mountPoint.len > 0) has_vol_field = true;
+                                                            if (std.mem.eql(u8, vf_norm, "size") and vol.size != 0) has_vol_field = true;
+                                                            if (has_vol_field) break;
+                                                        }
+                                                    }
+                                                    if (!has_vol_field) {
+                                                        try self.diag.push(.{
+                                                            .severity = .err,
+                                                            .code = .type_mismatch,
+                                                            .message = try std.fmt.allocPrint(self.allocator, "missing field `{s}` for struct `{s}`", .{ sf.name.name, struct_name }),
+                                                            .span = vol.span,
+                                                            .help = "add missing field",
+                                                        });
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -901,5 +1071,200 @@ test "semantic infer explicit dominant" {
     const expr = prog.decls[0].let_decl.value;
     const inferred = try sem.inferExprType(expr);
     try std.testing.expect(inferred != null);
+}
+
+test "semantic struct volume happy path" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\struct Volume {
+        \\    image: String,
+        \\    mount_point: Path,
+        \\    size: u64,
+        \\}
+        \\host mireo {
+        \\    microvm grafana {
+        \\        mem: u32 = 512;
+        \\        volume data: Volume {
+        \\            image: "grafana";
+        \\            mount_point: "/var/lib/grafana";
+        \\            size: 10240;
+        \\        }
+        \\    }
+        \\}
+    ;
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    for (diag.list.items) |d| {
+        if (d.code == .type_mismatch or d.code == .unknown_ident) {
+            std.debug.print("unexpected error {s}: {s}\n", .{@tagName(d.code), d.message});
+            try std.testing.expect(false);
+        }
+    }
+    try std.testing.expect(!diag.hasErrors());
+}
+
+test "semantic unknown struct" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\host mireo {
+        \\    microvm grafana {
+        \\        volume data: UnknownStruct {
+        \\            image: "x";
+        \\            mount_point: "/y";
+        \\            size: 1024;
+        \\        }
+        \\    }
+        \\}
+    ;
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    var found = false;
+    for (diag.list.items) |d| { if (d.code == .unknown_ident) found = true; }
+    try std.testing.expect(found);
+}
+
+test "semantic unknown field" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\struct Volume {
+        \\    image: String,
+        \\    size: u64,
+        \\}
+        \\host mireo {
+        \\    microvm grafana {
+        \\        volume data: Volume {
+        \\            image: "x";
+        \\            mount_point: "/y";
+        \\            size: 1024;
+        \\        }
+        \\    }
+        \\}
+    ;
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    var found = false;
+    for (diag.list.items) |d| { if (d.code == .unknown_ident) found = true; }
+    try std.testing.expect(found);
+}
+
+test "semantic missing field" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\struct Volume {
+        \\    image: String,
+        \\    mount_point: Path,
+        \\    size: u64,
+        \\    extra: String,
+        \\}
+        \\host mireo {
+        \\    microvm grafana {
+        \\        volume data: Volume {
+        \\            image: "x";
+        \\            mount_point: "/y";
+        \\            size: 1024;
+        \\        }
+        \\    }
+        \\}
+    ;
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    var found = false;
+    for (diag.list.items) |d| { if (d.code == .type_mismatch) found = true; }
+    try std.testing.expect(found);
+}
+
+test "semantic wrong field type" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\struct Volume {
+        \\    image: String,
+        \\    mount_point: Path,
+        \\    size: String,
+        \\}
+        \\host mireo {
+        \\    microvm grafana {
+        \\        volume data: Volume {
+        \\            image: "x";
+        \\            mount_point: "/y";
+        \\            size: 10240;
+        \\        }
+        \\    }
+        \\}
+    ;
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    var found = false;
+    for (diag.list.items) |d| { if (d.code == .type_mismatch) found = true; }
+    try std.testing.expect(found);
+}
+
+test "semantic let named type via Scope" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source =
+        \\struct Volume {
+        \\    image: String,
+        \\    size: u64,
+        \\}
+        \\let v: Volume = "test";
+    ;
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    // For now, let Volume literal is not yet fully supported, but we test that Volume struct is known via Scope
+    const mod = try symbol.Scope.fromProgram(alloc, &prog);
+    defer mod.deinit();
+    try std.testing.expect(mod.lookup("Volume", .struct_decl) != null);
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    // Should not have unknown struct for let x: Volume
+    var found_unknown = false;
+    for (diag.list.items) |d| { if (d.code == .unknown_ident and std.mem.indexOf(u8, d.message, "Volume") != null) found_unknown = true; }
+    // For now, let with Volume type should be ok if struct exists, so no unknown
+    try std.testing.expect(!found_unknown or diag.hasErrors() == false);
 }
 

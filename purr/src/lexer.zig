@@ -25,6 +25,7 @@ pub const TokenKind = enum {
     keyword_let,
     keyword_microvm,
     keyword_volume,
+    keyword_struct,
     string_lit,
     integer,
     l_brace,
@@ -304,6 +305,7 @@ pub const Lexer = struct {
         if (std.mem.eql(u8, lexeme, "false")) return .keyword_false;
         if (std.mem.eql(u8, lexeme, "microvm")) return .keyword_microvm;
         if (std.mem.eql(u8, lexeme, "volume")) return .keyword_volume;
+        if (std.mem.eql(u8, lexeme, "struct")) return .keyword_struct;
         return null;
     }
 

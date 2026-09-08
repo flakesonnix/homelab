@@ -189,6 +189,19 @@ pub const Decl = union(enum) {
     nix: NixBlock,
     let_decl: Let,
     microvm: MicroVM,
+    struct_decl: Struct,
+};
+
+pub const StructField = struct {
+    name: Ident,
+    type_annot: Type,
+    span: Span,
+};
+
+pub const Struct = struct {
+    name: Ident,
+    fields: []StructField,
+    span: Span,
 };
 
 pub const Package = struct {

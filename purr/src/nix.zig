@@ -114,6 +114,11 @@ pub fn generateFiltered(program: *const ast.Program, allocator: std.mem.Allocato
                 try buf.appendSlice(allocator, "\n");
             },
             .let_decl => continue,
+            .struct_decl => |s| {
+                try buf.appendSlice(allocator, "    # struct ");
+                try buf.appendSlice(allocator, s.name.name);
+                try buf.appendSlice(allocator, "\n");
+            },
             .microvm => |vm| {
                 try buf.appendSlice(allocator, "    # microvm (top-level) ");
                 try buf.appendSlice(allocator, vm.name.name);

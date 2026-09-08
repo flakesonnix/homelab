@@ -103,7 +103,7 @@ pub const Parser = struct {
                     const imp = try self.parseImport();
                     try imports.append(self.allocator, imp);
                 },
-                .keyword_let, .keyword_role, .keyword_host, .keyword_bundle, .keyword_preset, .keyword_package, .keyword_nix, .keyword_microvm => {
+                .keyword_let, .keyword_role, .keyword_host, .keyword_bundle, .keyword_preset, .keyword_package, .keyword_nix, .keyword_microvm, .keyword_struct => {
                     const decl = try self.parseDecl();
                     try decls.append(self.allocator, decl);
                 },
@@ -183,6 +183,24 @@ pub const Parser = struct {
         return .{ .name = name, .type_annot = type_annot, .value = value, .span = kw.span };
     }
 
+    fn parseStruct(self: *Parser) !ast.Struct {
+        const kw = try self.expect(.keyword_struct);
+        const name = try self.parseIdent();
+        _ = try self.expect(.l_brace);
+        var fields: std.ArrayList(ast.StructField) = .empty;
+        while (self.peekKind() != .r_brace and !self.isAtEnd()) {
+            const field_name = try self.parseIdent();
+            _ = try self.expect(.colon);
+            const field_type = try self.parseType();
+            // allow comma or semicolon separator, or just newline
+            _ = self.consumeIf(.comma);
+            _ = self.consumeIf(.semicolon);
+            try fields.append(self.allocator, .{ .name = field_name, .type_annot = field_type, .span = field_name.span });
+        }
+        _ = try self.expect(.r_brace);
+        return .{ .name = name, .fields = try fields.toOwnedSlice(self.allocator), .span = kw.span };
+    }
+
     fn parseDecl(self: *Parser) !ast.Decl {
         switch (self.peekKind()) {
             .keyword_role => return .{ .role = try self.parseRole() },
@@ -196,6 +214,7 @@ pub const Parser = struct {
             .keyword_nix => return .{ .nix = try self.parseNix() },
             .keyword_let => return .{ .let_decl = try self.parseLet() },
             .keyword_microvm => return .{ .microvm = try self.parseMicroVM() },
+            .keyword_struct => return .{ .struct_decl = try self.parseStruct() },
             else => unreachable,
         }
     }
@@ -218,7 +237,7 @@ pub const Parser = struct {
     }
 
     fn isKeywordIdent(k: lexer.TokenKind) bool {
-        return k == .keyword_role or k == .keyword_host or k == .keyword_bundle or k == .keyword_preset or k == .keyword_package or k == .keyword_import or k == .keyword_use or k == .keyword_nix or k == .keyword_description or k == .keyword_targets or k == .keyword_extends or k == .keyword_microvm or k == .keyword_volume;
+        return k == .keyword_role or k == .keyword_host or k == .keyword_bundle or k == .keyword_preset or k == .keyword_package or k == .keyword_import or k == .keyword_use or k == .keyword_nix or k == .keyword_description or k == .keyword_targets or k == .keyword_extends or k == .keyword_microvm or k == .keyword_volume or k == .keyword_struct;
     }
 
     fn parseRole(self: *Parser) !ast.Role {
