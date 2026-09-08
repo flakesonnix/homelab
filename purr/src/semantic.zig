@@ -113,6 +113,17 @@ pub const Semantic = struct {
             switch (decl) {
                 .let_decl => |l| {
                     try self.checkExpr(l.value, &ordered_scope);
+                    if (l.type_annot) |ty| {
+                        if (!self.typeMatchesExpr(ty, l.value)) {
+                            try self.diag.push(.{
+                                .severity = .err,
+                                .code = .type_mismatch,
+                                .message = try std.fmt.allocPrint(self.allocator, "let `{s}` type mismatch", .{l.name.name}),
+                                .span = l.name.span,
+                                .help = try std.fmt.allocPrint(self.allocator, "expected {s}, got {s}", .{ self.typeToString(ty), self.exprTypeName(l.value) }),
+                            });
+                        }
+                    }
                     if (!ordered_scope.contains(l.name.name)) try ordered_scope.put(l.name.name, l.name.span);
                     // also track in ordered_let_scope for host inheritance? Not needed
                     if (!ordered_let_scope.contains(l.name.name)) try ordered_let_scope.put(l.name.name, l.name.span);
@@ -193,11 +204,20 @@ pub const Semantic = struct {
                                         .help = try std.fmt.allocPrint(self.allocator, "previous at {s}:{d}:{d}", .{ prev.span.file, prev.span.line, prev.span.col }),
                                     });
                                 } else {
-                                    try self.checkExpr(l.value, &ordered_scope); // check against ordered_scope for let expr? Use ordered_scope map for expr checks
-                                    // For Scope-based let, we should also check via host_scope, but keep existing map for checkExpr
-                                    // Define in host_scope
+                                    try self.checkExpr(l.value, &ordered_scope);
+                                    if (l.type_annot) |ty| {
+                                        if (!self.typeMatchesExpr(ty, l.value)) {
+                                            try self.diag.push(.{
+                                                .severity = .err,
+                                                .code = .type_mismatch,
+                                                .message = try std.fmt.allocPrint(self.allocator, "let `{s}` type mismatch in host `{s}`", .{ l.name.name, h.name.name }),
+                                                .span = l.name.span,
+                                                .help = try std.fmt.allocPrint(self.allocator, "expected {s}, got {s}", .{ self.typeToString(ty), self.exprTypeName(l.value) }),
+                                            });
+                                        }
+                                    }
                                     _ = try host_scope_sym.define(l.name.name, .let_decl, l.name.span);
-                                    try ordered_scope.put(l.name.name, l.name.span); // not strictly needed but keep for later
+                                    try ordered_scope.put(l.name.name, l.name.span);
                                 }
                             },
                             .use_role => |ident| {
@@ -325,6 +345,67 @@ pub const Semantic = struct {
                                             .span = vm.name.span,
                                             .help = "example: ip = \"10.8.0.2\";",
                                         });
+                                    }
+                                    if (vm.ip_type) |ty| {
+                                        if (!self.isStringType(ty)) {
+                                            try self.diag.push(.{
+                                                .severity = .err,
+                                                .code = .type_mismatch,
+                                                .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` ip type must be String/Ipv4/Path", .{vm.name.name}),
+                                                .span = vm.name.span,
+                                                .help = try std.fmt.allocPrint(self.allocator, "got {s}", .{self.typeToString(ty)}),
+                                            });
+                                        } else if (!self.typeMatchesExpr(ty, .{ .span = vm.name.span, .data = .{ .string = ip } })) {
+                                            try self.diag.push(.{
+                                                .severity = .err,
+                                                .code = .type_mismatch,
+                                                .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` ip value type mismatch", .{vm.name.name}),
+                                                .span = vm.name.span,
+                                                .help = try std.fmt.allocPrint(self.allocator, "expected {s}, got String", .{self.typeToString(ty)}),
+                                            });
+                                        }
+                                    }
+                                }
+                                if (vm.mem) |m| {
+                                    _ = m;
+                                    if (vm.mem_type) |ty| {
+                                        if (!self.isIntegerType(ty)) {
+                                            try self.diag.push(.{
+                                                .severity = .err,
+                                                .code = .type_mismatch,
+                                                .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` mem type must be integer", .{vm.name.name}),
+                                                .span = vm.name.span,
+                                                .help = try std.fmt.allocPrint(self.allocator, "got {s}", .{self.typeToString(ty)}),
+                                            });
+                                        }
+                                    }
+                                }
+                                if (vm.cpu) |c| {
+                                    _ = c;
+                                    if (vm.cpu_type) |ty| {
+                                        if (!self.isIntegerType(ty)) {
+                                            try self.diag.push(.{
+                                                .severity = .err,
+                                                .code = .type_mismatch,
+                                                .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` cpu type must be integer", .{vm.name.name}),
+                                                .span = vm.name.span,
+                                                .help = try std.fmt.allocPrint(self.allocator, "got {s}", .{self.typeToString(ty)}),
+                                            });
+                                        }
+                                    }
+                                }
+                                if (vm.net) |n| {
+                                    _ = n;
+                                    if (vm.net_type) |ty| {
+                                        if (!self.isStringType(ty)) {
+                                            try self.diag.push(.{
+                                                .severity = .err,
+                                                .code = .type_mismatch,
+                                                .message = try std.fmt.allocPrint(self.allocator, "microvm `{s}` net type must be String", .{vm.name.name}),
+                                                .span = vm.name.span,
+                                                .help = try std.fmt.allocPrint(self.allocator, "got {s}", .{self.typeToString(ty)}),
+                                            });
+                                        }
                                     }
                                 }
                                 for (vm.volumes) |vol| {
@@ -456,6 +537,74 @@ pub const Semantic = struct {
         parts += 1;
         return parts == 4;
     }
+
+    fn isIntegerType(self: *Semantic, ty: ast.Type) bool {
+        _ = self;
+        return switch (ty.data) {
+            .i32, .i64, .u32, .u64, .usize => true,
+            else => false,
+        };
+    }
+
+    fn isStringType(self: *Semantic, ty: ast.Type) bool {
+        _ = self;
+        return switch (ty.data) {
+            .string, .ipv4, .path, .duration => true,
+            else => false,
+        };
+    }
+
+    fn typeMatchesExpr(self: *Semantic, ty: ast.Type, expr: ast.Expr) bool {
+        switch (ty.data) {
+            .string, .ipv4, .path, .duration => return expr.data == .string,
+            .bool => return expr.data == .boolean,
+            .i32, .i64, .u32, .u64, .usize => return expr.data == .integer or (expr.data == .unary and expr.data.unary.op == .neg and expr.data.unary.expr.*.data == .integer),
+            .list => |inner| {
+                if (expr.data != .list) return false;
+                for (expr.data.list) |item| {
+                    if (!self.typeMatchesExpr(inner.*, item)) return false;
+                }
+                return true;
+            },
+            .option => |inner| {
+                return self.typeMatchesExpr(inner.*, expr);
+            },
+            .named => return true,
+        }
+    }
+
+    fn typeToString(self: *Semantic, ty: ast.Type) []const u8 {
+        _ = self;
+        return switch (ty.data) {
+            .string => "String",
+            .ipv4 => "Ipv4",
+            .path => "Path",
+            .duration => "Duration",
+            .bool => "bool",
+            .i32 => "i32",
+            .i64 => "i64",
+            .u32 => "u32",
+            .u64 => "u64",
+            .usize => "usize",
+            .list => "List<_>",
+            .option => "Option<_>",
+            .named => |c| c,
+        };
+    }
+
+    fn exprTypeName(self: *Semantic, expr: ast.Expr) []const u8 {
+        _ = self;
+        return switch (expr.data) {
+            .string => "String",
+            .integer => "i64",
+            .boolean => "bool",
+            .ident => "ident",
+            .list => "List<_>",
+            .binary => "binary",
+            .unary => "unary",
+            .paren => "paren",
+        };
+    }
 };
 
 test "semantic unknown role" {
@@ -489,3 +638,121 @@ test "semantic duplicate host" {
     try sem.analyze();
     try std.testing.expect(diag.hasErrors());
 }
+
+test "semantic type mismatch let u32 vs string" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "let x: u32 = \"cat\";";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    var found = false;
+    for (diag.list.items) |d| {
+        if (d.code == .type_mismatch) found = true;
+    }
+    try std.testing.expect(found);
+    try std.testing.expect(diag.hasErrors());
+}
+
+test "semantic type mismatch let Ipv4 vs integer" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "let addr: Ipv4 = 123;";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    var found = false;
+    for (diag.list.items) |d| { if (d.code == .type_mismatch) found = true; }
+    try std.testing.expect(found);
+}
+
+test "semantic type ok let" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "let x: u32 = 42; let y: String = \"cat\"; let z: Ipv4 = \"10.8.0.2\";";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    for (diag.list.items) |d| {
+        if (d.code == .type_mismatch) {
+            std.debug.print("unexpected type_mismatch: {s}\n", .{d.message});
+            try std.testing.expect(false);
+        }
+    }
+    try std.testing.expect(!diag.hasErrors());
+}
+
+test "semantic type mismatch microvm mem" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "host mireo { microvm grafana { mem: String = 768; cpu: u32 = 2; net: String = \"lan\"; } }";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    var found = false;
+    for (diag.list.items) |d| { if (d.code == .type_mismatch) found = true; }
+    try std.testing.expect(found);
+}
+
+test "semantic type ok microvm" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "host mireo { microvm grafana { mem: u32 = 768; cpu: u32 = 2; ip: Ipv4 = \"10.8.0.2\"; net: String = \"lan\"; } }";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    for (diag.list.items) |d| { if (d.code == .type_mismatch) {
+        std.debug.print("unexpected mismatch {s}\n", .{d.message});
+        try std.testing.expect(false);
+    } }
+    try std.testing.expect(!diag.hasErrors());
+}
+
+test "semantic type mismatch List" {
+    const alloc = std.testing.allocator;
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    const source = "let x: List<u32> = [\"a\", \"b\"];";
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", source);
+    const lexer = @import("lexer.zig");
+    var lex = lexer.Lexer.init(source, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var parser = @import("parser.zig").Parser.initWithSource(toks, &diag, &arena, source);
+    var prog = try parser.parseProgram();
+    var sem = Semantic.init(&prog, &diag, arena.allocator());
+    try sem.analyze();
+    var found = false;
+    for (diag.list.items) |d| { if (d.code == .type_mismatch) found = true; }
+    try std.testing.expect(found);
+}
+
