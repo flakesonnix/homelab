@@ -365,11 +365,50 @@ fn translateNixContent(allocator: std.mem.Allocator, content: []const u8, path: 
             try out.appendSlice(allocator, "host migrated {\n    nix {\n    }\n}\n");
             return try out.toOwnedSlice(allocator);
         }
-        // Try single expr fallback for files that are just values (e.g., lists)
+        // Try single expr fallback for files that are just values (e.g., lists like roles.nix)
         const expr = nix_ir.parseExpr(allocator, content) catch null;
         if (expr) |e| {
             defer freeNixExpr(allocator, e);
             if (e != .raw) {
+                // Special: roles.nix is `["desktop" "dev" ...]` → map to `use <role>;`
+                if (std.mem.endsWith(u8, path, "roles.nix")) {
+                    if (e == .list) {
+                        var arena2 = std.heap.ArenaAllocator.init(allocator);
+                        defer arena2.deinit();
+                        const arena_alloc2 = arena2.allocator();
+                        const host_name2 = try deriveHostNameForPath(arena_alloc2, path);
+                        var host_stmts2: std.ArrayList(ast.HostStmt) = .empty;
+                        for (e.list) |elem| {
+                            const role_name: ?[]const u8 = switch (elem) {
+                                .string => |s| s,
+                                .ident => |id| id,
+                                else => null,
+                            };
+                            if (role_name) |rn| {
+                                const ident = ast.Ident{ .name = try arena_alloc2.dupe(u8, rn), .span = diagnostics.Span{ .file = path, .line = 1, .col = 1, .len = 0, .start = 0, .end = 0 } };
+                                try host_stmts2.append(arena_alloc2, .{ .use_role = ident });
+                            }
+                        }
+                        if (host_stmts2.items.len > 0) {
+                            const host_span = diagnostics.Span{ .file = path, .line = 1, .col = 1, .len = 0, .start = 0, .end = 0 };
+                            const host = ast.Host{
+                                .name = .{ .name = host_name2, .span = host_span },
+                                .extends = null,
+                                .stmts = try host_stmts2.toOwnedSlice(arena_alloc2),
+                                .span = host_span,
+                            };
+                            const decls_host = try arena_alloc2.alloc(ast.Decl, 1);
+                            decls_host[0] = .{ .host = host };
+                            const prog = ast.Program{
+                                .imports = &.{},
+                                .decls = decls_host,
+                                .arena = arena2,
+                            };
+                            const formatted = try fmt.format(&prog, allocator);
+                            return formatted;
+                        }
+                    }
+                }
                 // single primitive expr file: treat as migrated host with nix preserve
                 return try preserveWholeAsNix(allocator, content, path);
             }
@@ -1075,4 +1114,41 @@ test "migrate preserveWhole host naming" {
     const out_raw = try translateNixContent(alloc, raw_src, "data/hosts/x270/settings.nix");
     defer alloc.free(out_raw);
     try std.testing.expect(std.mem.indexOf(u8, out_raw, "host x270 {") != null);
+}
+
+test "migrate roles.nix to use" {
+    const alloc = std.testing.allocator;
+    const src =
+        \\[
+        \\  "desktop"
+        \\  "dev"
+        \\  "gaming"
+        \\]
+    ;
+    const out = try translateNixContent(alloc, src, "data/hosts/x270/roles.nix");
+    defer alloc.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "host x270 {") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "use desktop;") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "use dev;") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "use gaming;") != null);
+    // Verify generated Purr is checkable
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    var diag = diagnostics.Diagnostics.init(arena.allocator(), "test.purr", out);
+    var lex = lexer.Lexer.init(out, "test.purr", &diag);
+    const toks = try lex.lexAll(arena.allocator());
+    var p = parser.Parser.initWithSource(toks, &diag, &arena, out);
+    const prog = try p.parseProgram();
+    _ = prog;
+    try std.testing.expect(!diag.hasErrors());
+}
+
+test "migrate roles.nix host mireo" {
+    const alloc = std.testing.allocator;
+    const src = "[ \"desktop\" ]";
+    const out = try translateNixContent(alloc, src, "data/hosts/mireo/roles.nix");
+    defer alloc.free(out);
+    // mireo currently no roles.nix but test host derive
+    try std.testing.expect(std.mem.indexOf(u8, out, "host mireo {") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "use desktop;") != null);
 }
