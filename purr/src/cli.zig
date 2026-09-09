@@ -134,6 +134,30 @@ fn handleMigrate(allocator: std.mem.Allocator, io: std.Io, args: []const []const
         return try migrate.migrateStdin(allocator, io, dry_run, verify);
     }
     if (file) |f| {
+        // Check if path is a directory → migrate all .nix files inside (non-recursive)
+        const stat = std.Io.Dir.cwd().statFile(io, f, .{}) catch null;
+        if (stat) |s| if (s.kind == .directory) {
+            var dir = try std.Io.Dir.cwd().openDir(io, f, .{ .iterate = true });
+            var it = dir.iterate();
+            defer it.reader.dir.close(io);
+            var any_failed = false;
+            var count: usize = 0;
+            while (try it.next(io)) |entry| {
+                if (entry.kind != .file) continue;
+                if (!std.mem.endsWith(u8, entry.name, ".nix")) continue;
+                const full_path = try std.fs.path.join(allocator, &.{ f, entry.name });
+                defer allocator.free(full_path);
+                const rc = try migrate.migrateFile(allocator, io, full_path, dry_run, in_place, verify);
+                if (rc != 0) any_failed = true;
+                count += 1;
+            }
+            if (count == 0) {
+                std.debug.print("purr warning: no .nix files in directory {s}\n", .{f});
+            } else {
+                std.debug.print("purr: migrate directory {s} → {d} file(s) {s}{s}\n", .{ f, count, if (dry_run) "--dry-run " else "", if (verify) "--verify" else "" });
+            }
+            return if (any_failed) @as(u8, 1) else @as(u8, 0);
+        };
         // Heuristic: if file ends with .nix or contains '/' or '.' treat as file, else legacy host
         const is_file = std.mem.endsWith(u8, f, ".nix") or std.mem.indexOf(u8, f, "/") != null or std.mem.indexOf(u8, f, ".") != null;
         if (is_file) {
@@ -156,6 +180,7 @@ fn printMigrateHelp(io: std.Io) !void {
         \\
         \\Usage:
         \\  purr migrate <file.nix> [--dry-run] [--in-place] [--verify]
+        \\  purr migrate <dir> [--dry-run] [--in-place] [--verify]  # all .nix in dir
         \\  purr migrate --expr '<nix expression>' [--verify]
         \\  purr migrate --stdin [--verify]
         \\
@@ -169,6 +194,8 @@ fn printMigrateHelp(io: std.Io) !void {
         \\  purr migrate settings.nix --in-place
         \\  purr migrate settings.nix --dry-run
         \\  purr migrate settings.nix --verify
+        \\  purr migrate data/hosts/x270 --in-place
+        \\  purr migrate data/hosts/x270 --dry-run --verify
         \\  purr migrate --expr 'services.nginx.enable = true'
         \\  purr migrate --stdin < file.nix
         \\  purr migrate x270 --dry-run   # legacy host migration (x270)
