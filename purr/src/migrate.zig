@@ -382,23 +382,7 @@ fn translateNixContent(allocator: std.mem.Allocator, content: []const u8, path: 
     defer arena.deinit();
     const arena_alloc = arena.allocator();
 
-    // Host name: derived from path basename or "migrated"
-    const host_name = blk: {
-        const base = std.fs.path.basename(path);
-        const name = if (std.mem.endsWith(u8, base, ".nix")) base[0 .. base.len - 4] else base;
-        const clean = if (name.len == 0 or std.mem.eql(u8, name, "<stdin>") or std.mem.eql(u8, name, "<expr>")) "migrated" else name;
-        // sanitize: replace '-' with '_' etc. Keep alnum, '_' , '-'
-        // For host ident, must be valid ident (alnum, '_', '-')
-        // If clean invalid, fallback
-        var valid = true;
-        for (clean) |c| {
-            if (!std.ascii.isAlphanumeric(c) and c != '_' and c != '-') {
-                valid = false;
-                break;
-            }
-        }
-        if (valid and clean.len > 0) break :blk try arena_alloc.dupe(u8, clean) else break :blk try arena_alloc.dupe(u8, "migrated");
-    };
+    const host_name = try deriveHostNameForPath(arena_alloc, path);
 
     var host_stmts: std.ArrayList(ast.HostStmt) = .empty;
     var preserved_count: usize = 0;
@@ -564,12 +548,62 @@ fn translateNixExpr(allocator: std.mem.Allocator, expr_str: []const u8) ![]const
     }
 }
 
+fn deriveHostNameForPath(arena_alloc: std.mem.Allocator, path: []const u8) ![]const u8 {
+    const data_marker = "data/hosts/";
+    const hosts_marker = "hosts/";
+    var derived: ?[]const u8 = null;
+    if (std.mem.indexOf(u8, path, data_marker)) |idx| {
+        const start = idx + data_marker.len;
+        const rest = path[start..];
+        const end = std.mem.indexOfAny(u8, rest, "/\\") orelse rest.len;
+        if (end > 0) derived = rest[0..end];
+    } else if (std.mem.indexOf(u8, path, hosts_marker)) |idx| {
+        const start = idx + hosts_marker.len;
+        const rest = path[start..];
+        const end = std.mem.indexOfAny(u8, rest, "/\\") orelse rest.len;
+        if (end > 0) {
+            const cand = rest[0..end];
+            var is_host_like = true;
+            for (cand) |c| {
+                if (!std.ascii.isAlphanumeric(c) and c != '_' and c != '-') {
+                    is_host_like = false;
+                    break;
+                }
+            }
+            if (is_host_like and cand.len > 0 and !std.mem.endsWith(u8, cand, ".nix") and !std.mem.eql(u8, cand, "x86_64-linux")) {
+                derived = cand;
+            }
+        }
+    }
+    if (derived) |d| {
+        var valid = true;
+        for (d) |c| {
+            if (!std.ascii.isAlphanumeric(c) and c != '_' and c != '-') {
+                valid = false;
+                break;
+            }
+        }
+        if (valid and d.len > 0) return try arena_alloc.dupe(u8, d);
+    }
+    const base = std.fs.path.basename(path);
+    const name = if (std.mem.endsWith(u8, base, ".nix")) base[0 .. base.len - 4] else base;
+    const clean = if (name.len == 0 or std.mem.eql(u8, name, "<stdin>") or std.mem.eql(u8, name, "<expr>") or std.mem.eql(u8, name, "<unknown>")) "migrated" else name;
+    var valid = true;
+    for (clean) |c| {
+        if (!std.ascii.isAlphanumeric(c) and c != '_' and c != '-') {
+            valid = false;
+            break;
+        }
+    }
+    if (valid and clean.len > 0) return try arena_alloc.dupe(u8, clean) else return try arena_alloc.dupe(u8, "migrated");
+}
+
 fn preserveWholeAsNix(allocator: std.mem.Allocator, content: []const u8, path: []const u8) ![]const u8 {
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
     const arena_alloc = arena.allocator();
     const span = diagnostics.Span{ .file = path, .line = 1, .col = 1, .len = 0, .start = 0, .end = 0 };
-    // Wrap whole content as nix block inside host migrated
+    // Wrap whole content as nix block inside host — derive host name from path for fragments
     var host_stmts: std.ArrayList(ast.HostStmt) = .empty;
     const raw_stmt = ast.HostStmt{ .setting = .{
         .path = try arena_alloc.dupe(u8, "nix_raw"),
@@ -577,8 +611,9 @@ fn preserveWholeAsNix(allocator: std.mem.Allocator, content: []const u8, path: [
         .span = span,
     } };
     try host_stmts.append(arena_alloc, raw_stmt);
+    const host_name = try deriveHostNameForPath(arena_alloc, path);
     const host = ast.Host{
-        .name = .{ .name = try arena_alloc.dupe(u8, "migrated"), .span = span },
+        .name = .{ .name = host_name, .span = span },
         .extends = null,
         .stmts = try host_stmts.toOwnedSlice(arena_alloc),
         .span = span,
@@ -986,4 +1021,58 @@ test "migrate type mapping" {
         defer alloc.free(out);
         try std.testing.expect(std.mem.indexOf(u8, out, c.ty_hint) != null);
     }
+}
+
+test "migrate host fragment naming data/hosts" {
+    const alloc = std.testing.allocator;
+    const src = "networking.networkmanager.enable = true;";
+    const out_x270 = try translateNixContent(alloc, src, "data/hosts/x270/settings.nix");
+    defer alloc.free(out_x270);
+    try std.testing.expect(std.mem.indexOf(u8, out_x270, "host x270 {") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out_x270, "host settings {") == null);
+    const out_mireo = try translateNixContent(alloc, src, "data/hosts/mireo/settings.nix");
+    defer alloc.free(out_mireo);
+    try std.testing.expect(std.mem.indexOf(u8, out_mireo, "host mireo {") != null);
+    const out_pkg = try translateNixContent(alloc, src, "data/hosts/x270/packages.nix");
+    defer alloc.free(out_pkg);
+    try std.testing.expect(std.mem.indexOf(u8, out_pkg, "host x270 {") != null);
+}
+
+test "migrate host fragment naming hosts/" {
+    const alloc = std.testing.allocator;
+    const src = "services.nginx.enable = true;";
+    const out = try translateNixContent(alloc, src, "hosts/x270/default.nix");
+    defer alloc.free(out);
+    try std.testing.expect(std.mem.indexOf(u8, out, "host x270 {") != null);
+}
+
+test "migrate host fragment fallback basename" {
+    const alloc = std.testing.allocator;
+    const src = "services.nginx.enable = true;";
+    const out = try translateNixContent(alloc, src, "data/packages/system.nix");
+    defer alloc.free(out);
+    // fallback to basename "system" (not hosts-derived)
+    try std.testing.expect(std.mem.indexOf(u8, out, "host system {") != null);
+    const out2 = try translateNixContent(alloc, src, "standalone.nix");
+    defer alloc.free(out2);
+    try std.testing.expect(std.mem.indexOf(u8, out2, "host standalone {") != null);
+    const out3 = try translateNixContent(alloc, src, "<stdin>");
+    defer alloc.free(out3);
+    try std.testing.expect(std.mem.indexOf(u8, out3, "host migrated {") != null);
+}
+
+test "migrate preserveWhole host naming" {
+    const alloc = std.testing.allocator;
+    const src = "# empty comment only";
+    // Force preserveWholeAsNix via empty attrs (no supported)
+    const out = try translateNixContent(alloc, src, "data/hosts/mireo/settings.nix");
+    defer alloc.free(out);
+    // Even for empty, should derive host mireo not migrated
+    // empty file fallback creates host migrated with empty nix, but preserveWhole for comment-only
+    // will still produce host mireo with nix_raw? Check via raw preserve path
+    // Use a src that is pure raw (ident) to trigger preserveWhole
+    const raw_src = "services.foo = lib.mkMerge [ {} ];";
+    const out_raw = try translateNixContent(alloc, raw_src, "data/hosts/x270/settings.nix");
+    defer alloc.free(out_raw);
+    try std.testing.expect(std.mem.indexOf(u8, out_raw, "host x270 {") != null);
 }
