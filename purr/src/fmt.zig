@@ -233,6 +233,10 @@ fn formatHost(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, h: ast.Host
                 } else {
                     try buf.appendSlice(allocator, "    ");
                     try buf.appendSlice(allocator, s.path);
+                    if (s.type_annot) |ty| {
+                        try buf.appendSlice(allocator, ": ");
+                        try formatType(buf, allocator, ty);
+                    }
                     try buf.appendSlice(allocator, " = ");
                     try formatExpr(buf, allocator, s.value);
                     try buf.appendSlice(allocator, ";\n");

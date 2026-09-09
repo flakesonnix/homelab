@@ -8,7 +8,7 @@ const resolver = @import("resolver.zig");
 const fmt = @import("fmt.zig");
 const lint = @import("lint.zig");
 
-const Command = enum { check, compile, fmt, lint, eval, rebuild, help };
+const Command = enum { check, compile, fmt, lint, eval, rebuild, migrate, help };
 
 pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
     const allocator = init.gpa;
@@ -19,7 +19,7 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
         return 0;
     }
     const cmd_str = args[1];
-    const cmd: Command = if (std.mem.eql(u8, cmd_str, "check")) .check else if (std.mem.eql(u8, cmd_str, "compile")) .compile else if (std.mem.eql(u8, cmd_str, "fmt")) .fmt else if (std.mem.eql(u8, cmd_str, "lint")) .lint else if (std.mem.eql(u8, cmd_str, "eval")) .eval else if (std.mem.eql(u8, cmd_str, "rebuild")) .rebuild else if (std.mem.eql(u8, cmd_str, "help") or std.mem.eql(u8, cmd_str, "--help") or std.mem.eql(u8, cmd_str, "-h")) .help else {
+    const cmd: Command = if (std.mem.eql(u8, cmd_str, "check")) .check else if (std.mem.eql(u8, cmd_str, "compile")) .compile else if (std.mem.eql(u8, cmd_str, "fmt")) .fmt else if (std.mem.eql(u8, cmd_str, "lint")) .lint else if (std.mem.eql(u8, cmd_str, "eval")) .eval else if (std.mem.eql(u8, cmd_str, "rebuild")) .rebuild else if (std.mem.eql(u8, cmd_str, "migrate")) .migrate else if (std.mem.eql(u8, cmd_str, "help") or std.mem.eql(u8, cmd_str, "--help") or std.mem.eql(u8, cmd_str, "-h")) .help else {
         std.debug.print("purr error: unknown command `{s}`\n", .{cmd_str});
         try printHelp(io);
         return 1;
@@ -43,6 +43,10 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
         }
         // host may be null → inferred inside rebuildHost from meow.purr
         return try rebuildHost(allocator, io, host, dry_run);
+    }
+    // migrate: `purr migrate <file.nix> | --expr '<nix>' | --stdin [--dry-run] [--in-place] [--verify]`
+    if (cmd == .migrate) {
+        return try handleMigrate(allocator, io, args);
     }
     // Parse file, --json, --out from args[2..] (file is first non-flag)
     var json_flag = false;
@@ -81,6 +85,98 @@ pub fn run(init: std.process.Init, args: []const []const u8) !u8 {
     return try processFile(allocator, io, actual_file, cmd, out_path, json_flag);
 }
 
+fn handleMigrate(allocator: std.mem.Allocator, io: std.Io, args: []const []const u8) !u8 {
+    const migrate = @import("migrate.zig");
+    var file: ?[]const u8 = null;
+    var expr: ?[]const u8 = null;
+    var stdin_flag = false;
+    var dry_run = false;
+    var in_place = false;
+    var verify = false;
+    var idx: usize = 2;
+    while (idx < args.len) : (idx += 1) {
+        const a = args[idx];
+        if (std.mem.eql(u8, a, "--expr")) {
+            if (idx + 1 < args.len) {
+                expr = args[idx + 1];
+                idx += 1;
+            } else {
+                std.debug.print("purr error: --expr requires argument\n", .{});
+                return 1;
+            }
+        } else if (std.mem.eql(u8, a, "--stdin")) {
+            stdin_flag = true;
+        } else if (std.mem.eql(u8, a, "--dry-run")) {
+            dry_run = true;
+        } else if (std.mem.eql(u8, a, "--in-place")) {
+            in_place = true;
+        } else if (std.mem.eql(u8, a, "--verify")) {
+            verify = true;
+        } else if (std.mem.eql(u8, a, "--help") or std.mem.eql(u8, a, "-h")) {
+            try printMigrateHelp(io);
+            return 0;
+        } else if (a.len > 0 and a[0] == '-') {
+            std.debug.print("purr error: unknown flag `{s}` for migrate\n", .{a});
+            try printMigrateHelp(io);
+            return 1;
+        } else {
+            if (file == null) file = a else {
+                std.debug.print("purr error: multiple files not supported for migrate\n", .{});
+                return 1;
+            }
+        }
+    }
+    // precedence: --expr > --stdin > file
+    if (expr) |e| {
+        return try migrate.migrateExpr(allocator, io, e, dry_run, verify);
+    }
+    if (stdin_flag) {
+        return try migrate.migrateStdin(allocator, io, dry_run, verify);
+    }
+    if (file) |f| {
+        // Heuristic: if file ends with .nix or contains '/' or '.' treat as file, else legacy host
+        const is_file = std.mem.endsWith(u8, f, ".nix") or std.mem.indexOf(u8, f, "/") != null or std.mem.indexOf(u8, f, ".") != null;
+        if (is_file) {
+            return try migrate.migrateFile(allocator, io, f, dry_run, in_place, verify);
+        } else {
+            // legacy host migration: `purr migrate x270 [--dry-run] [--verify]`
+            const opts = migrate.MigrateOpts{ .host = f, .dry_run = dry_run, .verify = verify };
+            return try migrate.migrate(allocator, io, opts);
+        }
+    }
+    std.debug.print("purr error: migrate requires <file.nix> or --expr or --stdin\n", .{});
+    try printMigrateHelp(io);
+    return 1;
+}
+
+fn printMigrateHelp(io: std.Io) !void {
+    _ = io;
+    const msg =
+        \\purr migrate — Nix → Purr translation
+        \\
+        \\Usage:
+        \\  purr migrate <file.nix> [--dry-run] [--in-place] [--verify]
+        \\  purr migrate --expr '<nix expression>' [--verify]
+        \\  purr migrate --stdin [--verify]
+        \\
+        \\Options:
+        \\  --dry-run   Show would-be output/diff without writing
+        \\  --in-place  Write derived .purr alongside input (file.purr)
+        \\  --verify    Compile generated Purr back to Nix and verify supported semantics
+        \\
+        \\Examples:
+        \\  purr migrate settings.nix
+        \\  purr migrate settings.nix --in-place
+        \\  purr migrate settings.nix --dry-run
+        \\  purr migrate settings.nix --verify
+        \\  purr migrate --expr 'services.nginx.enable = true'
+        \\  purr migrate --stdin < file.nix
+        \\  purr migrate x270 --dry-run   # legacy host migration (x270)
+        \\
+    ;
+    std.debug.print("{s}", .{msg});
+}
+
 fn printHelp(io: std.Io) !void {
     _ = io;
     const msg =
@@ -93,6 +189,9 @@ fn printHelp(io: std.Io) !void {
         \\  purr lint [file.purr]               Lint (unused/duplicate/empty/unformatted)
         \\  purr eval [file.purr] [--json]      Compile to Nix and nix eval
         \\  purr rebuild [host] [--dry-run]     Build host via meow.purr → Nix → nixos-rebuild
+        \\  purr migrate <file.nix> [--dry-run] [--in-place] [--verify]
+        \\  purr migrate --expr '<nix>' [--verify]
+        \\  purr migrate --stdin [--verify]
         \\  purr help
         \\
         \\Examples:
@@ -107,6 +206,9 @@ fn printHelp(io: std.Io) !void {
         \\  purr rebuild x270 --dry-run
         \\  purr rebuild                        # auto host if single
         \\  purr rebuild mireo
+        \\  purr migrate settings.nix
+        \\  purr migrate --expr 'true'
+        \\  purr migrate --stdin
         \\
     ;
     std.debug.print("{s}", .{msg});

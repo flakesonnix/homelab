@@ -149,6 +149,7 @@ pub const HostStmt = union(enum) {
 
 pub const Setting = struct {
     path: []const u8, // dotted path e.g. "services.printing.enable"
+    type_annot: ?Type = null, // optional typed setting e.g. `services.nginx.enable: bool = true;`
     value: Expr,
     span: Span,
 };

@@ -10,6 +10,8 @@ comptime {
     _ = @import("lint.zig");
     _ = @import("cli.zig");
     _ = @import("symbol.zig");
+    _ = @import("nix_ir.zig");
+    _ = @import("migrate.zig");
 }
 test {
     std.testing.refAllDecls(@This());

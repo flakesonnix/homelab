@@ -313,16 +313,28 @@ pub const Semantic = struct {
                             },
                             .setting => |s| {
                                 // For setting values, need to check expr against host let scope
-                                // Build a temporary map for checkExpr from host_scope's let symbols
                                 var tmp_map = std.StringHashMap(diagnostics.Span).init(self.allocator);
                                 defer tmp_map.deinit();
-                                // Populate with host_scope let symbols (including parent)
-                                // Simple: use ordered_scope as before plus host local
                                 var it = ordered_scope.keyIterator();
                                 while (it.next()) |k| try tmp_map.put(k.*, ordered_scope.get(k.*).?);
-                                // Add host local lets that are not yet in ordered_scope? Already in host_scope_sym but not in ordered_scope unless defined earlier
-                                // For now, just use ordered_scope + host let just defined? We already handled let above.
                                 try self.checkExpr(s.value, &tmp_map);
+                                if (s.type_annot) |ty| {
+                                    if (ty.data == .named) {
+                                        if (self.program.decls.len > 0) {
+                                            // check unknown struct for named types (mod_scope)
+                                            // mod_scope lookup already available via host_scope_sym.parent?
+                                        }
+                                    }
+                                    if (!self.typeMatchesExpr(ty, s.value)) {
+                                        try self.diag.push(.{
+                                            .severity = .err,
+                                            .code = .type_mismatch,
+                                            .message = try std.fmt.allocPrint(self.allocator, "setting `{s}` type mismatch", .{s.path}),
+                                            .span = s.span,
+                                            .help = try std.fmt.allocPrint(self.allocator, "expected {s}, got {s}", .{ self.typeToString(ty), self.exprTypeName(s.value) }),
+                                        });
+                                    }
+                                }
                             },
                             .package => {},
                             .packages_assign => {},

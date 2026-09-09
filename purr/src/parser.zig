@@ -434,17 +434,38 @@ pub const Parser = struct {
     }
 
     fn parseDottedPath(self: *Parser) !struct { path: []const u8, span: Span } {
-        const first = try self.parseIdent();
+        // Support quoted segments like virtualHosts."example.org"
+        var first_span: Span = undefined;
+        var first_name: []const u8 = undefined;
+        if (self.peekKind() == .string_lit) {
+            const tok = self.advance();
+            first_name = try self.dup(tok.lexeme); // includes quotes
+            first_span = tok.span;
+        } else {
+            const first = try self.parseIdent();
+            first_name = first.name;
+            first_span = first.span;
+        }
         var buf: std.ArrayList(u8) = .empty;
-        try buf.appendSlice(self.allocator, first.name);
-        var span = first.span;
+        try buf.appendSlice(self.allocator, first_name);
+        var span = first_span;
         while (self.peekKind() == .dot) {
             _ = self.advance();
-            const next = try self.parseIdent();
+            var seg: []const u8 = undefined;
+            var seg_span: Span = undefined;
+            if (self.peekKind() == .string_lit) {
+                const tok = self.advance();
+                seg = tok.lexeme;
+                seg_span = tok.span;
+            } else {
+                const next = try self.parseIdent();
+                seg = next.name;
+                seg_span = next.span;
+            }
             try buf.append(self.allocator, '.');
-            try buf.appendSlice(self.allocator, next.name);
-            span.len = @as(u32, @intCast((next.span.start + next.span.len) - span.start));
-            span.end = next.span.end;
+            try buf.appendSlice(self.allocator, seg);
+            span.len = @as(u32, @intCast((seg_span.start + seg_span.len) - span.start));
+            span.end = seg_span.end;
         }
         return .{ .path = try buf.toOwnedSlice(self.allocator), .span = span };
     }
@@ -486,9 +507,14 @@ pub const Parser = struct {
                 },
                 .ident => {
                     const path_info = try self.parseDottedPath();
+                    var type_annot: ?ast.Type = null;
+                    if (self.peekKind() == .colon) {
+                        _ = self.advance();
+                        type_annot = try self.parseType();
+                    }
                     if (self.peekKind() == .equal) {
                         _ = self.advance(); // =
-                        if (std.mem.eql(u8, path_info.path, "packages")) {
+                        if (std.mem.eql(u8, path_info.path, "packages") and type_annot == null) {
                             const expr = try self.parseExpr(0);
                             _ = try self.expect(.semicolon);
                             if (expr.data == .ident) {
@@ -524,7 +550,7 @@ pub const Parser = struct {
                             const val = try self.parseExpr(0);
                             _ = try self.expect(.semicolon);
                             const path = try self.dup(path_info.path);
-                            try stmts.append(self.allocator, .{ .setting = .{ .path = path, .value = val, .span = path_info.span } });
+                            try stmts.append(self.allocator, .{ .setting = .{ .path = path, .value = val, .type_annot = type_annot, .span = path_info.span } });
                         }
                     } else {
                         try self.diag.push(.{
