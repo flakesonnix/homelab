@@ -269,6 +269,44 @@ pub const Lexer = struct {
                 const kind: TokenKind = keywordKind(lexeme) orelse .ident;
                 return .{ .kind = kind, .lexeme = lexeme, .span = self.makeSpan(start, start_line, start_col, self.pos) };
             },
+            '\'' => {
+                // Nix '' indented strings and single ' inside nix blocks
+                if (self.peek() == '\'') {
+                    _ = self.advance(); // second '
+                    // Scan until next '' (handle ''' as escaped)
+                    while (!self.isAtEnd()) {
+                        if (self.peek() == '\'' and self.peekNext() == '\'') {
+                            const third = if (self.pos + 2 < self.source.len) self.source[self.pos + 2] else 0;
+                            if (third == '\'') {
+                                // ''' -> first '' is escaped, consume 3 and continue
+                                _ = self.advance();
+                                _ = self.advance();
+                                _ = self.advance();
+                                continue;
+                            }
+                            _ = self.advance();
+                            _ = self.advance();
+                            break;
+                        }
+                        _ = self.advance();
+                    }
+                    const lexeme = self.source[start..self.pos];
+                    return .{ .kind = .string_lit, .lexeme = lexeme, .span = self.makeSpan(start, start_line, start_col, self.pos) };
+                }
+                const lexeme = self.source[start..self.pos];
+                return .{ .kind = .string_lit, .lexeme = lexeme, .span = self.makeSpan(start, start_line, start_col, self.pos) };
+            },
+            '$' => {
+                // Nix interpolation ${...} or $out etc. inside nix blocks
+                while (!self.isAtEnd() and (std.ascii.isAlphanumeric(self.peek()) or self.peek() == '_' or self.peek() == '{' or self.peek() == '}' or self.peek() == '/' or self.peek() == '.' or self.peek() == '-')) _ = self.advance();
+                const lexeme = self.source[start..self.pos];
+                return .{ .kind = .ident, .lexeme = lexeme, .span = self.makeSpan(start, start_line, start_col, self.pos) };
+            },
+            '#' => {
+                // Nix line comment # ...\n - skip
+                while (!self.isAtEnd() and self.peek() != '\n') _ = self.advance();
+                return try self.nextToken();
+            },
             else => {
                 try self.diagnostics.push(.{
                     .severity = .err,

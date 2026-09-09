@@ -7,4 +7,147 @@ import "../vms/sshkeys.purr";
 import "../vms/yammat.purr";
 
 host mireo {
+    lucy.base.enable: bool = true;
+    lucy.base.isServer: bool = true;
+    lucy.base.sshKey: String = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
+    lucy.base.sshKeyComment: String = "lucy@mireo";
+    networking.hostName: String = "mireo";
+    nix {
+        networking.networkmanager.enable = lib.mkForce false;
+    }
+    networking.useNetworkd: bool = true;
+    systemd.network.enable: bool = true;
+    nix {
+        systemd.network.networks."10-wan" = {
+        matchConfig.Name = "enp4s0";
+        address = ["192.168.178.25/24"];
+        routes = [
+        {
+        Gateway = "192.168.178.1";
+        }
+        ];
+        networkConfig = {
+        DNS = ["1.1.1.1" "9.9.9.9"];
+        IPv6AcceptRA = true;
+        };
+        };
+    }
+    systemd.network.networks."20-lan-enp9s0".matchConfig.Name: String = "enp9s0";
+    systemd.network.networks."20-lan-enp9s0".networkConfig.Bridge: String = "br0";
+    systemd.network.networks."21-lan-enp3s0f0".matchConfig.Name: String = "enp3s0f0";
+    systemd.network.networks."21-lan-enp3s0f0".networkConfig.Bridge: String = "br0";
+    systemd.network.networks."22-lan-enp3s0f1".matchConfig.Name: String = "enp3s0f1";
+    systemd.network.networks."22-lan-enp3s0f1".networkConfig.Bridge: String = "br0";
+    systemd.network.netdevs."30-br0".netdevConfig.Kind: String = "bridge";
+    systemd.network.netdevs."30-br0".netdevConfig.Name: String = "br0";
+    systemd.network.networks."30-br0".matchConfig.Name: String = "br0";
+    systemd.network.networks."30-br0".address: List<String> = ["10.8.0.1/24", "fd00:cafe:1::1/64"];
+    systemd.network.networks."30-br0".networkConfig.ConfigureWithoutCarrier: bool = true;
+    systemd.network.networks."30-br0".networkConfig.IPv6AcceptRA: bool = false;
+    systemd.network.networks."30-br0".networkConfig.LinkLocalAddressing: String = "ipv6";
+    networking.nat.enable: bool = true;
+    networking.nat.externalInterface: String = "enp4s0";
+    networking.nat.internalInterfaces: List<String> = ["br0"];
+    networking.firewall.trustedInterfaces: List<String> = ["br0"];
+    networking.firewall.interfaces.br0.allowedTCPPorts: List<u32> = [19999, 9090];
+    services.dnsmasq.enable: bool = true;
+    services.dnsmasq.settings.interface: String = "br0";
+    services.dnsmasq.settings.bind-interfaces: bool = true;
+    services.dnsmasq.settings.domain-needed: bool = true;
+    services.dnsmasq.settings.bogus-priv: bool = true;
+    services.dnsmasq.settings.dhcp-authoritative: bool = true;
+    services.dnsmasq.settings.enable-ra: bool = true;
+    services.dnsmasq.settings.dhcp-range: List<String> = ["10.8.0.100,10.8.0.199,255.255.255.0,24h", "::,constructor:br0,ra-stateless,64,24h"];
+    services.dnsmasq.settings.dhcp-option: List<String> = ["option:router,10.8.0.1", "option:dns-server,10.8.0.1"];
+    services.dnsmasq.settings.dhcp-host: List<String> = ["54:e1:ad:d4:48:25,00:e1:8c:b5:c9:35,x270,10.8.0.176", "d0:50:99:95:7b:13,client-124,10.8.0.124"];
+    services.dnsmasq.settings.host-record: List<String> = ["grafana,10.8.0.2", "network-services,10.8.0.3", "monerod,10.8.0.4", "yammat,10.8.0.5", "cups,10.8.0.6", "sshkeys,10.8.0.7", "aptcache,10.8.0.8", "mireo,10.8.0.1", "x270,10.8.0.176"];
+    services.dnsmasq.settings.server: List<String> = ["1.1.1.1", "9.9.9.9", "2606:4700:4700::1111", "2620:fe::9"];
+    virtualisation.podman.enable: bool = true;
+    virtualisation.oci-containers.backend: String = "podman";
+    virtualisation.oci-containers.containers.iventoy.image: String = "docker.io/garybowers/iventoy:latest";
+    virtualisation.oci-containers.containers.iventoy.extraOptions: List<String> = ["--network=host", "--privileged"];
+    virtualisation.oci-containers.containers.iventoy.volumes: List<String> = ["/data/iventoy/iso:/iventoy/iso", "/data/iventoy/data:/iventoy/data"];
+    fileSystems."/data".device: String = "/dev/disk/by-uuid/ee576a43-066a-4e85-901d-2f03d618bea8";
+    fileSystems."/data".fsType: String = "ext4";
+    fileSystems."/data".options: List<String> = ["defaults", "nofail"];
+    systemd.tmpfiles.rules: List<String> = ["Z /data 0755 lucy users - -"];
+    services.avahi.enable: bool = true;
+    services.avahi.nssmdns4: bool = true;
+    services.avahi.publish.enable: bool = true;
+    services.avahi.publish.userServices: bool = true;
+    services.avahi.extraServiceFiles.nfs: String = "\n      <?xml version=\"1.0\" standalone='no'?>\n      <!DOCTYPE service-group SYSTEM \"avahi-service.dtd\">\n      <service-group>\n        <name replace-wildcards=\"yes\">%h data</name>\n        <service>\n          <type>_nfs._tcp</type>\n          <port>2049</port>\n          <txt-record>path=/data</txt-record>\n        </service>\n      </service-group>\n    ";
+    services.nfs.server.enable: bool = true;
+    services.nfs.server.exports: String = "\n      /data 10.8.0.0/24(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=100)\n    ";
+    services.netdata.enable: bool = true;
+    services.netdata.config.global."update every": u32 = 1;
+    services.netdata.config.web."bind to": String = "10.8.0.1";
+    services.netdata.config.web."default port": u32 = 19999;
+    services.netdata.config.web."allow connections from": String = "localhost 10.8.*";
+    services.netdata.config.web."allow dashboard from": String = "localhost 10.8.*";
+    systemd.network.networks."50-tailscale".matchConfig.Name: String = "tailscale0";
+    systemd.network.networks."50-tailscale".linkConfig.ActivationPolicy: String = "manual";
+    systemd.network.networks."50-tailscale".linkConfig.Unmanaged: bool = true;
+    nix {
+        systemd.services.iventoy-fetch-isos = {
+        description = "Download Linux ISOs for iVentoy PXE";
+        after = ["data.mount"];
+        requires = ["data.mount"];
+        wants = ["podman-iventoy.service"];
+        path = [pkgs.curl pkgs.coreutils];
+        serviceConfig = {
+        Type = "oneshot";
+        User = "root";
+        };
+        script = ''
+        ISO_DIR="/data/iventoy/iso"
+        mkdir -p "$ISO_DIR"
+        dl() {
+        local url="$1" file="$2"
+        if [ -f "$ISO_DIR/$file" ]; then
+        echo "Exists: $file"
+        return
+        fi
+        echo "Downloading $file..."
+        curl -fLo "$ISO_DIR/$file.tmp" "$url" && mv "$ISO_DIR/$file.tmp" "$ISO_DIR/$file" || { echo "FAILED: $file"; rm -f "$ISO_DIR/$file.tmp"; return 1; }
+        }
+        dl "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-12.9.0-amd64-netinst.iso" "debian-12-netinst.iso"
+        dl "https://files.devuan.org/devuan_daedalus/installer-iso/devuan_daedalus_5.0.0_amd64_netinst.iso" "devuan-daedalus-5-netinst.iso"
+        dl "https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso" "archlinux-x86_64.iso"
+        dl "https://releases.ubuntu.com/24.04/ubuntu-24.04.2-desktop-amd64.iso" "ubuntu-24.04-desktop.iso"
+        '';
+        };
+    }
+    systemd.timers.iventoy-fetch-isos.description: String = "Weekly update of iVentoy ISOs";
+    systemd.timers.iventoy-fetch-isos.wantedBy: List<String> = ["timers.target"];
+    systemd.timers.iventoy-fetch-isos.timerConfig.OnCalendar: String = "weekly";
+    systemd.timers.iventoy-fetch-isos.timerConfig.Persistent: bool = true;
+    systemd.services.dnsmasq.after: List<String> = ["sys-devices-virtual-net-br0.device"];
+    systemd.services.dnsmasq.bindsTo: List<String> = ["sys-devices-virtual-net-br0.device"];
+    systemd.services.dnsmasq.serviceConfig.Restart: String = "on-failure";
+    systemd.services.dnsmasq.serviceConfig.RestartSec: String = "5s";
+    boot.loader.systemd-boot.enable: bool = true;
+    lucy.topology.deviceType: String = "router";
+    lucy.topology.icon: String = "devices.router";
+    lucy.topology.hardware.info: String = "Mini-PC · 4-port NIC";
+    nix {
+        lucy.nixfleet = {
+        enable = true;
+        role = "api";
+        api = {
+        port = 8443;
+        # Copy to a GC-rooted derivation so the path survives after the
+        # flake source is garbage-collected (direct flake-source references
+        # like ../../../nixfleet/artifacts are build-time only and break at
+        # runtime once `nix store gc` removes the source).
+        artifactsDir = pkgs.runCommand "nixfleet-artifacts" {} ''
+        mkdir -p $out
+        cp ${../../../nixfleet/artifacts/manifest.json} $out/manifest.json
+        cp ${../../../nixfleet/artifacts/ui.json} $out/ui.json
+        '';
+        };
+        agent = {
+        plugins = ["systemd" "journal" "metrics"];
+        };
+        };
+    }
 }

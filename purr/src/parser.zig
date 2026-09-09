@@ -1275,31 +1275,132 @@ pub const Parser = struct {
         var depth: usize = 1;
         const start_off = l.span.end; // byte offset after '{'
         var end_off: usize = start_off;
-        // track depth to find matching '}' ; use token spans for raw slice if source available
+        // track depth to find matching '}' ; use source scan when available to handle Nix strings like '' and ""
         var content: []const u8 = "";
-        // First, find matching brace via token walk without consuming for slice path
         const probe_pos = self.pos;
-        var d: usize = 1;
-        var idx = self.pos;
-        while (idx < self.tokens.len and d > 0) : (idx += 1) {
-            const k = self.tokens[idx].kind;
-            if (k == .l_brace) d += 1 else if (k == .r_brace) {
-                d -= 1;
-                if (d == 0) {
-                    end_off = self.tokens[idx].span.start;
+        var idx: usize = self.pos;
+        if (self.source.len > 0) {
+            // Source-aware scan: handle Nix '' and "" strings, # and /* */ comments, and nested braces
+            var i: usize = start_off;
+            var d: usize = 1;
+            var found = false;
+            while (i < self.source.len and d > 0) {
+                const c = self.source[i];
+                if (c == '"' and (i == 0 or self.source[i - 1] != '\\')) {
+                    // double-quoted string "..." with possible ${...} interpolation (skip to closing ")
+                    i += 1;
+                    while (i < self.source.len) {
+                        if (self.source[i] == '\\' and i + 1 < self.source.len) {
+                            i += 2;
+                        } else if (self.source[i] == '"') {
+                            i += 1;
+                            break;
+                        } else {
+                            i += 1;
+                        }
+                    }
+                    continue;
+                } else if (c == '\'' and i + 1 < self.source.len and self.source[i + 1] == '\'') {
+                    // indented string '' ... ''  (Nix)
+                    // Handle ''' as escaped '' inside
+                    i += 2;
+                    while (i + 1 < self.source.len) {
+                        if (self.source[i] == '\'' and self.source[i + 1] == '\'') {
+                            // check for ''' (escaped)
+                            if (i + 2 < self.source.len and self.source[i + 2] == '\'') {
+                                // ''' -> first '' is content, third ' is start of next? Actually ''' is '' + ' where '' is escaped single quote
+                                i += 3;
+                                continue;
+                            }
+                            // found closing ''
+                            i += 2;
+                            break;
+                        } else {
+                            i += 1;
+                        }
+                    }
+                    continue;
+                } else if (c == '#' ) {
+                    // Nix line comment # ...\n  (also handles Purr // but inside nix block, # is Nix comment)
+                    while (i < self.source.len and self.source[i] != '\n') : (i += 1) {}
+                    continue;
+                } else if (c == '/' and i + 1 < self.source.len and self.source[i + 1] == '*') {
+                    // block comment /* ... */
+                    i += 2;
+                    while (i + 1 < self.source.len and !(self.source[i] == '*' and self.source[i + 1] == '/')) : (i += 1) {}
+                    if (i + 1 < self.source.len) i += 2;
+                    continue;
+                } else if (c == '{') {
+                    d += 1;
+                } else if (c == '}') {
+                    d -= 1;
+                    if (d == 0) {
+                        end_off = i;
+                        found = true;
+                        break;
+                    }
+                }
+                i += 1;
+            }
+            if (!found) {
+                try self.diag.push(.{
+                    .severity = .err,
+                    .code = .parse_error,
+                    .message = "unterminated nix block",
+                    .span = l.span,
+                    .help = null,
+                });
+                return error.ParseError;
+            }
+            // Find token index for end_off
+            var found_idx = false;
+            var search_idx = self.pos;
+            while (search_idx < self.tokens.len) : (search_idx += 1) {
+                if (self.tokens[search_idx].kind == .r_brace and self.tokens[search_idx].span.start == end_off) {
+                    idx = search_idx;
+                    found_idx = true;
                     break;
                 }
             }
-        }
-        if (d != 0) {
-            try self.diag.push(.{
-                .severity = .err,
-                .code = .parse_error,
-                .message = "unterminated nix block",
-                .span = l.span,
-                .help = null,
-            });
-            return error.ParseError;
+            if (!found_idx) {
+                // Fallback: depth walk to find idx
+                var d2: usize = 1;
+                idx = self.pos;
+                while (idx < self.tokens.len and d2 > 0) : (idx += 1) {
+                    const k = self.tokens[idx].kind;
+                    if (k == .l_brace) d2 += 1 else if (k == .r_brace) {
+                        d2 -= 1;
+                        if (d2 == 0) {
+                            end_off = self.tokens[idx].span.start;
+                            break;
+                        }
+                    }
+                }
+            }
+        } else {
+            // Fallback: token walk when no source (tests)
+            var d: usize = 1;
+            idx = self.pos;
+            while (idx < self.tokens.len and d > 0) : (idx += 1) {
+                const k = self.tokens[idx].kind;
+                if (k == .l_brace) d += 1 else if (k == .r_brace) {
+                    d -= 1;
+                    if (d == 0) {
+                        end_off = self.tokens[idx].span.start;
+                        break;
+                    }
+                }
+            }
+            if (d != 0) {
+                try self.diag.push(.{
+                    .severity = .err,
+                    .code = .parse_error,
+                    .message = "unterminated nix block",
+                    .span = l.span,
+                    .help = null,
+                });
+                return error.ParseError;
+            }
         }
         // If we have source, slice it directly to preserve formatting
         if (self.source.len > 0 and end_off <= self.source.len and start_off <= end_off) {
