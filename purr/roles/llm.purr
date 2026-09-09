@@ -1,0 +1,5 @@
+role llm {
+    description = "Local LLM runtime packages and integrations";
+    targets = ["host"];
+    host { tags = ["llm"]; }
+}

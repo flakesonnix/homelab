@@ -1,0 +1,5 @@
+role gaming {
+    description = "Gaming stack with Steam, GameMode, and performance presets";
+    targets = ["host"];
+    host { presets = ["gaming-base", "gaming-performance", "gaming-steam"]; }
+}

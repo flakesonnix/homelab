@@ -53,5 +53,14 @@ host x270 {
     programs.noisetorch.enable: bool = true;
     packages = ["alacritty", "zathura", "fzf", "bat", "mcp-nixos", "vesktop", "vlc", "p7zip", "thunderbird", "deskflow", "keepassxc", "nodejs_22", "ausweisapp", "kdenlive", "ani-cli", "scdl", "age", "cloc"];
     package "hyfetch";
+    nix {
+        hyfetch-wrapped = wrappers.lib.wrapPackage {
+            inherit pkgs;
+            package = pkgs.hyfetch;
+            flags = {
+                "-p" = "transgender";
+            };
+        };
+    }
     packages = ["hack-font", "nerd-fonts.hack", "font-awesome"];
 }

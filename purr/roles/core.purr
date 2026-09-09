@@ -1,0 +1,5 @@
+role core {
+    description = "Base shell, editor, git, and Nix tooling";
+    targets = ["home"];
+    home { bundles = ["core"]; }
+}

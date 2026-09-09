@@ -129,6 +129,7 @@ host mireo {
     lucy.topology.deviceType: String = "router";
     lucy.topology.icon: String = "devices.router";
     lucy.topology.hardware.info: String = "Mini-PC · 4-port NIC";
+    packages = ["ethtool", "iperf3", "mtr", "netcat-gnu", "nmap", "socat", "tcpdump", "btop", "dmidecode", "file", "htop", "jq", "lm_sensors", "lsof", "ncdu", "pciutils", "smartmontools", "strace", "sysstat", "usbutils"];
     nix {
         lucy.nixfleet = {
         enable = true;
