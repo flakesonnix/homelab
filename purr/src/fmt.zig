@@ -219,9 +219,23 @@ fn formatHost(buf: *std.ArrayList(u8), allocator: std.mem.Allocator, h: ast.Host
                     try buf.appendSlice(allocator, "    nix {");
                     switch (s.value.data) {
                         .string => |raw| {
-                            if (raw.len > 0 and raw[0] != '\n') try buf.appendSlice(allocator, "\n");
-                            try buf.appendSlice(allocator, raw);
-                            if (raw.len == 0 or raw[raw.len - 1] != '\n') try buf.appendSlice(allocator, "\n");
+                            const trimmed = std.mem.trim(u8, raw, " \t\n\r");
+                            if (trimmed.len > 0) {
+                                try buf.appendSlice(allocator, "\n");
+                                var lines = std.mem.splitScalar(u8, trimmed, '\n');
+                                var first = true;
+                                while (lines.next()) |line| {
+                                    const lt = std.mem.trim(u8, line, " \t\r");
+                                    if (lt.len == 0) continue;
+                                    if (!first) try buf.appendSlice(allocator, "\n");
+                                    try buf.appendSlice(allocator, "        ");
+                                    try buf.appendSlice(allocator, lt);
+                                    first = false;
+                                }
+                                try buf.appendSlice(allocator, "\n");
+                            } else {
+                                try buf.appendSlice(allocator, "\n");
+                            }
                         },
                         else => {
                             try buf.appendSlice(allocator, " ");

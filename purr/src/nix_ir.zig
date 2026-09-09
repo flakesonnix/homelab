@@ -196,6 +196,11 @@ pub fn parseAttrs(allocator: std.mem.Allocator, src: []const u8) ![]NixAttr {
     var i: usize = 0;
     while (i < toks.len) {
         if (toks[i].kind == .eof) break;
+        // Skip outer delimiters that are not part of a path: braces, commas, colons, semicolons, 'in'
+        if (toks[i].kind == .l_brace or toks[i].kind == .r_brace or toks[i].kind == .comma or toks[i].kind == .colon or toks[i].kind == .semicolon or toks[i].kind == .in_kw) {
+            i += 1;
+            continue;
+        }
         if (toks[i].kind == .let_kw or toks[i].kind == .rec_kw) {
             // skip let blocks: let ... in (approx skip to next semicolon at outer depth)
             var depth_brace: usize = 0;
@@ -209,13 +214,10 @@ pub fn parseAttrs(allocator: std.mem.Allocator, src: []const u8) ![]NixAttr {
                     i += 1;
                     break;
                 }
-                if (toks[i].kind == .in_kw and depth_brace == 0) {
-                    // let ... in  ; continue after in
-                }
-                // For let/in without braces, break on semicolon
-                if (toks[i].kind == .semicolon) {
-                    i += 1;
-                    break;
+                if (toks[i].kind == .in_kw and depth_brace == 0 and depth_bracket == 0) {
+                    // let ... in: skip 'in' and continue to handle following expr
+                    // do not break, just continue scanning (the following expr may be attrset)
+                    continue;
                 }
             }
             continue;
@@ -252,9 +254,8 @@ pub fn parseAttrs(allocator: std.mem.Allocator, src: []const u8) ![]NixAttr {
             if (tk == .l_bracket or tk == .r_bracket or tk == .r_brace or tk == .comma) break;
         }
         if (!has_equal) {
-            // No "=", advance to next semicolon or brace
-            while (i < toks.len and toks[i].kind != .semicolon and toks[i].kind != .eof) : (i += 1) {}
-            if (i < toks.len and toks[i].kind == .semicolon) i += 1 else i += 1;
+            // No "=", just advance one token (avoid skipping real assignments after function header)
+            i += 1;
             continue;
         }
         // Validate path tokens [path_start..eq_idx) are plausible
@@ -290,6 +291,7 @@ pub fn parseAttrs(allocator: std.mem.Allocator, src: []const u8) ![]NixAttr {
         var depth_bracket: usize = 0;
         var depth_paren: usize = 0;
         var found_semi = false;
+        var skipped_with_semi = false;
         while (val_end < toks.len and toks[val_end].kind != .eof) : (val_end += 1) {
             if (toks[val_end].kind == .l_brace) depth_brace += 1;
             if (toks[val_end].kind == .r_brace) {
@@ -304,6 +306,11 @@ pub fn parseAttrs(allocator: std.mem.Allocator, src: []const u8) ![]NixAttr {
                 if (depth_paren > 0) depth_paren -= 1 else break;
             }
             if (toks[val_end].kind == .semicolon and depth_brace == 0 and depth_bracket == 0 and depth_paren == 0) {
+                // Handle `with pkgs; <body>;` where first `;` after `with` is not terminator
+                if (!skipped_with_semi and val_start < toks.len and toks[val_start].kind == .with_kw) {
+                    skipped_with_semi = true;
+                    continue;
+                }
                 found_semi = true;
                 break;
             }

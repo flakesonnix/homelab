@@ -611,6 +611,19 @@ fn nixAttrToPurrStmts(arena_alloc: std.mem.Allocator, attr: nix_ir.NixAttr, out:
             supported.* += 1;
         },
         .attr_set => |inner| {
+            if (inner.len == 0) {
+                // Empty attrset like `phones = {};` -> preserve as `path = {};`
+                std.debug.print("purr: preserved as raw Nix: {s} = {{}} (empty attrset)\n", .{attr.path});
+                const raw_content = try std.fmt.allocPrint(arena_alloc, "{s} = {{}};\n", .{attr.path});
+                const setting = ast.HostStmt{ .setting = .{
+                    .path = try arena_alloc.dupe(u8, "nix_raw"),
+                    .value = .{ .span = span, .data = .{ .string = raw_content } },
+                    .span = span,
+                } };
+                try out.append(arena_alloc, setting);
+                preserved.* += 1;
+                return;
+            }
             // Flatten attr_set into dotted paths
             for (inner) |inner_attr| {
                 // Build flattened path: parent + "." + inner.path

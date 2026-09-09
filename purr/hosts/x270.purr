@@ -5,19 +5,53 @@ host x270 {
     use desktop;
     use dev;
     use gaming;
-
     packages = ["dev"];
     preset gaming-performance;
-
-    // settings.nix
-    niri.users = ["lucy"];
-    networking.networkmanager.enable = true;
-    hardware.bluetooth.enable = true;
-    hardware.bluetooth.powerOnBoot = true;
-    services.blueman.enable = true;
-    hq.deskflow.enable = true;
-    virtualisation.libvirtd.enable = false;
-
-    lucy.topology.icon = "devices.laptop";
-    lucy.topology.hardware.info = "Lenovo ThinkPad X270 · i7-7600U";
+    lucy.base.enable: bool = true;
+    lucy.base.sshKey: String = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
+    lucy.base.sshKeyComment: String = "lucy@x270";
+    networking.hostName: String = "x270";
+    networking.networkmanager.enable: bool = true;
+    hardware.bluetooth.enable: bool = true;
+    hardware.bluetooth.powerOnBoot: bool = true;
+    hardware.bluetooth.settings.General.Enable: String = "Source,Sink,Media,Socket";
+    hardware.bluetooth.settings.General.Experimental: bool = true;
+    services.blueman.enable: bool = true;
+    niri.users: List<String> = ["lucy"];
+    lucy.topology.icon: String = "devices.laptop";
+    lucy.topology.hardware.info: String = "Lenovo ThinkPad X270 · i7-7600U";
+    hq.deskflow.enable: bool = true;
+    virtualisation.libvirtd.enable: bool = false;
+    lucy.gnome.enable: bool = false;
+    lucy.gnomeExtensions.enable: bool = false;
+    lucy.waydroid.enable: bool = true;
+    services.pcscd.enable: bool = true;
+    lucy.fonts.inter: bool = true;
+    lucy.pwvucontrol: bool = true;
+    lucy.serialGetty.disabled: List<String> = ["ttyS0", "ttyS1", "ttyS2", "ttyS3"];
+    services.thermald.enable: bool = true;
+    powerManagement.enable: bool = true;
+    boot.kernelParams: List<String> = ["nvme_core.default_ps_max_latency_us=0", "console=tty1", "resume_offset=2101805056"];
+    systemd.sleep.settings.Sleep.HibernateDelaySec: String = "1800";
+    services.logind.settings.Login.HandleLidSwitch: String = "suspend-then-hibernate";
+    services.logind.settings.Login.HandleLidSwitchExternalPower: String = "suspend";
+    services.logind.settings.Login.HandleLidSwitchDocked: String = "ignore";
+    services.logind.settings.Login.HandleSuspendKey: String = "suspend";
+    services.logind.settings.Login.HandlePowerKey: String = "poweroff";
+    nix {
+        swapDevices = [{device = "/swapfile";}];
+        boot.resumeDevice = "/dev/mapper/luks-90b17531-753e-4576-a453-a7d81be1d09e";
+    }
+    services.asteriskLocal.enable: bool = false;
+    services.asteriskLocal.openFirewall: bool = true;
+    services.asteriskLocal.extraExtensions: String = "";
+    nix {
+        services.asteriskLocal.phones = {};
+    }
+    hq.audio.streamTo: String = "";
+    services.prometheus.exporters.node.enable: bool = true;
+    programs.noisetorch.enable: bool = true;
+    packages = ["alacritty", "zathura", "fzf", "bat", "mcp-nixos", "vesktop", "vlc", "p7zip", "thunderbird", "deskflow", "keepassxc", "nodejs_22", "ausweisapp", "kdenlive", "ani-cli", "scdl", "age", "cloc"];
+    package "hyfetch";
+    packages = ["hack-font", "nerd-fonts.hack", "font-awesome"];
 }
