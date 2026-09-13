@@ -27,6 +27,7 @@ type: guide
 | `just nixfleet` | `nix run .#nixfleet` CLI |
 | `just docs-generate/check/build/serve` | NixFleet docs framework |
 | `just new-host` | `scripts/new-host.sh host <name>` |
+| `just new-vm` | `scripts/new-host.sh vm <name>` (+ register IP in `vm-ips.nix`) |
 
 ## Niri keys (x270, [[20-Modules/Home-Modules|Home modules]])
 

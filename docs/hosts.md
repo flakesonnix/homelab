@@ -115,9 +115,15 @@ None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` inte
 ### Config files
 - `data/hosts/mireo/settings.nix` — hostname, network, NAT, dnsmasq, NFS, Avahi, iVentoy, Netdata, **nixfleet M1** (`lucy.nixfleet.*`, firewall 8443)
 - `hosts/mireo/host.nix` — framework applyHost
-- `hosts/mireo/default.nix` — bridge tap interfaces (`vm-*` → br0)
-
-> The 7 microVMs have no Nix definitions right now (removed with Purr, Nix builders gone). Their static IPs and DNS records live in `data/hosts/mireo/settings.nix` (dnsmasq `staticHosts` map); re-adding them means writing `microvm.vms.<name>` definitions again.
+- `hosts/mireo/vm-ips.nix` — static IP map shared by VM specs, DNS and proxy
+- `hosts/mireo/grafana-microvm.nix` — grafana + prometheus microvm
+- `hosts/mireo/monerod-microvm.nix` — monerod + Tor microvm
+- `hosts/mireo/network-services-microvm.nix` — network-services bridge tap stub
+- `hosts/mireo/yammat-microvm.nix` — YAMMAT microvm
+- `hosts/mireo/cups-microvm.nix` — CUPS print server microvm
+- `hosts/mireo/sshkeys-microvm.nix` — SSH public key web server microvm
+- `hosts/mireo/aptcache-microvm.nix` — apt-cacher-ng proxy microvm
+- `hosts/mireo/microvm-base.nix` — shared microvm base config
 
 ### Microvm resource allocation
 | VM | IP | Memory | vCPUs | Storage |

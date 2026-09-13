@@ -99,23 +99,13 @@
   networking.firewall.interfaces.br0.allowedTCPPorts = [19999 9090];
 
   # --- dnsmasq: DHCP + DNS for LAN (br0) ---
-  # Static LAN hosts (microVMs + mireo itself) live once in staticHosts
-  # below; the DNS records are generated from that map. The VM
-  # definitions themselves were removed with Purr and don't exist in
-  # Nix right now — when microvm.vms come back, point the generator
-  # at config.microvm.vms instead of this map.
+  # DNS from a single shared map (hosts/mireo/vm-ips.nix): the same
+  # file feeds the microVM specs, so declare a VM IP once and its
+  # home.arpa names appear automatically. Plus mireo itself.
+  # DHCP clients resolve via their lease names.
   services.dnsmasq = let
     lanDomain = "home.arpa";
-    staticHosts = {
-      grafana = "10.8.0.2";
-      network-services = "10.8.0.3";
-      monerod = "10.8.0.4";
-      yammat = "10.8.0.5";
-      cups = "10.8.0.6";
-      sshkeys = "10.8.0.7";
-      aptcache = "10.8.0.8";
-      mireo = "10.8.0.1";
-    };
+    staticHosts = (import ../../../hosts/mireo/vm-ips.nix) // {mireo = "10.8.0.1";};
   in {
     enable = true;
     settings = {

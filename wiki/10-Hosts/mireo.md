@@ -52,7 +52,7 @@ Source: `webUIs` map in `data/hosts/mireo/settings.nix` → `services.caddy.virt
 
 - `data/hosts/mireo/settings.nix` — network, NAT, dnsmasq, NFS, Avahi, iVentoy, Netdata, nixfleet
 - `hosts/mireo/host.nix` — applyHost
-- `hosts/mireo/host.nix` + `default.nix` (bridge); static IPs/DNS in `data/hosts/mireo/settings.nix` (no Nix VM definitions right now)
+- `hosts/mireo/*-microvm.nix` (7) + `microvm-base.nix` + `vm-ips.nix` (shared static IP map)
 - QEMU tap→br0 (`flake.nix:193`)
 
 ## VMs at a glance

@@ -253,9 +253,7 @@
       manifest="$nixfleetManifest"
       ui="$nixfleetUi"
       jq -e '.hosts.x270.hostname and (.hosts | has("mireo"))' "$manifest" >/dev/null
-      # No .vms assertion: this branch declares no microVMs (hosts/mireo has
-      # no *-microvm.nix since the Purr cutover/removal), so an empty vms map
-      # is the correct manifest state.
+      jq -e '.vms | has("cups")' "$manifest" >/dev/null
       jq -e '.navigation | any(.page == "dashboard")' "$ui" >/dev/null
       echo "  manifest.json and ui.json valid"
 
@@ -339,9 +337,6 @@
   # ---- builder unit tests ----
   # Eval-time module assertions (abort on failure, like the data model
   # checks) plus runtime script tests; all collected into builders-unit.
-  # NOTE: the mk-microvm/microvm-base builder tests were removed with the
-  # builders themselves (hosts/mireo/mk-microvm.nix is gone since the Purr
-  # cutover/removal) — testing a deleted builder is not possible.
   mkKeyGenService = dotfilesLib.secretKeys.mkKeyGenService;
   nixosEval = modules:
     (import "${pkgs.path}/nixos/lib/eval-config.nix" {

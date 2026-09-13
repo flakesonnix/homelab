@@ -87,3 +87,7 @@ menu:
 # Scaffold a new NixOS host (./hosts/<name>/)
 new-host name:
     ./scripts/new-host.sh host {{name}}
+
+# Scaffold a new microVM on mireo (./hosts/mireo/<name>-microvm.nix, 10.8.0.x)
+new-vm name:
+    ./scripts/new-host.sh vm {{name}}

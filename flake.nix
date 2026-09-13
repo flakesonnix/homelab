@@ -192,6 +192,7 @@
         ./profiles/base.nix
         microvm.nixosModules.host
         ./hosts/mireo
+        ./hosts/mireo/grafana-microvm.nix
         ./modules/nixos/cups.nix
         ./modules/nixos/nixfleet.nix
         ./modules/nixos/sops.nix
