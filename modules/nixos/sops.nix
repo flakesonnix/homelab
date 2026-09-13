@@ -14,8 +14,10 @@
       };
 
       ageKeyPath = lib.mkOption {
-        type = lib.types.path;
-        default = /etc/sops/age/keys.txt;
+        # String, not path: an absolute path literal would make pure `nix eval`
+        # copy /etc/sops/age/keys.txt into the store (and fail when absent).
+        type = lib.types.str;
+        default = "/etc/sops/age/keys.txt";
         description = "Path to age private key file";
       };
     };

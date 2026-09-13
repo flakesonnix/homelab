@@ -1,0 +1,9 @@
+creation_rules:
+  - path_regex: hosts/.*/secrets.yaml
+    key_groups:
+      - age:
+          # Legacy key (private key currently unavailable — kept so files stay
+          # decryptable if it resurfaces; so far it only ever protected placeholders).
+          - age167kzcnwsvnttkgahnvlcrhh9wdx8ks8rwc89vr3n6qtcddr3jd4s580m67
+          # Active mireo/x270 admin key (generated Sep 2026, .sops/keys.txt).
+          - age1ghclunsl79wpr65wk0ftpn70tcltdx69as2kxf3u4y0deapkvejs777nvw

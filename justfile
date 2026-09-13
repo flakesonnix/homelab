@@ -21,10 +21,15 @@ deploy:
 deploy-mireo:
     nix run .#deploy-mireo
 
+# Deploy nyagate to db210.org via deploy-rs (ssh as lucy, sudo to root)
+deploy-nyagate:
+    nix run .#deploy-nyagate
+
 # Deploy all hosts via deploy-rs
 deploy-all:
     nix run .#deploy-x270
     nix run .#deploy-mireo
+    nix run .#deploy-nyagate
 
 # Fast eval-surface checks (formatter, devShell, app paths)
 check-light:
@@ -82,7 +87,3 @@ menu:
 # Scaffold a new NixOS host (./hosts/<name>/)
 new-host name:
     ./scripts/new-host.sh host {{name}}
-
-# Scaffold a new microVM on mireo (./hosts/mireo/<name>-microvm.nix, 10.8.0.x)
-new-vm name:
-    ./scripts/new-host.sh vm {{name}}

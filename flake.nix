@@ -192,15 +192,28 @@
         ./profiles/base.nix
         microvm.nixosModules.host
         ./hosts/mireo
-        ./hosts/mireo/grafana-microvm.nix
         ./modules/nixos/cups.nix
         ./modules/nixos/nixfleet.nix
+        ./modules/nixos/sops.nix
+        sops-nix.nixosModules.sops
         nur.modules.nixos.default
         run0-sudo-shim.nixosModules.default
         ({lib, ...}: {
           lucy.nixfleet.api.package = lib.mkDefault nixfleetPkgs.api;
           lucy.nixfleet.agent.package = lib.mkDefault nixfleetPkgs.agent;
         })
+      ];
+    };
+    nyagate-config = mkHost {
+      specialArgs = serverSpecialArgs;
+      modules = [
+        ./nix-settings.nix
+        ./profiles/base.nix
+        ./hosts/nyagate
+        ./modules/nixos/sops.nix
+        sops-nix.nixosModules.sops
+        nur.modules.nixos.default
+        run0-sudo-shim.nixosModules.default
       ];
     };
     live-config = mkHost {
@@ -215,6 +228,9 @@
         home-manager.nixosModules.home-manager
         sops-nix.nixosModules.sops
         lanzaboote.nixosModules.lanzaboote
+        # Provides security.polkit.persistentAuthentication (set in
+        # modules/nixos/base.nix); every other host includes it too.
+        run0-sudo-shim.nixosModules.default
         ({lib, ...}: {
           boot.loader.systemd-boot.enable = lib.mkForce false;
           boot.loader.grub.enable = lib.mkForce false;
@@ -302,6 +318,7 @@
             rebuild = "Rebuild local x270 via nh";
             "deploy-x270" = "Deploy x270 via deploy-rs to localhost";
             "deploy-mireo" = "Deploy mireo via deploy-rs to 10.8.0.1";
+            "deploy-nyagate" = "Deploy nyagate via deploy-rs to db210.org";
             check = "Run nix flake check";
             "check-light" = "Fast eval-surface checks";
             "check-full" = "Full CI check builds";
@@ -407,6 +424,11 @@
                 program = "${deployApp "mireo"}/bin/deploy-mireo";
                 meta.description = "Deploy mireo via deploy-rs to 10.8.0.1";
               };
+              deploy-nyagate = {
+                type = "app";
+                program = "${deployApp "nyagate"}/bin/deploy-nyagate";
+                meta.description = "Deploy nyagate via deploy-rs to db210.org";
+              };
               setup-sops = {
                 type = "app";
                 program = "${setupSopsApp}/bin/setup-sops";
@@ -455,6 +477,7 @@
           nixosConfigurations = {
             x270 = x270-config;
             mireo = mireo-config;
+            nyagate = nyagate-config;
             live = live-config;
           };
 
@@ -497,6 +520,19 @@
               profiles.system = {
                 user = "root";
                 path = activateNixosWithNixPath self.nixosConfigurations.mireo;
+              };
+            };
+            nyagate = {
+              hostname = "db210.org";
+              sshUser = "lucy";
+              # Non-root sshUser cannot push locally-built unsigned paths:
+              # remote nix-daemon rejects them with "lacks a signature by a
+              # trusted key". Build on the target instead (fetches deps via
+              # its own substituters, activates as root via sudo).
+              remoteBuild = true;
+              profiles.system = {
+                user = "root";
+                path = activateNixosWithNixPath self.nixosConfigurations.nyagate;
               };
             };
           };
