@@ -1,0 +1,21 @@
+{
+  "livePreview": true,
+  "showLineNumber": true,
+  "showFoldIcon": true,
+  "foldHeading": true,
+  "foldIndent": true,
+  "showFrontmatter": true,
+  "strictLineBreaks": false,
+  "useMarkdownLinks": false,
+  "newFileLocation": "current",
+  "newFileFolderPath": "99-Meta/Inbox",
+  "attachmentFolderPath": "99-Meta/attachments",
+  "promptDelete": true,
+  "readableLineLength": true,
+  "commandPalette": true,
+  "graph": true,
+  "backlinks": true,
+  "outgoingLinks": true,
+  "tagPane": true,
+  "outline": true
+}
