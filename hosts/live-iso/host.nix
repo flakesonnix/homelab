@@ -83,8 +83,8 @@ in {
         while true; do
           clear
           cat <<'MENU'
-        Purr / Homelab Live ISO
-        ────────────────────────────
+        Homelab Live ISO
+        ────────────────
 
           1) Start graphical session (Niri)
           2) Start shell

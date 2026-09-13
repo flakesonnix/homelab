@@ -1,3 +1,0 @@
-role bad2 {
-    host { presets = ["nope"]; }
-}

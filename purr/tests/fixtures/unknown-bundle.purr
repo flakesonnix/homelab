@@ -1,3 +1,0 @@
-role bad {
-    home { bundles = ["nonexistent-bundle"]; }
-}

@@ -1,5 +1,0 @@
-role dev {
-    description = "Dev tooling";
-    targets = ["host"];
-    host { tags = ["dev"]; }
-}

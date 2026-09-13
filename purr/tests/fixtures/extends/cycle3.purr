@@ -1,3 +1,0 @@
-host a extends b {}
-host b extends c {}
-host c extends a {}

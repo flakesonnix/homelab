@@ -14,7 +14,6 @@ At this point I'm mostly trying to keep it from becoming worse.
 * 🔐 sops-nix / age for secrets
 * 🌐 networking, NFS, PXE, microVMs
 * 🐾 NixFleet — a small management/monitoring thing I'm building
-* 😺 Purr — a programming language/compiler experiment that generates Nix
 
 The framework stuff lives mostly under `lib/` and `data/`.
 
@@ -58,9 +57,6 @@ home/
 
 nixfleet/
 └── ...
-
-purr/
-└── ...
 ```
 
 The idea is that hosts mostly describe **what they are**, rather than containing a giant pile of unrelated NixOS options.
@@ -78,20 +74,6 @@ Right now it's mostly about seeing what's happening:
 * failed systemd units
 
 Deployment and terminal access can come later.
-
-## Purr 🐱
-
-Purr is a little language I'm experimenting with.
-
-The idea is simple:
-
-```text
-Purr → Nix
-```
-
-I don't really like writing everything directly in Nix, so I'm experimenting with a language that can describe infrastructure in a way that makes more sense to me.
-
-The compiler is written in Zig.
 
 ## Why?
 

@@ -1,7 +1,0 @@
-host base {
-    packages = ["curl", "git"];
-}
-
-host child extends base {
-    packages = ["nginx"];
-}

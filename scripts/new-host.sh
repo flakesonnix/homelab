@@ -45,13 +45,13 @@ case "$kind" in
   imports = [
     ./hardware-configuration.nix
     ./host.nix
-  ] ++ (if builtins.pathExists ./generated.nix then [ ./generated.nix ] else []);
+  ];
 }
 EOF
     cat > "$dir/host.nix" <<EOF
 {config, lib, ...}: {
   networking.hostName = "$name";
-  # TODO: set host-specific options here or via purr/data
+  # TODO: set host-specific options here or via data/hosts/<name>/
   # Example:
   # lucy.base.isServer = lib.mkDefault false;
 }
@@ -104,7 +104,6 @@ EOF
     echo "Next:"
     echo "  1. Edit $dir/host.nix and $dir/hardware-configuration.nix"
     echo "  2. just check-light && nix eval .#nixosConfigurations.$name.config.system.build.toplevel.outPath --raw"
-    echo "  3. purr check meow.purr --json | jq"
     ;;
   vm)
     if [[ ! -d "hosts/mireo" ]]; then echo "error: hosts/mireo not found" >&2; exit 1; fi
