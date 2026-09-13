@@ -21,7 +21,7 @@ deploy: nix run .#deploy-mireo
 ## Features
 
 - NAT for 10.8.0.0/24 + IPv6 (FritzBox PD `2a02:3102:4cec:b500::/64`), systemd-networkd
-- dnsmasq: DHCP/DNS/RA ra-stateless (`bindsTo sys-devices-virtual-net-br0.device` fix)
+- dnsmasq: DHCPv4/stateful DHCPv6/DNS/RA ra-stateful (`bindsTo sys-devices-virtual-net-br0.device` fix)
 - iVentoy PXE server (podman `--network=host`, proxyDHCP mode, UI :26000)
 - NFS export of `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, Netdata :19999, node_exporter :9100
 - CLI tools: tcpdump, mtr, nmap, iperf3, ethtool, socat, btop, jq, lsof, sysstat, smartmontools
@@ -31,11 +31,28 @@ deploy: nix run .#deploy-mireo
 
 `lucy.nixfleet.enable=true; role="api"` in `data/hosts/mireo/settings.nix` — API on 8443 (`DynamicUser`, `StateDirectory=nixfleet`) + agent (`systemd`+`journal`+`metrics`). Firewall on br0 allows 8443. `artifactsDir=../../../nixfleet/artifacts`, `webDir` via `nixfleetPkgs.web` (currently null to avoid deepSeq overflow, only built as a package).
 
+## Reverse proxy (Caddy :80)
+
+One entrypoint for all web UIs: `http://<name>.home.arpa` (DNS from dnsmasq, no HTTPS — no public CA for `.home.arpa`, LAN-only via firewall).
+
+| URL | Target |
+|-----|--------|
+| grafana.home.arpa | 10.8.0.2:3000 |
+| prometheus.home.arpa | 10.8.0.2:9090 |
+| yammat.home.arpa | 10.8.0.5:3000 |
+| cups.home.arpa | 10.8.0.6:631 (web UI; IPP printing stays direct) |
+| sshkeys.home.arpa | 10.8.0.7:80 |
+| aptcache.home.arpa | 10.8.0.8:3142 |
+| netdata.home.arpa | mireo :19999 |
+| iventoy.home.arpa | mireo :26000 |
+
+Source: `webUIs` map in `data/hosts/mireo/settings.nix` → `services.caddy.virtualHosts`.
+
 ## Config files
 
 - `data/hosts/mireo/settings.nix` — network, NAT, dnsmasq, NFS, Avahi, iVentoy, Netdata, nixfleet
 - `hosts/mireo/host.nix` — applyHost
-- `hosts/mireo/*-microvm.nix` (7) + `microvm-base.nix`
+- `hosts/mireo/host.nix` + `default.nix` (bridge); static IPs/DNS in `data/hosts/mireo/settings.nix` (no Nix VM definitions right now)
 - QEMU tap→br0 (`flake.nix:193`)
 
 ## VMs at a glance

@@ -6,7 +6,7 @@ type: reference
 
 # MicroVMs (mireo, 7×)
 
-[[10-Hosts/mireo|← mireo]] · [[10-Hosts/Network|Network]] · Source: `hosts/mireo/*-microvm.nix`, `microvm-base.nix`, `flake.nix:193`.
+[[10-Hosts/mireo|← mireo]] · [[10-Hosts/Network|Network]] · Static IPs/DNS: dnsmasq `staticHosts` map in `data/hosts/mireo/settings.nix` (no Nix VM definitions right now; `microvm.nixosModules.host` + tap→br0 via `flake.nix:193` when they return).
 
 All via `microvm.nixosModules.host`, tap→br0, MAC derived from IP, units `microvm@<name>`.
 
@@ -32,4 +32,4 @@ journalctl -u microvm@monerod -f
 
 NixFleet: `GET /api/v1/hosts/mireo/vms` merges `configured` (manifest) + `runtime` (`systemctl is-active`). See [[50-NixFleet/Manifest-API|Manifest & API]].
 
-New VM: [[40-Guides/New-Host-VM|New host / VM]] (`just new-vm`).
+New VM: no builder right now — see [[40-Guides/New-Host-VM|New host]] guide.

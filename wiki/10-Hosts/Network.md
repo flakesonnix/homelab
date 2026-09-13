@@ -20,15 +20,16 @@ mireo (router)
   ├── 10.8.0.6  cups :631
   ├── 10.8.0.7  sshkeys :80
   ├── 10.8.0.8  aptcache :3142
-  └── 10.8.0.176 x270
+  └── (DHCP)      x270 (dynamic address via DHCPv4/DHCPv6)
 ```
 
 - NAT masquerade on `enp4s0`, br0 from enp9s0/enp3s0f0/enp3s0f1
-- IPv6 prefix `2a02:3102:4cec:b500::/64` delegated from FritzBox → br0, dnsmasq RA ra-stateless
+- IPv6 prefix `2a02:3102:4cec:b500::/64` delegated from FritzBox → br0, dnsmasq RA ra-stateful (stateful DHCPv6 addressing)
 - dnsmasq host records = VM names, `bindsTo sys-devices-virtual-net-br0.device` fix
 - NFS `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, Nautilus autodiscovery
 - iVentoy PXE server via podman host network, proxyDHCP, :26000
 - Printing: IPP + Avahi `_ipp._tcp` (10.8.0.6)
+- Reverse proxy: Caddy on mireo `:80` → `http://<name>.home.arpa` per web UI (grafana, prometheus, yammat, cups, sshkeys, aptcache, netdata, iventoy) — details [[10-Hosts/mireo|mireo]]
 - Tailscale on x270, Deskflow keyboard/mouse sharing
 
 ## dnsmasq / IP cheat sheet

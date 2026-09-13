@@ -233,7 +233,7 @@ Files in `data/hosts/<host>/` are loaded by the framework's `loadHostDirectory`.
 
 ---
 
-## NixFleet Manifest (M1)
+## NixFleet Manifest (M1 — Sep 2026)
 
 `nixfleet/manifest.nix` is the **build-time source of truth** for the control plane. It is pure Nix (like `lib/topology.nix`): `flake.nix` → `nixfleetArtifacts = import ./nixfleet/manifest.nix { lib, pkgs, configurations = self.nixosConfigurations, deployNodes = self.deploy.nodes }` → `packages.nixfleet-manifest = writeText manifest.json` + `packages.nixfleet-ui = writeText ui.json` → committed to `nixfleet/artifacts/` and served by `nixfleet-api` (`GET /api/v1/meta` forwards them verbatim as `any`; Go never invents hosts/VMs).
 
@@ -246,10 +246,16 @@ Files in `data/hosts/<host>/` are loaded by the framework's `loadHostDirectory`.
 - `navigation` — default `Dashboard, Hosts, Journal, Terminal, Deploy, (VMs if hasVms), NixOS, Git, GitHub, Monitoring, Network, Settings` + `ui.navigation` from `lucy.nixfleet.ui` when `apiHost` set.
 - `dashboard.widgets` — one `host-summary` per host + `dashboardWidgets`, `featureFlags` (`terminal`, `files`, `containers`, `tailscale`, `proxy`), `rbac` (default `admin * *`).
 
-M1 fixes:
+**M1 fixes (7a05039):**
 - `hasVms` was `vmCatalog.hostsVms` (always missing, `false`) → now `attrNames vmCatalog` — `hasVms` now correctly true when mireo has 7 VMs, so `/vms` navigation appears.
 - `hostRoles` check was `dir.value ? roles.nix` (invalid Nix — `roles.nix` is not a valid identifier, so always false) → now `hasAttr "roles.nix" dir.value` — `x270` now correctly shows `roles [desktop dev gaming]`, `bundles [desktop dev]`, `presets [gaming-*]`.
 - `mireo` intentionally has no `roles.nix` (server profile, `roles: []`, `bundles: []`, `presets: []`), not a bug — declarative config comes from `settings.nix` directly; roles remain Nix-originated for `x270`/`home`.
+
+**M1 API (7a05039):**
+- Runtime: `GET /api/v1/hosts`, `/:host/health` (`healthy|degraded|critical|unknown`, `failedUnits`), `/:host/resources` (`/proc`), `/:host/network` (`ip -j`), `/:host/vms` (merged `configured` from manifest + `runtime` via `systemctl is-active microvm@<name>` validated), `/:host/systemd/failed` (`systemctl --failed`).
+- Typed Go structs (`nixfleet/api/manifest`, `nixfleet/api/runtime`), `404` for unknown host/vm, `503` when agent not local (mireo observability only), no shell strings.
+- Frontend: `HostOverview` + `VMTable` (7 VMs: grafana…aptcache, columns: Name|IP|State|vCPU|RAM|Health|Ports) + `SystemdFailed` on dashboard, `/vms` + `/network` pages (dark dense monospace).
+- No WebSocket/auth/SQLite yet — observability first.
 
 ---
 

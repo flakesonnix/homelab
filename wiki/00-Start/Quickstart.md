@@ -48,7 +48,7 @@ CI: 6 jobs — see [[60-Reference/Flake-CI-Topology|Flake · CI · topology]].
 
 | Host | What | IP / deploy |
 |------|-----|-------------|
-| [[10-Hosts/x270|x270]] | ThinkPad X270 i7-7600U, Niri, gaming | 10.8.0.176 / `deploy-x270` |
+| [[10-Hosts/x270|x270]] | ThinkPad X270 i7-7600U, Niri, gaming | dynamic (DHCP) / `deploy-x270` |
 | [[10-Hosts/mireo|mireo]] | Router/server + 7 VMs | 10.8.0.1 / `deploy-mireo` |
 | [[10-Hosts/nyagate|nyagate]] | Remote QEMU | db210.org / `deploy-nyagate` |
 | [[10-Hosts/live-iso|live-iso]] | Installer | `nix build .#packages.x86_64-linux.live-iso` |

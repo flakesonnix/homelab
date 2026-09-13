@@ -189,7 +189,7 @@ Options namespace: `lucy.*`
 
 ---
 
-### `nixfleet.nix` (M1 — mireo runtime control plane)
+### `nixfleet.nix` (M1 — Sep 2026, mireo runtime control plane)
 
 Options namespace: `lucy.nixfleet.*`
 
@@ -219,7 +219,9 @@ When `enable`:
 
 Enabled on `mireo` via `data/hosts/mireo/settings.nix` (`enable = true; role = "api"; api.port = 8443; artifactsDir = ../../../nixfleet/artifacts`) + `flake.nix` `nixfleetPkgs.*` defaults. `x270` not enabled.
 
-M1 API extends `GET /api/v1/health` + `GET /api/v1/meta` with: `GET /hosts`, `/:host/health`, `/:host/resources`, `/:host/network` (`ip -j`), `/:host/vms` (merged `configured`+`runtime` via `systemctl is-active microvm@<name>` validated), `/:host/systemd/failed` (`systemctl --failed`). See `nixfleet/api/runtime` and `nixfleet/api/http/server.go`.
+**M1 API (DONE, 7a05039, Sep 2026)**: `GET /api/v1/hosts`, `/:host/health` (`healthy|degraded|critical|unknown`, `failedUnits`), `/:host/resources` (`/proc` → cpu/ram/swap/load/disk/procs), `/:host/network` (`ip -j addr/link` → interfaces/addrs/state), `/:host/vms` (merged `configured` from manifest + `runtime` via `systemctl is-active microvm@<name>` validated → state/mem/vcpu/ip/ports), `/:host/systemd/failed` (`systemctl --failed` → unit list). Typed Go structs (`nixfleet/api/manifest`, `nixfleet/api/runtime`), `404` for unknown host/vm, `503` when agent not local (mireo observability only — no WS yet).
+
+**Frontend (M1)**: `HostOverview` (health + failed units), `VMTable` (7 VMs: grafana…aptcache, columns: Name|IP|State|vCPU|RAM|Health|Ports), `SystemdFailed` table on dashboard. Pages: `/vms` (list + state), `/network` (interfaces table). Dark dense monospace styling. See `nixfleet/api/runtime` and `nixfleet/docs/architecture.md`.
 
 ### `topology.nix`
 

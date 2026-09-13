@@ -10,11 +10,11 @@ result-*
 *.swo
 *~
 
-# Secrets (sops)
-hosts/*/secrets.yaml
-secrets.yaml
+# Secrets (sops-nix / age)
+# Encrypted per-host secrets ARE committed: hosts/*/secrets.yaml, .sops.yaml.
+# Only private key material is ignored.
+.sops/
 *.age
-.sops.yaml
 
 # Build
 .deploy
@@ -26,8 +26,8 @@ nix/
 AGENTS.md
 CLAUDE.md
 
-# Purr build outputs
-purr/.zig-cache/
-purr/zig-out/
-purr/zig-cache/
-purr/flake.lock
+# Node/JS
+node_modules/
+
+# Obsidian local UI state (vault content itself is committed)
+wiki/.obsidian/workspace.json

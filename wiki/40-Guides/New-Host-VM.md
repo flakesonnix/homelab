@@ -1,18 +1,16 @@
 ---
-aliases: [New host, New VM, Scaffolding]
+aliases: [New host, Scaffolding]
 tags: [guide, nixos]
 type: guide
 ---
 
-# New host / new VM
+# New host
 
 [[40-Guides/Guides-MOC|← Guides]] · Script `scripts/new-host.sh`.
 
 ```bash
 just new-host myhost   # → hosts/<name>/ (host.nix, hardware.nix, default.nix)
-just new-vm myvm       # → hosts/mireo/<name>-microvm.nix, 10.8.0.x
 ./scripts/new-host.sh host myhost
-./scripts/new-host.sh vm myvm
 ```
 
 ## New host checklist
@@ -25,12 +23,4 @@ just new-vm myvm       # → hosts/mireo/<name>-microvm.nix, 10.8.0.x
 - [ ] sops if needed: [[40-Guides/Secrets-Guide|Secrets guide]]
 - [ ] Copy the template: [[99-Meta/Templates/Host-Template|Host template]]
 
-## New microVM checklist
-
-- [ ] Derive `hosts/mireo/<name>-microvm.nix` from `microvm-base.nix` (mem/vcpu/volumes, IP, ports)
-- [ ] Merge `microvm.vms.<name>` into the mireo host, check firewall/bridge
-- [ ] dnsmasq host record (name→10.8.0.x) in `data/hosts/mireo/settings.nix`
-- [ ] `nix run .#deploy-mireo` → `systemctl status microvm@<name>`
-- [ ] [[50-NixFleet/Manifest-API|Manifest]] lists the VM (hasVms via `attrNames`)
-
-Template: [[99-Meta/Templates/Host-Template|Host template]].
+> MicroVM scaffolding (`just new-vm`, `microvm-base.nix`) was removed with Purr — there is currently no VM builder. Static IPs/DNS for the existing VMs live in the dnsmasq `staticHosts` map in `data/hosts/mireo/settings.nix`.

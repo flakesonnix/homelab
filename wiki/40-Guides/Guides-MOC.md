@@ -17,7 +17,7 @@ SORT file.name ASC
 
 - [[40-Guides/Deploy-Rebuild|Deploy & rebuild]]
 - [[40-Guides/Secrets-Guide|Secrets (sops/age)]]
-- [[40-Guides/New-Host-VM|New host / new VM]]
+- [[40-Guides/New-Host-VM|New host]]
 - [[40-Guides/Printing|Printing]]
 - [[40-Guides/Audio-Latency|Audio latency]]
 - [[40-Guides/Apt-Cache|APT cache]]

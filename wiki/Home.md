@@ -19,7 +19,7 @@ type: moc
 ## 🖥️ Hosts
 
 - [[10-Hosts/Hosts-MOC|Hosts overview]] — map of all machines
-- [[10-Hosts/x270|x270]] — ThinkPad X270, desktop/gaming (10.8.0.176)
+- [[10-Hosts/x270|x270]] — ThinkPad X270, desktop/gaming (dynamic IP via DHCP)
 - [[10-Hosts/mireo|mireo]] — server/router + 7 microVMs (10.8.0.1)
 - [[10-Hosts/nyagate|nyagate]] — remote server QEMU (db210.org)
 - [[10-Hosts/live-iso|live-iso]] — installer ISO
@@ -40,7 +40,7 @@ type: moc
 - [[40-Guides/Guides-MOC|Guides overview]]
 - [[40-Guides/Deploy-Rebuild|Deploy & rebuild]] — nh, deploy-rs, troubleshooting
 - [[40-Guides/Secrets-Guide|Secrets (sops/age)]] — setup, rotation, WireGuard
-- [[40-Guides/New-Host-VM|New host / new VM]] — `scripts/new-host.sh`
+- [[40-Guides/New-Host-VM|New host]] — `scripts/new-host.sh`
 - [[40-Guides/Printing|Printing]] — CUPS VM 10.8.0.6
 - [[40-Guides/Audio-Latency|Audio latency]] — PipeWire/gaming tuning
 - [[40-Guides/Apt-Cache|APT cache]] — proxy 10.8.0.8:3142
