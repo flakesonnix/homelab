@@ -8,14 +8,33 @@
   lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
   lucy.base.sshKeyComment = "lucy@mireo";
 
+  # --- sops-nix secrets (WireGuard private key, future service secrets) ---
+  # Prerequisite: age key deployed at /etc/sops/age/keys.txt BEFORE first
+  # activation with this enabled, or activation fails. See docs/secrets.md.
+  # Rollback: set enable = false and redeploy.
+  lucy.secrets = {
+    enable = true;
+    sopsFile = ../../../hosts/mireo/secrets.yaml;
+  };
+
+  sops.secrets."wireguard/mireo-private-key" = {};
+
   networking.hostName = "mireo";
   networking.networkmanager.enable = lib.mkForce false;
   networking.useNetworkd = true;
 
   systemd.network.enable = true;
   # FritzBox IPv6 (as of 2026-05-29):
-  #   WAN addr:  2a02:3102:4c00:3b::1b5/64
-  #   delegated: 2a02:3102:4cec:b500::/64  (assigned to br0 LAN)
+  #   WAN addr:  2a02:3102:4c00:3b::1b5/64 (SLAAC, fallback)
+  #   delegated: 2a02:3102:4cec:b500::/64  (DHCPv6 PD, assigned to br0 LAN)
+  # WAN runs a DHCPv6 client (IA_NA address + IA_PD prefix) alongside the
+  # static IPv4. The delegated prefix is handed to br0 below; dnsmasq keeps
+  # sending the LAN RAs (constructor:br0 picks the delegated GUA up
+  # automatically). No IPv6SendRA in networkd — dnsmasq owns RA.
+  # NOTE: br0 has IPv6Forwarding=true, which flips net.ipv6.conf.all.forwarding
+  # to router mode. Under forwarding the kernel ignores RAs with accept_ra=1,
+  # so the WAN SLAAC address may disappear — the DHCPv6 IA_NA address replaces
+  # it. IPv4, ULA, DHCPv4/DNS on br0 are unaffected either way.
   systemd.network.networks."10-wan" = {
     matchConfig.Name = "enp4s0";
     address = ["192.168.178.25/24"];
@@ -27,6 +46,8 @@
     networkConfig = {
       DNS = ["1.1.1.1" "9.9.9.9"];
       IPv6AcceptRA = true;
+      DHCP = "ipv6";
+      DHCPPrefixDelegation = true;
     };
   };
   systemd.network.networks."20-lan-enp9s0" = {
@@ -49,11 +70,22 @@
   };
   systemd.network.networks."30-br0" = {
     matchConfig.Name = "br0";
+    # Static ULA stays as fallback/seed so LAN-local v6 + dnsmasq constructor
+    # keep working even if the FritzBox delegation ever fails.
     address = ["10.8.0.1/24" "fd00:cafe:1::1/64"];
     networkConfig = {
       ConfigureWithoutCarrier = true;
       IPv6AcceptRA = false;
       LinkLocalAddressing = "ipv6";
+      # Router mode for the delegated GUA (also flips all.forwarding, which is
+      # what routes LAN<->WAN v6; firewall filterForward is off by default).
+      IPv6Forwarding = true;
+      # Take a /64 from the enp4s0 delegation (Assign=yes by default, EUI-64).
+      # Announce is inert here (upstream requests PD, no networkd SendRA).
+      DHCPPrefixDelegation = true;
+    };
+    dhcpPrefixDelegationConfig = {
+      UplinkInterface = "enp4s0";
     };
   };
 
@@ -67,40 +99,80 @@
   networking.firewall.interfaces.br0.allowedTCPPorts = [19999 9090];
 
   # --- dnsmasq: DHCP + DNS for LAN (br0) ---
-  services.dnsmasq = {
+  # Static LAN hosts (microVMs + mireo itself) live once in staticHosts
+  # below; the DNS records are generated from that map. The VM
+  # definitions themselves were removed with Purr and don't exist in
+  # Nix right now — when microvm.vms come back, point the generator
+  # at config.microvm.vms instead of this map.
+  services.dnsmasq = let
+    lanDomain = "home.arpa";
+    staticHosts = {
+      grafana = "10.8.0.2";
+      network-services = "10.8.0.3";
+      monerod = "10.8.0.4";
+      yammat = "10.8.0.5";
+      cups = "10.8.0.6";
+      sshkeys = "10.8.0.7";
+      aptcache = "10.8.0.8";
+      mireo = "10.8.0.1";
+    };
+  in {
     enable = true;
     settings = {
       interface = "br0";
       bind-interfaces = true;
       domain-needed = true;
       bogus-priv = true;
+      # Local DNS domain (RFC 8375): <hostname>.home.arpa resolves for
+      # DHCP leases (automatic), static host-records (FQDN first name
+      # below) and short names (expand-hosts). local= keeps the whole
+      # domain strictly local — never forwarded upstream. DHCP clients
+      # also receive home.arpa as search domain automatically.
+      domain = lanDomain;
+      expand-hosts = true;
+      local = "/${lanDomain}/";
       dhcp-authoritative = true;
       enable-ra = true;
       dhcp-range = [
         "10.8.0.100,10.8.0.199,255.255.255.0,24h"
-        "::,constructor:br0,ra-stateless,64,24h"
+        "::,constructor:br0,ra-stateful,64,24h"
       ];
       dhcp-option = [
         "option:router,10.8.0.1"
         "option:dns-server,10.8.0.1"
       ];
-      dhcp-host = [
-        "54:e1:ad:d4:48:25,00:e1:8c:b5:c9:35,x270,10.8.0.176"
-        "d0:50:99:95:7b:13,client-124,10.8.0.124"
-      ];
-      host-record = [
-        "grafana,10.8.0.2"
-        "network-services,10.8.0.3"
-        "monerod,10.8.0.4"
-        "yammat,10.8.0.5"
-        "cups,10.8.0.6"
-        "sshkeys,10.8.0.7"
-        "aptcache,10.8.0.8"
-        "mireo,10.8.0.1"
-        "x270,10.8.0.176"
-      ];
+      # No dhcp-host entries: all LAN clients get dynamic addresses
+      # via DHCPv4/DHCPv6. dnsmasq serves DNS names for its leases
+      # automatically, so clients stay reachable as <hostname>.home.arpa.
+      host-record = lib.mapAttrsToList (name: ip: "${name}.${lanDomain},${name},${ip}") staticHosts;
       server = ["1.1.1.1" "9.9.9.9" "2606:4700:4700::1111" "2620:fe::9"];
     };
+  };
+
+  # --- Caddy: name-based reverse proxy on port 80 for all LAN web UIs ---
+  # One entrypoint: http://<name>.home.arpa (DNS from dnsmasq above).
+  # The http:// prefix disables Caddy's automatic HTTPS — no public CA
+  # issues certs for .home.arpa (RFC 8375). WAN port 80 stays closed by
+  # the default firewall (only br0 is trusted), so this is LAN-only.
+  # Direct ports (CUPS :631 IPP, iVentoy PXE, …) keep working untouched.
+  services.caddy = let
+    webUIs = {
+      grafana = "10.8.0.2:3000";
+      prometheus = "10.8.0.2:9090";
+      yammat = "10.8.0.5:3000";
+      cups = "10.8.0.6:631";
+      sshkeys = "10.8.0.7:80";
+      aptcache = "10.8.0.8:3142";
+      netdata = "127.0.0.1:19999";
+      iventoy = "127.0.0.1:26000";
+    };
+  in {
+    enable = true;
+    virtualHosts = lib.mapAttrs' (name: target:
+      lib.nameValuePair "http://${name}.home.arpa" {
+        extraConfig = "reverse_proxy ${target}";
+      })
+    webUIs;
   };
 
   # --- iVentoy PXE server (proxyDHCP mode, web UI :26000) ---
@@ -132,6 +204,8 @@
   services.avahi = {
     enable = true;
     nssmdns4 = true;
+    # mDNS stays LAN-only: never advertise/respond via wg0 (public edge).
+    allowInterfaces = ["br0" "lo"];
     publish = {
       enable = true;
       userServices = true;
@@ -154,7 +228,7 @@
   services.nfs.server = {
     enable = true;
     exports = ''
-      /data 10.8.0.0/24(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=100)
+      /data 10.8.0.0/24(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=100,insecure)
     '';
   };
 
@@ -181,6 +255,49 @@
       ActivationPolicy = "manual";
       Unmanaged = true;
     };
+  };
+
+  # --- WireGuard transit to public edge (purrgate VPS) ---
+  # Transit network 10.66.0.0/30: purrgate .1, mireo .2. This carries ONLY
+  # explicitly published inbound traffic (DNAT'd on purrgate, SNAT'd back so
+  # return path stays symmetric via the tunnel — no 0.0.0.0/0 AllowedIPs here,
+  # which would hijack the default route and break LAN/NFS/IPv6/microVMs).
+  # LAN-only services (NFS /data, dnsmasq DHCP/DNS, PXE, Avahi) stay bound to
+  # br0 / 10.8.0.0/24 and are NOT reachable via wg0 (firewall below allows
+  # only the published ports; Avahi is pinned to br0+lo).
+  # Setup: fill endpoint + peer publicKey, set private key via
+  # `sops hosts/mireo/secrets.yaml`, then `systemctl restart wireguard-wg0`.
+  # Outbound-via-VPS is intentionally NOT enabled (opt-in policy routing only,
+  # documented in docs/secrets.md) to preserve existing NAT/IPv6 behavior.
+  networking.wireguard.interfaces.wg0 = {
+    ips = ["10.66.0.2/30"];
+    listenPort = 51820;
+    # sops-nix renders this secret to /run/secrets/<name> at activation
+    # (never in the Nix store). `...` args above have no `config` here —
+    # settings.nix is data merged by the framework, so use the static path.
+    privateKeyFile = "/run/secrets/wireguard/mireo-private-key";
+    peers = [
+      {
+        name = "purrgate";
+        # purrgate's `wg pubkey` output. Placeholder until VPS is provisioned.
+        publicKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+        # purrgate public IPv4. TEST-NET-1 placeholder — replace before use.
+        endpoint = "192.0.2.1:51820";
+        allowedIPs = ["10.66.0.1/32"];
+        persistentKeepalive = 25;
+      }
+    ];
+  };
+
+  # WireGuard handshake responses (mireo initiates out, but keep the port open
+  # so the tunnel survives keepalive gaps / purrgate-initiated handshakes).
+  networking.firewall.allowedUDPPorts = [51820];
+
+  # Published services ONLY — must mirror purrgate's forwardPorts. Everything
+  # else arriving via wg0 is dropped by default-deny.
+  networking.firewall.interfaces.wg0 = {
+    allowedTCPPorts = [80 443 25565];
+    allowedUDPPorts = [25565];
   };
 
   # --- Automatic ISO download for iVentoy ---

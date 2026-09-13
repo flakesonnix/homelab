@@ -253,7 +253,9 @@
       manifest="$nixfleetManifest"
       ui="$nixfleetUi"
       jq -e '.hosts.x270.hostname and (.hosts | has("mireo"))' "$manifest" >/dev/null
-      jq -e '.vms | has("cups")' "$manifest" >/dev/null
+      # No .vms assertion: this branch declares no microVMs (hosts/mireo has
+      # no *-microvm.nix since the Purr cutover/removal), so an empty vms map
+      # is the correct manifest state.
       jq -e '.navigation | any(.page == "dashboard")' "$ui" >/dev/null
       echo "  manifest.json and ui.json valid"
 
@@ -337,7 +339,9 @@
   # ---- builder unit tests ----
   # Eval-time module assertions (abort on failure, like the data model
   # checks) plus runtime script tests; all collected into builders-unit.
-  mkMicrovm = import ../hosts/mireo/mk-microvm.nix;
+  # NOTE: the mk-microvm/microvm-base builder tests were removed with the
+  # builders themselves (hosts/mireo/mk-microvm.nix is gone since the Purr
+  # cutover/removal) — testing a deleted builder is not possible.
   mkKeyGenService = dotfilesLib.secretKeys.mkKeyGenService;
   nixosEval = modules:
     (import "${pkgs.path}/nixos/lib/eval-config.nix" {
@@ -348,90 +352,6 @@
     if cond
     then true
     else builtins.abort "BUILDER TEST ERROR: ${msg}";
-
-  vmSpec = {
-    name = "testvm";
-    ip = "10.8.0.5";
-    mem = 2048;
-    vcpu = 2;
-    tcpPorts = [80 443];
-    udpPorts = [53];
-    volumes = [
-      {
-        image = "/var/lib/test/data.img";
-        mountPoint = "/data";
-        size = 1024;
-        user = "lucy";
-        group = "users";
-      }
-      {
-        image = "/var/lib/test/plain.img";
-        mountPoint = "/plain";
-        size = 2048;
-      }
-    ];
-    tmpfiles = ["d /run/test 0755 root root - -"];
-    config = {
-      imports = [{environment.variables.FOO = "bar";}];
-    };
-    extraDns = ["1.1.1.1"];
-  };
-  vmEval = nixosEval [microvm.nixosModules.host (mkMicrovm vmSpec)];
-  vmCfg = vmEval.microvm.vms.testvm.config.config;
-  checkVm =
-    forceB vmEval.microvm.vms.testvm.autostart "mk-microvm: vms.testvm.autostart must be true"
-    && forceB (vmCfg.networking.hostName == "testvm") "mk-microvm: hostName"
-    && forceB (vmCfg.microvm.hypervisor == "qemu") "mk-microvm: hypervisor"
-    && forceB (vmCfg.microvm.mem == 2048) "mk-microvm: mem"
-    && forceB (vmCfg.microvm.vcpu == 2) "mk-microvm: vcpu"
-    && forceB (lib.all (p: builtins.elem p vmCfg.networking.firewall.allowedTCPPorts) [80 443]) "mk-microvm: tcpPorts"
-    && forceB (lib.all (p: builtins.elem p vmCfg.networking.firewall.allowedUDPPorts) [53]) "mk-microvm: udpPorts"
-    && forceB (let
-      iface = builtins.head vmCfg.microvm.interfaces;
-    in
-      iface.id == "vm-testvm" && iface.type == "tap" && iface.mac == "02:00:00:10:08:05")
-    "mk-microvm: default interfaceId and MAC from ip"
-    && forceB (let
-      vols = vmCfg.microvm.volumes;
-      v1 = builtins.head vols;
-      v2 = builtins.head (builtins.tail vols);
-    in
-      builtins.length vols
-      == 2
-      && !(v1 ? user)
-      && !(v1 ? group)
-      && v1.image == "/var/lib/test/data.img"
-      && v1.mountPoint == "/data"
-      && v1.size == 1024
-      && v2.image == "/var/lib/test/plain.img"
-      && v2.mountPoint == "/plain"
-      && v2.size == 2048)
-    "mk-microvm: volume user/group stripped"
-    && forceB (lib.all (r: builtins.elem r vmCfg.systemd.tmpfiles.rules) ["d /run/test 0755 root root - -" "d /data 0750 lucy users - -"]) "mk-microvm: tmpfiles rules"
-    && forceB (vmCfg.environment.variables.FOO == "bar") "mk-microvm: extra config imports merged";
-
-  baseSpec =
-    vmSpec
-    // {
-      name = "basevm";
-      ip = "10.8.0.8";
-      interfaceId = "vm-aptcache";
-      extraDns = ["1.1.1.1"];
-      volumes = [];
-      tmpfiles = [];
-      config = {};
-    };
-  baseCfg = (nixosEval [microvm.nixosModules.host (mkMicrovm baseSpec)]).microvm.vms.basevm.config.config;
-  checkBase =
-    forceB (let
-      iface = builtins.head baseCfg.microvm.interfaces;
-    in
-      iface.id == "vm-aptcache" && iface.type == "tap" && iface.mac == "02:00:00:10:08:08")
-    "microvm-base: interface id and MAC"
-    && forceB (baseCfg.networking.hostName == "basevm") "microvm-base: hostName via mk-microvm"
-    && forceB (baseCfg.systemd.network.networks."20-lan".address == ["10.8.0.8/24"]) "microvm-base: address"
-    && forceB (baseCfg.systemd.network.networks."20-lan".networkConfig.Gateway == "10.8.0.1") "microvm-base: gateway"
-    && forceB (baseCfg.systemd.network.networks."20-lan".networkConfig.DNS == ["10.8.0.1" "1.1.1.1"]) "microvm-base: dns";
 
   keygenCfg = nixosEval [
     (mkKeyGenService {
@@ -472,7 +392,7 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkVm && checkBase && checkKeygen && checkKeygenRaw;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw;
 
   notifCounter = dotfilesLib.waybarScripts.mkNotifCounter {};
   notifCounterCustom = dotfilesLib.waybarScripts.mkNotifCounter {
