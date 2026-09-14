@@ -89,13 +89,24 @@
     description = "HE 6in4 SIT tunnel (Tunnel ID 1039084)";
     after = ["network.target"];
     wantedBy = ["multi-user.target"];
-    path = [pkgs.iproute2];
+    path = [pkgs.iproute2 pkgs.ethtool];
     script = ''
       ip tunnel del he-ipv6 2>/dev/null || true
       ip tunnel add he-ipv6 mode sit remote 216.66.84.46 local 188.220.148.24 ttl 255
       ip link set he-ipv6 up mtu 1480
+      # Kein GSO/TSO auf dem SIT-Device (Diagnose 2026-09-14): der Kernel
+      # batcht sonst einzelne Writes zu >MTU-SKBs, das Device fragmentiert
+      # statt zu segmentieren, und das 2. Fragment kommt nie an (Anbieter
+      # dropt v4-Fragmente von proto-41). Symptom: jeder HTTPS-Response
+      # über ~1400 Bytes stallt (nix-fetch Timeouts). Aus = Software-
+      # Segmentierung nach MTU.
+      ethtool -K he-ipv6 gso off gro off tso off sg off
       ip addr add 2001:470:1f14:54f::2/64 dev he-ipv6
-      ip -6 route replace default via 2001:470:1f14:54f::1 dev he-ipv6 metric 512
+      # advmss 1340: Kernel-seitiges MSS-Limit (TCPMSS-mangle im Firewall-
+      # Modul schreibt nur aufs Wire, nicht in den Socket-State — ohne das
+      # sendet der Stack weiter 1420er-Segmente → 1492-Byte-Pakete →
+      # Fragment → tot, s.o.). 1340+40+32=1412 < 1480, nie fragmentiert.
+      ip -6 route replace default via 2001:470:1f14:54f::1 dev he-ipv6 metric 512 advmss 1340
     '';
     preStop = ''
       ip -6 route del default via 2001:470:1f14:54f::1 dev he-ipv6 metric 512 2>/dev/null || true
@@ -159,6 +170,11 @@
     ip6tables -w -I INPUT 2 -p icmpv6 --icmpv6-type neighbour-advertisement -j ACCEPT
     ip6tables -w -t mangle -A FORWARD -i wg0 -o he-ipv6 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1340
     ip6tables -w -t mangle -A FORWARD -i he-ipv6 -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1340
+    # Gleicher Clamp für lokal erzeugtes TCP via he-ipv6 (nixos-fetch etc.):
+    # ohne den stallt jeder Response über ~1400 Bytes (Fragment-Blackhole,
+    # s. he-tunnel-Kommentar). Schützt nur die SYN-Ankündigung; das harte
+    # Kernel-Limit ist advmss an der Default-Route oben.
+    ip6tables -w -t mangle -A OUTPUT -o he-ipv6 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1340
   '';
   networking.firewall.extraStopCommands = ''
     ip6tables -w -D FORWARD -i wg0 -o he-ipv6 -s 2001:470:1f15:54f::/64 -j ACCEPT || true
@@ -168,6 +184,7 @@
     ip6tables -w -D INPUT -p icmpv6 --icmpv6-type neighbour-advertisement -j ACCEPT || true
     ip6tables -w -t mangle -D FORWARD -i wg0 -o he-ipv6 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1340 || true
     ip6tables -w -t mangle -D FORWARD -i he-ipv6 -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1340 || true
+    ip6tables -w -t mangle -D OUTPUT -o he-ipv6 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1340 || true
   '';
 
   # DNAT public ports into the tunnel (nyagate has the public IPv4).
