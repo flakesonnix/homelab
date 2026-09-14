@@ -518,6 +518,9 @@
             mireo = {
               hostname = "10.8.0.1";
               sshUser = "root";
+              # Build on the target (fetches deps via its own substituters)
+              # instead of copying the locally-built closure over the LAN.
+              remoteBuild = true;
               profiles.system = {
                 user = "root";
                 path = activateNixosWithNixPath self.nixosConfigurations.mireo;
@@ -525,11 +528,11 @@
             };
             nyagate = {
               hostname = "db210.org";
-              sshUser = "lucy";
-              # Non-root sshUser cannot push locally-built unsigned paths:
-              # remote nix-daemon rejects them with "lacks a signature by a
-              # trusted key". Build on the target instead (fetches deps via
-              # its own substituters, activates as root via sudo).
+              sshUser = "root";
+              # Root SSH key is deployed on the target, so deploy directly
+              # as root (no passwordless sudo needed for lucy).
+              # Remote build stays on: the target fetches deps via its own
+              # substituters.
               remoteBuild = true;
               profiles.system = {
                 user = "root";
