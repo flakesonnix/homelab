@@ -162,6 +162,11 @@
     settings = {
       interface = "br0";
       bind-interfaces = true;
+      # /etc/hosts NICHT servieren (Diagnose 2026-09-14): NixOS trägt dort
+      # 127.0.0.2 <hostname> ein, dnsmasq hätte `mireo` sonst doppelt
+      # beantwortet (10.8.0.1 + 127.0.0.2) und `ping mireo` landet auf
+      # localhost. Alle statischen Namen kommen aus host-record unten.
+      no-hosts = true;
       domain-needed = true;
       bogus-priv = true;
       # Local DNS domain (RFC 8375): <hostname>.home.arpa resolves for
@@ -192,9 +197,16 @@
         "option:router,10.8.0.1"
         "option:dns-server,10.8.0.1"
       ];
-      # No dhcp-host entries: all LAN clients get dynamic addresses
-      # via DHCPv4/DHCPv6. dnsmasq serves DNS names for its leases
-      # automatically, so clients stay reachable as <hostname>.home.arpa.
+      # Fixed names for DHCP clients that send NO hostname themselves
+      # (lease shows `*` instead of a name → no DNS record). Format
+      # MAC,name — IP stays dynamic. Diagnose 2026-09-14: UCS-VM
+      # (52:54:00:3d:5d:dd) ohne Hostname → ucs.home.arpa NXDOMAIN.
+      dhcp-host = [
+        "52:54:00:3d:5d:dd,ucs"
+      ];
+      # Everyone else gets dynamic addresses via DHCPv4/DHCPv6. dnsmasq
+      # serves DNS names for its leases automatically, so clients stay
+      # reachable as <hostname>.home.arpa.
       host-record = lib.mapAttrsToList (name: ip: "${name}.${lanDomain},${name},${ip}") staticHosts;
       server = ["1.1.1.1" "9.9.9.9" "2606:4700:4700::1111" "2620:fe::9"];
     };
