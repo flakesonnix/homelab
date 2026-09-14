@@ -140,7 +140,8 @@ through the FritzBox NAT).
 Public (via nyagate DNAT → wg0, firewall `networking.firewall.interfaces.wg0`):
 
 - `80/tcp`, `443/tcp` — HTTP/HTTPS (reverse proxy on mireo)
-- `25565/tcp+udp` — Minecraft example
+- `25565/tcp+udp` — Minecraft Java (`~/mcserver` auf mireo)
+- `19132/udp` — Geyser (Bedrock-Crossplay, selber Server)
 
 Internal-only, never via wg0 (bound to `br0`/`10.8.0.0/24`, firewall drops
 them on `wg0`, Avahi pinned to `br0`+`lo`):

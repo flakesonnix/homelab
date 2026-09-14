@@ -121,7 +121,8 @@
 
   # --- WireGuard transit to home LAN (mireo, 10.8.0.1) ---
   # Transit network 10.66.0.0/30: nyagate .1, mireo .2. Inbound ONLY:
-  # public 80/443 (reverse proxy on mireo) + 25565/tcp+udp (Minecraft)
+  # public 80/443 (reverse proxy on mireo) + 25565/tcp+udp (Minecraft Java)
+  # + 19132/udp (Geyser Bedrock, ~/mcserver auf mireo)
   # are DNAT'd through the tunnel, SNAT'd back so the return path stays
   # symmetric. No 0.0.0.0/0 in allowedIPs — default route stays local.
   # v6: HE routed LAN 2001:470:1f15:54f::/64 hängt hinter mireo (br0 ::1),
@@ -142,7 +143,7 @@
     ];
   };
 
-  networking.firewall.allowedUDPPorts = [51820 25565];
+  networking.firewall.allowedUDPPorts = [51820 25565 19132];
   networking.firewall.allowedTCPPorts = [80 443 25565];
 
   # v6-Forward wg0<->he-ipv6 fürs HE-LAN (FORWARD läuft über
@@ -170,6 +171,20 @@
   '';
 
   # DNAT public ports into the tunnel (nyagate has the public IPv4).
+  # NOTE: forwardPorts alone reicht NICHT — ohne SNAT käme das Paket mit
+  # der echten Client-IP (z.B. 1.2.3.4) im Tunnel bei mireo an, und mireos
+  # WireGuard verwirft alles, dessen Source nicht in seinen allowedIPs
+  # (10.66.0.1/32, 2000::/3) steht. Symptom: conntrack SYN_SENT
+  # [UNREPLIED], auf mireo kommt nichts an (Diagnose 2026-09-14).
+  # Deshalb SNAT auf 10.66.0.1: symmetrischer Return-Path + WG-konform.
+  # Nebeneffekt: Server im LAN sehen Externe als 10.66.0.1 (kein IP-Ban
+  # pro Client möglich).
+  networking.nat.extraCommands = ''
+    iptables -w -t nat -A nixos-nat-post -o wg0 -d 10.66.0.2/32 -j SNAT --to-source 10.66.0.1
+  '';
+  networking.nat.extraStopCommands = ''
+    iptables -w -t nat -D nixos-nat-post -o wg0 -d 10.66.0.2/32 -j SNAT --to-source 10.66.0.1 || true
+  '';
   networking.nat = {
     enable = true;
     externalInterface = "eth0";
@@ -193,6 +208,11 @@
       {
         sourcePort = 25565;
         destination = "10.66.0.2:25565";
+        proto = "udp";
+      }
+      {
+        sourcePort = 19132;
+        destination = "10.66.0.2:19132";
         proto = "udp";
       }
     ];

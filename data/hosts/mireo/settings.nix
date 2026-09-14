@@ -376,7 +376,7 @@
   # else arriving via wg0 is dropped by default-deny.
   networking.firewall.interfaces.wg0 = {
     allowedTCPPorts = [80 443 25565];
-    allowedUDPPorts = [25565];
+    allowedUDPPorts = [25565 19132];
   };
 
   # --- Automatic ISO download for iVentoy ---

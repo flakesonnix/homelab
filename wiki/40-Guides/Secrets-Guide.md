@@ -69,6 +69,7 @@ sudo chmod 600 /etc/secrets/initrd/ssh_host_ed25519_key
 ## WireGuard mireo↔nyagate (10.66.0.0/30, public edge db210.org)
 
 Private keys only in sops (`hosts/{mireo,nyagate}/secrets.yaml`), public keys + endpoints plain in settings.
+Private keys only in sops (`hosts/{mireo,nyagate}/secrets.yaml`), public keys + endpoints plain in settings. nyagate DNATs 80/443/25565/19132(udp) → `10.66.0.2` (mireo: Minecraft Java + Geyser aus `~/mcserver`), Caddy on mireo serves `yammat.db210.org` + `grafana.db210.org` with auto-TLS (needs A records `*.db210.org → 188.220.148.24`).
 
 ```bash
 nix run .#deploy-nyagate   # wg0 .1 + NAT first
