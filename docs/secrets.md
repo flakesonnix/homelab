@@ -98,11 +98,12 @@ Authorized keys match the root account's `authorized_keys` (i.e. `lucy.base.sshK
 3. Re-encrypt all affected secrets files: `SOPS_AGE_KEY_FILE=<old-key> sops updatekeys hosts/x270/secrets.yaml`
 4. Deploy new private key to host, rebuild
 
-## WireGuard keys (mireo ↔ purrgate transit)
+## WireGuard keys (mireo ↔ nyagate transit)
 
-Transit network `10.66.0.0/30`: purrgate `.1`, mireo `.2`. Private keys live
+Transit network `10.66.0.0/30`: nyagate `.1` (public edge `db210.org`,
+`188.220.148.24`), mireo `.2`. Private keys live
 only in sops (`hosts/<host>/secrets.yaml`, encrypted); peer public keys and
-the purrgate endpoint are plain settings in `data/hosts/mireo/settings.nix`.
+the nyagate endpoint are plain settings in `data/hosts/mireo/settings.nix`.
 
 ### First-time setup (mireo)
 
@@ -119,9 +120,9 @@ activation fail without it. Deploy the key first (see above), then:
 # then SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/mireo/secrets.yaml
 # (wireguard -> mireo-private-key), then shred -u /tmp/mireo-wg-priv.
 
-# 3. Fill the peer fields in data/hosts/mireo/settings.nix:
-#    - peers[0].publicKey = <purrgate `wg pubkey` output>
-#    - peers[0].endpoint  = <purrgate public IPv4>:51820
+# 3. Peer fields (both already filled, 2026-09-14):
+#    - mireo peers[0].publicKey = <nyagate `wg pubkey`>, endpoint = 188.220.148.24:51820
+#    - nyagate peer publicKey = <mireo `wg pubkey`>, no endpoint (mireo dials out, keepalive 25s)
 #    Keep allowedIPs = ["10.66.0.1/32"] — never 0.0.0.0/0 here (would hijack
 #    the default route and break LAN/NFS/IPv6/microVMs).
 
@@ -136,7 +137,7 @@ through the FritzBox NAT).
 
 ### Published vs internal traffic
 
-Public (via purrgate DNAT → wg0, firewall `networking.firewall.interfaces.wg0`):
+Public (via nyagate DNAT → wg0, firewall `networking.firewall.interfaces.wg0`):
 
 - `80/tcp`, `443/tcp` — HTTP/HTTPS (reverse proxy on mireo)
 - `25565/tcp+udp` — Minecraft example

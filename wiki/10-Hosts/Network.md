@@ -23,8 +23,8 @@ mireo (router)
   └── (DHCP)      x270 (dynamic address via DHCPv4/DHCPv6)
 ```
 
-- NAT masquerade on `enp4s0`, br0 from enp9s0/enp3s0f0/enp3s0f1
-- IPv6 prefix `2a02:3102:4cec:b500::/64` delegated from FritzBox → br0, dnsmasq RA ra-stateful (stateful DHCPv6 addressing)
+- NAT masquerade on `enp4s0`, br0 from enp9s0/enp3s0f0/enp3s0f1; NAT66 outbound (LAN ULA → WAN GUA, `nftables.nat66`, prefix-change-proof, no PD needed)
+- IPv6: FritzBox (6660 Cable) gives mireo WAN a short-lived IA_NA GUA (~2h lifetime, changes across reconnects); PD to br0 is configured (`DHCPPrefixDelegation`, `UplinkInterface=enp4s0`) but currently NOT landing — br0 carries only ULA `fd00:cafe:1::1/64`, so all LAN v6 internet depends on NAT66. If PD ever lands, dnsmasq RA/SLAAC (`constructor:br0`) + stateful DHCPv6 (explicit ULA range) pick the GUA up automatically.
 - dnsmasq host records = VM names, `bindsTo sys-devices-virtual-net-br0.device` fix
 - NFS `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, Nautilus autodiscovery
 - iVentoy PXE server via podman host network, proxyDHCP, :26000
@@ -44,4 +44,4 @@ Topology extras: `topology.nix` (Netdata, NFS, iVentoy, YAMMAT, CUPS, sshkeys, a
 
 ## Transit / WireGuard (sops)
 
-Network `10.66.0.0/30` mireo .2 ↔ purrgate .1 — private keys only in sops, details [[40-Guides/Secrets-Guide|Secrets guide]].
+Network `10.66.0.0/30` mireo .2 ↔ nyagate .1 (`db210.org`, public edge: DNAT 80/443/25565 → tunnel) — private keys only in sops, details [[40-Guides/Secrets-Guide|Secrets guide]].

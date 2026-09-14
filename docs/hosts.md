@@ -19,7 +19,7 @@ Internet (IPv4 + IPv6 via FritzBox)
     └── (DHCP)      x270 (dynamic, see below)
 ```
 
-mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (WAN). IPv6 prefix `2a02:3102:4cec:b500::/64` delegated from FritzBox to br0; dnsmasq issues RA (ra-stateful) to LAN clients and assigns addresses via DHCPv6. LAN clients (x270 etc.) get fully dynamic addresses; only the 7 microVMs and mireo itself have static IPs + DNS records.
+mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (WAN). IPv6 prefix `2a02:3102:4cec:b500::/64` delegated from FritzBox to br0; dnsmasq issues RA + SLAAC (constructor:br0) to LAN clients and assigns addresses via DHCPv6 (stateful ULA range). LAN clients (x270 etc.) get fully dynamic addresses; only the 7 microVMs and mireo itself have static IPs + DNS records.
 
 ---
 
@@ -55,7 +55,7 @@ mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (
 `asterisk`, `audio-stream`, `deskflow`, `fonts`, `gaming`, `gnome`, `gnome-extensions`, `niri`, `serial-getty`, `sops`, `waybar`, `waydroid`, `lanzaboote`
 
 ### Workarounds
-- `virtualisation.libvirtd.enable = mkForce false` in `data/hosts/x270/settings.nix` — recent NixOS `libvirt 12.4.0` tries `Tss2_Tcti_Device_Init(/dev/tpmrm0)` and fails `243/CREDENTIALS` when no TPM device exists, causing `nixos-rebuild-ng` (now strict, exits 4 on any failed unit) to abort the switch. Disabled until a proper TPM/swtpm fix; `virt-manager` still usable via socket if re-enabled.
+- `virtualisation.libvirtd.enable = mkForce false` in `data/hosts/x270/settings.nix` — recent NixOS `libvirt 12.4.0` tries `Tss2_Tcti_Device_Init(/dev/tpmrm0)` and fails `243/CREDENTIALS` when no TPM device exists, causing `nixos-rebuild-ng` (now strict, exits 4 on any failed unit) to abort the switch. Local daemon off, `programs.virt-manager` client stays on for remote `qemu+ssh://root@10.8.0.1/system` (mireo).
 
 ### Deploy
 
@@ -84,7 +84,7 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 ### Features
 - NAT gateway for 10.8.0.0/24 + IPv6 (FritzBox DHCPv6-PD, prefix `2a02:3102:4cec:b500::/64`)
 - systemd-networkd (no NetworkManager)
-- dnsmasq on host: DHCPv4, stateful DHCPv6, DNS, IPv6 RA (ra-stateful) for LAN (br0)
+- dnsmasq on host: DHCPv4, stateful DHCPv6 (explicit ULA range), DNS, IPv6 RA/SLAAC (constructor:br0) for LAN (br0)
 - iVentoy PXE server via OCI container (Podman, `--network=host`, proxyDHCP mode, web UI :26000)
 - NFS export of `/data` to `10.8.0.0/24`
 - Avahi mDNS advertising NFS share (`_nfs._tcp`) for Nautilus autodiscovery
@@ -100,6 +100,7 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
   - **aptcache** (10.8.0.8): apt-cacher-ng caching proxy for LAN
 - No desktop (`lucy.base.isServer = true`)
 - node_exporter running on 10.8.0.1:9100 for self-monitoring
+- libvirtd daemon for virt-manager remote (Weg A): x270 connects via `qemu+ssh://root@10.8.0.1/system`, new libvirt guests bridge to `br0` (`allowedBridges`), static IP outside DHCP range + entry in `hosts/mireo/vm-ips.nix`. The 7 microVMs (microvm.nix) do NOT show in virt-manager. Recovery on `243/CREDENTIALS`: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
 - CLI tools: tcpdump, mtr, nmap, iperf3, ethtool, socat, btop, htop, ncdu, jq, lsof, sysstat, smartmontools
 
 ### NixFleet (M1 — mireo runtime control plane)

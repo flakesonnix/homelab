@@ -72,7 +72,9 @@
     matchConfig.Name = "br0";
     # Static ULA stays as fallback/seed so LAN-local v6 + dnsmasq constructor
     # keep working even if the FritzBox delegation ever fails.
-    address = ["10.8.0.1/24" "fd00:cafe:1::1/64"];
+    # HE routed LAN (via nyagate wg0, Tunnel ID 1039084): SLAAC kommt aus
+    # dnsmasq constructor:br0 automatisch, sobald die Adresse hier liegt.
+    address = ["10.8.0.1/24" "fd00:cafe:1::1/64" "2001:470:1f15:54f::1/64"];
     networkConfig = {
       ConfigureWithoutCarrier = true;
       IPv6AcceptRA = false;
@@ -95,8 +97,45 @@
     internalInterfaces = ["br0"];
   };
 
+  # --- NAT66 outbound (no PD from FritzBox, so no LAN GUA) ---
+  # Masquerade LAN ULA behind whatever GUA is currently on enp4s0.
+  # Prefix-change-proof (no hardcoded GUA), GUA passes through untouched
+  # if PD ever lands. Native nftables (networking.nat is v4-only).
+  # NOTE: br0's IPv6Forwarding only flips the per-link flag — LAN→WAN
+  # forward needs all.forwarding=1 (was 0, v6 egress dead, 2026-09-14).
+  boot.kernel.sysctl."net.ipv6.conf.all.forwarding" = 1;
+  networking.nftables.enable = true;
+  networking.nftables.tables.nat66 = {
+    family = "ip6";
+    content = ''
+      chain postrouting {
+        type nat hook postrouting priority srcnat; policy accept;
+        oifname "enp4s0" ip6 saddr fd00:cafe:1::/64 masquerade
+      }
+    '';
+  };
+
   networking.firewall.trustedInterfaces = ["br0"];
   networking.firewall.interfaces.br0.allowedTCPPorts = [19999 9090];
+
+  # --- libvirtd (virt-manager remote target, Weg A) ---
+  # Desktop-Client (x270) verbindet via qemu+ssh://root@10.8.0.1/system.
+  # microVMs (microvm.nix, systemd microvm@*) bleiben daneben bestehen und
+  # erscheinen NICHT in virt-manager (andere Tech) — GUI nur für neue
+  # libvirt-Gäste. Bridge br0 nutzen (NICHT virbr0/default-Netz): br0 ist
+  # bereits trusted + dnsmasq/DNS vorhanden. IPs statisch ausserhalb
+  # DHCP-Range (10.8.0.100-.199) wählen + in hosts/mireo/vm-ips.nix eintragen.
+  # Risiko: libvirt 12.4 secrets-encryption-key/TPM-Bug (243/CREDENTIALS).
+  # Recovery: rm /var/lib/libvirt/secrets/secrets-encryption-key + reboot.
+  # deploy-rs nutzt switch-to-configuration direkt (toleranter als
+  # nixos-rebuild-ng strict exit 4).
+  virtualisation.libvirtd = {
+    enable = true;
+    onBoot = "ignore";
+    onShutdown = "shutdown";
+    allowedBridges = ["br0"];
+    qemu.vhostUserPackages = with pkgs; [virtiofsd];
+  };
 
   # --- dnsmasq: DHCP + DNS for LAN (br0) ---
   # DNS from a single shared map (hosts/mireo/vm-ips.nix): the same
@@ -125,7 +164,17 @@
       enable-ra = true;
       dhcp-range = [
         "10.8.0.100,10.8.0.199,255.255.255.0,24h"
-        "::,constructor:br0,ra-stateful,64,24h"
+        # RA/SLAAC for every prefix on br0 (ULA + HE routed GUA, FritzBox PD
+        # falls je durch).
+        # NOTE: dnsmasq has NO `ra-stateful` flag (it fails with
+        # "bad dhcp-range"): a bare `::,constructor:…` range is
+        # stateless-only; stateful needs an explicit address range below
+        # (dnsmasq then sets the RA managed bit automatically).
+        "::,constructor:br0,ra-stateless,64,24h"
+        # Stateful DHCPv6 on the static ULA (works independent of PD)
+        # + HE routed LAN (via nyagate wg0).
+        "fd00:cafe:1::100,fd00:cafe:1::1ff,64,24h"
+        "2001:470:1f15:54f::100,2001:470:1f15:54f::1ff,64,24h"
       ];
       dhcp-option = [
         "option:router,10.8.0.1"
@@ -145,6 +194,10 @@
   # issues certs for .home.arpa (RFC 8375). WAN port 80 stays closed by
   # the default firewall (only br0 is trusted), so this is LAN-only.
   # Direct ports (CUPS :631 IPP, iVentoy PXE, …) keep working untouched.
+  # Public edge (via nyagate DNAT 80/443 → wg0, firewall interfaces.wg0):
+  # bare domains below get automatic TLS from Caddy. Prerequisite: A
+  # records *.db210.org → 188.220.148.24 at the registrar, otherwise
+  # Caddy keeps retrying ACME in the background (service stays up).
   services.caddy = let
     webUIs = {
       grafana = "10.8.0.2:3000";
@@ -156,13 +209,23 @@
       netdata = "127.0.0.1:19999";
       iventoy = "127.0.0.1:26000";
     };
+    publicWebUIs = {
+      "yammat.db210.org" = "10.8.0.5:3000";
+      "grafana.db210.org" = "10.8.0.2:3000";
+    };
   in {
     enable = true;
-    virtualHosts = lib.mapAttrs' (name: target:
-      lib.nameValuePair "http://${name}.home.arpa" {
-        extraConfig = "reverse_proxy ${target}";
-      })
-    webUIs;
+    virtualHosts =
+      lib.mapAttrs' (name: target:
+        lib.nameValuePair "http://${name}.home.arpa" {
+          extraConfig = "reverse_proxy ${target}";
+        })
+      webUIs
+      // lib.mapAttrs' (name: target:
+        lib.nameValuePair name {
+          extraConfig = "reverse_proxy ${target}";
+        })
+      publicWebUIs;
   };
 
   # --- iVentoy PXE server (proxyDHCP mode, web UI :26000) ---
@@ -247,18 +310,18 @@
     };
   };
 
-  # --- WireGuard transit to public edge (purrgate VPS) ---
-  # Transit network 10.66.0.0/30: purrgate .1, mireo .2. This carries ONLY
-  # explicitly published inbound traffic (DNAT'd on purrgate, SNAT'd back so
+  # --- WireGuard transit to public edge (nyagate VPS, db210.org) ---
+  # Transit network 10.66.0.0/30: nyagate .1, mireo .2. This carries ONLY
+  # explicitly published inbound traffic (DNAT'd on nyagate, SNAT'd back so
   # return path stays symmetric via the tunnel — no 0.0.0.0/0 AllowedIPs here,
   # which would hijack the default route and break LAN/NFS/IPv6/microVMs).
   # LAN-only services (NFS /data, dnsmasq DHCP/DNS, PXE, Avahi) stay bound to
   # br0 / 10.8.0.0/24 and are NOT reachable via wg0 (firewall below allows
   # only the published ports; Avahi is pinned to br0+lo).
-  # Setup: fill endpoint + peer publicKey, set private key via
-  # `sops hosts/mireo/secrets.yaml`, then `systemctl restart wireguard-wg0`.
-  # Outbound-via-VPS is intentionally NOT enabled (opt-in policy routing only,
-  # documented in docs/secrets.md) to preserve existing NAT/IPv6 behavior.
+  # Private key via `sops hosts/mireo/secrets.yaml`, peer key in
+  # `hosts/nyagate/secrets.yaml`. After deploy: `wg show wg0` (both ends).
+  # v6: global unicast (2000::/3) geht via wg0 -> nyagate HE-Tunnel raus.
+  # ULA bleibt bewusst ausgenommen (weiter NAT66 via enp4s0 als Fallback).
   networking.wireguard.interfaces.wg0 = {
     ips = ["10.66.0.2/30"];
     listenPort = 51820;
@@ -268,22 +331,36 @@
     privateKeyFile = "/run/secrets/wireguard/mireo-private-key";
     peers = [
       {
-        name = "purrgate";
-        # purrgate's `wg pubkey` output. Placeholder until VPS is provisioned.
-        publicKey = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-        # purrgate public IPv4. TEST-NET-1 placeholder — replace before use.
-        endpoint = "192.0.2.1:51820";
-        allowedIPs = ["10.66.0.1/32"];
+        name = "nyagate";
+        publicKey = "pKir9k3Af8ng24vW/vzoRkewoaMHdWysqxNX9xQbU0o=";
+        endpoint = "188.220.148.24:51820";
+        allowedIPs = ["10.66.0.1/32" "2000::/3"];
         persistentKeepalive = 25;
       }
     ];
   };
 
   # WireGuard handshake responses (mireo initiates out, but keep the port open
-  # so the tunnel survives keepalive gaps / purrgate-initiated handshakes).
+  # so the tunnel survives keepalive gaps / nyagate-initiated handshakes).
   networking.firewall.allowedUDPPorts = [51820];
 
-  # Published services ONLY — must mirror purrgate's forwardPorts. Everything
+  # --- Bevorzugte v6-Source fürs Tunnel-Routing (HE primär) ---
+  # Diagnose 2026-09-14: Kernel wählt sonst die FritzBox-GUA als Source
+  # (asymmetrisch: raus via WG/HE, zurück via FritzBox -> conntrack DROP).
+  # Diese Route (Metrik 512) sticht die WireGuard-Route (1024) aus und pinnt
+  # die HE-Adresse als Source. ULA/NAT66-Fallback unberührt.
+  systemd.network.networks."40-wg0" = {
+    matchConfig.Name = "wg0";
+    routes = [
+      {
+        Destination = "2000::/3";
+        PreferredSource = "2001:470:1f15:54f::1";
+        Metric = 512;
+      }
+    ];
+  };
+
+  # Published services ONLY — must mirror nyagate's forwardPorts. Everything
   # else arriving via wg0 is dropped by default-deny.
   networking.firewall.interfaces.wg0 = {
     allowedTCPPorts = [80 443 25565];

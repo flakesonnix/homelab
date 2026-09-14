@@ -66,14 +66,14 @@ sudo ssh-keygen -t ed25519 -f /etc/secrets/initrd/ssh_host_ed25519_key -N ""
 sudo chmod 600 /etc/secrets/initrd/ssh_host_ed25519_key
 ```
 
-## WireGuard mireo↔purrgate (10.66.0.0/30)
+## WireGuard mireo↔nyagate (10.66.0.0/30, public edge db210.org)
 
-Private keys only in sops, public keys + endpoint plain in `data/hosts/mireo/settings.nix`.
+Private keys only in sops (`hosts/{mireo,nyagate}/secrets.yaml`), public keys + endpoints plain in settings.
 
 ```bash
-./scripts/setup-wireguard-mireo.sh
-nix run .#deploy-mireo
-ssh root@10.8.0.1 'systemctl restart wireguard-wg0 && wg show wg0'
+nix run .#deploy-nyagate   # wg0 .1 + NAT first
+nix run .#deploy-mireo     # wg0 .2 + Caddy public vhosts
+ssh root@10.8.0.1 'wg show wg0'; ssh root@db210.org 'wg show wg0'
 ```
 
 `allowedIPs=["10.66.0.1/32"]` — never `0.0.0.0/0` (would hijack LAN/NFS/IPv6). Rollback: `systemctl stop wireguard-wg0`.
