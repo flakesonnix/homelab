@@ -15,7 +15,7 @@ systemctl --failed
 journalctl -b -p err
 ```
 
-Known on x270: libvirt TPM without `/dev/tpmrm0` → `virtualisation.libvirtd.enable=mkForce false` (see [[10-Hosts/x270|x270]]).
+Known on x270: libvirt TPM without `/dev/tpmrm0` → `virtualisation.libvirtd.enable=mkForce false` (see [[10-Hosts/x270|x270]]). Same `243/CREDENTIALS` can hit mireo: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot (see [[10-Hosts/mireo#libvirt-virt-manager-remote-target-weg-a|mireo libvirt]]).
 
 ## deploy-rs: NIX_PATH / nixos-config missing
 

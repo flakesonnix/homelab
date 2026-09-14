@@ -13,7 +13,7 @@ namespace: lucy.*
 
 | Module | Namespace | Purpose |
 |-------|-----------|-------|
-| `base` | `lucy.base.*` | SSH (key-only, no passwords), sudo, libvirtd (non-server), FW 22/24800/5555-5585, initrd SSH :2222, `trusted-users` |
+| `base` | `lucy.base.*` | SSH (key-only, no passwords), sudo, libvirtd (non-server; Ausnahmen: mireo `enable=true` als virt-manager-Target, x270 `mkForce false` per TPM-Workaround), FW 22/24800/5555-5585, initrd SSH :2222, `trusted-users` |
 | `packages` | `lucy.*` | `basePackages`/`hostPackages` + one toggle per `data/packages/system.nix` entry |
 | `sops` | `lucy.secrets.*` | sops-nix wrapper, asserts `sopsFile!=null`, `ageKeyPath=/etc/sops/age/keys.txt` |
 | `hm-base` | — | HM `useGlobalPkgs`/`useUserPackages`, passes `frameworkLib` via specialArgs |

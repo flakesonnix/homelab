@@ -137,6 +137,18 @@
     qemu.vhostUserPackages = with pkgs; [virtiofsd];
   };
 
+  # lucy darf libvirt ohne Polkit-Agent verwalten (headless Server).
+  # Diagnose 2026-09-14: qemu+ssh://lucy@10.8.0.1/system starb mit
+  # "authentication unavailable: no polkit agent available to authenticate
+  # action 'org.libvirt.unix.manage'". root geht auch ohne Regel.
+  security.polkit.extraConfig = ''
+    polkit.addRule(function(action, subject) {
+      if (action.id == "org.libvirt.unix.manage" && subject.user == "lucy") {
+        return polkit.Result.YES;
+      }
+    });
+  '';
+
   # --- dnsmasq: DHCP + DNS for LAN (br0) ---
   # DNS from a single shared map (hosts/mireo/vm-ips.nix): the same
   # file feeds the microVM specs, so declare a VM IP once and its

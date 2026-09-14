@@ -16,6 +16,7 @@
     starship.enable = true;
     thunderbird.enable = true;
     vesktop.enable = true;
+    virtManager.enable = true;
     waybar.enable = true;
     zathura.enable = true;
   };

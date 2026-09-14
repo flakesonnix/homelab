@@ -26,5 +26,8 @@
   hq.deskflow.enable = true;
 
   # Workaround for libvirtd TPM failure on recent NixOS (tpmrm0 missing, exit 243).
+  # Local daemon aus, Client bleibt an für remote mireo:
+  # qemu+ssh://root@10.8.0.1/system (programs.virt-manager aus base.nix).
   virtualisation.libvirtd.enable = lib.mkForce false;
+  programs.virt-manager.enable = true;
 }

@@ -29,6 +29,7 @@ in {
     ./programs/gnome-theme.nix
     ./programs/thunderbird.nix
     ./programs/vesktop.nix
+    ./programs/virt-manager.nix
     ./programs/zathura
     ./programs/eww.nix
     ./programs/rofi.nix
