@@ -205,7 +205,7 @@
   # The http:// prefix disables Caddy's automatic HTTPS — no public CA
   # issues certs for .home.arpa (RFC 8375). WAN port 80 stays closed by
   # the default firewall (only br0 is trusted), so this is LAN-only.
-  # Direct ports (CUPS :631 IPP, iVentoy PXE, …) keep working untouched.
+  # Direct ports (CUPS :631 IPP, …) keep working untouched.
   # Public edge (via nyagate DNAT 80/443 → wg0, firewall interfaces.wg0):
   # bare domains below get automatic TLS from Caddy. Prerequisite: A
   # records *.db210.org → 188.220.148.24 at the registrar, otherwise
@@ -219,7 +219,6 @@
       sshkeys = "10.8.0.7:80";
       aptcache = "10.8.0.8:3142";
       netdata = "127.0.0.1:19999";
-      iventoy = "127.0.0.1:26000";
     };
     publicWebUIs = {
       "yammat.db210.org" = "10.8.0.5:3000";
@@ -238,22 +237,6 @@
           extraConfig = "reverse_proxy ${target}";
         })
       publicWebUIs;
-  };
-
-  # --- iVentoy PXE server (proxyDHCP mode, web UI :26000) ---
-  virtualisation.podman.enable = true;
-  virtualisation.oci-containers.backend = "podman";
-  virtualisation.oci-containers.containers.iventoy = {
-    image = "docker.io/garybowers/iventoy:latest";
-    # --privileged required: proxyDHCP mode needs raw sockets/BPF for DHCP+TFTP
-    extraOptions = [
-      "--network=host"
-      "--privileged"
-    ];
-    volumes = [
-      "/data/iventoy/iso:/iventoy/iso"
-      "/data/iventoy/data:/iventoy/data"
-    ];
   };
 
   fileSystems."/data" = {
@@ -377,47 +360,6 @@
   networking.firewall.interfaces.wg0 = {
     allowedTCPPorts = [80 443 25565];
     allowedUDPPorts = [25565 19132];
-  };
-
-  # --- Automatic ISO download for iVentoy ---
-  systemd.services.iventoy-fetch-isos = {
-    description = "Download Linux ISOs for iVentoy PXE";
-    after = ["data.mount"];
-    requires = ["data.mount"];
-    wants = ["podman-iventoy.service"];
-    path = [pkgs.curl pkgs.coreutils];
-    serviceConfig = {
-      Type = "oneshot";
-      User = "root";
-    };
-    script = ''
-      ISO_DIR="/data/iventoy/iso"
-      mkdir -p "$ISO_DIR"
-
-      dl() {
-        local url="$1" file="$2"
-        if [ -f "$ISO_DIR/$file" ]; then
-          echo "Exists: $file"
-          return
-        fi
-        echo "Downloading $file..."
-        curl -fLo "$ISO_DIR/$file.tmp" "$url" && mv "$ISO_DIR/$file.tmp" "$ISO_DIR/$file" || { echo "FAILED: $file"; rm -f "$ISO_DIR/$file.tmp"; return 1; }
-      }
-
-      dl "https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-12.9.0-amd64-netinst.iso" "debian-12-netinst.iso"
-      dl "https://files.devuan.org/devuan_daedalus/installer-iso/devuan_daedalus_5.0.0_amd64_netinst.iso" "devuan-daedalus-5-netinst.iso"
-      dl "https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso" "archlinux-x86_64.iso"
-      dl "https://releases.ubuntu.com/24.04/ubuntu-24.04.2-desktop-amd64.iso" "ubuntu-24.04-desktop.iso"
-    '';
-  };
-
-  systemd.timers.iventoy-fetch-isos = {
-    description = "Weekly update of iVentoy ISOs";
-    wantedBy = ["timers.target"];
-    timerConfig = {
-      OnCalendar = "weekly";
-      Persistent = true;
-    };
   };
 
   # Ensure dnsmasq starts after br0 exists (avoids "unknown interface" race)

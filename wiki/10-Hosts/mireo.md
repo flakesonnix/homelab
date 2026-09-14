@@ -44,7 +44,6 @@ One entrypoint for all web UIs: `http://<name>.home.arpa` (DNS from dnsmasq, no 
 | cups.home.arpa | 10.8.0.6:631 (web UI; IPP printing stays direct) |
 | sshkeys.home.arpa | 10.8.0.7:80 |
 | aptcache.home.arpa | 10.8.0.8:3142 |
-| iventoy.home.arpa | mireo :26000 |
 | netdata.home.arpa | mireo :19999 |
 
 Source: `webUIs` map in `data/hosts/mireo/settings.nix` → `services.caddy.virtualHosts`.

@@ -29,7 +29,7 @@ mireo (router)
 - NFS `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, Nautilus autodiscovery
 - iVentoy PXE server via podman host network, proxyDHCP, :26000
 - Printing: IPP + Avahi `_ipp._tcp` (10.8.0.6)
-- Reverse proxy: Caddy on mireo `:80` → `http://<name>.home.arpa` per web UI (grafana, prometheus, yammat, cups, sshkeys, aptcache, netdata, iventoy) — details [[10-Hosts/mireo|mireo]]
+- Reverse proxy: Caddy on mireo `:80` → `http://<name>.home.arpa` per web UI (grafana, prometheus, yammat, cups, sshkeys, aptcache, netdata) — details [[10-Hosts/mireo|mireo]]
 - Tailscale on x270, Deskflow keyboard/mouse sharing
 
 ## dnsmasq / IP cheat sheet
@@ -40,7 +40,7 @@ ip -j addr | jq
 ss -tulpn
 ```
 
-Topology extras: `topology.nix` (Netdata, NFS, iVentoy, YAMMAT, CUPS, sshkeys, aptcache, monerod manual entries, mireo=router).
+Topology extras: `topology.nix` (Netdata, NFS, YAMMAT, CUPS, sshkeys, aptcache, monerod manual entries, mireo=router).
 
 ## Transit / WireGuard (sops)
 

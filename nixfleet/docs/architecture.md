@@ -249,7 +249,7 @@ Plugin ↔ host tooling mapping (existing mechanisms, never replaced):
 | journal | `journalctl -o json[-f]` | filter: unit, priority, since, match |
 | nixos | `nix-env -p /nix/var/nix/profiles/system`, `switch-to-configuration`, `nix store gc`, `nix build` | generations (booted/current), rollback, gc dry-run+collect, flake check/eval/test/topology (eval GUI) |
 | microvm | `systemctl [start|stop|restart] microvm@<name>`, qemu serial socket | console via serial socket; snapshots: prepare (stop + overlay copy) — deferred |
-| podman | `podman ps -a --format json`, logs, restart, exec, images, volumes | repo uses podman (iVentoy); not docker |
+| podman | `podman ps -a --format json`, logs, restart, exec, images, volumes | no container workloads left (iVentoy removed Sep 2026); not docker |
 | network | `ip -j [addr|route|link]`, `ip -j rules`, `ss -tulpn`, `nft list ruleset` | iproute2 JSON output |
 | files | Go `os` + `archive/zip` | path allowlist from config (`lucy.nixfleet.agent.files.roots`) |
 | terminal | `creack/pty`, local `ssh -t <user>@localhost` | user from config (default `lucy`); multiple sessions, resize, copy/paste, UTF-8 |
@@ -380,7 +380,7 @@ confirm → `nix store gc`/`nix-collect-garbage -d`, show freed space.
 | D2 | Artifact generators in pure Nix + CI commit (topology pattern); Go/React read-only | single source of truth stays the flake; zero duplicate data or UI structure |
 | D3 | Deploy plugin wraps `nh`/deploy-rs/nvd as-is | spec: never replace existing mechanisms |
 | D4 | Agents are NixOS services (systemd), binary from flake package | declarative, joins existing deploy |
-| D5 | Container plugin targets podman | repo standard runtime (iVentoy) |
+| D5 | Container plugin targets podman | no container workloads left (iVentoy removed Sep 2026) |
 | D6 | Static capabilities compiled into agent; `plugins` list + artifact decide enablement | no dynamic loading, simple + safe, registry metadata stays declarative |
 | D7 | Auth: single admin, sessions+CSRF; RBAC/2FA/Passkeys as interfaces; RBAC policy in Nix | spec: prepare, not implement |
 | D8 | OpenAPI-first with oapi-codegen | typed models, no unchecked maps |

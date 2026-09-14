@@ -17,10 +17,6 @@
       name = "NFS";
       info = "/data → 10.8.0.0/24";
     };
-    iventoy = {
-      name = "iVentoy PXE";
-      info = "proxyDHCP :26000";
-    };
   };
 
   # --- Yammat VM: manual service (no extractor) ---
