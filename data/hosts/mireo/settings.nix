@@ -258,6 +258,7 @@
       netdata = "127.0.0.1:19999";
       # IP from vm-ips.nix (single source) instead of a literal like above.
       uptime-kuma = "${(import ../../../hosts/mireo/vm-ips.nix).uptime-kuma}:3001";
+      jellyfin = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
     };
     publicWebUIs = {
       "yammat.db210.org" = "10.8.0.5:3000";

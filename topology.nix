@@ -72,4 +72,13 @@
       info = "10.8.0.9:3001 (via Caddy uptime-kuma.home.arpa)";
     };
   };
+
+  # --- Jellyfin VM: manual service (jellyfin is not auto-detected) ---
+  nodes.jellyfin = {
+    deviceType = "nixos";
+    services.jellyfin = {
+      name = "Jellyfin";
+      info = "10.8.0.10:8096 (via Caddy jellyfin.home.arpa)";
+    };
+  };
 }

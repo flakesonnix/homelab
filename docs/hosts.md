@@ -17,10 +17,11 @@ Internet (IPv4 + IPv6 via FritzBox)
     ├── 10.8.0.7  sshkeys microvm     (SSH public key web)
     ├── 10.8.0.8  aptcache microvm    (apt-cacher-ng proxy)
     ├── 10.8.0.9  uptime-kuma microvm (status monitoring :3001)
+    ├── 10.8.0.10 jellyfin microvm    (media server :8096)
     └── (DHCP)      x270 (dynamic, see below)
 ```
 
-mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (WAN). IPv6 prefix `2a02:3102:4cec:b500::/64` delegated from FritzBox to br0; dnsmasq issues RA + SLAAC (constructor:br0) to LAN clients and assigns addresses via DHCPv6 (stateful ULA range). LAN clients (x270 etc.) get fully dynamic addresses; only the 7 microVMs and mireo itself have static IPs + DNS records.
+mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (WAN). IPv6 prefix `2a02:3102:4cec:b500::/64` delegated from FritzBox to br0; dnsmasq issues RA + SLAAC (constructor:br0) to LAN clients and assigns addresses via DHCPv6 (stateful ULA range). LAN clients (x270 etc.) get fully dynamic addresses; only the 9 microVMs and mireo itself have static IPs + DNS records.
 
 ---
 
@@ -90,7 +91,7 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 - NFS export of `/data` to `10.8.0.0/24`
 - Avahi mDNS advertising NFS share (`_nfs._tcp`) for Nautilus autodiscovery
 - Netdata monitoring (10.8.0.1:19999, also via `http://netdata.home.arpa`)
-- Caddy reverse proxy on `:80` — every web UI as `http://<name>.home.arpa` (grafana, prometheus, yammat, cups, sshkeys, aptcache, netdata, uptime-kuma)
+- Caddy reverse proxy on `:80` — every web UI as `http://<name>.home.arpa` (grafana, prometheus, yammat, cups, sshkeys, aptcache, netdata, uptime-kuma, jellyfin)
 - Seven microVMs running on br0:
   - **grafana** (10.8.0.2): Prometheus scraping router + all hosts, Grafana with mireo-router dashboard
   - **network-services** (10.8.0.3): bridge tap stub (no services)
@@ -100,16 +101,17 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
   - **sshkeys** (10.8.0.7): Nginx serving SSH public keys
   - **aptcache** (10.8.0.8): apt-cacher-ng caching proxy for LAN
   - **uptime-kuma** (10.8.0.9): Uptime Kuma status monitoring (port 3001, via `http://uptime-kuma.home.arpa`)
+  - **jellyfin** (10.8.0.10): Jellyfin media server (port 8096, via `http://jellyfin.home.arpa`)
 - No desktop (`lucy.base.isServer = true`)
 - node_exporter running on 10.8.0.1:9100 for self-monitoring
-- libvirtd daemon for virt-manager remote (Weg A): x270 connects via `qemu+ssh://root@10.8.0.1/system`, new libvirt guests bridge to `br0` (`allowedBridges`), static IP outside DHCP range + entry in `hosts/mireo/vm-ips.nix`. The 7 microVMs (microvm.nix) do NOT show in virt-manager. Recovery on `243/CREDENTIALS`: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
+- libvirtd daemon for virt-manager remote (Weg A): x270 connects via `qemu+ssh://root@10.8.0.1/system`, new libvirt guests bridge to `br0` (`allowedBridges`), static IP outside DHCP range + entry in `hosts/mireo/vm-ips.nix`. The 9 microVMs (microvm.nix) do NOT show in virt-manager. Recovery on `243/CREDENTIALS`: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
 - CLI tools: tcpdump, mtr, nmap, iperf3, ethtool, socat, btop, htop, ncdu, jq, lsof, sysstat, smartmontools
 
 ### NixFleet (M1 — mireo runtime control plane)
 - `lucy.nixfleet.enable = true; role = "api"` in `data/hosts/mireo/settings.nix` — both `nixfleet-api` (8443, `DynamicUser`, `StateDirectory=nixfleet`) and `nixfleet-agent` (`systemd`+`journal`+`metrics`) run on mireo; module no longer gates on `role`, so `api` host also runs agent.
 - `api.artifactsDir = ../../../nixfleet/artifacts` (committed `manifest.json`/`ui.json`), `api.webDir` via `flake.nix` `nixfleetPkgs.web` when built; firewall `br0` now allows `8443`.
 - **M1 API (DONE, 7a05039, Sep 2026)**: `GET /api/v1/hosts`, `/:host/health` (`healthy|degraded|critical|unknown`, `failedUnits`), `/:host/resources` (`/proc`), `/:host/network` (`ip -j`), `/:host/vms` (merged `configured` from manifest + `runtime` via `systemctl is-active microvm@<name>` validated), `/:host/systemd/failed` — typed Go structs, `404` for unknown host/vm, `503` for non-local host (M1 collects only where API runs).
-- **Frontend**: `HostOverview` + `VMTable` + `SystemdFailed` on dashboard; `/vms` lists 7 VMs (grafana…aptcache) with `Name|IP|State|vCPU|RAM|Health|Ports`, network table shows `br0` + VM taps. Dark dense monospace styling.
+- **Frontend**: `HostOverview` + `VMTable` + `SystemdFailed` on dashboard; `/vms` lists 9 VMs (grafana…jellyfin) with `Name|IP|State|vCPU|RAM|Health|Ports`, network table shows `br0` + VM taps. Dark dense monospace styling.
 - No WebSocket/auth/SQLite yet — observability first. M1-full will add agent WS protocol + full multi-host support.
 
 ### Roles
@@ -139,6 +141,7 @@ None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` inte
 | sshkeys | 10.8.0.7 | 256 MB | 1 | — |
 | aptcache | 10.8.0.8 | 512 MB | 1 | 8 GB cache |
 | uptime-kuma | 10.8.0.9 | 512 MB | 1 | 1 GB state (SQLite) |
+| jellyfin | 10.8.0.10 | 2304 MB | 2 | 8 GB state (library metadata) |
 
 ### Monero port forwarding
 Port 9001/tcp (Tor ORPort) forwarded from WAN to monerod VM.
