@@ -8,6 +8,7 @@
     ./aptcache-microvm.nix
     ./sshkeys-microvm.nix
     ./yammat-microvm.nix
+    ./uptime-kuma-microvm.nix
   ];
 
   # All microvm tap interfaces join the LAN bridge.

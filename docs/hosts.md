@@ -16,6 +16,7 @@ Internet (IPv4 + IPv6 via FritzBox)
     ├── 10.8.0.6  cups microvm        (CUPS print server)
     ├── 10.8.0.7  sshkeys microvm     (SSH public key web)
     ├── 10.8.0.8  aptcache microvm    (apt-cacher-ng proxy)
+    ├── 10.8.0.9  uptime-kuma microvm (status monitoring :3001)
     └── (DHCP)      x270 (dynamic, see below)
 ```
 
@@ -89,7 +90,7 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 - NFS export of `/data` to `10.8.0.0/24`
 - Avahi mDNS advertising NFS share (`_nfs._tcp`) for Nautilus autodiscovery
 - Netdata monitoring (10.8.0.1:19999, also via `http://netdata.home.arpa`)
-- Caddy reverse proxy on `:80` — every web UI as `http://<name>.home.arpa` (grafana, prometheus, yammat, cups, sshkeys, aptcache, netdata)
+- Caddy reverse proxy on `:80` — every web UI as `http://<name>.home.arpa` (grafana, prometheus, yammat, cups, sshkeys, aptcache, netdata, uptime-kuma)
 - Seven microVMs running on br0:
   - **grafana** (10.8.0.2): Prometheus scraping router + all hosts, Grafana with mireo-router dashboard
   - **network-services** (10.8.0.3): bridge tap stub (no services)
@@ -98,6 +99,7 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
   - **cups** (10.8.0.6): CUPS print server (IPP, Avahi, Epson ET-2860 + Lexmark)
   - **sshkeys** (10.8.0.7): Nginx serving SSH public keys
   - **aptcache** (10.8.0.8): apt-cacher-ng caching proxy for LAN
+  - **uptime-kuma** (10.8.0.9): Uptime Kuma status monitoring (port 3001, via `http://uptime-kuma.home.arpa`)
 - No desktop (`lucy.base.isServer = true`)
 - node_exporter running on 10.8.0.1:9100 for self-monitoring
 - libvirtd daemon for virt-manager remote (Weg A): x270 connects via `qemu+ssh://root@10.8.0.1/system`, new libvirt guests bridge to `br0` (`allowedBridges`), static IP outside DHCP range + entry in `hosts/mireo/vm-ips.nix`. The 7 microVMs (microvm.nix) do NOT show in virt-manager. Recovery on `243/CREDENTIALS`: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
@@ -136,6 +138,7 @@ None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` inte
 | cups | 10.8.0.6 | 512 MB | 1 | 256 MB cups config |
 | sshkeys | 10.8.0.7 | 256 MB | 1 | — |
 | aptcache | 10.8.0.8 | 512 MB | 1 | 8 GB cache |
+| uptime-kuma | 10.8.0.9 | 512 MB | 1 | 1 GB state (SQLite) |
 
 ### Monero port forwarding
 Port 9001/tcp (Tor ORPort) forwarded from WAN to monerod VM.

@@ -256,6 +256,8 @@
       sshkeys = "10.8.0.7:80";
       aptcache = "10.8.0.8:3142";
       netdata = "127.0.0.1:19999";
+      # IP from vm-ips.nix (single source) instead of a literal like above.
+      uptime-kuma = "${(import ../../../hosts/mireo/vm-ips.nix).uptime-kuma}:3001";
     };
     publicWebUIs = {
       "yammat.db210.org" = "10.8.0.5:3000";

@@ -63,4 +63,13 @@
       info = "10.8.0.4:18080 (pruned)";
     };
   };
+
+  # --- Uptime Kuma VM: manual service (uptime-kuma is not auto-detected) ---
+  nodes.uptime-kuma = {
+    deviceType = "nixos";
+    services.uptime-kuma = {
+      name = "Uptime Kuma";
+      info = "10.8.0.9:3001 (via Caddy uptime-kuma.home.arpa)";
+    };
+  };
 }

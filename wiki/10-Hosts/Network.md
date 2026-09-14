@@ -20,6 +20,7 @@ mireo (router)
   ├── 10.8.0.6  cups :631
   ├── 10.8.0.7  sshkeys :80
   ├── 10.8.0.8  aptcache :3142
+  ├── 10.8.0.9  uptime-kuma :3001 (via Caddy uptime-kuma.home.arpa)
   └── (DHCP)      x270 (dynamic address via DHCPv4/DHCPv6)
 ```
 
