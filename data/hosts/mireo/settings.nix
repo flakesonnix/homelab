@@ -204,6 +204,31 @@
       dhcp-host = [
         "52:54:00:3d:5d:dd,ucs"
       ];
+      # --- PXE boot (dnsmasq-nativ, netboot.xyz-Menü) ---
+      # iPXE-Clients (erkennbar an Option 175) chainloaden direkt das
+      # netboot.xyz-Menü per HTTP; klassische PXE-ROMs laden erst iPXE
+      # per TFTP (Binaries aus nixpkgs, kein /data nötig) und landen in
+      # Runde 2 ebenfalls im Menü. Normale Clients kriegen keinen
+      # Dateinamen (ungetaggte dhcp-boot fehlt absichtlich).
+      # Ablauf BIOS-VM: undionly.kpxe (TFTP) → iPXE → http-Menü.
+      # WICHTIG: tag:ipxe-Regel MUSS als letzte stehen — dnsmasq nimmt bei
+      # mehreren passenden dhcp-boot-Zeilen die letzte (iPXE-Clients matchen
+      # zugleich client-arch 0 UND Option 175; Diagnose 2026-09-14: mit
+      # ipxe-Regel zuerst luden sie endlos undionly.kpxe neu).
+      dhcp-match = [
+        "set:bios,option:client-arch,0"
+        "set:efi-bc,option:client-arch,7"
+        "set:efi64,option:client-arch,9"
+        "set:ipxe,175"
+      ];
+      dhcp-boot = [
+        "tag:bios,undionly.kpxe,,10.8.0.1"
+        "tag:efi-bc,snp.efi,,10.8.0.1"
+        "tag:efi64,snp.efi,,10.8.0.1"
+        "tag:ipxe,http://boot.netboot.xyz/menu.ipxe"
+      ];
+      enable-tftp = true;
+      tftp-root = "${pkgs.ipxe}";
       # Everyone else gets dynamic addresses via DHCPv4/DHCPv6. dnsmasq
       # serves DNS names for its leases automatically, so clients stay
       # reachable as <hostname>.home.arpa.

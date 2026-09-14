@@ -85,7 +85,7 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 - NAT gateway for 10.8.0.0/24 + IPv6 (FritzBox DHCPv6-PD, prefix `2a02:3102:4cec:b500::/64`)
 - systemd-networkd (no NetworkManager)
 - dnsmasq on host: DHCPv4, stateful DHCPv6 (explicit ULA range), DNS, IPv6 RA/SLAAC (constructor:br0) for LAN (br0)
-- iVentoy PXE server via OCI container (Podman, `--network=host`, proxyDHCP mode, web UI :26000)
+- PXE boot via dnsmasq (iPXE binaries from nixpkgs, netboot.xyz menu over HTTP)
 - NFS export of `/data` to `10.8.0.0/24`
 - Avahi mDNS advertising NFS share (`_nfs._tcp`) for Nautilus autodiscovery
 - Netdata monitoring (10.8.0.1:19999, also via `http://netdata.home.arpa`)
@@ -114,7 +114,7 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` intentionally absent, manifest `roles: []`)
 
 ### Config files
-- `data/hosts/mireo/settings.nix` — hostname, network, NAT, dnsmasq, NFS, Avahi, iVentoy, Netdata, **nixfleet M1** (`lucy.nixfleet.*`, firewall 8443)
+- `data/hosts/mireo/settings.nix` — hostname, network, NAT, dnsmasq (+native PXE/netboot.xyz), NFS, Avahi, Netdata, **nixfleet M1** (`lucy.nixfleet.*`, firewall 8443)
 - `hosts/mireo/host.nix` — framework applyHost
 - `hosts/mireo/vm-ips.nix` — static IP map shared by VM specs, DNS and proxy
 - `hosts/mireo/grafana-microvm.nix` — grafana + prometheus microvm

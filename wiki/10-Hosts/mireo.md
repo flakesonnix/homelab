@@ -22,7 +22,7 @@ deploy: nix run .#deploy-mireo
 
 - NAT for 10.8.0.0/24 + IPv6 via NAT66 (FritzBox PD configured but currently not landing — br0 is ULA-only, all LAN v6 egress masqueraded), systemd-networkd
 - dnsmasq: DHCPv4/stateful DHCPv6 (explicit ULA range)/DNS/RA+SLAAC (constructor:br0) (`bindsTo sys-devices-virtual-net-br0.device` fix)
-- iVentoy PXE server (podman `--network=host`, proxyDHCP mode, UI :26000)
+- PXE boot via dnsmasq (iPXE from nixpkgs, netboot.xyz menu; iVentoy removed Sep 2026)
 - NFS export of `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, Netdata :19999, node_exporter :9100
 - libvirtd for virt-manager remote (Weg A): `qemu+ssh://root@10.8.0.1/system`, `allowedBridges=["br0"]`
 - CLI tools: tcpdump, mtr, nmap, iperf3, ethtool, socat, btop, jq, lsof, sysstat, smartmontools

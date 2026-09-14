@@ -146,7 +146,7 @@ Public (via nyagate DNAT → wg0, firewall `networking.firewall.interfaces.wg0`)
 Internal-only, never via wg0 (bound to `br0`/`10.8.0.0/24`, firewall drops
 them on `wg0`, Avahi pinned to `br0`+`lo`):
 
-- NFS `/data` (export `10.8.0.0/24` only), DHCP, LAN DNS, PXE/iVentoy `:26000`,
+- NFS `/data` (export `10.8.0.0/24` only), DHCP, LAN DNS, dnsmasq-PXE/TFTP,
   Avahi/mDNS, Netdata `:19999` (bind `10.8.0.1`), nixfleet `:8443`, MicroVM
   internals.
 

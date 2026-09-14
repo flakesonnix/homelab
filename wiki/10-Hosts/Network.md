@@ -27,7 +27,7 @@ mireo (router)
 - IPv6: FritzBox (6660 Cable) gives mireo WAN a short-lived IA_NA GUA (~2h lifetime, changes across reconnects); PD to br0 is configured (`DHCPPrefixDelegation`, `UplinkInterface=enp4s0`) but currently NOT landing — br0 carries only ULA `fd00:cafe:1::1/64`, so all LAN v6 internet depends on NAT66. If PD ever lands, dnsmasq RA/SLAAC (`constructor:br0`) + stateful DHCPv6 (explicit ULA range) pick the GUA up automatically.
 - dnsmasq host records = VM names, `bindsTo sys-devices-virtual-net-br0.device` fix
 - NFS `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, Nautilus autodiscovery
-- iVentoy PXE server via podman host network, proxyDHCP, :26000
+- PXE boot via dnsmasq (iPXE from nixpkgs, netboot.xyz menu; iVentoy removed Sep 2026)
 - Printing: IPP + Avahi `_ipp._tcp` (10.8.0.6)
 - Reverse proxy: Caddy on mireo `:80` → `http://<name>.home.arpa` per web UI (grafana, prometheus, yammat, cups, sshkeys, aptcache, netdata) — details [[10-Hosts/mireo|mireo]]
 - Tailscale on x270, Deskflow keyboard/mouse sharing
