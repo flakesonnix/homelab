@@ -10,6 +10,7 @@
     ./yammat-microvm.nix
     ./uptime-kuma-microvm.nix
     ./jellyfin-microvm.nix
+    ./ntp-microvm.nix
   ];
 
   # All microvm tap interfaces join the LAN bridge.

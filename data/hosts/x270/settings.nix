@@ -6,6 +6,16 @@
   networking.hostName = "x270";
   networking.networkmanager.enable = true;
 
+  # Time sync: own NTP VM first (single source via vm-ips.nix), public
+  # pools as fallback for roaming (timesyncd tries in order). mireo host
+  # and microVMs intentionally keep upstream defaults (no guest-boot
+  # dependency for the router).
+  networking.timeServers = [
+    (import ../../../hosts/mireo/vm-ips.nix).ntp
+    "0.nixos.pool.ntp.org"
+    "1.nixos.pool.ntp.org"
+  ];
+
   hardware.bluetooth = {
     enable = true;
     powerOnBoot = true;

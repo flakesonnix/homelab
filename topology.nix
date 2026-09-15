@@ -81,4 +81,13 @@
       info = "10.8.0.10:8096 (via Caddy jellyfin.home.arpa)";
     };
   };
+
+  # --- NTP VM: manual service (chrony is not auto-detected) ---
+  nodes.ntp = {
+    deviceType = "nixos";
+    services.ntp = {
+      name = "chrony NTP";
+      info = "10.8.0.11:123/udp (via DHCP option 42)";
+    };
+  };
 }

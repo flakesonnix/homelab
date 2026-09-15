@@ -5,7 +5,7 @@ type: host
 host: mireo
 ip: 10.8.0.1
 wan: 192.168.178.25
-role: Homeserver / LAN router + 9 microVMs
+role: Homeserver / LAN router + 10 microVMs
 roles: []
 deploy: nix run .#deploy-mireo
 ---
@@ -52,7 +52,7 @@ Source: `webUIs` map in `data/hosts/mireo/settings.nix` → `services.caddy.virt
 
 ## libvirt (virt-manager remote target, Weg A)
 
-`virtualisation.libvirtd` in `data/hosts/mireo/settings.nix:112` (`enable=true`, `allowedBridges=["br0"]`, `qemu.vhostUserPackages=[virtiofsd]`) — x270 verbindet via `qemu+ssh://root@10.8.0.1/system`. Neue Gäste an `br0` bridgen (NICHT `virbr0`/default-Netz: `br0` ist trusted + dnsmasq/DNS vorhanden), IP statisch außerhalb DHCP-Range (`10.8.0.100-.199`) + in `hosts/mireo/vm-ips.nix` eintragen. Die 9 microVMs (`microvm.nix`, `microvm@*`) erscheinen NICHT in virt-manager. Recovery bei `243/CREDENTIALS` (libvirt 12.4 secrets-encryption-key/TPM-Bug): `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
+`virtualisation.libvirtd` in `data/hosts/mireo/settings.nix:112` (`enable=true`, `allowedBridges=["br0"]`, `qemu.vhostUserPackages=[virtiofsd]`) — x270 verbindet via `qemu+ssh://root@10.8.0.1/system`. Neue Gäste an `br0` bridgen (NICHT `virbr0`/default-Netz: `br0` ist trusted + dnsmasq/DNS vorhanden), IP statisch außerhalb DHCP-Range (`10.8.0.100-.199`) + in `hosts/mireo/vm-ips.nix` eintragen. Die 10 microVMs (`microvm.nix`, `microvm@*`) erscheinen NICHT in virt-manager. Recovery bei `243/CREDENTIALS` (libvirt 12.4 secrets-encryption-key/TPM-Bug): `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
 
 ## Config files
 
