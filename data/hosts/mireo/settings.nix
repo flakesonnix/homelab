@@ -118,6 +118,25 @@
   networking.firewall.trustedInterfaces = ["br0"];
   networking.firewall.interfaces.br0.allowedTCPPorts = [19999 9090];
 
+  # --- Transparent LAN :80 → Caddy (nftables REDIRECT) ---
+  # Diagnose 2026-09-15: *.home.arpa löst DIREKT auf die VM-IPs auf
+  # (dnsmasq host-records), der Traffic geht an Caddy vorbei ins Leere
+  # (VM-Firewalls droppen :80) — die Caddy-VHosts bekamen nie Traffic.
+  # Deshalb wird LAN-HTTP an LAN-Ziele transparent auf Caddy (:80)
+  # umgebogen; der Host-Header bleibt erhalten, Caddy routet per Name.
+  # Scope: nur br0-Eingang, nur Ziele in 10.8.0.0/24 (Internet-Traffic
+  # und wg0 unberührt). Ausnahme 10.8.0.7 (sshkeys serviert :80 nativ).
+  # Ping/SSH/DNS-Verhalten ändert sich nicht (nur TCP/80).
+  networking.nftables.tables.lan-http-redirect = {
+    family = "ip";
+    content = ''
+      chain prerouting {
+        type nat hook prerouting priority dstnat; policy accept;
+        iifname "br0" tcp dport 80 ip daddr 10.8.0.0/24 ip daddr != 10.8.0.7 redirect to :80
+      }
+    '';
+  };
+
   # --- libvirtd (virt-manager remote target, Weg A) ---
   # Desktop-Client (x270) verbindet via qemu+ssh://root@10.8.0.1/system.
   # microVMs (microvm.nix, systemd microvm@*) bleiben daneben bestehen und

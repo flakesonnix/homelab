@@ -19,6 +19,17 @@
           user = "jellyfin";
           group = "jellyfin";
         }
+        # Transcode/cache dir: Jellyfin ≥10.9 refuses to start with <2 GiB
+        # free in cacheDir, and the VM rootfs only has ~1 GiB (seen
+        # 2026-09-14: "insufficient free space", SIGABRT loop). 4 GiB
+        # covers the check plus transcode headroom.
+        {
+          image = "jellyfin-cache.img";
+          mountPoint = "/var/cache/jellyfin";
+          size = 4096;
+          user = "jellyfin";
+          group = "jellyfin";
+        }
       ];
       config = {
         services.jellyfin.enable = true;

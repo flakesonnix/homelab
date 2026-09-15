@@ -16,6 +16,8 @@ in {
       mem = 2304;
       vcpu = 2;
       tcpPorts = [22 3000];
+      # Writable CWD for the app key (see WorkingDirectory below).
+      tmpfiles = ["d /var/lib/yammat/config 0750 yammat yammat - -"];
       volumes = [
         {
           image = "yammat-postgres.img";
@@ -43,6 +45,8 @@ in {
             bytes = 96;
             extraCommands = ''
               install -m 600 /var/lib/yammat/client_session_key.aes /tmp/yammat_session_key.aes
+              # App reads config/client_session_key.aes relative to its CWD.
+              install -o yammat -g yammat -m 600 /var/lib/yammat/client_session_key.aes /var/lib/yammat/config/client_session_key.aes
             '';
           })
         ];
@@ -80,6 +84,9 @@ in {
         systemd.services.yammat = {
           after = ["postgresql.service"];
           requires = ["postgresql.service"];
+          # App resolves config/client_session_key.aes relative to CWD;
+          # the package dir in the store is read-only, so run from state.
+          serviceConfig.WorkingDirectory = lib.mkForce "/var/lib/yammat";
           environment = {
             APPROOT = lib.mkForce "http://10.8.0.5:3000";
             HOST = lib.mkForce "10.8.0.5";

@@ -552,6 +552,9 @@ in {
             group = "grafana";
             bytes = 48;
             format = "base64";
+            # Self-heal stale root-owned keys (seen 2026-09-14: grafana
+            # runs as user grafana and died with permission denied).
+            extraCommands = "chown grafana:grafana /var/lib/grafana/secret.key";
           })
         ];
 

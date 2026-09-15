@@ -91,11 +91,15 @@ spec: {lib, ...}: let
   };
 in {
   # autostart list is derived by microvm.nix from vms.<name>.autostart
+  # Deep merge so spec `config` can extend nested base keys (e.g. adding
+  # systemd.services.* must not drop base systemd.tmpfiles.rules).
+  # No existing spec overlaps base on nested keys, so this is a no-op
+  # for all current VMs (verified: only users.*/services.*/imports used).
+  # `imports` still concatenates explicitly (lists would replace).
   microvm.vms.${s.name} = {
     autostart = true;
     config =
-      baseConfig
-      // specConfig
+      lib.recursiveUpdate baseConfig specConfig
       // lib.optionalAttrs (specConfig ? imports) {
         imports = baseConfig.imports ++ specConfig.imports;
       };
