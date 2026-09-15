@@ -8,20 +8,117 @@
   config = lib.mkIf config.programs.neovim.enable {
     programs.neovim = {
       defaultEditor = true;
+      viAlias = true;
+      vimAlias = true;
       withRuby = true;
       withPython3 = true;
-      extraPackages = with pkgs; [tree-sitter];
+      withNodeJs = true;
+      extraPackages = with pkgs; [
+        tree-sitter
+        ripgrep
+        fd
+        # Nix
+        nil
+        alejandra
+        statix
+        # Go
+        gopls
+        gofumpt
+        # Python
+        pyright
+        ruff
+        # JS/TS + JSON/CSS
+        typescript-language-server
+        vscode-langservers-extracted
+        eslint_d
+        prettierd
+        nodejs
+        # Rust/C++/C#
+        rust-analyzer
+        clang-tools
+        csharp-ls
+        # Kotlin (JVM-based server)
+        kotlin-language-server
+        jre
+        # Lua/Sh/YAML/TOML/Markdown/Docker/Terraform
+        lua-language-server
+        stylua
+        bash-language-server
+        shfmt
+        shellcheck
+        yaml-language-server
+        taplo
+        marksman
+        dockerfile-language-server
+        terraform-ls
+      ];
       plugins = with pkgs.vimPlugins; [
+        # LSP + completion
         nvim-lspconfig
-        nvim-treesitter
+        nvim-cmp
+        cmp-nvim-lsp
+        cmp-buffer
+        cmp-path
+        luasnip
+        cmp_luasnip
+        friendly-snippets
+        # Finder/tree/git
         telescope-nvim
+        telescope-fzf-native-nvim
         plenary-nvim
+        neo-tree-nvim
+        nui-nvim
+        gitsigns-nvim
+        # Look + help
         nvim-web-devicons
         gruvbox-nvim
+        lualine-nvim
+        which-key-nvim
+        indent-blankline-nvim
+        todo-comments-nvim
+        comment-nvim
+        nvim-autopairs
+        trouble-nvim
+        # Format + lint
+        conform-nvim
+        nvim-lint
+        (nvim-treesitter.withPlugins (p:
+          with p; [
+            nix
+            go
+            gomod
+            rust
+            kotlin
+            c_sharp
+            cpp
+            python
+            javascript
+            typescript
+            tsx
+            lua
+            vim
+            vimdoc
+            bash
+            yaml
+            toml
+            json
+            markdown
+            markdown_inline
+            dockerfile
+            terraform
+            hcl
+            regex
+            query
+            comment
+            diff
+            gitcommit
+            css
+            html
+            java
+          ]))
       ];
       extraConfig = ''
         set number
-        set relativenumber
         set tabstop=2
         set shiftwidth=2
         set expandtab
@@ -30,6 +127,172 @@
         set linebreak
         set termguicolors
         colorscheme gruvbox
+      '';
+      initLua = ''
+        -- Leader first (mappings below rely on it).
+        vim.g.mapleader = " "
+        vim.g.maplocalleader = " "
+        vim.opt.signcolumn = "yes"
+        vim.opt.updatetime = 250
+        vim.opt.clipboard = "unnamedplus"
+        vim.opt.undofile = true
+        vim.opt.completeopt = { "menuone", "noselect" }
+        vim.opt.ignorecase = true
+        vim.opt.smartcase = true
+        -- netrw off (neo-tree replaces it).
+        vim.g.loaded_netrw = 1
+        vim.g.loaded_netrwPlugin = 1
+
+        -- Diagnostics look.
+        vim.diagnostic.config({ virtual_text = true, severity_sort = true, update_in_insert = false })
+
+        -- Completion.
+        local cmp = require("cmp")
+        local luasnip = require("luasnip")
+        require("luasnip.loaders.from_vscode").lazy_load()
+        cmp.setup({
+          snippet = { expand = function(args) luasnip.lsp_expand(args.body) end },
+          mapping = cmp.mapping.preset.insert({
+            ["<C-b>"] = cmp.mapping.scroll_docs(-4),
+            ["<C-f>"] = cmp.mapping.scroll_docs(4),
+            ["<C-Space>"] = cmp.mapping.complete(),
+            ["<C-e>"] = cmp.mapping.abort(),
+            ["<CR>"] = cmp.mapping.confirm({ select = true }),
+            ["<Tab>"] = cmp.mapping(function(fallback)
+              if cmp.visible() then cmp.select_next_item()
+              elseif luasnip.expand_or_jumpable() then luasnip.expand_or_jump()
+              else fallback() end
+            end, { "i", "s" }),
+            ["<S-Tab>"] = cmp.mapping(function(fallback)
+              if cmp.visible() then cmp.select_prev_item()
+              elseif luasnip.jumpable(-1) then luasnip.jump(-1)
+              else fallback() end
+            end, { "i", "s" }),
+          }),
+          sources = cmp.config.sources({
+            { name = "nvim_lsp" },
+            { name = "luasnip" },
+            { name = "path" },
+          }, {
+            { name = "buffer" },
+          }),
+        })
+
+        -- LSP via nvim-lspconfig framework (require("lspconfig") is
+        -- deprecated upstream in favor of vim.lsp.config, but the new API
+        -- has no server definitions wired up here, so the framework stays
+        -- until v3. Binaries come from extraPackages, no mason.
+        local lsp = require("lspconfig")
+        local caps = require("cmp_nvim_lsp").default_capabilities()
+        vim.api.nvim_create_autocmd("LspAttach", {
+          group = vim.api.nvim_create_augroup("UserLspKeys", { clear = true }),
+          callback = function(ev)
+            local o = { buffer = ev.buf, silent = true }
+            vim.keymap.set("n", "gd", vim.lsp.buf.definition, o)
+            vim.keymap.set("n", "gD", vim.lsp.buf.declaration, o)
+            vim.keymap.set("n", "gr", vim.lsp.buf.references, o)
+            vim.keymap.set("n", "gi", vim.lsp.buf.implementation, o)
+            vim.keymap.set("n", "K", vim.lsp.buf.hover, o)
+            vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, o)
+            vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, o)
+            vim.keymap.set("n", "<leader>D", vim.lsp.buf.type_definition, o)
+            vim.keymap.set("n", "<leader>f", function() vim.lsp.buf.format({ async = true }) end, o)
+          end,
+        })
+        -- Diagnostics navigation.
+        vim.keymap.set("n", "[d", vim.diagnostic.goto_prev, { silent = true })
+        vim.keymap.set("n", "]d", vim.diagnostic.goto_next, { silent = true })
+        vim.keymap.set("n", "<leader>e", "<cmd>Neotree toggle<cr>", { silent = true })
+        vim.keymap.set("n", "<leader>q", "<cmd>Trouble diagnostics toggle<cr>", { silent = true })
+
+        -- Language servers (binaries come from extraPackages, no mason).
+        local servers = {
+          "gopls", "pyright", "ruff", "ts_ls", "lua_ls", "yamlls",
+          "bashls", "marksman", "taplo", "jsonls", "dockerls",
+          "terraformls", "rust_analyzer", "clangd", "kotlin_language_server",
+          "csharp_ls",
+        }
+        for _, name in ipairs(servers) do
+          lsp[name].setup({ capabilities = caps })
+        end
+        lsp.nil_ls.setup({
+          capabilities = caps,
+          settings = { ["nil"] = { formatting = { command = { "alejandra" } } } },
+        })
+        lsp.gopls.setup({
+          capabilities = caps,
+          settings = { gopls = { gofumpt = true } },
+        })
+
+        -- Treesitter main-branch API: no ensure_installed (parsers come
+        -- from Nix), start per buffer when a parser exists. No jsonc
+        -- parser in nixpkgs: treat .jsonc as json.
+        vim.filetype.add({ extension = { jsonc = "json" } })
+        require("nvim-treesitter").setup()
+        vim.api.nvim_create_autocmd("FileType", {
+          group = vim.api.nvim_create_augroup("TreesitterStart", { clear = true }),
+          callback = function(args)
+            local ok, parser = pcall(vim.treesitter.get_parser, args.buf)
+            if ok and parser then
+              vim.treesitter.start(args.buf)
+              vim.bo[args.buf].indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()"
+            end
+          end,
+        })
+
+        -- Telescope (+ fzf sorter) and pickers.
+        local telescope = require("telescope")
+        telescope.setup({})
+        pcall(telescope.load_extension, "fzf")
+        local builtin = require("telescope.builtin")
+        vim.keymap.set("n", "<leader>ff", builtin.find_files, { silent = true })
+        vim.keymap.set("n", "<leader>fg", builtin.live_grep, { silent = true })
+        vim.keymap.set("n", "<leader>fb", builtin.buffers, { silent = true })
+        vim.keymap.set("n", "<leader>fh", builtin.help_tags, { silent = true })
+
+        -- Format on save (per filetype) + lint on save.
+        require("conform").setup({
+          formatters_by_ft = {
+            nix = { "alejandra" },
+            go = { "gofumpt" },
+            python = { "ruff_format" },
+            javascript = { "prettierd" },
+            typescript = { "prettierd" },
+            javascriptreact = { "prettierd" },
+            typescriptreact = { "prettierd" },
+            json = { "prettierd" },
+            jsonc = { "prettierd" },
+            yaml = { "prettierd" },
+            toml = { "taplo" },
+            markdown = { "prettierd" },
+            lua = { "stylua" },
+            sh = { "shfmt" },
+            c = { "clang_format" },
+            cpp = { "clang_format" },
+          },
+          format_on_save = { timeout_ms = 2000, lsp_format = "fallback" },
+        })
+        require("lint").linters_by_ft = {
+          python = { "ruff" },
+          nix = { "statix" },
+          sh = { "shellcheck" },
+          javascript = { "eslint_d" },
+          typescript = { "eslint_d" },
+        }
+        vim.api.nvim_create_autocmd({ "BufWritePost" }, {
+          callback = function() require("lint").try_lint() end,
+        })
+
+        -- Small UI helpers (all defaults, just enabled).
+        require("neo-tree").setup({ close_if_last_window = true })
+        require("gitsigns").setup()
+        require("lualine").setup({ options = { theme = "auto" } })
+        require("ibl").setup()
+        require("Comment").setup()
+        require("nvim-autopairs").setup({})
+        require("todo-comments").setup()
+        require("trouble").setup()
+        require("which-key").setup()
       '';
     };
   };
