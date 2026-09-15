@@ -213,6 +213,22 @@
       cname = [
         "prometheus.home.arpa,grafana.home.arpa"
       ];
+      # AD domain-join records for the UCS domain. NOTE: the UCS domain
+      # IS ucs.home.arpa (apex already has our A record), so no zone
+      # forwarding — that would also hijack the apex. Static SRVs instead
+      # (ports are AD-spec fixed, target follows via name). Requires
+      # Samba AD actually running on UCS (check 445/3268 first!).
+      srv-host = [
+        "_ldap._tcp.ucs.home.arpa,ucs.home.arpa,389"
+        "_kerberos._tcp.ucs.home.arpa,ucs.home.arpa,88"
+        "_kerberos._udp.ucs.home.arpa,ucs.home.arpa,88"
+        "_kpasswd._tcp.ucs.home.arpa,ucs.home.arpa,464"
+        "_kpasswd._udp.ucs.home.arpa,ucs.home.arpa,464"
+        "_ldap._tcp.dc._msdcs.ucs.home.arpa,ucs.home.arpa,389"
+        "_kerberos._tcp.dc._msdcs.ucs.home.arpa,ucs.home.arpa,88"
+        "_ldap._tcp.pdc._msdcs.ucs.home.arpa,ucs.home.arpa,389"
+        "_gc._tcp.ucs.home.arpa,ucs.home.arpa,3268"
+      ];
       dhcp-authoritative = true;
       enable-ra = true;
       dhcp-range = [
