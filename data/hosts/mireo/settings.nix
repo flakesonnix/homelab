@@ -196,6 +196,23 @@
       domain = lanDomain;
       expand-hosts = true;
       local = "/${lanDomain}/";
+      # Authoritative zone (RFC 1034/1035 hygiene + debuggability):
+      # serves proper SOA/NS at the apex instead of NODATA. Zone data
+      # still comes from host-record/DHCP as before; no subnets pinned
+      # (prefix-change-proof) and no secondaries. Serial: date + counter,
+      # bump when zone data changes.
+      # NOTE: auth-zone REQUIRES auth-server or dnsmasq refuses to start
+      # (seen 2026-09-15: "FAILED to start up", deploy rolled back).
+      # auth-server with our own IP only enables auth on top of the
+      # normal recursive/DHCP service — no behavior change otherwise.
+      auth-zone = lanDomain;
+      auth-server = "${lanDomain},10.8.0.1";
+      auth-soa = "2026091501,hostmaster.home.arpa";
+      # Service aliases (CNAME; target must be known to dnsmasq, so it
+      # follows automatically if the target IP ever moves).
+      cname = [
+        "prometheus.home.arpa,grafana.home.arpa"
+      ];
       dhcp-authoritative = true;
       enable-ra = true;
       dhcp-range = [
@@ -215,6 +232,11 @@
       dhcp-option = [
         "option:router,10.8.0.1"
         "option:dns-server,10.8.0.1"
+        # Same explicitly for DHCPv6 + RA (RDNSS/DNSSL): without this,
+        # clients only learn the link-local address via RA default, which
+        # some stubs can't use (missing %iface scope). ULA is static.
+        "option6:dns-server,[fd00:cafe:1::1]"
+        "option6:domain-search,home.arpa"
       ];
       # Fixed names for DHCP clients that send NO hostname themselves
       # (lease shows `*` instead of a name → no DNS record). Format
@@ -251,7 +273,12 @@
       # Everyone else gets dynamic addresses via DHCPv4/DHCPv6. dnsmasq
       # serves DNS names for its leases automatically, so clients stay
       # reachable as <hostname>.home.arpa.
-      host-record = lib.mapAttrsToList (name: ip: "${name}.${lanDomain},${name},${ip}") staticHosts;
+      host-record = lib.mapAttrsToList (name: ip: let
+        # ULA mirrors the IPv4 last octet, same as microvm-base.nix
+        # assigns on the guest (10.8.0.N -> fd00:cafe:1::N).
+        lastOctet = lib.last (lib.splitString "." ip);
+      in "${name}.${lanDomain},${name},${ip},fd00:cafe:1::${lastOctet}")
+      staticHosts;
       server = ["1.1.1.1" "9.9.9.9" "2606:4700:4700::1111" "2620:fe::9"];
     };
   };

@@ -86,7 +86,7 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 ### Features
 - NAT gateway for 10.8.0.0/24 + IPv6 (FritzBox DHCPv6-PD, prefix `2a02:3102:4cec:b500::/64`)
 - systemd-networkd (no NetworkManager)
-- dnsmasq on host: DHCPv4, stateful DHCPv6 (explicit ULA range), DNS, IPv6 RA/SLAAC (constructor:br0) for LAN (br0)
+- dnsmasq on host: DHCPv4, stateful DHCPv6 (explicit ULA range), DNS, IPv6 RA/SLAAC (constructor:br0) for LAN (br0), authoritative home.arpa zone (SOA/NS via auth-zone)
 - PXE boot via dnsmasq (iPXE binaries from nixpkgs, netboot.xyz menu over HTTP)
 - NFS export of `/data` to `10.8.0.0/24`
 - Avahi mDNS advertising NFS share (`_nfs._tcp`) for Nautilus autodiscovery

@@ -39,7 +39,10 @@ in {
   systemd.network.enable = true;
   systemd.network.networks."20-lan" = {
     matchConfig.Type = "ether";
-    address = ["${ip}/24"];
+    # Static ULA mirrors the IPv4 last octet (10.8.0.N -> fd00:cafe:1::N),
+    # same single source as the MAC above. On-link LAN needs no v6 route;
+    # DNS serves the matching AAAA (dnsmasq host-record).
+    address = ["${ip}/24" "fd00:cafe:1::${lib.last (lib.splitString "." ip)}/64"];
     networkConfig = {
       Gateway = "10.8.0.1";
       DNS = ["10.8.0.1"] ++ extraDns;
