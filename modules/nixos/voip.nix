@@ -174,14 +174,21 @@
 
   # Dialplan fragment per client: outbound via trunk (+ emergency breakout
   # like the Easybell guide), inbound DID -> local extension.
-  dialplanStatic = name: client: ''
+  # NOTE: three-part PJSIP dial string (endpoint + full request URI). The
+  # two-part form PJSIP/sip:EXTEN@name puts the literal "sip:" scheme into
+  # the user part (To: sip:sip%3a0310@…) which Yate-based servers 403
+  # (seen live 2026-09-16 on hg.eventphone.de).
+  dialplanStatic = name: client: let
+    provider = cfg.providers.${client.provider};
+    trunkDial = "PJSIP/${name}/sip:\${EXTEN}@${provider.registrar}";
+  in ''
     ; ===== client '${name}' (services.voip) =====
     [${name}]
-    exten => _X.,1,Dial(PJSIP/sip:''${EXTEN}@${name})
+    exten => _X.,1,Dial(${trunkDial})
         same => n,Hangup()
-    exten => 110,1,Dial(PJSIP/sip:110@${name})
+    exten => 110,1,Dial(PJSIP/${name}/sip:110@${provider.registrar})
         same => n,Hangup()
-    exten => 112,1,Dial(PJSIP/sip:112@${name})
+    exten => 112,1,Dial(PJSIP/${name}/sip:112@${provider.registrar})
         same => n,Hangup()
 
     [${name}_in]
@@ -202,9 +209,12 @@
 
   # Outbound routes from local phones ([from-internal]) into each trunk.
   # One exten per pattern; ${EXTEN} passes the dialed number through.
-  trunkOutboundLines = lib.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList (name: client:
+  # Three-part dial string, see dialplanStatic NOTE (two-part 403s).
+  trunkOutboundLines = lib.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList (name: client: let
+    provider = cfg.providers.${client.provider};
+  in
     map (pat: ''
-      exten => ${pat},1,Dial(PJSIP/sip:''${EXTEN}@${name})
+      exten => ${pat},1,Dial(PJSIP/${name}/sip:''${EXTEN}@${provider.registrar})
           same => n,Hangup()'')
     client.localPatterns)
   enabledClients));
