@@ -22,6 +22,7 @@
         alejandra
         statix
         # Go
+        go
         gopls
         gofumpt
         # Python
@@ -178,11 +179,12 @@
           }),
         })
 
-        -- LSP via nvim-lspconfig framework (require("lspconfig") is
-        -- deprecated upstream in favor of vim.lsp.config, but the new API
-        -- has no server definitions wired up here, so the framework stays
-        -- until v3. Binaries come from extraPackages, no mason.
-        local lsp = require("lspconfig")
+        -- LSP via new core API (sandbox-verified: enable() spawns the
+        -- right servers; the old require("lspconfig") framework only
+        -- prints a deprecation warning now). Server defaults (cmd,
+        -- filetypes, roots) ship with nvim-lspconfig; here only
+        -- capabilities + our own settings. Binaries come from
+        -- extraPackages, no mason.
         local caps = require("cmp_nvim_lsp").default_capabilities()
         vim.api.nvim_create_autocmd("LspAttach", {
           group = vim.api.nvim_create_augroup("UserLspKeys", { clear = true }),
@@ -213,13 +215,15 @@
           "csharp_ls",
         }
         for _, name in ipairs(servers) do
-          lsp[name].setup({ capabilities = caps })
+          vim.lsp.config(name, { capabilities = caps })
+          vim.lsp.enable(name)
         end
-        lsp.nil_ls.setup({
+        vim.lsp.config("nil_ls", {
           capabilities = caps,
           settings = { ["nil"] = { formatting = { command = { "alejandra" } } } },
         })
-        lsp.gopls.setup({
+        vim.lsp.enable("nil_ls")
+        vim.lsp.config("gopls", {
           capabilities = caps,
           settings = { gopls = { gofumpt = true } },
         })
