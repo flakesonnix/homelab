@@ -452,11 +452,12 @@ in {
           })
         enabledClients;
 
-        systemd.services.voip-check = {
-          description = "Validate VoIP client credential files";
-          wantedBy = ["multi-user.target"];
-          after = ["network-online.target"];
-          before = ["asterisk.service"];
+      systemd.services.voip-check = {
+        description = "Validate VoIP client credential files";
+        wantedBy = ["multi-user.target"];
+        wants = ["network-online.target"];
+        after = ["network-online.target"];
+        before = ["asterisk.service"];
           serviceConfig.Type = "oneshot";
           script = ''
             set -eu
@@ -487,10 +488,11 @@ in {
         # rotation needs a manual restart (secret bytes can't be a trigger):
         #   systemctl restart voip-render-trunks && asterisk -rx 'core reload'
         systemd.services.voip-render-trunks = {
-          description = "Render VoIP provider trunks for Asterisk (runtime passwords)";
-          wantedBy = ["multi-user.target"];
-          after = ["network-online.target" "sops-nix.service"];
-          before = ["asterisk.service"];
+        description = "Render VoIP provider trunks for Asterisk (runtime passwords)";
+        wantedBy = ["multi-user.target"];
+        wants = ["network-online.target"];
+        after = ["network-online.target" "sops-nix.service"];
+        before = ["asterisk.service"];
           serviceConfig.Type = "oneshot";
           script = ''
             set -eu

@@ -512,9 +512,15 @@ in {
       };
     };
 
+    # In secrets mode pjsip/extensions.conf are intentionally ABSENT from
+    # services.asterisk.confFiles (passwords can't be rendered at build
+    # time), so upstream falls back to its package defaults for exactly
+    # these two files — colliding with the sops-rendered overrides below.
+    # mkForce wins over the upstream default (same reason the non-secrets
+    # branch works: there our confFiles entries subtract the defaults).
     environment.etc = lib.mkIf cfg.secrets.enable {
-      "asterisk/pjsip.conf".source = config.sops.templates."asterisk-pjsip.conf".path;
-      "asterisk/extensions.conf".source = config.sops.templates."asterisk-extensions.conf".path;
+      "asterisk/pjsip.conf".source = lib.mkForce config.sops.templates."asterisk-pjsip.conf".path;
+      "asterisk/extensions.conf".source = lib.mkForce config.sops.templates."asterisk-extensions.conf".path;
     };
 
     # Placeholder fragments for the services.voip #includes above.
