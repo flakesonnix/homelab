@@ -199,7 +199,7 @@
         vim.opt.confirm = true
         vim.opt.colorcolumn = "120"
         vim.opt.pumheight = 10
-        vim.opt.list = true
+        vim.opt.showmode = false -- lualine shows the mode already        vim.opt.list = true
         vim.opt.listchars = { tab = "→ ", trail = "·", nbsp = "␣" }
         vim.opt.timeoutlen = 300
         vim.api.nvim_create_autocmd("TextYankPost", {
@@ -421,8 +421,59 @@
           },
         };
         require("lualine").setup({
-          options = { theme = cyberdeck_lualine },
-          tabline = { lualine_a = { "buffers" } },
+          options = {
+            theme = cyberdeck_lualine,
+            -- One line for all splits (no stacked per-window bars).
+            globalstatus = true,
+            -- Slant separators = smooth mode/color transitions.
+            section_separators = { left = "", right = "" },
+            component_separators = { left = "", right = "" },
+            -- Plugin sidebars keep a flat, quiet line.
+            disabled_filetypes = {
+              statusline = {
+                "alpha", "neo-tree", "aerial", "undotree", "diffview",
+                "toggleterm", "OverseerList", "grug-far", "Trouble",
+                "dapui_scopes", "dapui_breakpoints", "dapui_stacks",
+                "dapui_watches", "neotest-summary",
+              },
+            },
+            refresh = { statusline = 250, tabline = 500 },
+          },
+          sections = {
+            lualine_a = {
+              -- Single-letter mode + icon (no "NORMAL" brick).
+              { "mode", fmt = function(s) return s:sub(1, 1) end, icon = "" },
+            },
+            lualine_b = { "branch", "diff", "diagnostics" },
+            lualine_c = {
+              {
+                "filename",
+                path = 1, -- relative path, keeps long names readable
+                symbols = { modified = " ●", readonly = " ", unnamed = "[No Name]" },
+              },
+            },
+            lualine_x = {
+              -- Only show when off-default (no utf-8/unix noise).
+              { "encoding", cond = function() return vim.bo.fileencoding ~= "" and vim.bo.fileencoding ~= "utf-8" end },
+              { "fileformat", cond = function() return vim.bo.fileformat ~= "unix" end },
+              "filetype",
+            },
+            lualine_y = { "progress" },
+            lualine_z = { "location" },
+          },
+          tabline = {
+            lualine_a = {
+              {
+                "buffers",
+                use_mode_colors = true,
+                symbols = { modified = " ●", alternate_file = "", directory = "" },
+              },
+            },
+            -- Tabs only when more than one exists.
+            lualine_z = {
+              { "tabs", use_mode_colors = true, cond = function() return #vim.api.nvim_list_tabpages() > 1 end },
+            },
+          },
         })
         -- Discord Rich Presence: immer aktiv solange Neovim läuft
         -- (kein Idle-Status — zeigt Datei + Zeile + Projekt, mit Timer).
