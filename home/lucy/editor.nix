@@ -6,6 +6,8 @@
   ...
 }: {
   config = lib.mkIf config.programs.neovim.enable {
+    # rust-analyzer finds stdlib sources here (no rustup in Nix).
+    home.sessionVariables.RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
     programs.neovim = {
       defaultEditor = true;
       viAlias = true;
@@ -36,12 +38,19 @@
         nodejs
         # Rust/C++/C#
         rust-analyzer
+        rustc
+        cargo
+        rustfmt
+        clippy
         clang-tools
         csharp-ls
         # Debug adapters (no mason; wired explicitly below)
         delve
         (python3.withPackages (ps: [ps.debugpy]))
+        # PHP (phpactor: LSP + format + diagnostics in one, no Node needed)
+        phpactor
         # Kotlin (JVM-based server)
+        phpactor
         kotlin-language-server
         jre
         # Lua/Sh/YAML/TOML/Markdown/Docker/Terraform
@@ -154,6 +163,7 @@
             css
             html
             java
+            php
           ]))
       ];
       extraConfig = ''
@@ -289,13 +299,18 @@
         local servers = {
           "gopls", "pyright", "ruff", "ts_ls", "lua_ls", "yamlls",
           "bashls", "marksman", "taplo", "jsonls", "dockerls",
-          "terraformls", "rust_analyzer", "clangd", "kotlin_language_server",
-          "csharp_ls",
+          "terraformls", "clangd", "kotlin_language_server",
+          "csharp_ls", "phpactor",
         }
         for _, name in ipairs(servers) do
           vim.lsp.config(name, { capabilities = caps })
           vim.lsp.enable(name)
         end
+        vim.lsp.config("rust_analyzer", {
+          capabilities = caps,
+          settings = { ["rust-analyzer"] = { check = { command = "clippy" } } },
+        })
+        vim.lsp.enable("rust_analyzer")
         vim.lsp.config("nil_ls", {
           capabilities = caps,
           settings = { ["nil"] = { formatting = { command = { "alejandra" } } } },
@@ -352,6 +367,7 @@
             sh = { "shfmt" },
             c = { "clang_format" },
             cpp = { "clang_format" },
+            rust = { "rustfmt" },
           },
           format_on_save = { timeout_ms = 2000, lsp_format = "fallback" },
         })
