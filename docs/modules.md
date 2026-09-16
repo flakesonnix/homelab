@@ -123,7 +123,7 @@ Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options 
 | `enable` | bool | false | Enable validation, `/etc/voip` descriptors, check + render services |
 | `providers` | attrs of submodules | `{easybell, eventphone}` | Provider presets: `registrar`, `port` (5060), `transport` (udp), `outboundProxy` (null = registrar), `expires` (1800), `retryInterval` (60), `mediaEncryption` (false = SDES-SRTP for TLS), `note` |
 | `providers.easybell.registrar` | str | `"voip.easybell.de"` | SIP-Trunk/VoIP registrar (Cloud PBX: `pbx.easybell.de`, legacy: `sip.easybell.de`) |
-| `providers.eventphone.registrar` | str | `"voip.eventphone.de"` | Event/temporary SIP, no dial-out (DNS-verified; IPv6: `voip6.eventphone.de`; creds per-event from Guru3) |
+| `providers.eventphone.registrar` | str | `"hg.eventphone.de"` | EPVPN (permanent community SIP, no dial-out; IPv4-only, `hg64` dual / `hg6` v6; creds from Guru3 EPVPN event; `voip.eventphone.de` is the separate temporary-events system) |
 | `clients.<name>.provider` | str | `"easybell"` | Key into `providers` |
 | `clients.<name>.username` | str or null | null | SIP auth username (required when enabled) |
 | `clients.<name>.passwordFile` | str | `""` | Absolute runtime path to password file, e.g. `/run/secrets/voip/<client>` (required when enabled; only the path enters the store) |

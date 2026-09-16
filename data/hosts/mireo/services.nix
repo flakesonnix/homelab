@@ -11,7 +11,7 @@
     secrets.enable = true; # sops-template rendering (passwords stay out of the store)
 
     # Local SIP phones (softphones/IP phones register here, then dial
-    # 999 = local test, 8330 = eventphone echo, 100 = hello-world).
+    # 999 = local test, 0310 = EPVPN announcement via trunk, 100 = hello-world).
     # Passwords live in hosts/mireo/secrets.yaml (asterisk.phones.<name>).
     openFirewall = false; # NOTE: Easybell RTP needs 20000-50000, see module TODO
     phones.lucy = {
