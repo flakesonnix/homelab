@@ -38,6 +38,9 @@
         rust-analyzer
         clang-tools
         csharp-ls
+        # Debug adapters (no mason; wired explicitly below)
+        delve
+        (python3.withPackages (ps: [ps.debugpy]))
         # Kotlin (JVM-based server)
         kotlin-language-server
         jre
@@ -80,6 +83,27 @@
         comment-nvim
         nvim-autopairs
         trouble-nvim
+        # Debugging
+        nvim-dap
+        nvim-dap-ui
+        nvim-dap-virtual-text
+        nvim-nio
+        nvim-dap-python
+        nvim-dap-go
+        # IDE chrome: terminal, outline, marks, tests, diff, dashboard
+        toggleterm-nvim
+        aerial-nvim
+        harpoon2
+        lspkind-nvim
+        dropbar-nvim
+        alpha-nvim
+        diffview-nvim
+        neotest
+        neotest-go
+        neotest-python
+        neotest-rust
+        neotest-jest
+        nvim-treesitter-context
         # Format + lint
         conform-nvim
         nvim-lint
@@ -140,6 +164,10 @@
         vim.opt.completeopt = { "menuone", "noselect" }
         vim.opt.ignorecase = true
         vim.opt.smartcase = true
+        -- IDE defaults: unfolded treesitter folds, tabline, inlay hints on attach.
+        vim.opt.foldmethod = "expr"
+        vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+        vim.opt.foldenable = false
         -- netrw off (neo-tree replaces it).
         vim.g.loaded_netrw = 1
         vim.g.loaded_netrwPlugin = 1
@@ -177,6 +205,9 @@
           }, {
             { name = "buffer" },
           }),
+          formatting = {
+            format = require("lspkind").cmp_format({ mode = "symbol_text", maxwidth = 50 }),
+          },
         })
 
         -- LSP via new core API (sandbox-verified: enable() spawns the
@@ -190,6 +221,7 @@
           group = vim.api.nvim_create_augroup("UserLspKeys", { clear = true }),
           callback = function(ev)
             local o = { buffer = ev.buf, silent = true }
+            pcall(vim.lsp.inlay_hint.enable, true, { bufnr = ev.buf })
             vim.keymap.set("n", "gd", vim.lsp.buf.definition, o)
             vim.keymap.set("n", "gD", vim.lsp.buf.declaration, o)
             vim.keymap.set("n", "gr", vim.lsp.buf.references, o)
@@ -290,13 +322,60 @@
         -- Small UI helpers (all defaults, just enabled).
         require("neo-tree").setup({ close_if_last_window = true })
         require("gitsigns").setup()
-        require("lualine").setup({ options = { theme = "auto" } })
+        require("lualine").setup({
+          options = { theme = "auto" },
+          tabline = { lualine_a = { "buffers" } },
+        })
         require("ibl").setup()
         require("Comment").setup()
         require("nvim-autopairs").setup({})
         require("todo-comments").setup()
         require("trouble").setup()
         require("which-key").setup()
+
+        -- Debugging (adapters from Nix store paths, no mason).
+        local dap = require("dap")
+        local dapui = require("dapui")
+        require("nvim-dap-virtual-text").setup()
+        dapui.setup()
+        dap.listeners.after.event_initialized["dapui"] = function() dapui.open() end
+        dap.listeners.before.event_terminated["dapui"] = function() dapui.close() end
+        dap.listeners.before.event_exited["dapui"] = function() dapui.close() end
+        require("dap-python").setup("${pkgs.python3.withPackages (ps: [ps.debugpy])}/bin/python")
+        require("dap-go").setup()
+        -- Rust/C++/C debugging (codelldb/lldb-dap) needs its adapter
+        -- store path verified first — follow-up, Python+Go are wired.
+        vim.keymap.set("n", "<leader>db", dap.toggle_breakpoint, { silent = true })
+        vim.keymap.set("n", "<leader>dc", dap.continue, { silent = true })
+        vim.keymap.set("n", "<leader>do", dap.step_over, { silent = true })
+        vim.keymap.set("n", "<leader>di", dap.step_into, { silent = true })
+        vim.keymap.set("n", "<leader>du", dapui.toggle, { silent = true })
+        vim.keymap.set("n", "<leader>dr", dap.repl.toggle, { silent = true })
+
+        -- Terminal panel, outline, file marks, tests, diff, dashboard.
+        require("toggleterm").setup({ open_mapping = [[<c-\>]], direction = "float" })
+        require("aerial").setup()
+        vim.keymap.set("n", "<leader>o", "<cmd>AerialToggle<cr>", { silent = true })
+        local harpoon = require("harpoon")
+        harpoon:setup()
+        vim.keymap.set("n", "<leader>a", function() harpoon:list():add() end, { silent = true })
+        vim.keymap.set("n", "<C-e>", function() harpoon.ui:toggle_quick_menu(harpoon:list()) end, { silent = true })
+        require("neotest").setup({
+          adapters = {
+            require("neotest-go"),
+            require("neotest-python"),
+            require("neotest-rust"),
+            require("neotest-jest"),
+          },
+        })
+        vim.keymap.set("n", "<leader>tt", function() require("neotest").run.run() end, { silent = true })
+        vim.keymap.set("n", "<leader>tf", function() require("neotest").run.run(vim.fn.expand("%")) end, { silent = true })
+        vim.keymap.set("n", "<leader>ts", function() require("neotest").summary.toggle() end, { silent = true })
+        vim.keymap.set("n", "<leader>to", function() require("neotest").output.open({ enter = true }) end, { silent = true })
+        vim.keymap.set("n", "<leader>gd", "<cmd>DiffviewOpen<cr>", { silent = true })
+        require("treesitter-context").setup()
+        require("dropbar").setup()
+        require("alpha").setup(require("alpha.themes.startify").config)
       '';
     };
   };
