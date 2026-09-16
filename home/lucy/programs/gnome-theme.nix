@@ -38,7 +38,7 @@ in {
         icon-theme = lib.mkForce "Papirus-Dark";
         font-name = lib.mkForce "Inter 11";
         document-font-name = lib.mkForce "Inter 11";
-        monospace-font-name = lib.mkForce "JetBrainsMono Nerd Font 11";
+        monospace-font-name = lib.mkForce "GeistMono Nerd Font Mono 11";
         accent-color = lib.mkForce "pink";
         cursor-size = lib.mkForce 24;
       };

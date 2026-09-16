@@ -1,8 +1,8 @@
 {pkgs}: {
-  jetbrains-mono = {
-    description = "JetBrains Mono font";
+  geist-mono = {
+    description = "GeistMono Nerd Font (terminal/editor)";
     targets = ["home"];
-    packages.home = [pkgs.jetbrains-mono];
+    packages.home = [pkgs.nerd-fonts.geist-mono];
     tags = ["desktop" "fonts"];
   };
 

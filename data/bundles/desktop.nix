@@ -27,7 +27,7 @@
   };
 
   packageToggles = [
-    "jetbrains-mono"
+    "geist-mono"
     "nautilus"
   ];
 

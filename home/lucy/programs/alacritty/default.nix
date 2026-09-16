@@ -27,11 +27,11 @@ in {
 
       font = {
         normal = {
-          family = "JetBrainsMono Nerd Font";
+          family = "GeistMono Nerd Font Mono";
           style = "Regular";
         };
         bold = {
-          family = "JetBrainsMono Nerd Font";
+          family = "GeistMono Nerd Font Mono";
           style = "Bold";
         };
         size = 13.0;
