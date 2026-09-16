@@ -37,7 +37,7 @@
       hardware.info = "Mini-PC · 4-port NIC · 10.8.0.1 + 192.168.178.25";
       # mireo has no roles.nix (server profile)
       roles = [];
-      services = ["dnsmasq" "nixfleet" "nfs" "avahi" "netdata" "podman"];
+      services = ["dnsmasq" "nixfleet" "nfs" "avahi" "podman"];
       microvms = ["grafana" "network-services" "monerod" "yammat" "cups" "sshkeys" "aptcache"];
       modules = ["base" "microvm" "cups" "dnsmasq" "nat"];
       network = {

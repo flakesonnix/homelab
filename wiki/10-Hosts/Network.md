@@ -23,7 +23,6 @@ mireo (router)
   ├── 10.8.0.9  uptime-kuma :3001 (via Caddy uptime-kuma.home.arpa)
   ├── 10.8.0.10 jellyfin :8096 (via Caddy jellyfin.home.arpa)
   ├── 10.8.0.11 ntp :123/udp (via DHCP option 42)
-  ├── 10.8.0.20 ucs (DHCP reservation, AD: LDAP/Kerberos SRVs)
   └── (DHCP)      x270 (dynamic address via DHCPv4/DHCPv6)
 ```
 
@@ -35,7 +34,7 @@ All 10.8.0.2–.11 + .20 are **dnsmasq DHCP reservations** (`dhcp-host` from `ho
 - NFS `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, Nautilus autodiscovery
 - PXE boot via dnsmasq (iPXE from nixpkgs, netboot.xyz menu; iVentoy removed Sep 2026)
 - Printing: IPP + Avahi `_ipp._tcp` (10.8.0.6)
-- Reverse proxy: Caddy on mireo `:80` → `http://<name>.home.arpa` per web UI (grafana, prometheus, yammat, cups, sshkeys, aptcache, netdata) — details [[10-Hosts/mireo|mireo]]
+- Reverse proxy: Caddy on mireo `:80` → `http://<name>.home.arpa` per web UI (grafana, prometheus, yammat, cups, sshkeys, aptcache, uptime-kuma, jellyfin) + `status.home.arpa` redir — details [[10-Hosts/mireo|mireo]]
 - Tailscale on x270, Deskflow keyboard/mouse sharing
 
 ## dnsmasq / IP cheat sheet
@@ -46,7 +45,7 @@ ip -j addr | jq
 ss -tulpn
 ```
 
-Topology extras: `topology.nix` (Netdata, NFS, YAMMAT, CUPS, sshkeys, aptcache, monerod manual entries, mireo=router).
+Topology extras: `topology.nix` (NFS, YAMMAT, CUPS, sshkeys, aptcache, monerod manual entries, mireo=router).
 
 ## Transit / WireGuard (sops)
 

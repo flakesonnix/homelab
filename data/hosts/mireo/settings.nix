@@ -116,7 +116,8 @@
   };
 
   networking.firewall.trustedInterfaces = ["br0"];
-  networking.firewall.interfaces.br0.allowedTCPPorts = [19999 9090];
+  # 19999 removed with netdata (dropped 2026-09-16); 9090 untouched.
+  networking.firewall.interfaces.br0.allowedTCPPorts = [9090];
 
   # --- Transparent LAN :80 → Caddy (nftables REDIRECT) ---
   # Diagnose 2026-09-15: *.home.arpa löst DIREKT auf die VM-IPs auf
@@ -236,22 +237,9 @@
       cname = [
         "prometheus.home.arpa,grafana.home.arpa"
       ];
-      # AD domain-join records for the UCS domain. NOTE: the UCS domain
-      # IS ucs.home.arpa (apex already has our A record), so no zone
-      # forwarding — that would also hijack the apex. Static SRVs instead
-      # (ports are AD-spec fixed, target follows via name). Requires
-      # Samba AD actually running on UCS (check 445/3268 first!).
-      srv-host = [
-        "_ldap._tcp.ucs.home.arpa,ucs.home.arpa,389"
-        "_kerberos._tcp.ucs.home.arpa,ucs.home.arpa,88"
-        "_kerberos._udp.ucs.home.arpa,ucs.home.arpa,88"
-        "_kpasswd._tcp.ucs.home.arpa,ucs.home.arpa,464"
-        "_kpasswd._udp.ucs.home.arpa,ucs.home.arpa,464"
-        "_ldap._tcp.dc._msdcs.ucs.home.arpa,ucs.home.arpa,389"
-        "_kerberos._tcp.dc._msdcs.ucs.home.arpa,ucs.home.arpa,88"
-        "_ldap._tcp.pdc._msdcs.ucs.home.arpa,ucs.home.arpa,389"
-        "_gc._tcp.ucs.home.arpa,ucs.home.arpa,3268"
-      ];
+      # NOTE (dropped 2026-09-16): UCS/AD is gone (libvirt domain ucs5.0
+      # retired, no replacement). The AD SRV records lived here; if a new
+      # directory ever returns, re-add them scoped to its name.
       dhcp-authoritative = true;
       enable-ra = true;
       dhcp-range = [
@@ -285,23 +273,13 @@
       # the IP AND serves the DNS name for the lease (short + home.arpa via
       # expand-hosts above; host-record below keeps AAAA + pre-lease A).
       # Reservations live outside the dynamic pool (10.8.0.100-.199), so no
-      # collisions. ucs (libvirt domain ucs5.0, virtio MAC verified via
-      # `virsh dumpxml ucs5.0` 2026-09-16 — the old 52:54:00:3d:5d:dd never
-      # leased and .20 stayed dead) is pinned to 10.8.0.20 the same way.
-      # The guest sends no hostname (lease `*`), so the reservation name
-      # is what serves ucs.home.arpa (A only, no host-record → no AAAA).
-      # After (re)deploy, renew DHCP inside the guest (reboot) to pick up
-      # .20 + the name; until then the old dynamic lease has no DNS.
-      dhcp-host =
-        [
-          "52:54:00:47:5c:d7,10.8.0.20,ucs"
-        ]
-        ++ lib.mapAttrsToList (
-          name: ip: let
-            lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
-            hex = n: builtins.elemAt ["0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "a" "b" "c" "d" "e" "f"] n;
-          in "02:00:00:10:08:${hex (builtins.div lastOctet 16)}${hex (lib.mod lastOctet 16)},${ip},${name}"
-        ) (import ../../../hosts/mireo/vm-ips.nix);
+      # collisions. (UCS reservation dropped with UCS itself, 2026-09-16.)
+      dhcp-host = lib.mapAttrsToList (
+        name: ip: let
+          lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
+          hex = n: builtins.elemAt ["0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "a" "b" "c" "d" "e" "f"] n;
+        in "02:00:00:10:08:${hex (builtins.div lastOctet 16)}${hex (lib.mod lastOctet 16)},${ip},${name}"
+      ) (import ../../../hosts/mireo/vm-ips.nix);
       # --- PXE boot (dnsmasq-nativ, netboot.xyz-Menü) ---
       # iPXE-Clients (erkennbar an Option 175) chainloaden direkt das
       # netboot.xyz-Menü per HTTP; klassische PXE-ROMs laden erst iPXE
@@ -330,12 +308,17 @@
       # Everyone else gets dynamic addresses via DHCPv4/DHCPv6. dnsmasq
       # serves DNS names for its leases automatically, so clients stay
       # reachable as <hostname>.home.arpa.
-      host-record = lib.mapAttrsToList (name: ip: let
-        # ULA mirrors the IPv4 last octet, same as microvm-base.nix
-        # assigns on the guest (10.8.0.N -> fd00:cafe:1::N).
-        lastOctet = lib.last (lib.splitString "." ip);
-      in "${name}.${lanDomain},${name},${ip},fd00:cafe:1::${lastOctet}")
-      staticHosts;
+      host-record =
+        lib.mapAttrsToList (name: ip: let
+          # ULA mirrors the IPv4 last octet, same as microvm-base.nix
+          # assigns on the guest (10.8.0.N -> fd00:cafe:1::N).
+          lastOctet = lib.last (lib.splitString "." ip);
+        in "${name}.${lanDomain},${name},${ip},fd00:cafe:1::${lastOctet}")
+        staticHosts
+        # Status page vanity name (points at the uptime-kuma VM; the
+        # transparent :80 redirect + Caddy redir below route it to
+        # /status/homelab — same pattern as the other webUIs).
+        ++ ["status.${lanDomain},status,10.8.0.9,fd00:cafe:1::9"];
       server = ["1.1.1.1" "9.9.9.9" "2606:4700:4700::1111" "2620:fe::9"];
     };
   };
@@ -358,10 +341,15 @@
       cups = "10.8.0.6:631";
       sshkeys = "10.8.0.7:80";
       aptcache = "10.8.0.8:3142";
-      netdata = "127.0.0.1:19999";
       # IP from vm-ips.nix (single source) instead of a literal like above.
       uptime-kuma = "${(import ../../../hosts/mireo/vm-ips.nix).uptime-kuma}:3001";
       jellyfin = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
+    };
+    # Vanity URL for the declarative status page (302 to the real path so
+    # the page's relative /api calls keep working — a rewrite would break
+    # them). DNS: status.home.arpa host-record above.
+    statusRedir = {
+      "http://status.home.arpa" = "redir http://uptime-kuma.home.arpa/status/homelab 302";
     };
     publicWebUIs = {
       "yammat.db210.org" = "10.8.0.5:3000";
@@ -379,7 +367,8 @@
         lib.nameValuePair name {
           extraConfig = "reverse_proxy ${target}";
         })
-      publicWebUIs;
+      publicWebUIs
+      // lib.mapAttrs' (name: cfg: lib.nameValuePair name {extraConfig = cfg;}) statusRedir;
   };
 
   fileSystems."/data" = {
@@ -423,21 +412,9 @@
     '';
   };
 
-  # --- netdata monitoring ---
-  services.netdata = {
-    enable = true;
-    config = {
-      global = {
-        "update every" = 1;
-      };
-      web = {
-        "bind to" = "10.8.0.1";
-        "default port" = 19999;
-        "allow connections from" = "localhost 10.8.*";
-        "allow dashboard from" = "localhost 10.8.*";
-      };
-    };
-  };
+  # netdata dropped 2026-09-16 (replaced by Grafana/Prometheus +
+  # uptime-kuma + nixfleet agent). See git history for the old block.
+  services.netdata.enable = false;
 
   # --- Tailscale network unit (mark as unmanaged) ---
   systemd.network.networks."50-tailscale" = {

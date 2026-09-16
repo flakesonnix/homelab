@@ -23,7 +23,7 @@ deploy: nix run .#deploy-mireo
 - NAT for 10.8.0.0/24 + IPv6 via NAT66 (FritzBox PD configured but currently not landing — br0 is ULA-only, all LAN v6 egress masqueraded), systemd-networkd
 - dnsmasq: DHCPv4 (+ static reservations from `vm-ips.nix` for all services)/stateful DHCPv6 (explicit ULA range)/DNS/RA+SLAAC (constructor:br0) (`bindsTo sys-devices-virtual-net-br0.device` fix)
 - PXE boot via dnsmasq (iPXE from nixpkgs, netboot.xyz menu; iVentoy removed Sep 2026)
-- NFS export of `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, Netdata :19999, node_exporter :9100
+- NFS export of `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, node_exporter :9100 (netdata dropped 2026-09-16)
 - libvirtd for virt-manager remote (Weg A): `qemu+ssh://root@10.8.0.1/system`, `allowedBridges=["br0"]`
 - CLI tools: tcpdump, mtr, nmap, iperf3, ethtool, socat, btop, jq, lsof, sysstat, smartmontools
 - `lucy.base.isServer = true` (no desktop)
@@ -46,7 +46,8 @@ One entrypoint for all web UIs: `http://<name>.home.arpa` (DNS from dnsmasq, no 
 | aptcache.home.arpa | 10.8.0.8:3142 |
 | uptime-kuma.home.arpa | 10.8.0.9:3001 |
 | jellyfin.home.arpa | 10.8.0.10:8096 |
-| netdata.home.arpa | mireo :19999 |
+| status.home.arpa | 302 → uptime-kuma.home.arpa/status/homelab |
+| netdata.home.arpa | dropped 2026-09-16 (see Grafana/Prometheus) |
 
 Source: `webUIs` map in `data/hosts/mireo/settings.nix` → `services.caddy.virtualHosts`.
 
@@ -56,7 +57,7 @@ Source: `webUIs` map in `data/hosts/mireo/settings.nix` → `services.caddy.virt
 
 ## Config files
 
-- `data/hosts/mireo/settings.nix` — network, NAT, dnsmasq, NFS, Avahi, Netdata, nixfleet
+- `data/hosts/mireo/settings.nix` — network, NAT, dnsmasq, NFS, Avahi, nixfleet
 - `hosts/mireo/host.nix` — applyHost
 - `hosts/mireo/*-microvm.nix` (7) + `microvm-base.nix` + `vm-ips.nix` (shared static IP map, handed out via dnsmasq `dhcp-host` reservations)
 - QEMU tap→br0 (`flake.nix:193`)

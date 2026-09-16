@@ -472,6 +472,7 @@
       services.uptime-kuma-sync = {
         enable = true;
         passwordFile = "/run/secrets/uptime-kuma/admin-password";
+        statusPage.enable = true;
         monitors = {
           grafana = {
             type = "http";
@@ -492,7 +493,8 @@
     && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.serviceConfig.Type == "oneshot") "kuma: sync service is oneshot"
     && forceB (kumaEnabled.systemd.timers.uptime-kuma-sync.timerConfig.OnCalendar == "daily") "kuma: daily convergence timer"
     && forceB (lib.hasInfix "http://10.8.0.9:3001" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: script targets the API"
-    && forceB (lib.hasInfix "uptime-kuma-monitors.json" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: monitor data wired into service";
+    && forceB (lib.hasInfix "uptime-kuma-monitors.json" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: monitor data wired into service"
+    && forceB (lib.hasInfix "--status-page" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: status page wired into service";
 
   notifCounter = dotfilesLib.waybarScripts.mkNotifCounter {};
   notifCounterCustom = dotfilesLib.waybarScripts.mkNotifCounter {

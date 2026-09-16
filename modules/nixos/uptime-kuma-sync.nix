@@ -36,6 +36,17 @@
       })
       cfg.monitors));
 
+  # Empty slug = status page unmanaged (script skips).
+  statusPageJson = pkgs.writeText "uptime-kuma-status-page.json" (builtins.toJSON
+    (
+      if cfg.statusPage.enable
+      then {
+        inherit (cfg.statusPage) slug title description;
+        monitors = builtins.attrNames cfg.monitors;
+      }
+      else {slug = "";}
+    ));
+
   syncScript = pkgs.writeTextFile {
     name = "uptime-kuma-sync.py";
     executable = true;
@@ -137,6 +148,7 @@
           ap.add_argument("--username", required=True)
           ap.add_argument("--password-file", required=True)
           ap.add_argument("--monitors", required=True)
+          ap.add_argument("--status-page", required=True)
           ap.add_argument("--dry-run", action="store_true")
           args = ap.parse_args()
 
@@ -183,9 +195,56 @@
                   log(f"in sync ({len(desired)} monitors)")
               elif args.dry_run:
                   log("dry-run: no writes performed")
+              with open(args.status_page, encoding="utf-8") as f:
+                  page = json.load(f)
+              if page.get("slug"):
+                  live = {m["name"]: m["id"] for m in api.get_monitors()}
+                  sync_status_page(api, page, live, args.dry_run)
               return 0
           finally:
               api.disconnect()
+
+
+      def sync_status_page(api, page, live, dry_run):
+          """Reconcile the single public status page (all Nix monitors in
+          one group). Other slugs are deleted (authoritative)."""
+          slug = page["slug"]
+          member_ids = [live[name] for name in page["monitors"] if name in live]
+          missing = [name for name in page["monitors"] if name not in live]
+          for name in missing:
+              log(f"status page: monitor {name} unknown, skipped")
+          want_groups = [{"name": "Services", "weight": 1,
+                          "monitorList": [{"id": i} for i in member_ids]}]
+          try:
+              have = api.get_status_page(slug)
+          except Exception:  # noqa: BLE001 - missing page
+              have = None
+          if have is None:
+              log(f"+ create status page /status/{slug}")
+              if not dry_run:
+                  api.add_status_page(slug, page["title"])
+                  have = api.get_status_page(slug)
+          if have is not None and not dry_run:
+              have_ids = sorted(
+                  mon["id"] for grp in (have.get("publicGroupList") or [])
+                  for mon in (grp.get("monitorList") or []))
+              if (have.get("title") != page["title"]
+                      or (have.get("description") or "") != page["description"]
+                      or have.get("published") is not True
+                      or have_ids != sorted(member_ids)):
+                  log(f"~ save status page /status/{slug} "
+                      f"({len(member_ids)} monitors)")
+                  api.save_status_page(
+                      slug, id=have["id"], title=page["title"],
+                      description=page["description"], published=True,
+                      publicGroupList=want_groups)
+              else:
+                  log(f"status page /status/{slug} in sync")
+          for other in api.get_status_pages():
+              if other.get("slug") != slug:
+                  log(f"- delete status page /status/{other.get('slug')} (not in Nix)")
+                  if not dry_run:
+                      api.delete_status_page(other["slug"])
 
 
       if __name__ == "__main__":
@@ -265,6 +324,28 @@ in {
           monitors.grafana = { type = "http"; target = "http://10.8.0.2:3000/"; };
       '';
     };
+
+    statusPage = {
+      enable = lib.mkEnableOption "single public status page with all Nix monitors in one group (other slugs deleted)";
+
+      slug = lib.mkOption {
+        type = lib.types.str;
+        default = "homelab";
+        description = "URL slug (page lives at /status/<slug>).";
+      };
+
+      title = lib.mkOption {
+        type = lib.types.str;
+        default = "Homelab Status";
+        description = "Page title.";
+      };
+
+      description = lib.mkOption {
+        type = lib.types.str;
+        default = "Homelab services (declarative monitors, see services.uptime-kuma-sync).";
+        description = "Page subtitle.";
+      };
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -300,7 +381,8 @@ in {
           --api-url "${cfg.apiUrl}" \
           --username "${cfg.username}" \
           --password-file "${cfg.passwordFile}" \
-          --monitors "${desiredJson}"
+          --monitors "${desiredJson}" \
+          --status-page "${statusPageJson}"
       '';
     };
 
@@ -323,6 +405,7 @@ in {
           --username "${cfg.username}" \
           --password-file "${cfg.passwordFile}" \
           --monitors "${desiredJson}" \
+          --status-page "${statusPageJson}" \
           --dry-run
       '';
     };

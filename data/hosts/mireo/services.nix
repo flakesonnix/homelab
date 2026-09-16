@@ -51,13 +51,13 @@
 
   # --- Declarative Uptime Kuma monitors (authoritative API sync) ---
   # Targets verified live 2026-09-16 (only 2xx/3xx + reachable hosts).
-  # Skipped deliberately: x270 (roaming), ucs (down/unstable), netdata
-  # :19999 (answers 404 on /), notifications (no channel chosen yet).
+  # Skipped deliberately: x270 (roaming), notifications (no channel yet).
   services.uptime-kuma-sync = {
     enable = true;
     apiUrl = "http://10.8.0.9:3001";
     username = "lucy";
     passwordFile = "/run/secrets/uptime-kuma/admin-password";
+    statusPage.enable = true; # public page /status/homelab (+ status.home.arpa)
     monitors = {
       grafana = {
         type = "http";

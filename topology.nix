@@ -9,10 +9,6 @@
   # --- Mireo: extra services not auto-detected ---
   nodes.mireo.deviceType = lib.mkForce "router";
   nodes.mireo.services = {
-    netdata = {
-      name = "Netdata";
-      info = "10.8.0.1:19999";
-    };
     nfs = {
       name = "NFS";
       info = "/data → 10.8.0.0/24";

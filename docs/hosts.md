@@ -91,8 +91,8 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 - PXE boot via dnsmasq (iPXE binaries from nixpkgs, netboot.xyz menu over HTTP)
 - NFS export of `/data` to `10.8.0.0/24`
 - Avahi mDNS advertising NFS share (`_nfs._tcp`) for Nautilus autodiscovery
-- Netdata monitoring (10.8.0.1:19999, also via `http://netdata.home.arpa`)
-- Caddy reverse proxy on `:80` — every web UI as `http://<name>.home.arpa` (grafana, prometheus, yammat, cups, sshkeys, aptcache, netdata, uptime-kuma, jellyfin)
+- Metrics via Grafana/Prometheus + uptime-kuma alerting + nixfleet agent (netdata dropped 2026-09-16)
+- Caddy reverse proxy on `:80` — every web UI as `http://<name>.home.arpa` (grafana, prometheus, yammat, cups, sshkeys, aptcache, uptime-kuma, jellyfin) + `http://status.home.arpa` (302 → Uptime Kuma status page)
 - Seven microVMs running on br0:
   - **grafana** (10.8.0.2): Prometheus scraping router + all hosts, Grafana with mireo-router dashboard
   - **network-services** (10.8.0.3): bridge tap stub (no services)
