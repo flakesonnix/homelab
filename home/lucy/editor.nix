@@ -83,6 +83,13 @@
         comment-nvim
         nvim-autopairs
         trouble-nvim
+        # Messages, cmdline, quickfix, search, scrollbar
+        noice-nvim
+        nvim-notify
+        dressing-nvim
+        nvim-scrollbar
+        nvim-bqf
+        nvim-hlslens
         # Debugging
         nvim-dap
         nvim-dap-ui
@@ -164,6 +171,22 @@
         vim.opt.completeopt = { "menuone", "noselect" }
         vim.opt.ignorecase = true
         vim.opt.smartcase = true
+        -- Feel: cursorline, breathing room, splits, mouse, guides.
+        vim.opt.cursorline = true
+        vim.opt.scrolloff = 8
+        vim.opt.sidescrolloff = 8
+        vim.opt.splitright = true
+        vim.opt.splitbelow = true
+        vim.opt.mouse = "a"
+        vim.opt.confirm = true
+        vim.opt.colorcolumn = "120"
+        vim.opt.pumheight = 10
+        vim.opt.list = true
+        vim.opt.listchars = { tab = "→ ", trail = "·", nbsp = "␣" }
+        vim.api.nvim_create_autocmd("TextYankPost", {
+          group = vim.api.nvim_create_augroup("YankHl", { clear = true }),
+          callback = function() vim.highlight.on_yank({ timeout = 200 }) end,
+        })
         -- IDE defaults: unfolded treesitter folds, tabline, inlay hints on attach.
         vim.opt.foldmethod = "expr"
         vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
@@ -332,6 +355,35 @@
         require("todo-comments").setup()
         require("trouble").setup()
         require("which-key").setup()
+
+        -- Messages, cmdline, popups (Noice needs nui + notify, both in).
+        require("notify").setup({ timeout = 3000 })
+        require("dressing").setup()
+        require("noice").setup({
+          lsp = {
+            override = {
+              ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
+              ["vim.lsp.util.stylize_markdown"] = true,
+            },
+            progress = { enabled = true },
+          },
+          presets = {
+            bottom_search = true,
+            command_palette = true,
+            long_message_to_split = true,
+          },
+        })
+
+        -- Scrollbar with diagnostics, better quickfix, search counts.
+        require("scrollbar").setup()
+        require("scrollbar.handlers.gitsigns").setup()
+        require("bqf").setup()
+        require("hlslens").setup()
+        local hl_opts = { noremap = true, silent = true }
+        vim.keymap.set("n", "n", [[<Cmd>execute('normal! ' . v:count1 . 'n')<CR><Cmd>lua require('hlslens').start()<CR>]], hl_opts)
+        vim.keymap.set("n", "N", [[<Cmd>execute('normal! ' . v:count1 . 'N')<CR><Cmd>lua require('hlslens').start()<CR>]], hl_opts)
+        vim.keymap.set("n", "*", [[*<Cmd>lua require('hlslens').start()<CR>]], hl_opts)
+        vim.keymap.set("n", "#", [[#<Cmd>lua require('hlslens').start()<CR>]], hl_opts)
 
         -- Debugging (adapters from Nix store paths, no mason).
         local dap = require("dap")
