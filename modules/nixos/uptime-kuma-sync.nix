@@ -199,7 +199,13 @@
                   page = json.load(f)
               if page.get("slug"):
                   live = {m["name"]: m["id"] for m in api.get_monitors()}
-                  sync_status_page(api, page, live, args.dry_run)
+                  # Page failures must never fail the whole sync (and with
+                  # it the deploy): monitors are the contract, the page is
+                  # presentation. Loud log, next run retries.
+                  try:
+                      sync_status_page(api, page, live, args.dry_run)
+                  except Exception as e:  # noqa: BLE001
+                      log(f"status page failed, monitors are in sync: {e}")
               return 0
           finally:
               api.disconnect()
@@ -207,7 +213,10 @@
 
       def sync_status_page(api, page, live, dry_run):
           """Reconcile the single public status page (all Nix monitors in
-          one group). Other slugs are deleted (authoritative)."""
+          one group). Other slugs are deleted (authoritative). Existence
+          is checked via the LIST (get_status_page parses incident data
+          and crashes on some server states in lib 1.2.1 — never trust it
+          blindly, hence no try/except-add fallback)."""
           slug = page["slug"]
           member_ids = [live[name] for name in page["monitors"] if name in live]
           missing = [name for name in page["monitors"] if name not in live]
@@ -215,9 +224,10 @@
               log(f"status page: monitor {name} unknown, skipped")
           want_groups = [{"name": "Services", "weight": 1,
                           "monitorList": [{"id": i} for i in member_ids]}]
-          try:
+          slugs = {p["slug"]: p for p in api.get_status_pages()}
+          if slug in slugs:
               have = api.get_status_page(slug)
-          except Exception:  # noqa: BLE001 - missing page
+          else:
               have = None
           if have is None:
               log(f"+ create status page /status/{slug}")
