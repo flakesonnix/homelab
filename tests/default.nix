@@ -401,6 +401,10 @@
         type = lib.types.lines;
         default = "";
       };
+      transport.protocol = lib.mkOption {
+        type = lib.types.enum ["udp" "tcp" "tls"];
+        default = "udp";
+      };
     };
   };
   voipEnabled = nixosEval [
@@ -412,6 +416,14 @@
         username = "K00000000";
         passwordFile = "/run/secrets/voip/easybell-main";
         did = "004930000000";
+        contactUser = "493012345000";
+        inboundExtension = "999";
+      };
+      services.voip.clients.easybell-test = {
+        username = "K00000001";
+        passwordFile = "/run/secrets/voip/easybell-test";
+        did = "004930000001";
+        inboundExtension = "999";
       };
     }
   ];
@@ -433,6 +445,14 @@
     && forceB (lib.hasInfix "easybell-main" voipEnabled.systemd.services.voip-check.script) "voip: check script covers the client"
     && forceB (voipEnabled.environment.etc."voip/clients/easybell-main.conf".text != "") "voip: client descriptor rendered"
     && forceB (lib.hasInfix "voip.easybell.de" voipEnabled.environment.etc."voip/clients/easybell-main.conf".text) "voip: descriptor carries the registrar"
+    && forceB (lib.hasInfix "contact_user=493012345000" voipEnabled.environment.etc."voip/clients/easybell-main.conf".text) "voip: descriptor carries explicit contactUser"
+    && forceB (lib.hasInfix "contact_user=004930000001" voipEnabled.environment.etc."voip/clients/easybell-test.conf".text) "voip: contactUser falls back to did"
+    && forceB (lib.hasInfix "server_uri=sip:voip.easybell.de" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer carries the registrar"
+    && forceB (lib.hasInfix "transport=transport-udp" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer maps to the asteriskLocal transport object"
+    && forceB (lib.hasInfix "contact_user=493012345000" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer carries contact_user"
+    && forceB (lib.hasInfix "[easybell-main_in]" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer emits the inbound endpoint"
+    && forceB (lib.hasInfix "Dial(PJSIP/999,30)" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer routes inbound to inboundExtension"
+    && forceB (lib.hasInfix "enable=yes" voipEnabled.services.asterisk.confFiles."dnsmgr.conf") "voip: dnsmgr enabled for SRV registrar"
     && forceB (lib.hasInfix "999" voipLocal.services.asteriskLocal.extraExtensions) "voip: localTest appends extension 999 via asteriskLocal";
 
   notifCounter = dotfilesLib.waybarScripts.mkNotifCounter {};

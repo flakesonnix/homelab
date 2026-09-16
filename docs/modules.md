@@ -114,29 +114,32 @@ Generates `pjsip.conf` and `extensions.conf` from phone attrs. Built-in extensio
 
 ---
 
-### `voip.nix` (Phase 1 — structure only, no live provider trunk)
+### `voip.nix` (Phase 2 — live PJSIP trunk rendering)
 
-Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options namespace: `services.voip.*`. Wired on `x270` (next to `asterisk.nix`); `mireo`/`nyagate` untouched.
+Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options namespace: `services.voip.*`. Wired on `x270` (next to `asterisk.nix`); `mireo`/`nyagate` untouched. Trunk layout follows Easybell's official Asterisk-22 guide (`easybell.de/hilfe "Asterisk Telefonanlagen"`, Sep 2026).
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `enable` | bool | false | Enable validation, `/etc/voip` descriptors, `voip-check` service |
-| `providers` | attrs of submodules | `{easybell, eventphone}` | Provider presets: `registrar`, `port` (5060), `transport` (udp), `outboundProxy` (null = registrar), `expires` (1800), `retryInterval` (60), `note` |
+| `enable` | bool | false | Enable validation, `/etc/voip` descriptors, check + render services |
+| `providers` | attrs of submodules | `{easybell, eventphone}` | Provider presets: `registrar`, `port` (5060), `transport` (udp), `outboundProxy` (null = registrar), `expires` (1800), `retryInterval` (60), `mediaEncryption` (false = SDES-SRTP for TLS), `note` |
 | `providers.easybell.registrar` | str | `"voip.easybell.de"` | SIP-Trunk/VoIP registrar (Cloud PBX: `pbx.easybell.de`, legacy: `sip.easybell.de`) |
-| `providers.eventphone.registrar` | null | null | TODO stub — proves the abstraction is generic |
+| `providers.eventphone.registrar` | null | null | TODO stub — credentials come per-event from Guru3; IPv6 registrar `voip6.eventphone.de` |
 | `clients.<name>.provider` | str | `"easybell"` | Key into `providers` |
 | `clients.<name>.username` | str or null | null | SIP auth username (required when enabled) |
 | `clients.<name>.passwordFile` | str | `""` | Absolute runtime path to password file, e.g. `/run/secrets/voip/<client>` (required when enabled; only the path enters the store) |
-| `clients.<name>.did` | str or null | null | Public number / DID, E.164 without `+` |
-| `clients.<name>.displayName` | str | `""` | Caller-ID display name |
+| `clients.<name>.did` | str or null | null | Public number / DID, E.164 without `+` (required when enabled; used for `client_uri` + inbound routing) |
+| `clients.<name>.contactUser` | str or null | null | Head number for `contact_user`/AOR contact (falls back to `did`) |
+| `clients.<name>.inboundExtension` | str or null | null | Local target for inbound calls (required when enabled) |
+| `clients.<name>.displayName` | str | `""` | Caller-ID display name (needs CLIP No Screening + From Display in my.easybell) |
+| `clients.<name>.codecs` | list of str | `[alaw ulaw g722]` | Allowed codecs in Easybell order |
 | `clients.<name>.enable` | bool | true | Dormant when false |
 | `localTest.enable` | bool | false | Provider-free test extension (needs `asteriskLocal.enable`; dial 999 → playback) |
 | `localTest.extension` | str | `"999"` | Test extension number |
-| `localTest.callerId` | str | `"VoIP Test"` | Label (docs only in Phase 1) |
+| `localTest.callerId` | str | `"VoIP Test"` | Label (docs only) |
 
-When enabled: asserts (known provider, username + absolute `passwordFile`, non-null registrar, unique DIDs, `asteriskLocal` for localTest; warns on `/nix/store` password paths), writes non-secret descriptors to `/etc/voip/clients/<name>.conf` (Phase-2 trunk-renderer contract), appends the test extension via `asteriskLocal.extraExtensions`, runs oneshot `voip-check.service` (verifies credential files exist, never prints secrets).
+When enabled: asserts (known provider, username + absolute `passwordFile`, non-null registrar, unique + non-null DIDs, `inboundExtension` set, `asteriskLocal.enable` for live trunks; warns on `/nix/store` password paths and transport mismatches), writes non-secret descriptors to `/etc/voip/clients/<name>.conf`, sets `dnsmgr.conf` (`enable=yes`, refresh 90s), appends the test extension via `asteriskLocal.extraExtensions`, runs oneshot `voip-check.service` (credential files exist) and `voip-render-trunks.service` (injects runtime passwords into `/run/asterisk/voip-{trunks,extensions}.conf` before `asterisk.service`; Asterisk pulls them via `#include`, placeholders pre-created by tmpfiles). Password rotation: update secret, then `systemctl restart voip-render-trunks && asterisk -rx 'core reload'` (config changes re-render automatically via unit change; secret bytes can't be a Nix trigger).
 
-**Network (documented, not implemented):** Easybell needs SIP 5060/5064 UDP+TCP (TLS 5061) + RTP 20000–50000. `asteriskLocal.openFirewall` currently opens RTP 10000–20000 only — align before go-live. No firewall changes in Phase 1.
+**Network (documented, not implemented):** Easybell needs SIP 5060/5064 UDP+TCP (TLS 5061) + RTP 20000–50000. `asteriskLocal.openFirewall` currently opens RTP 10000–20000 only — align before go-live. Transport `local_net`/`external_*_address` (NAT) and `[global] endpoint_identifier_order` are open follow-ups.
 
 ---
 

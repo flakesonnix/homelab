@@ -121,6 +121,15 @@
     disallow = all
     allow = ulaw,alaw,g722
     direct_media = no
+
+    ; ----------------------------------------------------------------
+    ; PROVIDER TRUNKS (services.voip, Phase 2)
+    ; Runtime-rendered by voip-render-trunks.service into /run/asterisk
+    ; (passwords never enter the Nix store). Pre-created (empty) by
+    ; tmpfiles below, so the include is always valid — even with voip
+    ; disabled or before the first render.
+    ; ----------------------------------------------------------------
+    #include /run/asterisk/voip-trunks.conf
   '';
 
   /*
@@ -234,6 +243,12 @@
     ; From services.asteriskLocal.extraExtensions
     ; ----------------------------------------------------------------
     ${cfg.extraExtensions}
+
+    ; ----------------------------------------------------------------
+    ; PROVIDER TRUNK DIALPLAN (services.voip, Phase 2)
+    ; See pjsip.conf include above for lifecycle notes.
+    ; ----------------------------------------------------------------
+    #include /run/asterisk/voip-extensions.conf
   '';
 
   /*
@@ -501,6 +516,15 @@ in {
       "asterisk/pjsip.conf".source = config.sops.templates."asterisk-pjsip.conf".path;
       "asterisk/extensions.conf".source = config.sops.templates."asterisk-extensions.conf".path;
     };
+
+    # Placeholder fragments for the services.voip #includes above.
+    # tmpfiles `f` only creates when missing; voip-render-trunks.service
+    # rewrites both before asterisk starts. The asterisk user exists here
+    # (upstream module creates it in this same mkIf branch).
+    systemd.tmpfiles.rules = [
+      "f /run/asterisk/voip-trunks.conf 0640 asterisk asterisk - voip PJSIP trunks (services.voip)"
+      "f /run/asterisk/voip-extensions.conf 0640 asterisk asterisk - voip dialplan (services.voip)"
+    ];
 
     # Firewall configuration
     networking.firewall = lib.mkIf cfg.openFirewall {
