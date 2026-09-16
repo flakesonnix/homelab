@@ -170,6 +170,7 @@
               return 1
           try:
               existing = {m["name"]: m for m in api.get_monitors()}
+              live = {m["name"]: m["id"] for m in existing.values()}
               changed = False
               for name, spec in desired.items():
                   want = norm_desired(name, spec)
@@ -177,7 +178,13 @@
                   if have is None:
                       log(f"+ create {spec['type']} {name}")
                       if not args.dry_run:
-                          api_add_monitor(api, **kuma_kwargs(name, spec))
+                          res = api_add_monitor(api, **kuma_kwargs(name, spec)) or {}
+                          # Track the id locally: the lib caches the monitor
+                          # list, a refetch here would still miss the newborn.
+                          if res.get("monitorID") is not None:
+                              live[name] = res["monitorID"]
+                          else:
+                              live = {m["name"]: m["id"] for m in api.get_monitors()}
                       changed = True
                   elif have != want:
                       log(f"~ update {name} (drift: "
@@ -190,6 +197,7 @@
                       log(f"- delete {name} (not in Nix)")
                       if not args.dry_run:
                           api.delete_monitor(m["id"])
+                      live.pop(name, None)
                       changed = True
               if not changed:
                   log(f"in sync ({len(desired)} monitors)")
@@ -198,7 +206,9 @@
               with open(args.status_page, encoding="utf-8") as f:
                   page = json.load(f)
               if page.get("slug"):
-                  live = {m["name"]: m["id"] for m in api.get_monitors()}
+                  # NOTE: live is the tracked dict from above (creates and
+                  # deletes applied) — do NOT refetch here, the lib caches
+                  # the monitor list and would miss newborns.
                   # Page failures must never fail the whole sync (and with
                   # it the deploy): monitors are the contract, the page is
                   # presentation. Loud log, next run retries.
@@ -213,10 +223,10 @@
 
       def sync_status_page(api, page, live, dry_run):
           """Reconcile the single public status page (all Nix monitors in
-          one group). Other slugs are deleted (authoritative). Existence
-          is checked via the LIST (get_status_page parses incident data
-          and crashes on some server states in lib 1.2.1 — never trust it
-          blindly, hence no try/except-add fallback)."""
+          one group). Other slugs are deleted (authoritative). Never uses
+          get_status_page: it crashes on incident parsing in lib 1.2.1, so
+          existence comes from the list and the save is unconditional
+          (idempotent) instead of drift-compared."""
           slug = page["slug"]
           member_ids = [live[name] for name in page["monitors"] if name in live]
           missing = [name for name in page["monitors"] if name not in live]
@@ -225,36 +235,23 @@
           want_groups = [{"name": "Services", "weight": 1,
                           "monitorList": [{"id": i} for i in member_ids]}]
           slugs = {p["slug"]: p for p in api.get_status_pages()}
-          if slug in slugs:
-              have = api.get_status_page(slug)
-          else:
-              have = None
-          if have is None:
+          if slug not in slugs:
               log(f"+ create status page /status/{slug}")
               if not dry_run:
                   api.add_status_page(slug, page["title"])
-                  have = api.get_status_page(slug)
-          if have is not None and not dry_run:
-              have_ids = sorted(
-                  mon["id"] for grp in (have.get("publicGroupList") or [])
-                  for mon in (grp.get("monitorList") or []))
-              if (have.get("title") != page["title"]
-                      or (have.get("description") or "") != page["description"]
-                      or have.get("published") is not True
-                      or have_ids != sorted(member_ids)):
-                  log(f"~ save status page /status/{slug} "
-                      f"({len(member_ids)} monitors)")
-                  api.save_status_page(
-                      slug, id=have["id"], title=page["title"],
-                      description=page["description"], published=True,
-                      publicGroupList=want_groups)
-              else:
-                  log(f"status page /status/{slug} in sync")
+                  slugs = {p["slug"]: p for p in api.get_status_pages()}
+          if dry_run:
+              log(f"dry-run: status page /status/{slug} not saved")
+              return
+          log(f"~ save status page /status/{slug} ({len(member_ids)} monitors)")
+          api.save_status_page(
+              slug, id=slugs[slug]["id"], title=page["title"],
+              description=page["description"], published=True,
+              publicGroupList=want_groups)
           for other in api.get_status_pages():
               if other.get("slug") != slug:
                   log(f"- delete status page /status/{other.get('slug')} (not in Nix)")
-                  if not dry_run:
-                      api.delete_status_page(other["slug"])
+                  api.delete_status_page(other["slug"])
 
 
       if __name__ == "__main__":
