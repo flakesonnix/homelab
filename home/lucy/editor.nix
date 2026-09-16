@@ -83,13 +83,20 @@
         comment-nvim
         nvim-autopairs
         trouble-nvim
-        # Messages, cmdline, quickfix, search, scrollbar
+        # Messages, cmdline, quickfix, search, scrollbar, sessions,
+        # tasks, replace, rename, undo
         noice-nvim
         nvim-notify
         dressing-nvim
         nvim-scrollbar
         nvim-bqf
         nvim-hlslens
+        # Sessions, tasks, search/replace, rename, undo, symbols
+        persistence-nvim
+        overseer-nvim
+        grug-far-nvim
+        inc-rename-nvim
+        undotree
         # Debugging
         nvim-dap
         nvim-dap-ui
@@ -265,7 +272,9 @@
             vim.keymap.set("n", "gi", vim.lsp.buf.implementation, o)
             vim.keymap.set("n", "K", vim.lsp.buf.hover, o)
             vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, o)
-            vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, o)
+            vim.keymap.set("n", "<leader>rn", function()
+              return ":IncRename " .. vim.fn.expand("<cword>")
+            end, { buffer = ev.buf, silent = true, expr = true })
             vim.keymap.set("n", "<leader>D", vim.lsp.buf.type_definition, o)
             vim.keymap.set("n", "<leader>f", function() vim.lsp.buf.format({ async = true }) end, o)
           end,
@@ -359,7 +368,7 @@
 
         -- Small UI helpers (all defaults, just enabled).
         require("neo-tree").setup({ close_if_last_window = true })
-        require("gitsigns").setup()
+        require("gitsigns").setup({ current_line_blame = true })
         require("lualine").setup({
           options = { theme = "auto" },
           tabline = { lualine_a = { "buffers" } },
@@ -399,11 +408,32 @@
           },
         })
 
-        -- Scrollbar with diagnostics, better quickfix, search counts.
+        -- Sessions (auto-save/restore), tasks, project search/replace,
+        -- inline rename, undo tree, code/symbol navigation.
         require("scrollbar").setup()
         require("scrollbar.handlers.gitsigns").setup()
         require("bqf").setup()
         require("hlslens").setup()
+        local hl_opts = { noremap = true, silent = true }
+        vim.keymap.set("n", "n", [[<Cmd>execute('normal! ' . v:count1 . 'n')<CR><Cmd>lua require('hlslens').start()<CR>]], hl_opts)
+        vim.keymap.set("n", "N", [[<Cmd>execute('normal! ' . v:count1 . 'N')<CR><Cmd>lua require('hlslens').start()<CR>]], hl_opts)
+        vim.keymap.set("n", "*", [[*<Cmd>lua require('hlslens').start()<CR>]], hl_opts)
+        vim.keymap.set("n", "#", [[#<Cmd>lua require('hlslens').start()<CR>]], hl_opts)
+        require("persistence").setup()
+        vim.keymap.set("n", "<leader>qs", function() require("persistence").load() end, { silent = true })
+        vim.keymap.set("n", "<leader>ql", function() require("persistence").load({ last = true }) end, { silent = true })
+        vim.keymap.set("n", "<leader>qd", function() require("persistence").stop() end, { silent = true })
+        require("overseer").setup()
+        vim.keymap.set("n", "<leader>ot", "<cmd>OverseerToggle<cr>", { silent = true })
+        vim.keymap.set("n", "<leader>or", "<cmd>OverseerRun<cr>", { silent = true })
+        require("grug-far").setup({})
+        vim.keymap.set("n", "<leader>sr", "<cmd>GrugFar<cr>", { silent = true })
+        require("inc_rename").setup()
+        vim.keymap.set("n", "<leader>u", "<cmd>UndotreeToggle<cr>", { silent = true })
+        vim.keymap.set("n", "<leader>ds", builtin.lsp_document_symbols, { silent = true })
+        vim.keymap.set("n", "<leader>ws", builtin.lsp_workspace_symbols, { silent = true })
+        vim.keymap.set("n", "<leader>ci", builtin.lsp_incoming_calls, { silent = true })
+        vim.keymap.set("n", "<leader>co", builtin.lsp_outgoing_calls, { silent = true })
         local hl_opts = { noremap = true, silent = true }
         vim.keymap.set("n", "n", [[<Cmd>execute('normal! ' . v:count1 . 'n')<CR><Cmd>lua require('hlslens').start()<CR>]], hl_opts)
         vim.keymap.set("n", "N", [[<Cmd>execute('normal! ' . v:count1 . 'N')<CR><Cmd>lua require('hlslens').start()<CR>]], hl_opts)
