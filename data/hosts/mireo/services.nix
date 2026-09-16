@@ -95,10 +95,38 @@
         type = "http";
         target = "http://grafana.home.arpa/";
       };
+      grafana-public = {
+        type = "http";
+        target = "https://grafana.db210.org/";
+      };
+      yammat-public = {
+        type = "http";
+        target = "https://yammat.db210.org/";
+      };
       aptcache = {
         type = "port";
         target = "10.8.0.8";
         port = 3142;
+      };
+      monero-orport = {
+        type = "port";
+        target = "10.8.0.4";
+        port = 9001;
+      };
+      minecraft = {
+        type = "port";
+        target = "10.66.0.2";
+        port = 25565;
+      };
+      nfs = {
+        type = "port";
+        target = "10.8.0.1";
+        port = 2049;
+      };
+      ssh-mireo = {
+        type = "port";
+        target = "10.8.0.1";
+        port = 22;
       };
       mireo = {
         type = "ping";
