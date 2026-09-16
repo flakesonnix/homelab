@@ -53,34 +53,91 @@
   # Targets verified live 2026-09-16 (only 2xx/3xx + reachable hosts).
   # Skipped deliberately: x270 (roaming), ucs (down/unstable), netdata
   # :19999 (answers 404 on /), notifications (no channel chosen yet).
-  # Aktivieren erst wenn das Admin-Passwort in sops liegt, sonst failt
-  # der Sync-Service (laut, aber harmlos — keine Aktivierungs-Blockade).
-  # services.uptime-kuma-sync = {
-  #   enable = true;
-  #   apiUrl = "http://10.8.0.9:3001";
-  #   username = "lucy";
-  #   passwordFile = "/run/secrets/uptime-kuma/admin-password";
-  #   monitors = {
-  #     grafana = { type = "http"; target = "http://10.8.0.2:3000/"; };
-  #     prometheus = { type = "http"; target = "http://10.8.0.2:9090/"; };
-  #     yammat = { type = "http"; target = "http://10.8.0.5:3000/"; };
-  #     cups = { type = "http"; target = "http://10.8.0.6:631/"; };
-  #     sshkeys = { type = "http"; target = "http://10.8.0.7/"; };
-  #     jellyfin = { type = "http"; target = "http://10.8.0.10:8096/"; };
-  #     uptime-self = { type = "http"; target = "http://10.8.0.9:3001/"; };
-  #     uptime-vhost = { type = "http"; target = "http://uptime-kuma.home.arpa/"; };
-  #     grafana-vhost = { type = "http"; target = "http://grafana.home.arpa/"; };
-  #     aptcache = { type = "port"; target = "10.8.0.8"; port = 3142; };
-  #     mireo = { type = "ping"; target = "10.8.0.1"; };
-  #     network-services = { type = "ping"; target = "10.8.0.3"; };
-  #     monerod = { type = "ping"; target = "10.8.0.4"; };
-  #     ntp = { type = "ping"; target = "10.8.0.11"; };
-  #     fritzbox = { type = "ping"; target = "192.168.178.1"; };
-  #     internet = { type = "ping"; target = "1.1.1.1"; };
-  #     nyagate = { type = "ping"; target = "188.220.148.24"; };
-  #     lan-dns = { type = "dns"; target = "grafana.home.arpa"; };
-  #     uplink-dns = { type = "dns"; target = "google.com"; dnsServer = "1.1.1.1"; };
-  #   };
-  # };
-  # sops.secrets."uptime-kuma/admin-password" = {};
+  services.uptime-kuma-sync = {
+    enable = true;
+    apiUrl = "http://10.8.0.9:3001";
+    username = "lucy";
+    passwordFile = "/run/secrets/uptime-kuma/admin-password";
+    monitors = {
+      grafana = {
+        type = "http";
+        target = "http://10.8.0.2:3000/";
+      };
+      prometheus = {
+        type = "http";
+        target = "http://10.8.0.2:9090/";
+      };
+      yammat = {
+        type = "http";
+        target = "http://10.8.0.5:3000/";
+      };
+      cups = {
+        type = "http";
+        target = "http://10.8.0.6:631/";
+      };
+      sshkeys = {
+        type = "http";
+        target = "http://10.8.0.7/";
+      };
+      jellyfin = {
+        type = "http";
+        target = "http://10.8.0.10:8096/";
+      };
+      uptime-self = {
+        type = "http";
+        target = "http://10.8.0.9:3001/";
+      };
+      uptime-vhost = {
+        type = "http";
+        target = "http://uptime-kuma.home.arpa/";
+      };
+      grafana-vhost = {
+        type = "http";
+        target = "http://grafana.home.arpa/";
+      };
+      aptcache = {
+        type = "port";
+        target = "10.8.0.8";
+        port = 3142;
+      };
+      mireo = {
+        type = "ping";
+        target = "10.8.0.1";
+      };
+      network-services = {
+        type = "ping";
+        target = "10.8.0.3";
+      };
+      monerod = {
+        type = "ping";
+        target = "10.8.0.4";
+      };
+      ntp = {
+        type = "ping";
+        target = "10.8.0.11";
+      };
+      fritzbox = {
+        type = "ping";
+        target = "192.168.178.1";
+      };
+      internet = {
+        type = "ping";
+        target = "1.1.1.1";
+      };
+      nyagate = {
+        type = "ping";
+        target = "188.220.148.24";
+      };
+      lan-dns = {
+        type = "dns";
+        target = "grafana.home.arpa";
+      };
+      uplink-dns = {
+        type = "dns";
+        target = "google.com";
+        dnsServer = "1.1.1.1";
+      };
+    };
+  };
+  sops.secrets."uptime-kuma/admin-password" = {};
 }
