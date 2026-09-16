@@ -30,7 +30,8 @@ type: moc
 
 - [[20-Modules/Modules-MOC|Modules overview]] — 24 NixOS + 6 home modules
 - [[20-Modules/NixOS-Modules|NixOS modules table]] — all options at a glance
-- [[20-Modules/Home-Modules|Home modules]] — niri, waybar, stylix, ssh, opencode, dunst
+- [[20-Modules/Home-Modules|Home modules]] — niri, waybar, stylix, ssh, opencode, dunst, editor + GeistMono fonts
+- [[20-Modules/Editor|Editor (Neovim IDE)]] — LSP/DAP/tests/sessions/tasks
 - [[20-Modules/Gaming-Stack|Gaming stack]] — presets + 6 submodules
 - [[30-Data-Model/Data-Model|Data model]] — `data/` as single source of truth
 - [[30-Data-Model/Roles-Bundles-Presets|Roles → bundles + presets]] — composition logic

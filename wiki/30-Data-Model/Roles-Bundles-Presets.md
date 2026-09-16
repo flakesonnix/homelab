@@ -29,7 +29,7 @@ Home Manager slices with `programs.*`, `settings.stylix`, `packageToggles` (from
 | Bundle | Contains |
 |--------|---------|
 | `core` | bash, git, nvim, htop/btop, bat, fzf, ssh, opencode, nh; comma, manix, nix-output-monitor |
-| `desktop` | alacritty, dunst, eww, firefox, fuzzel, gnomeTheme, niri, rofi, starship, thunderbird, vesktop, zathura; stylix; TeamSpeak flatpak; jetbrains-mono, nautilus |
+| `desktop` | alacritty, dunst, eww, firefox, fuzzel, gnomeTheme, niri, rofi, starship, thunderbird, vesktop, zathura; stylix; TeamSpeak flatpak; geist-mono, nautilus |
 | `dev` | android-studio |
 
 ## Presets (`data/presets/*.nix`)
@@ -39,4 +39,4 @@ Home Manager slices with `programs.*`, `settings.stylix`, `packageToggles` (from
 ## Package registries
 
 `data/packages/system.nix`: `{description,targets[user/system/font],packages.user,tags}` — e.g. firefox, discord, lmstudio, clion, ollama, swaybg, devBase, pwvucontrol, scrcpy, nload, iotop, iftop. Roles collect packages via `packageTags` intersection.
-`data/packages/home.nix`: comma, manix, nix-output-monitor, jetbrains-mono, nautilus, android-studio — via `packageToggles`.
+`data/packages/home.nix`: comma, manix, nix-output-monitor, geist-mono, nautilus, android-studio — via `packageToggles`.

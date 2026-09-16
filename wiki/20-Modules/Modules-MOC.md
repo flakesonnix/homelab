@@ -16,7 +16,8 @@ SORT file.name ASC
 ```
 
 - [[20-Modules/NixOS-Modules|NixOS modules table]] — all 24 + gaming/6
-- [[20-Modules/Home-Modules|Home modules]] — niri, waybar, stylix, ssh, opencode, dunst
+- [[20-Modules/Home-Modules|Home modules]] — niri, waybar, stylix, ssh, opencode, dunst + editor/fonts
+- [[20-Modules/Editor|Editor (Neovim IDE)]] — full LSP/DAP/test stack (`home/lucy/editor.nix`)
 - [[20-Modules/Gaming-Stack|Gaming stack]] — presets → submodules
 - NixFleet module: see [[50-NixFleet/Manifest-API|Manifest & API]] (`lucy.nixfleet.*`)
 
