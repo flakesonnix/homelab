@@ -152,14 +152,16 @@
     rtp_symmetric=yes
     from_domain=${provider.registrar}
     send_pai=yes
-    ; NAT keepalive (~60s OPTIONS): keeps the FritzBox UDP mapping open
-    ; between re-REGISTERs (Eventphone recommends keep-alive ~every minute
-    ; behind NAT; Easybell expiration=1800 alone would let it expire).
-    qualify_frequency=60
 
     [${name}_aor]
     type=aor
     contact=sip:${contact}@${provider.registrar}
+    ; NAT keepalive (~60s OPTIONS): keeps the FritzBox UDP mapping open
+    ; between re-REGISTERs (Eventphone recommends keep-alive ~every minute
+    ; behind NAT; Easybell expiration=1800 alone would let it expire).
+    ; NOTE: qualify_frequency lives on the AOR in Asterisk 22 — on the
+    ; endpoint it kills the object at parse time (seen 2026-09-16).
+    qualify_frequency=60
 
     [${name}_in]
     type=endpoint
@@ -452,12 +454,12 @@ in {
           })
         enabledClients;
 
-      systemd.services.voip-check = {
-        description = "Validate VoIP client credential files";
-        wantedBy = ["multi-user.target"];
-        wants = ["network-online.target"];
-        after = ["network-online.target"];
-        before = ["asterisk.service"];
+        systemd.services.voip-check = {
+          description = "Validate VoIP client credential files";
+          wantedBy = ["multi-user.target"];
+          wants = ["network-online.target"];
+          after = ["network-online.target"];
+          before = ["asterisk.service"];
           serviceConfig.Type = "oneshot";
           script = ''
             set -eu
@@ -488,11 +490,11 @@ in {
         # rotation needs a manual restart (secret bytes can't be a trigger):
         #   systemctl restart voip-render-trunks && asterisk -rx 'core reload'
         systemd.services.voip-render-trunks = {
-        description = "Render VoIP provider trunks for Asterisk (runtime passwords)";
-        wantedBy = ["multi-user.target"];
-        wants = ["network-online.target"];
-        after = ["network-online.target" "sops-nix.service"];
-        before = ["asterisk.service"];
+          description = "Render VoIP provider trunks for Asterisk (runtime passwords)";
+          wantedBy = ["multi-user.target"];
+          wants = ["network-online.target"];
+          after = ["network-online.target" "sops-nix.service"];
+          before = ["asterisk.service"];
           serviceConfig.Type = "oneshot";
           script = ''
             set -eu

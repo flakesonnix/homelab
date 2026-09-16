@@ -97,8 +97,9 @@
     bind = ${cfg.transport.bind}:5060
     ; Allow foreign SIP elements to register (e.g. external extensions)
     allow_reload = true
-    ; Keepalive intervals for NAT traversal
-    media_use_received_transport = true
+    ; NOTE: media_use_received_transport was removed in Asterisk 22 —
+    ; leaving it in kills the whole transport object at parse time
+    ; (seen 2026-09-16: no transports, nothing on :5060).
 
     ; ----------------------------------------------------------------
     ; ENDPOINT TEMPLATE
@@ -115,8 +116,9 @@
     rtp_symmetric = yes
     force_rport = yes
     rewrite_contact = yes
-    ; Voicemail extension for unanswered calls
-    voicemail = default
+    ; NOTE: no `voicemail = ...` here — not a PJSIP endpoint option
+    ; (would be `mailboxes`, and none is configured). A bogus option
+    ; kills the whole endpoint object at parse time (seen 2026-09-16).
 
     ; ----------------------------------------------------------------
     ; AUTH TEMPLATE
