@@ -46,7 +46,22 @@
       import json
       import sys
 
-      from uptime_kuma_api import MonitorType, UptimeKumaApi
+      from uptime_kuma_api import Event, MonitorType, UptimeKumaApi
+      from uptime_kuma_api.api import _check_arguments_monitor, _convert_monitor_input
+
+
+      def api_add_monitor(api, **kwargs):
+          """add_monitor backport for kuma>=2.0: lib 1.2.1 omits the NOT
+          NULL `conditions` column -> SQLITE_CONSTRAINT on INSERT.
+          edit_monitor is unaffected (merges the server object which
+          already carries conditions). Remove once nixpkgs ships
+          uptime-kuma-api with conditions support."""
+          data = api._build_monitor_data(**kwargs)
+          data["conditions"] = []
+          _convert_monitor_input(data)
+          _check_arguments_monitor(data)
+          with api.wait_for_event(Event.MONITOR_LIST):
+              return api._call("add", data)
 
       TYPES = {
           "http": MonitorType.HTTP,
@@ -150,7 +165,7 @@
                   if have is None:
                       log(f"+ create {spec['type']} {name}")
                       if not args.dry_run:
-                          api.add_monitor(**kuma_kwargs(name, spec))
+                          api_add_monitor(api, **kuma_kwargs(name, spec))
                       changed = True
                   elif have != want:
                       log(f"~ update {name} (drift: "
