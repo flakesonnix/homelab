@@ -127,12 +127,35 @@
   # Scope: nur br0-Eingang, nur Ziele in 10.8.0.0/24 (Internet-Traffic
   # und wg0 unberührt). Ausnahme 10.8.0.7 (sshkeys serviert :80 nativ).
   # Ping/SSH/DNS-Verhalten ändert sich nicht (nur TCP/80).
+  # Diagnose 2026-09-16: Regel feuerte NIE — x270/VMs sind L2-benachbart
+  # (gleiche Bridge), bridged Traffic umgeht `ip`-nftables ohne
+  # br_netfilter (Modul war nicht geladen, keine /proc/sys/net/bridge/*).
+  # br_netfilter unten lädt es + schaltet den L3-Pfad an; FORWARD-Policy
+  # ist accept, daher bleibt LAN-Verkehr unbehelligt (nur conntrack mehr).
+  # Ohne das Modul landeten Browser (v4+v6) direkt auf VM-:80 im Drop.
+  boot.kernelModules = ["br_netfilter"];
+  boot.kernel.sysctl = {
+    "net.bridge.bridge-nf-call-iptables" = 1;
+    "net.bridge.bridge-nf-call-ip6tables" = 1;
+  };
   networking.nftables.tables.lan-http-redirect = {
     family = "ip";
     content = ''
       chain prerouting {
         type nat hook prerouting priority dstnat; policy accept;
         iifname "br0" tcp dport 80 ip daddr 10.8.0.0/24 ip daddr != 10.8.0.7 redirect to :80
+      }
+    '';
+  };
+  # v6-Gegenstück (ULA): ohne ihn hängt der Browser im Happy-Eyeballs-
+  # Verlierer (VM-:80 gedroppt), statt über Caddy zu gehen. Ausnahme
+  # fd00:cafe:1::7 = sshkeys (ULA-Mirror von .7, serviert :80 nativ).
+  networking.nftables.tables.lan-http-redirect6 = {
+    family = "ip6";
+    content = ''
+      chain prerouting {
+        type nat hook prerouting priority dstnat; policy accept;
+        iifname "br0" tcp dport 80 ip6 daddr fd00:cafe:1::/64 ip6 daddr != fd00:cafe:1::7 redirect to :80
       }
     '';
   };
@@ -262,12 +285,16 @@
       # the IP AND serves the DNS name for the lease (short + home.arpa via
       # expand-hosts above; host-record below keeps AAAA + pre-lease A).
       # Reservations live outside the dynamic pool (10.8.0.100-.199), so no
-      # collisions. ucs (libvirt guest, fixed virtio MAC 52:54:00:3d:5d:dd)
-      # is pinned to 10.8.0.20 the same way (was dynamic `*` lease without
-      # DNS before, 2026-09-14).
+      # collisions. ucs (libvirt domain ucs5.0, virtio MAC verified via
+      # `virsh dumpxml ucs5.0` 2026-09-16 — the old 52:54:00:3d:5d:dd never
+      # leased and .20 stayed dead) is pinned to 10.8.0.20 the same way.
+      # The guest sends no hostname (lease `*`), so the reservation name
+      # is what serves ucs.home.arpa (A only, no host-record → no AAAA).
+      # After (re)deploy, renew DHCP inside the guest (reboot) to pick up
+      # .20 + the name; until then the old dynamic lease has no DNS.
       dhcp-host =
         [
-          "52:54:00:3d:5d:dd,10.8.0.20,ucs"
+          "52:54:00:47:5c:d7,10.8.0.20,ucs"
         ]
         ++ lib.mapAttrsToList (
           name: ip: let
