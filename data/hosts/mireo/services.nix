@@ -8,11 +8,16 @@
   # No firewall changes: br0 is trusted, SIP/RTP are outbound-initiated.
   services.asteriskLocal = {
     enable = true;
-    # secrets.enable = true;  # Enable with sops-nix templated config
+    secrets.enable = true; # sops-template rendering (passwords stay out of the store)
 
-    # Keep empty in repo; set locally (ideally via sops-nix template).
+    # Local SIP phones (softphones/IP phones register here, then dial
+    # 999 = local test, 8330 = eventphone echo, 100 = hello-world).
+    # Passwords live in hosts/mireo/secrets.yaml (asterisk.phones.<name>).
     openFirewall = false; # NOTE: Easybell RTP needs 20000-50000, see module TODO
-    phones = {};
+    phones.lucy = {
+      extension = "1001";
+      passwordSecret = "asterisk/phones/lucy";
+    };
     extraExtensions = "";
   };
 
