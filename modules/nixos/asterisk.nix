@@ -246,6 +246,14 @@
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList generateExtension cfg.phones)}
 
     ; ----------------------------------------------------------------
+    ; USER-DEFINED EXTENSIONS (must stay INSIDE [from-internal] — lines
+    ; after the next [section] header belong to THAT context instead,
+    ; silently unreachable from phones; seen live 2026-09-16).
+    ; From services.asteriskLocal.extraExtensions
+    ; ----------------------------------------------------------------
+    ${cfg.extraExtensions}
+
+    ; ----------------------------------------------------------------
     ; FEATURE MAP
     ; Key-based call transfer and parking features
     ; ----------------------------------------------------------------
@@ -269,12 +277,6 @@
     ; exten => 9000,1,NoOp(Ring all extensions)
     ;     same => n,Dial(PJSIP/phone1&PJSIP/phone2,20)
     ;     same => n,Hangup()
-
-    ; ----------------------------------------------------------------
-    ; USER-DEFINED EXTENSIONS
-    ; From services.asteriskLocal.extraExtensions
-    ; ----------------------------------------------------------------
-    ${cfg.extraExtensions}
 
     ; ----------------------------------------------------------------
     ; PROVIDER TRUNK DIALPLAN (services.voip, Phase 2)
