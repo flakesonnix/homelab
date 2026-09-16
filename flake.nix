@@ -153,8 +153,6 @@
         ./nix-settings.nix
         ./profiles/desktop.nix
         ./hosts/x270
-        ./modules/nixos/asterisk.nix
-        ./modules/nixos/voip.nix # services.voip SIP abstraction (Phase 1: structure, no live trunk)
         ./modules/nixos/audio-stream.nix
         ./modules/nixos/fonts.nix
         ./modules/nixos/gaming.nix
@@ -195,6 +193,8 @@
         ./hosts/mireo
         ./hosts/mireo/grafana-microvm.nix
         ./modules/nixos/cups.nix
+        ./modules/nixos/asterisk.nix
+        ./modules/nixos/voip.nix # services.voip SIP abstraction (trunk needs asteriskLocal; both disabled for now)
         ./modules/nixos/nixfleet.nix
         ./modules/nixos/sops.nix
         sops-nix.nixosModules.sops

@@ -98,7 +98,7 @@ voip:
   easybell-main: "sip-password-here"
 ```
 
-Steps later: add the real password with `SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/x270/secrets.yaml`, uncomment the example block in `data/hosts/x270/services.nix`, rebuild. The `voip-check` service fails with a pointer to this doc if the file is missing.
+Steps later: add the real password with `SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/mireo/secrets.yaml`, uncomment the example block in `data/hosts/mireo/services.nix`, rebuild. The `voip-check` service fails with a pointer to this doc if the file is missing.
 
 Password rotation: update the secret, then run `systemctl restart voip-render-trunks && asterisk -rx 'core reload'` — the renderer re-reads the file and Asterisk reloads without dropping the trunk definition. (Non-secret client changes re-render automatically on rebuild; secret bytes can't be a Nix trigger, hence the manual restart.)
 
