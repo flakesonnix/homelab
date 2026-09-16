@@ -122,7 +122,7 @@ None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` inte
 ### Config files
 - `data/hosts/mireo/settings.nix` — hostname, network, NAT, dnsmasq (+native PXE/netboot.xyz), NFS, Avahi, Netdata, **nixfleet M1** (`lucy.nixfleet.*`, firewall 8443)
 - `hosts/mireo/host.nix` — framework applyHost
-- `hosts/mireo/vm-ips.nix` — static IP map shared by VM specs, DNS and proxy
+- `hosts/mireo/vm-ips.nix` — static IP map shared by VM specs, DNS and proxy; handed out via dnsmasq `dhcp-host` reservations (guests use DHCPv4, ULA stays static)
 - `hosts/mireo/grafana-microvm.nix` — grafana + prometheus microvm
 - `hosts/mireo/monerod-microvm.nix` — monerod + Tor microvm
 - `hosts/mireo/network-services-microvm.nix` — network-services bridge tap stub

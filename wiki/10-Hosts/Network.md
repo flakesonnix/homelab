@@ -23,12 +23,15 @@ mireo (router)
   ├── 10.8.0.9  uptime-kuma :3001 (via Caddy uptime-kuma.home.arpa)
   ├── 10.8.0.10 jellyfin :8096 (via Caddy jellyfin.home.arpa)
   ├── 10.8.0.11 ntp :123/udp (via DHCP option 42)
+  ├── 10.8.0.20 ucs (DHCP reservation, AD: LDAP/Kerberos SRVs)
   └── (DHCP)      x270 (dynamic address via DHCPv4/DHCPv6)
 ```
 
+All 10.8.0.2–.11 + .20 are **dnsmasq DHCP reservations** (`dhcp-host` from `hosts/mireo/vm-ips.nix`, MAC `02:00:00:10:08:XX` derived from IP) — same addresses as before, but centrally handed out instead of on-guest statics (guests run `DHCP=ipv4`, ULA stays static). DNS comes from both the lease name and `host-record` (A + AAAA mirror).
+
 - NAT masquerade on `enp4s0`, br0 from enp9s0/enp3s0f0/enp3s0f1; NAT66 outbound (LAN ULA → WAN GUA, `nftables.nat66`, prefix-change-proof, no PD needed)
 - IPv6: FritzBox (6660 Cable) gives mireo WAN a short-lived IA_NA GUA (~2h lifetime, changes across reconnects); PD to br0 is configured (`DHCPPrefixDelegation`, `UplinkInterface=enp4s0`) but currently NOT landing — br0 carries only ULA `fd00:cafe:1::1/64`, so all LAN v6 internet depends on NAT66. If PD ever lands, dnsmasq RA/SLAAC (`constructor:br0`) + stateful DHCPv6 (explicit ULA range) pick the GUA up automatically.
-- dnsmasq host records = VM names, `bindsTo sys-devices-virtual-net-br0.device` fix
+- dnsmasq host records = VM names, `bindsTo sys-devices-virtual-net-br0.device` fix; fixed IPs via `dhcp-host` reservations (not on-guest statics)
 - NFS `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, Nautilus autodiscovery
 - PXE boot via dnsmasq (iPXE from nixpkgs, netboot.xyz menu; iVentoy removed Sep 2026)
 - Printing: IPP + Avahi `_ipp._tcp` (10.8.0.6)

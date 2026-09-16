@@ -254,13 +254,27 @@
         "option6:dns-server,[fd00:cafe:1::1]"
         "option6:domain-search,home.arpa"
       ];
-      # Fixed names for DHCP clients that send NO hostname themselves
-      # (lease shows `*` instead of a name → no DNS record). Format
-      # MAC,name — IP stays dynamic. Diagnose 2026-09-14: UCS-VM
-      # (52:54:00:3d:5d:dd) ohne Hostname → ucs.home.arpa NXDOMAIN.
-      dhcp-host = [
-        "52:54:00:3d:5d:dd,ucs"
-      ];
+      # Static IPs via DHCP reservations (not on-guest statics): every
+      # homelab service keeps its vm-ips.nix address, but dnsmasq hands it
+      # out, so IPs stay centrally managed in one file. Guest MACs are
+      # deterministic (02:00:00:10:08:XX from the last octet — same formula
+      # as hosts/mireo/microvm-base.nix). Format MAC,IP,name: dnsmasq pins
+      # the IP AND serves the DNS name for the lease (short + home.arpa via
+      # expand-hosts above; host-record below keeps AAAA + pre-lease A).
+      # Reservations live outside the dynamic pool (10.8.0.100-.199), so no
+      # collisions. ucs (libvirt guest, fixed virtio MAC 52:54:00:3d:5d:dd)
+      # is pinned to 10.8.0.20 the same way (was dynamic `*` lease without
+      # DNS before, 2026-09-14).
+      dhcp-host =
+        [
+          "52:54:00:3d:5d:dd,10.8.0.20,ucs"
+        ]
+        ++ lib.mapAttrsToList (
+          name: ip: let
+            lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
+            hex = n: builtins.elemAt ["0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "a" "b" "c" "d" "e" "f"] n;
+          in "02:00:00:10:08:${hex (builtins.div lastOctet 16)}${hex (lib.mod lastOctet 16)},${ip},${name}"
+        ) (import ../../../hosts/mireo/vm-ips.nix);
       # --- PXE boot (dnsmasq-nativ, netboot.xyz-Menü) ---
       # iPXE-Clients (erkennbar an Option 175) chainloaden direkt das
       # netboot.xyz-Menü per HTTP; klassische PXE-ROMs laden erst iPXE

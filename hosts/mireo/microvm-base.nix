@@ -39,14 +39,17 @@ in {
   systemd.network.enable = true;
   systemd.network.networks."20-lan" = {
     matchConfig.Type = "ether";
+    # IPv4 via DHCP reservation: mireo dnsmasq pins this MAC to `ip`
+    # (dhcp-host generated from the same vm-ips.nix, so the address stays
+    # centrally declared). Gateway + DNS server arrive via DHCP options
+    # (router/dns-server 10.8.0.1); extraDns merges on top.
     # Static ULA mirrors the IPv4 last octet (10.8.0.N -> fd00:cafe:1::N),
     # same single source as the MAC above. On-link LAN needs no v6 route;
     # DNS serves the matching AAAA (dnsmasq host-record).
-    address = ["${ip}/24" "fd00:cafe:1::${lib.last (lib.splitString "." ip)}/64"];
+    address = ["fd00:cafe:1::${lib.last (lib.splitString "." ip)}/64"];
     networkConfig = {
-      Gateway = "10.8.0.1";
       DNS = ["10.8.0.1"] ++ extraDns;
-      DHCP = "no";
+      DHCP = "ipv4";
       IPv6AcceptRA = false;
     };
   };

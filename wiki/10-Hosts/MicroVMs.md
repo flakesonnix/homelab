@@ -8,7 +8,7 @@ type: reference
 
 [[10-Hosts/mireo|← mireo]] · [[10-Hosts/Network|Network]] · Source: `hosts/mireo/*-microvm.nix`, `microvm-base.nix`, `vm-ips.nix` (shared IP map), `flake.nix:193`.
 
-All via `microvm.nixosModules.host`, tap→br0, MAC derived from IP, units `microvm@<name>`.
+All via `microvm.nixosModules.host`, tap→br0, MAC derived from IP, units `microvm@<name>`. IPv4 via dnsmasq DHCP reservation from the same `vm-ips.nix` (no on-guest static); ULA stays static.
 
 ## Table
 
