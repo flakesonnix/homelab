@@ -183,9 +183,22 @@
         vim.opt.pumheight = 10
         vim.opt.list = true
         vim.opt.listchars = { tab = "→ ", trail = "·", nbsp = "␣" }
+        vim.opt.timeoutlen = 300
         vim.api.nvim_create_autocmd("TextYankPost", {
           group = vim.api.nvim_create_augroup("YankHl", { clear = true }),
           callback = function() vim.highlight.on_yank({ timeout = 200 }) end,
+        })
+        -- Large files (>1 MiB): skip treesitter (keeps editing smooth).
+        vim.api.nvim_create_autocmd("BufReadPre", {
+          group = vim.api.nvim_create_augroup("LargeFile", { clear = true }),
+          callback = function(args)
+            local ok, stat = pcall(vim.uv.fs_stat, vim.api.nvim_buf_get_name(args.buf))
+            if ok and stat and stat.size > 1024 * 1024 then
+              vim.b[args.buf].large_file = true
+              vim.opt_local.foldmethod = "manual"
+              vim.opt_local.swapfile = false
+            end
+          end,
         })
         -- IDE defaults: unfolded treesitter folds, tabline, inlay hints on attach.
         vim.opt.foldmethod = "expr"
@@ -231,6 +244,7 @@
           formatting = {
             format = require("lspkind").cmp_format({ mode = "symbol_text", maxwidth = 50 }),
           },
+          experimental = { ghost_text = true },
         })
 
         -- LSP via new core API (sandbox-verified: enable() spawns the
@@ -291,6 +305,7 @@
         vim.api.nvim_create_autocmd("FileType", {
           group = vim.api.nvim_create_augroup("TreesitterStart", { clear = true }),
           callback = function(args)
+            if vim.b[args.buf].large_file then return end
             local ok, parser = pcall(vim.treesitter.get_parser, args.buf)
             if ok and parser then
               vim.treesitter.start(args.buf)
@@ -355,6 +370,16 @@
         require("todo-comments").setup()
         require("trouble").setup()
         require("which-key").setup()
+
+        -- Smooth motion (mini.nvim ships with the setup, no new plugin).
+        local animate = require("mini.animate")
+        animate.setup({
+          cursor = { enable = true },
+          scroll = { enable = true, timing = animate.gen_timing.linear({ duration = 80, unit = "total" }) },
+          resize = { enable = true },
+          open = { enable = false },
+          close = { enable = false },
+        })
 
         -- Messages, cmdline, popups (Noice needs nui + notify, both in).
         require("notify").setup({ timeout = 3000 })
