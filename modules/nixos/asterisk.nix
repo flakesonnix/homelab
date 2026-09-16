@@ -479,7 +479,7 @@ in {
         }
         # Warn about weak credentials (plaintext only)
         {
-          assertion = lib.length credentialWarnings == 0;
+          assertion = credentialWarnings == "";
           message = "asteriskLocal: ${credentialWarnings}";
         }
       ];

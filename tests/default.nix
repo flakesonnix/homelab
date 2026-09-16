@@ -425,6 +425,13 @@
         did = "004930000001";
         inboundExtension = "999";
       };
+      services.voip.clients.eventphone-test = {
+        provider = "eventphone";
+        username = "4309";
+        passwordFile = "/run/secrets/voip/eventphone-test";
+        did = "4309";
+        inboundExtension = "999";
+      };
     }
   ];
   voipDisabled = nixosEval [../modules/nixos/voip.nix];
@@ -450,6 +457,9 @@
     && forceB (lib.hasInfix "server_uri=sip:voip.easybell.de" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer carries the registrar"
     && forceB (lib.hasInfix "transport=transport-udp" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer maps to the asteriskLocal transport object"
     && forceB (lib.hasInfix "contact_user=493012345000" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer carries contact_user"
+    && forceB (lib.hasInfix "qualify_frequency=60" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer keeps NAT open via qualify"
+    && forceB (lib.hasInfix "registrar=voip.eventphone.de" voipEnabled.environment.etc."voip/clients/eventphone-test.conf".text) "voip: second provider renders its own registrar"
+    && forceB (lib.hasInfix "server_uri=sip:voip.eventphone.de" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer registers at eventphone"
     && forceB (lib.hasInfix "[easybell-main_in]" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer emits the inbound endpoint"
     && forceB (lib.hasInfix "Dial(PJSIP/999,30)" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer routes inbound to inboundExtension"
     && forceB (lib.hasInfix "enable=yes" voipEnabled.services.asterisk.confFiles."dnsmgr.conf") "voip: dnsmgr enabled for SRV registrar"

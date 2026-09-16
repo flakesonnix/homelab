@@ -152,6 +152,10 @@
     rtp_symmetric=yes
     from_domain=${provider.registrar}
     send_pai=yes
+    ; NAT keepalive (~60s OPTIONS): keeps the FritzBox UDP mapping open
+    ; between re-REGISTERs (Eventphone recommends keep-alive ~every minute
+    ; behind NAT; Easybell expiration=1800 alone would let it expire).
+    qualify_frequency=60
 
     [${name}_aor]
     type=aor
