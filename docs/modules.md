@@ -132,6 +132,7 @@ Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options 
 | `clients.<name>.inboundExtension` | str or null | null | Local target for inbound calls (required when enabled) |
 | `clients.<name>.displayName` | str | `""` | Caller-ID display name (needs CLIP No Screening + From Display in my.easybell) |
 | `clients.<name>.codecs` | list of str | `[alaw ulaw g722]` | Allowed codecs in Easybell order |
+| `clients.<name>.localPatterns` | list of str | `[]` | Dial patterns in `[from-internal]` routed out via this trunk (e.g. EPVPN `["_0X." "_[2-7]XXX"]` + `"110" "112"`; keep local numbers outside these ranges) |
 | `clients.<name>.enable` | bool | true | Dormant when false |
 | `localTest.enable` | bool | false | Provider-free test extension (needs `asteriskLocal.enable`; dial 999 → playback) |
 | `localTest.extension` | str | `"999"` | Test extension number |

@@ -199,6 +199,19 @@
         same => n,Playback(hello-world)
         same => n,Hangup()
   '';
+
+  # Outbound routes from local phones ([from-internal]) into each trunk.
+  # One exten per pattern; ${EXTEN} passes the dialed number through.
+  trunkOutboundLines = lib.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList (name: client:
+    map (pat: ''
+      exten => ${pat},1,Dial(PJSIP/sip:''${EXTEN}@${name})
+          same => n,Hangup()'')
+    client.localPatterns)
+  enabledClients));
+
+  internalAdditions =
+    lib.optionalString cfg.localTest.enable localTestLines
+    + lib.optionalString (trunkOutboundLines != "") ("\n" + trunkOutboundLines + "\n");
 in {
   options.services.voip = {
     enable = lib.mkEnableOption "generic VoIP/SIP client abstraction (validates accounts, renders Asterisk PJSIP provider trunks with runtime passwords)";
@@ -308,6 +321,19 @@ in {
             type = lib.types.listOf lib.types.str;
             default = ["alaw" "ulaw" "g722"];
             description = "Allowed codecs in Easybell order (G.722 first for HD, then G.711A/G.711U).";
+          };
+          localPatterns = lib.mkOption {
+            type = lib.types.listOf lib.types.str;
+            default = [];
+            description = ''
+              Dial patterns in [from-internal] routed out via this trunk,
+              e.g. eventphone EPVPN: ["_0X." "_[2-7]XXX"] (0-prefix specials
+              like 0310/09…/01999… + 2100-7999 user range). Local extensions
+              (999, 100, phones) win only when they DON'T collide: keep
+              local numbers outside these patterns (no 0XXX/2XXX-7XXX phones).
+              Empty = no outbound route from local phones (trunk still
+              registers + receives inbound).
+            '';
           };
           enable = lib.mkOption {
             type = lib.types.bool;
@@ -540,10 +566,11 @@ in {
         };
       })
     ]
-    # Test extension via asteriskLocal's documented extension point
-    # (types.lines concatenates with host config). List element absent
-    # entirely without asterisk.nix (see hasAsterisk note above).
-    ++ lib.optional hasAsterisk (lib.mkIf (cfg.enable && cfg.localTest.enable) {
-      services.asteriskLocal.extraExtensions = localTestLines;
+    # Test extension + trunk outbound routes via asteriskLocal's
+    # documented extension point (types.lines concatenates with host
+    # config). List element absent entirely without asterisk.nix
+    # (see hasAsterisk note above).
+    ++ lib.optional hasAsterisk (lib.mkIf (cfg.enable && internalAdditions != "") {
+      services.asteriskLocal.extraExtensions = internalAdditions;
     }));
 }

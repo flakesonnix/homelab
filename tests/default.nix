@@ -442,6 +442,13 @@
       services.asteriskLocal.enable = true;
       services.voip.enable = true;
       services.voip.localTest.enable = true;
+      services.voip.clients.testcall = {
+        username = "4309";
+        passwordFile = "/run/secrets/voip/testcall";
+        did = "4309";
+        inboundExtension = "999";
+        localPatterns = ["_[2-7]XXX"];
+      };
     }
   ];
   checkVoip =
@@ -463,7 +470,8 @@
     && forceB (lib.hasInfix "[easybell-main_in]" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer emits the inbound endpoint"
     && forceB (lib.hasInfix "Dial(PJSIP/999,30)" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer routes inbound to inboundExtension"
     && forceB (lib.hasInfix "enable=yes" voipEnabled.services.asterisk.confFiles."dnsmgr.conf") "voip: dnsmgr enabled for SRV registrar"
-    && forceB (lib.hasInfix "999" voipLocal.services.asteriskLocal.extraExtensions) "voip: localTest appends extension 999 via asteriskLocal";
+    && forceB (lib.hasInfix "999" voipLocal.services.asteriskLocal.extraExtensions) "voip: localTest appends extension 999 via asteriskLocal"
+    && forceB (lib.hasInfix "Dial(PJSIP/sip:\${EXTEN}@testcall)" voipLocal.services.asteriskLocal.extraExtensions) "voip: localPatterns route out via trunk";
 
   # ---- uptime-kuma-sync module unit tests (eval-time, no server) ----
   kumaEnabled = nixosEval [
