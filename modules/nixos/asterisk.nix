@@ -26,7 +26,37 @@
 }: let
   cfg = config.services.asteriskLocal;
 
-  asteriskConf = "[modules]\nautoload = no\n; Load only what we need for basic SIP functionality\npreload => res_pjsip.so\npreload => res_pjsip_session.so\npreload => app_dial.so\npreload => app_playback.so\npreload => func_callerid.so\n";
+  # NOTE: the [directories] section is REQUIRED. Without it Asterisk
+  # falls back to compiled-in paths and reads pjsip.conf from the nix
+  # store package defaults instead of /etc/asterisk (seen 2026-09-16:
+  # "Configuration directory: /nix/store/…-asterisk-…/etc/asterisk",
+  # zero PJSIP objects, nothing on :5060). Mirrors upstream defaults
+  # (plus extraConfig) so replacing asterisk.conf stays safe.
+  asteriskConf = let
+    apkg = config.services.asterisk.package;
+  in ''
+    [directories]
+    astetcdir => /etc/asterisk
+    astmoddir => ${apkg}/lib/asterisk/modules
+    astvarlibdir => /var/lib/asterisk
+    astdbdir => /var/lib/asterisk
+    astkeydir => /var/lib/asterisk
+    astdatadir => /var/lib/asterisk
+    astagidir => /var/lib/asterisk/agi-bin
+    astspooldir => /var/spool/asterisk
+    astrundir => /run/asterisk
+    astlogdir => /var/log/asterisk
+    astsbindir => ${apkg}/sbin
+    ${config.services.asterisk.extraConfig}
+    [modules]
+    autoload = no
+    ; Load only what we need for basic SIP functionality
+    preload => res_pjsip.so
+    preload => res_pjsip_session.so
+    preload => app_dial.so
+    preload => app_playback.so
+    preload => func_callerid.so
+  '';
 
   phonePasswordValue = name: phone:
     if phone.passwordSecret != null
