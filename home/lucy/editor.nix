@@ -86,6 +86,7 @@
         nvim-web-devicons
         gruvbox-nvim
         lualine-nvim
+        presence-nvim
         which-key-nvim
         indent-blankline-nvim
         todo-comments-nvim
@@ -385,9 +386,53 @@
         -- Small UI helpers (all defaults, just enabled).
         require("neo-tree").setup({ close_if_last_window = true })
         require("gitsigns").setup({ current_line_blame = true })
+        -- Cyberdeck-Look (wie Desktop): Lualine-Theme direkt aus der
+        -- Stylix-Palette statt gruvbox — Statusline + Tabs passen zu GNOME.
+        local deck = {
+          bg     = "${config.lib.stylix.colors.withHashtag.base00}",
+          bg_alt = "${config.lib.stylix.colors.withHashtag.base01}",
+          sel    = "${config.lib.stylix.colors.withHashtag.base02}",
+          muted  = "${config.lib.stylix.colors.withHashtag.base03}",
+          fg     = "${config.lib.stylix.colors.withHashtag.base05}",
+          red    = "${config.lib.stylix.colors.withHashtag.base08}",
+          yellow = "${config.lib.stylix.colors.withHashtag.base0A}",
+          green  = "${config.lib.stylix.colors.withHashtag.base0B}",
+          cyan   = "${config.lib.stylix.colors.withHashtag.base0C}",
+          pink   = "${config.lib.stylix.colors.withHashtag.base0D}",
+          purple = "${config.lib.stylix.colors.withHashtag.base0E}",
+        };
+        local function deck_mode(accent)
+          return {
+            a = { bg = accent, fg = deck.bg, gui = "bold" },
+            b = { bg = deck.sel, fg = deck.fg },
+            c = { bg = deck.bg_alt, fg = deck.fg },
+          };
+        end
+        local cyberdeck_lualine = {
+          normal   = deck_mode(deck.pink),
+          insert   = deck_mode(deck.green),
+          visual   = deck_mode(deck.purple),
+          replace  = deck_mode(deck.red),
+          command  = deck_mode(deck.cyan),
+          inactive = {
+            a = { bg = deck.bg_alt, fg = deck.muted, gui = "bold" },
+            b = { bg = deck.bg_alt, fg = deck.muted },
+            c = { bg = deck.bg_alt, fg = deck.muted },
+          },
+        };
         require("lualine").setup({
-          options = { theme = "auto" },
+          options = { theme = cyberdeck_lualine },
           tabline = { lualine_a = { "buffers" } },
+        })
+        -- Discord Rich Presence: immer aktiv solange Neovim läuft
+        -- (kein Idle-Status — zeigt Datei + Zeile + Projekt, mit Timer).
+        require("presence").setup({
+          auto_update        = true,
+          main_image         = "neovim",
+          neovim_image_text  = "Cyberdeck Nvim",
+          enable_line_number = true,
+          show_time          = true,
+          buttons            = true,
         })
         require("ibl").setup()
         require("Comment").setup()
