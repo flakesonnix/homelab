@@ -143,6 +143,28 @@ When enabled: asserts (known provider, username + absolute `passwordFile`, non-n
 
 ---
 
+### `uptime-kuma-sync.nix`
+
+Declarative Uptime Kuma monitors (GitOps API sync, host-side on `mireo`). Options namespace: `services.uptime-kuma-sync.*`. The nixpkgs module only covers server knobs — this reconciles the monitor set via `python3Packages.uptime-kuma-api`: Nix is authoritative (missing created, drifted updated, extras **deleted**).
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enable` | bool | false | Enable sync service + daily timer |
+| `apiUrl` | str | `"http://10.8.0.9:3001"` | Base URL (direct VM, no Caddy dependency) |
+| `username` | str | `"lucy"` | Admin user for API login |
+| `passwordFile` | str | `""` | Absolute runtime path, e.g. `/run/secrets/uptime-kuma/admin-password` (required) |
+| `monitors.<name>.type` | enum | required | `http` / `ping` / `port` / `dns` |
+| `monitors.<name>.target` | str | required | URL (http) or hostname/IP (ping/port/dns) |
+| `monitors.<name>.port` | port or null | null | Required for `port` |
+| `monitors.<name>.interval` | positive int | 60 | Seconds between checks |
+| `monitors.<name>.maxRetries` | unsigned int | 1 | Retries before DOWN |
+| `monitors.<name>.dnsServer` | str | `"10.8.0.1"` | Resolver for `dns` (default tests our own dnsmasq) |
+| `monitors.<name>.dnsType` | str | `"A"` | Record type for `dns` |
+
+Oneshot `uptime-kuma-sync.service` (after `microvm@uptime-kuma`) + daily `uptime-kuma-sync.timer` (Persistent). Dry-run preview without writes: `/etc/uptime-kuma-sync/preview`. Notifications are NOT managed (none exist; needs channel + secrets — follow-up).
+
+---
+
 ### `audio-stream.nix`
 
 Sender-side module. Creates PipeWire tunnel sink → remote PulseAudio TCP receiver.

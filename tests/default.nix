@@ -387,7 +387,7 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma;
 
   # ---- voip module unit tests (eval-time, no secrets, no network) ----
   # NOTE: voip.nix integrates with asterisk.nix (localTest assertion +
@@ -464,6 +464,35 @@
     && forceB (lib.hasInfix "Dial(PJSIP/999,30)" voipEnabled.systemd.services.voip-render-trunks.script) "voip: renderer routes inbound to inboundExtension"
     && forceB (lib.hasInfix "enable=yes" voipEnabled.services.asterisk.confFiles."dnsmgr.conf") "voip: dnsmgr enabled for SRV registrar"
     && forceB (lib.hasInfix "999" voipLocal.services.asteriskLocal.extraExtensions) "voip: localTest appends extension 999 via asteriskLocal";
+
+  # ---- uptime-kuma-sync module unit tests (eval-time, no server) ----
+  kumaEnabled = nixosEval [
+    ../modules/nixos/uptime-kuma-sync.nix
+    {
+      services.uptime-kuma-sync = {
+        enable = true;
+        passwordFile = "/run/secrets/uptime-kuma/admin-password";
+        monitors = {
+          grafana = {
+            type = "http";
+            target = "http://10.8.0.2:3000/";
+          };
+          aptcache = {
+            type = "port";
+            target = "10.8.0.8";
+            port = 3142;
+          };
+        };
+      };
+    }
+  ];
+  kumaDisabled = nixosEval [../modules/nixos/uptime-kuma-sync.nix];
+  checkKuma =
+    forceB (kumaDisabled.services.uptime-kuma-sync.enable == false) "kuma: must be disabled by default"
+    && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.serviceConfig.Type == "oneshot") "kuma: sync service is oneshot"
+    && forceB (kumaEnabled.systemd.timers.uptime-kuma-sync.timerConfig.OnCalendar == "daily") "kuma: daily convergence timer"
+    && forceB (lib.hasInfix "http://10.8.0.9:3001" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: script targets the API"
+    && forceB (lib.hasInfix "uptime-kuma-monitors.json" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: monitor data wired into service";
 
   notifCounter = dotfilesLib.waybarScripts.mkNotifCounter {};
   notifCounterCustom = dotfilesLib.waybarScripts.mkNotifCounter {

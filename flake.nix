@@ -194,7 +194,8 @@
         ./hosts/mireo/grafana-microvm.nix
         ./modules/nixos/cups.nix
         ./modules/nixos/asterisk.nix
-        ./modules/nixos/voip.nix # services.voip SIP abstraction (trunk needs asteriskLocal; both disabled for now)
+        ./modules/nixos/voip.nix # services.voip SIP abstraction (eventphone 4309 live)
+        ./modules/nixos/uptime-kuma-sync.nix # services.uptime-kuma-sync declarative monitors
         ./modules/nixos/nixfleet.nix
         ./modules/nixos/sops.nix
         sops-nix.nixosModules.sops

@@ -30,9 +30,9 @@
           CacheDir: /var/cache/apt-cacher-ng
           LogDir: /var/log/apt-cacher-ng
           SupportDir: ${pkgs.apt-cacher-ng}/lib/apt-cacher-ng
-          # NOTE: no use_dyndns here — removed upstream, unknown
-          # directive aborts startup ("Error reading main options").
-          verbose: 0
+          # NOTE: unknown directives abort startup ("Error reading main
+          # options") — use_dyndns went first, `verbose` followed in 3.7.5
+          # (deprecated → rejected, killed the service on 2026-09-16).
           maxConcurrentDownloads: 4
           FreshCacheMaxAge: 6
         '';
