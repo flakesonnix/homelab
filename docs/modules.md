@@ -123,11 +123,11 @@ Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options 
 | `enable` | bool | false | Enable validation, `/etc/voip` descriptors, check + render services |
 | `providers` | attrs of submodules | `{easybell, eventphone}` | Provider presets: `registrar`, `port` (5060), `transport` (udp), `outboundProxy` (null = registrar), `expires` (1800), `retryInterval` (60), `mediaEncryption` (false = SDES-SRTP for TLS), `note` |
 | `providers.easybell.registrar` | str | `"voip.easybell.de"` | SIP-Trunk/VoIP registrar (Cloud PBX: `pbx.easybell.de`, legacy: `sip.easybell.de`) |
-| `providers.eventphone.registrar` | null | null | TODO stub — credentials come per-event from Guru3; IPv6 registrar `voip6.eventphone.de` |
+| `providers.eventphone.registrar` | str | `"voip.eventphone.de"` | Event/temporary SIP, no dial-out (DNS-verified; IPv6: `voip6.eventphone.de`; creds per-event from Guru3) |
 | `clients.<name>.provider` | str | `"easybell"` | Key into `providers` |
 | `clients.<name>.username` | str or null | null | SIP auth username (required when enabled) |
 | `clients.<name>.passwordFile` | str | `""` | Absolute runtime path to password file, e.g. `/run/secrets/voip/<client>` (required when enabled; only the path enters the store) |
-| `clients.<name>.did` | str or null | null | Public number / DID, E.164 without `+` (required when enabled; used for `client_uri` + inbound routing) |
+| `clients.<name>.did` | str or null | null | Public number / DID, E.164 without `+` (eventphone: Guru3 extension; required when enabled; `client_uri` + inbound routing) |
 | `clients.<name>.contactUser` | str or null | null | Head number for `contact_user`/AOR contact (falls back to `did`) |
 | `clients.<name>.inboundExtension` | str or null | null | Local target for inbound calls (required when enabled) |
 | `clients.<name>.displayName` | str | `""` | Caller-ID display name (needs CLIP No Screening + From Display in my.easybell) |

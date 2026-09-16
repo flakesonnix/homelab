@@ -277,7 +277,7 @@ in {
           did = lib.mkOption {
             type = lib.types.nullOr lib.types.str;
             default = null;
-            description = "Public number / DID in E.164 without '+' (e.g. 00493012345). Null = not assigned yet.";
+            description = "Public number / DID in E.164 without '+' (e.g. 00493012345; for eventphone: the Guru3 extension number). Null = not assigned yet. Required when enabled (client_uri + inbound routing).";
           };
           contactUser = lib.mkOption {
             type = lib.types.nullOr lib.types.str;
@@ -358,14 +358,19 @@ in {
             transport = lib.mkDefault "udp";
             note = lib.mkDefault "SIP-Trunk/VoIP product. Cloud PBX uses pbx.easybell.de instead; legacy single numbers use sip.easybell.de:5060. Codec order per Easybell: G.722, G.711A, G.711U.";
           };
-          # Verified (eventphone.de/doku/sip_configuration_hints, Nov 2025):
-          # credentials are per-event from Guru3 (no static account), IPv6
-          # registrar voip6.eventphone.de, test exts 0310 (announcement) /
-          # 8330 (own number), no dial-out, NAT keep-alive ~60s. IPv4
-          # registrar only in screenshots -> still TODO, do not guess.
+          # Verified (eventphone.de/doku/sip_configuration_hints +
+          # sip_on_fritzbox, Nov 2025; DNS Sep 2026): credentials per-event
+          # from Guru3 (key icon behind the extension), IPv4 registrar
+          # voip.eventphone.de (212.12.51.203; sip.eventphone.de does NOT
+          # resolve), IPv6 via voip6.eventphone.de, transport UDP (per
+          # sip_with_linphone_on_ios guide), test exts 0310 (announcement) /
+          # 8330 (own number), NO dial-out (internal + inbound only),
+          # NAT keep-alive ~60s. did = the Guru3 extension number.
           eventphone = {
-            registrar = null;
-            note = "TODO: IPv4 registrar (only in eventphone.de screenshots so far). Credentials per-event from Guru3; IPv6 via voip6.eventphone.de.";
+            registrar = lib.mkDefault "voip.eventphone.de";
+            port = lib.mkDefault 5060;
+            transport = lib.mkDefault "udp";
+            note = lib.mkDefault "Event/temporary SIP (no dial-out). Credentials per-event from Guru3; IPv6 registrar voip6.eventphone.de.";
           };
         };
       }

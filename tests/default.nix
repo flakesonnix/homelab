@@ -440,7 +440,7 @@
   checkVoip =
     forceB (voipDisabled.services.voip.enable == false) "voip: must be disabled by default"
     && forceB (voipEnabled.services.voip.providers.easybell.registrar == "voip.easybell.de") "voip: easybell registrar default"
-    && forceB (voipEnabled.services.voip.providers.eventphone.registrar == null) "voip: eventphone stays a TODO stub"
+    && forceB (voipEnabled.services.voip.providers.eventphone.registrar == "voip.eventphone.de") "voip: eventphone registrar (DNS-verified)"
     && forceB (voipEnabled.systemd.services.voip-check.serviceConfig.Type == "oneshot") "voip: check service is oneshot"
     && forceB (lib.hasInfix "easybell-main" voipEnabled.systemd.services.voip-check.script) "voip: check script covers the client"
     && forceB (voipEnabled.environment.etc."voip/clients/easybell-main.conf".text != "") "voip: client descriptor rendered"

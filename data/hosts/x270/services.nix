@@ -36,8 +36,19 @@
   #     inboundExtension = "999"; # local target for inbound calls
   #     displayName = "Homelab"; # needs CLIP No Screening in my.easybell
   #   };
+  #   # Eventphone (per-event account from Guru3: key icon behind the
+  #   # extension shows username + password + server; transport UDP).
+  #   # NOTE: event SIP has no dial-out — inbound + internal only.
+  #   # clients.eventphone = {
+  #   #   provider = "eventphone";
+  #   #   username = "1234"; # Guru3 extension/SIP username
+  #   #   passwordFile = "/run/secrets/voip/eventphone";
+  #   #   did = "1234"; # Guru3 extension number (client_uri + inbound match)
+  #   #   inboundExtension = "999";
+  #   # };
   # };
   # sops.secrets."voip/easybell-main" = {};
+  # sops.secrets."voip/eventphone" = {};
 
   hq.audio.streamTo = "";
 
