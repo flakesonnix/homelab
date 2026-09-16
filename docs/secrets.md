@@ -71,6 +71,34 @@ asterisk:
     saal1: "mysecretpassword"
 ```
 
+## VoIP secrets
+
+`services.voip` (see `modules/nixos/voip.nix`) takes secrets exclusively as **files** via `passwordFile` — only the path enters the Nix store, never the password:
+
+```nix
+services.voip = {
+  enable = true;
+  clients.easybell-main = {
+    provider = "easybell";
+    username = "K12345678";
+    passwordFile = "/run/secrets/voip/easybell-main";
+    did = "00493012345";
+  };
+};
+
+# Declares the key so sops-nix decrypts it to /run/secrets/voip/easybell-main (tmpfs):
+sops.secrets."voip/easybell-main" = {};
+```
+
+The corresponding entry in `hosts/<host>/secrets.yaml` (see `modules/nixos/secrets.yaml.example`):
+
+```yaml
+voip:
+  easybell-main: "sip-password-here"
+```
+
+Steps later: add the real password with `SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/x270/secrets.yaml`, uncomment the example block in `data/hosts/x270/services.nix`, rebuild. The `voip-check` service fails with a pointer to this doc if the file is missing. Phase 1 stores no credentials and registers no trunk.
+
 ## Editing secrets
 
 ```bash

@@ -154,6 +154,7 @@
         ./profiles/desktop.nix
         ./hosts/x270
         ./modules/nixos/asterisk.nix
+        ./modules/nixos/voip.nix # services.voip SIP abstraction (Phase 1: structure, no live trunk)
         ./modules/nixos/audio-stream.nix
         ./modules/nixos/fonts.nix
         ./modules/nixos/gaming.nix

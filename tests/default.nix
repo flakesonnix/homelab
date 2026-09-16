@@ -387,7 +387,53 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip;
+
+  # ---- voip module unit tests (eval-time, no secrets, no network) ----
+  # NOTE: voip.nix integrates with asterisk.nix (localTest assertion +
+  # extraExtensions hook), but asterisk.nix needs the sops-nix module for
+  # standalone eval. The stub below provides the touched options; the real
+  # co-import is covered by the x270 host eval (flake check).
+  asteriskStub = {lib, ...}: {
+    options.services.asteriskLocal = {
+      enable = lib.mkEnableOption "stub";
+      extraExtensions = lib.mkOption {
+        type = lib.types.lines;
+        default = "";
+      };
+    };
+  };
+  voipEnabled = nixosEval [
+    asteriskStub
+    ../modules/nixos/voip.nix
+    {
+      services.voip.enable = true;
+      services.voip.clients.easybell-main = {
+        username = "K00000000";
+        passwordFile = "/run/secrets/voip/easybell-main";
+        did = "004930000000";
+      };
+    }
+  ];
+  voipDisabled = nixosEval [../modules/nixos/voip.nix];
+  voipLocal = nixosEval [
+    asteriskStub
+    ../modules/nixos/voip.nix
+    {
+      services.asteriskLocal.enable = true;
+      services.voip.enable = true;
+      services.voip.localTest.enable = true;
+    }
+  ];
+  checkVoip =
+    forceB (voipDisabled.services.voip.enable == false) "voip: must be disabled by default"
+    && forceB (voipEnabled.services.voip.providers.easybell.registrar == "voip.easybell.de") "voip: easybell registrar default"
+    && forceB (voipEnabled.services.voip.providers.eventphone.registrar == null) "voip: eventphone stays a TODO stub"
+    && forceB (voipEnabled.systemd.services.voip-check.serviceConfig.Type == "oneshot") "voip: check service is oneshot"
+    && forceB (lib.hasInfix "easybell-main" voipEnabled.systemd.services.voip-check.script) "voip: check script covers the client"
+    && forceB (voipEnabled.environment.etc."voip/clients/easybell-main.conf".text != "") "voip: client descriptor rendered"
+    && forceB (lib.hasInfix "voip.easybell.de" voipEnabled.environment.etc."voip/clients/easybell-main.conf".text) "voip: descriptor carries the registrar"
+    && forceB (lib.hasInfix "999" voipLocal.services.asteriskLocal.extraExtensions) "voip: localTest appends extension 999 via asteriskLocal";
 
   notifCounter = dotfilesLib.waybarScripts.mkNotifCounter {};
   notifCounterCustom = dotfilesLib.waybarScripts.mkNotifCounter {

@@ -114,6 +114,32 @@ Generates `pjsip.conf` and `extensions.conf` from phone attrs. Built-in extensio
 
 ---
 
+### `voip.nix` (Phase 1 — structure only, no live provider trunk)
+
+Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options namespace: `services.voip.*`. Wired on `x270` (next to `asterisk.nix`); `mireo`/`nyagate` untouched.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enable` | bool | false | Enable validation, `/etc/voip` descriptors, `voip-check` service |
+| `providers` | attrs of submodules | `{easybell, eventphone}` | Provider presets: `registrar`, `port` (5060), `transport` (udp), `outboundProxy` (null = registrar), `expires` (1800), `retryInterval` (60), `note` |
+| `providers.easybell.registrar` | str | `"voip.easybell.de"` | SIP-Trunk/VoIP registrar (Cloud PBX: `pbx.easybell.de`, legacy: `sip.easybell.de`) |
+| `providers.eventphone.registrar` | null | null | TODO stub — proves the abstraction is generic |
+| `clients.<name>.provider` | str | `"easybell"` | Key into `providers` |
+| `clients.<name>.username` | str or null | null | SIP auth username (required when enabled) |
+| `clients.<name>.passwordFile` | str | `""` | Absolute runtime path to password file, e.g. `/run/secrets/voip/<client>` (required when enabled; only the path enters the store) |
+| `clients.<name>.did` | str or null | null | Public number / DID, E.164 without `+` |
+| `clients.<name>.displayName` | str | `""` | Caller-ID display name |
+| `clients.<name>.enable` | bool | true | Dormant when false |
+| `localTest.enable` | bool | false | Provider-free test extension (needs `asteriskLocal.enable`; dial 999 → playback) |
+| `localTest.extension` | str | `"999"` | Test extension number |
+| `localTest.callerId` | str | `"VoIP Test"` | Label (docs only in Phase 1) |
+
+When enabled: asserts (known provider, username + absolute `passwordFile`, non-null registrar, unique DIDs, `asteriskLocal` for localTest; warns on `/nix/store` password paths), writes non-secret descriptors to `/etc/voip/clients/<name>.conf` (Phase-2 trunk-renderer contract), appends the test extension via `asteriskLocal.extraExtensions`, runs oneshot `voip-check.service` (verifies credential files exist, never prints secrets).
+
+**Network (documented, not implemented):** Easybell needs SIP 5060/5064 UDP+TCP (TLS 5061) + RTP 20000–50000. `asteriskLocal.openFirewall` currently opens RTP 10000–20000 only — align before go-live. No firewall changes in Phase 1.
+
+---
+
 ### `audio-stream.nix`
 
 Sender-side module. Creates PipeWire tunnel sink → remote PulseAudio TCP receiver.
