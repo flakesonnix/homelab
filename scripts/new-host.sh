@@ -78,22 +78,25 @@ EOF
     echo "Created $dir/ (default.nix, host.nix, hardware-configuration.nix) + data/hosts/$name/"
     # auto-add to flake.nix if not already present
     if ! grep -q "nixosConfigurations.$name" flake.nix; then
-      # Insert <name>-config before live-config (keep live last)
+      # Append <name>-config at the end of the mkHost let-block (closing
+      # "    };" directly followed by "  in").
       awk -v n="$name" '
-        $0 ~ /^    live-config = mkHost/ && !done {
+        prev_close && $0 ~ /^  in$/ && !done {
           print "    " n "-config = mkHost {";
           print "      specialArgs = x270SpecialArgs;";
           print "      modules = [ ./hosts/" n " ];";
           print "    };";
           done=1
         }
-        { print }
+        { prev_close = ($0 ~ /^    \};$/); print }
       ' flake.nix > /tmp/flake.nix.tmp && mv /tmp/flake.nix.tmp flake.nix
-      # Insert nixosConfigurations.<name> before live
+      # Append nixosConfigurations.<name> after nyagate
       awk -v n="$name" '
-        $0 ~ /live = live-config;/ && !done2 {
+        $0 ~ /nyagate = nyagate-config;/ && !done2 {
+          print;
           print "            " n " = " n "-config;";
-          done2=1
+          done2=1;
+          next
         }
         { print }
       ' flake.nix > /tmp/flake.nix.tmp && mv /tmp/flake.nix.tmp flake.nix

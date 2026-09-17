@@ -16,9 +16,9 @@ Custom outputs (the warning is expected and fine): `deploy`, `topology`, `nixfle
 
 ## Configurations
 
-`x270-config` (desktop + 14 modules + lanzaboote + HM), `mireo-config` (base + microvm host + cups + nixfleet + sops), `nyagate-config` (base + sops), `live-config` (installer ISO, fonts/niri/waybar/hm-base).
+`x270-config` (desktop + 14 modules + lanzaboote + HM), `mireo-config` (base + microvm host + cups + nixfleet + sops), `nyagate-config` (base + sops).
 
-perSystem: `formatter=alejandra`, devShell (alejandra/statix/nix-tree/go/nodejs_22/just/fzf), `topology.modules=[topology.nix]`, packages (`full-ci-checks`, `topology-fixed`, `nixfleet-api/agent/cli/web/manifest/ui`, `live-iso`), apps (`rebuild/check/light/full/update/deploy-*/setup-sops/nixfleet/manifest/menu`).
+perSystem: `formatter=alejandra`, devShell (alejandra/statix/nix-tree/go/nodejs_22/just/fzf), `topology.modules=[topology.nix]`, packages (`full-ci-checks`, `topology-fixed`, `nixfleet-api/agent/cli/web/manifest/ui`), apps (`rebuild/check/light/full/update/deploy-*/setup-sops/nixfleet/manifest/menu`).
 
 ## CI (`.github/workflows/ci.yml`, 6 jobs, push to master + PR, cancel-in-progress)
 

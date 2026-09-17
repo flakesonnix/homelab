@@ -55,8 +55,7 @@ modules/
 hosts/
 ├── x270/
 ├── mireo/
-├── nyagate/
-└── live-iso/
+└── nyagate/
 
 home/
 └── lucy/

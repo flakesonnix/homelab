@@ -22,7 +22,6 @@ type: moc
 - [[10-Hosts/x270|x270]] — ThinkPad X270, desktop/gaming (dynamic IP via DHCP)
 - [[10-Hosts/mireo|mireo]] — server/router + 7 microVMs (10.8.0.1)
 - [[10-Hosts/nyagate|nyagate]] — remote server QEMU (db210.org)
-- [[10-Hosts/live-iso|live-iso]] — installer ISO
 - [[10-Hosts/MicroVMs|MicroVMs]] — grafana … aptcache in detail
 - [[10-Hosts/Network|Network]] — 10.8.0.0/24, br0, NAT, IPv6, Tailscale
 

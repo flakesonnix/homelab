@@ -19,6 +19,7 @@
     stylix = {
       url = "github:nix-community/stylix";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-parts.follows = "flake-parts";
     };
 
     wrappers = {
@@ -41,16 +42,13 @@
 
     nixos-hardware = {
       url = "github:NixOS/nixos-hardware/master";
+      inputs.nixpkgs.follows = "nixpkgs";
     };
 
     nixGaming = {
       url = "github:fufexan/nix-gaming";
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    nur = {
-      url = "github:nix-community/NUR";
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-parts.follows = "flake-parts";
     };
 
     lanzaboote = {
@@ -105,7 +103,6 @@
     microvm,
     nixos-hardware,
     nixGaming,
-    nur,
     yammat,
     deploy-rs,
     nix-topology,
@@ -141,12 +138,6 @@
       inherit wrappers yammat nixpkgs frameworkLib;
     };
 
-    liveSpecialArgs =
-      x270SpecialArgs
-      // {
-        inherit nixpkgs yammat;
-      };
-
     x270-config = mkHost {
       specialArgs = x270SpecialArgs;
       modules = [
@@ -166,7 +157,6 @@
         sops-nix.nixosModules.sops
         home-manager.nixosModules.home-manager
         lanzaboote.nixosModules.lanzaboote
-        nur.modules.nixos.default
         ({lib, ...}: {
           boot.loader.systemd-boot.enable = lib.mkForce false;
           boot.lanzaboote = {
@@ -200,7 +190,6 @@
         ./modules/nixos/nixfleet.nix
         ./modules/nixos/sops.nix
         sops-nix.nixosModules.sops
-        nur.modules.nixos.default
         run0-sudo-shim.nixosModules.default
         ({lib, ...}: {
           lucy.nixfleet.api.package = lib.mkDefault nixfleetPkgs.api;
@@ -216,29 +205,7 @@
         ./hosts/nyagate
         ./modules/nixos/sops.nix
         sops-nix.nixosModules.sops
-        nur.modules.nixos.default
         run0-sudo-shim.nixosModules.default
-      ];
-    };
-    live-config = mkHost {
-      specialArgs = liveSpecialArgs;
-      modules = [
-        ./nix-settings.nix
-        ./hosts/live-iso
-        ./modules/nixos/fonts.nix
-        ./modules/nixos/niri.nix
-        ./modules/nixos/waybar.nix
-        ./modules/nixos/hm-base.nix
-        home-manager.nixosModules.home-manager
-        sops-nix.nixosModules.sops
-        lanzaboote.nixosModules.lanzaboote
-        # Provides security.polkit.persistentAuthentication (set in
-        # modules/nixos/base.nix); every other host includes it too.
-        run0-sudo-shim.nixosModules.default
-        ({lib, ...}: {
-          boot.loader.systemd-boot.enable = lib.mkForce false;
-          boot.loader.grub.enable = lib.mkForce false;
-        })
       ];
     };
   in
@@ -389,7 +356,6 @@
               nixfleet-web = nixfleetPkgs.web;
               nixfleet-manifest = pkgs.writeText "manifest.json" self.nixfleetArtifacts.manifestJson;
               nixfleet-ui = pkgs.writeText "ui.json" self.nixfleetArtifacts.uiJson;
-              live-iso = self.nixosConfigurations.live.config.system.build.isoImage;
             };
 
             apps = {
@@ -482,14 +448,12 @@
             x270 = x270-config;
             mireo = mireo-config;
             nyagate = nyagate-config;
-            live = live-config;
           };
 
           nixfleetArtifacts = import ./nixfleet/manifest.nix {
             inherit (nixpkgs) lib;
             pkgs = pkgsForPatch;
-            # live is an installer ISO, not a fleet host — exclude from nixfleet catalog
-            configurations = builtins.removeAttrs self.nixosConfigurations ["live"];
+            configurations = self.nixosConfigurations;
             deployNodes = self.deploy.nodes or {};
           };
 
