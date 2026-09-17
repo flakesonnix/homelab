@@ -210,7 +210,9 @@
     };
   };
   sops.secrets."uptime-kuma/admin-password" = {};
-  # WARNUNG: erst entkommentieren wenn der Key in hosts/mireo/secrets.yaml
-  # liegt (sops-Aktivierung bricht sonst ab):
-  # sops.secrets."lldap/admin-password" = {};
+  # LLDAP admin password -> shared read-only into the lldap guest; the
+  # guest-side staging unit (root) copies it to tmpfs, so host ownership
+  # stays default (no uid pinning needed). Key must exist in
+  # hosts/mireo/secrets.yaml (verified present).
+  sops.secrets."lldap/admin-password" = {};
 }
