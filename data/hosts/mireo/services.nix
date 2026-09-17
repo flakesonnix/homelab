@@ -19,9 +19,9 @@
       passwordSecret = "asterisk/phones/lucy";
     };
     extraExtensions = "";
-    # Fax scaffold (no secrets needed yet): res_fax package + T.38 + [fax-in]
-    # + poller are live but inert — no faxDids routed until the Easybell
-    # account (with fax DID) arrives. Then: faxDids + callerId + real DID.
+    # Fax scaffold: res_fax package + T.38 + [fax-in] + poller. Fax number
+    # is the 2nd EPVPN extension (6983, see eventphone-fax client below);
+    # Easybell later adds PSTN send/receive via faxDids + callerId there.
     # NOTE: package swap + dialplan need `systemctl restart asterisk` once.
     fax = {
       enable = true;
@@ -31,9 +31,10 @@
       enable = true;
       outboxDir = "/data/fax/outbox";
       queuedDir = "/data/fax/queued";
-      trunk = "easybell"; # placeholder client name until account exists
-      registrar = "voip.easybell.de"; # placeholder until account exists
-      callerId = null; # fax DID goes here with the account
+      # EPVPN trunk (hairpin tests to own numbers work; no PSTN dial-out).
+      trunk = "eventphone-fax";
+      registrar = "hg.eventphone.de";
+      callerId = "6983"; # own fax extension
     };
   };
 
@@ -65,9 +66,21 @@
       # phones do — no 0XXX/2XXX-7XXX locals, see module docs).
       localPatterns = ["_0X." "_[2-7]XXX" "110" "112"];
     };
+    # Fax-only client (2nd EPVPN extension, no phone target): inbound to
+    # its own number loops back into [fax-in]. Hairpin test: poller sends
+    # to 6983, EPVPN routes back, ReceiveFAX lands in /data/fax/inbox.
+    clients.eventphone-fax = {
+      provider = "eventphone";
+      username = "6983"; # 2nd Guru3 extension (fax number)
+      passwordFile = "/run/secrets/voip/eventphone-fax";
+      did = "6983";
+      inboundExtension = null; # fax-only (see faxDids)
+      faxDids = ["6983"];
+    };
   };
   # sops.secrets."voip/easybell-main" = {};
   sops.secrets."voip/eventphone" = {};
+  sops.secrets."voip/eventphone-fax" = {};
 
   # --- Declarative Uptime Kuma monitors (authoritative API sync) ---
   # Targets verified live 2026-09-16 (only 2xx/3xx + reachable hosts).
