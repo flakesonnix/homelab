@@ -43,6 +43,25 @@
           DynamicUser = lib.mkForce false;
           User = "lldap";
         };
+        # Stage the admin password from the virtiofs share into guest
+        # tmpfs: direct reads from the share fail inside lldap with
+        # EOPNOTSUPP (seen 2026-09-17), plain tools like cat work — quirk
+        # class avoided entirely by staging before start.
+        systemd.services.lldap-secrets-setup = {
+          description = "Stage LLDAP secrets from virtiofs share into tmpfs";
+          before = ["lldap.service"];
+          requiredBy = ["lldap.service"];
+          wantedBy = ["multi-user.target"];
+          serviceConfig = {
+            Type = "oneshot";
+            RemainAfterExit = true;
+          };
+          script = ''
+            set -eu
+            mkdir -p /run/lldap
+            install -o lldap -g lldap -m0400 /run/secrets/lldap/admin-password /run/lldap/admin-password
+          '';
+        };
         services.lldap = {
           enable = true;
           silenceForceUserPassResetWarning = true;
@@ -50,7 +69,7 @@
             ldap_base_dn = "dc=home,dc=arpa";
             ldap_user_dn = "admin";
             ldap_user_email = "admin@home.arpa";
-            ldap_user_pass_file = "/run/secrets/lldap/admin-password";
+            ldap_user_pass_file = "/run/lldap/admin-password";
             force_ldap_user_pass_reset = false;
             http_url = "http://lldap.home.arpa";
           };
