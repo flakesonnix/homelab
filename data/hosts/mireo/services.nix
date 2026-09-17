@@ -216,7 +216,5 @@
   # hosts/mireo/secrets.yaml (verified present).
   sops.secrets."lldap/admin-password" = {};
   # Per-user passwords for the declarative seed (lldap-microvm.nix).
-  # WARNUNG: erst entkommentieren wenn die Keys in hosts/mireo/secrets.yaml
-  # liegen (sops-Aktivierung bricht sonst ab):
-  # sops.secrets."lldap/users/lucy" = {};
+  sops.secrets."lldap/users/lucy" = {};
 }
