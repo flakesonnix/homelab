@@ -101,7 +101,12 @@
     username=${client.username}
     did=${client.did}
     contact_user=${contactOf client}
-    inbound_extension=${client.inboundExtension}
+    inbound_extension=${
+      if client.inboundExtension == null
+      then ""
+      else client.inboundExtension
+    }
+    fax_dids=${lib.concatStringsSep "," client.faxDids}
     display_name=${client.displayName}
     password_file=${client.passwordFile}
     expires=${toString provider.expires}
@@ -182,19 +187,20 @@
     provider = cfg.providers.${client.provider};
     trunkDial = "PJSIP/${name}/sip:\${EXTEN}@${provider.registrar}";
   in ''
-        ; ===== client '${name}' (services.voip) =====
-        [${name}]
-        exten => _X.,1,Dial(${trunkDial})
-            same => n,Hangup()
-        exten => 110,1,Dial(PJSIP/${name}/sip:110@${provider.registrar})
-            same => n,Hangup()
-        exten => 112,1,Dial(PJSIP/${name}/sip:112@${provider.registrar})
-            same => n,Hangup()
+            ; ===== client '${name}' (services.voip) =====
+            [${name}]
+            exten => _X.,1,Dial(${trunkDial})
+                same => n,Hangup()
+            exten => 110,1,Dial(PJSIP/${name}/sip:110@${provider.registrar})
+                same => n,Hangup()
+            exten => 112,1,Dial(PJSIP/${name}/sip:112@${provider.registrar})
+                same => n,Hangup()
 
-        [${name}_in]
-        exten => ${contactOf client},1,Dial(PJSIP/${client.inboundExtension},30)
-            same => n,Hangup()
-    ${lib.concatStringsSep "\n" (map (faxDid: ''
+            [${name}_in]
+    ${lib.optionalString (client.inboundExtension != null) ''
+      exten => ${contactOf client},1,Dial(PJSIP/${client.inboundExtension},30)
+          same => n,Hangup()''}
+        ${lib.concatStringsSep "\n" (map (faxDid: ''
       ; Fax DID -> fax receive (services.asteriskLocal.fax must be enabled).
       exten => ${faxDid},1,Goto(fax-in,s,1)'')
     client.faxDids)}
@@ -324,7 +330,7 @@ in {
           inboundExtension = lib.mkOption {
             type = lib.types.nullOr lib.types.str;
             default = null;
-            description = "Local target for inbound calls to did (e.g. an asteriskLocal phone extension or the localTest extension). Required per enabled client.";
+            description = "Local target for inbound calls to did (e.g. an asteriskLocal phone extension or the localTest extension). Required unless the client is fax-only (faxDids set).";
           };
           faxDids = lib.mkOption {
             type = lib.types.listOf lib.types.str;
@@ -332,8 +338,8 @@ in {
             description = ''
               Inbound numbers routed to fax receive ([fax-in] in
               services.asteriskLocal, needs fax.enable there) instead of
-              inboundExtension. Empty until the Easybell account (with fax
-              DID) arrives.
+              inboundExtension. A fax-only client sets inboundExtension=null
+              and lists its number here (e.g. second EPVPN extension).
             '';
           };
           displayName = lib.mkOption {
@@ -471,8 +477,8 @@ in {
               message = "services.voip: every enabled client needs a did (E.164 without '+', used for client_uri and inbound routing).";
             }
             {
-              assertion = lib.all (c: c.inboundExtension != null && c.inboundExtension != "") (builtins.attrValues enabledClients);
-              message = "services.voip: every enabled client needs inboundExtension (local target for inbound calls, e.g. an asteriskLocal extension or the localTest extension).";
+              assertion = lib.all (c: (c.inboundExtension != null && c.inboundExtension != "") || c.faxDids != []) (builtins.attrValues enabledClients);
+              message = "services.voip: every enabled client needs inboundExtension (local target) or faxDids (fax-only client, e.g. second EPVPN extension).";
             }
           ]
           # A live trunk is only useful on the local Asterisk (PJSIP #includes
