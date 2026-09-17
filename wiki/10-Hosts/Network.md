@@ -23,6 +23,7 @@ mireo (router)
   ├── 10.8.0.9  uptime-kuma :3001 (via Caddy uptime-kuma.home.arpa)
   ├── 10.8.0.10 jellyfin :8096 (via Caddy jellyfin.home.arpa)
   ├── 10.8.0.11 ntp :123/udp (via DHCP option 42)
+  ├── 10.8.0.12 lldap :3890 + :17170 (UI via Caddy lldap.home.arpa)
   └── (DHCP)      x270 (dynamic address via DHCPv4/DHCPv6)
 ```
 

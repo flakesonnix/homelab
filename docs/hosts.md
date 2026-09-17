@@ -104,6 +104,7 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
   - **uptime-kuma** (10.8.0.9): Uptime Kuma status monitoring (port 3001, via `http://uptime-kuma.home.arpa`)
   - **jellyfin** (10.8.0.10): Jellyfin media server (port 8096, via `http://jellyfin.home.arpa`)
   - **ntp** (10.8.0.11): chrony NTP server (UDP 123, via DHCP option 42)
+  - **lldap** (10.8.0.12): LDAP directory (`dc=home,dc=arpa`, :3890 + UI :17170 via `http://lldap.home.arpa`)
 - No desktop (`lucy.base.isServer = true`)
 - node_exporter running on 10.8.0.1:9100 for self-monitoring
 - libvirtd daemon for virt-manager remote (Weg A): x270 connects via `qemu+ssh://root@10.8.0.1/system`, new libvirt guests bridge to `br0` (`allowedBridges`), static IP outside DHCP range + entry in `hosts/mireo/vm-ips.nix`. The 10 microVMs (microvm.nix) do NOT show in virt-manager. Recovery on `243/CREDENTIALS`: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.

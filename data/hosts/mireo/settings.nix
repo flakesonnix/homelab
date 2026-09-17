@@ -345,6 +345,7 @@
       # IP from vm-ips.nix (single source) instead of a literal like above.
       uptime-kuma = "${(import ../../../hosts/mireo/vm-ips.nix).uptime-kuma}:3001";
       jellyfin = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
+      lldap = "${(import ../../../hosts/mireo/vm-ips.nix).lldap}:17170";
       # Alias vhost (same target as jellyfin; DNS CNAME above).
       media = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
     };

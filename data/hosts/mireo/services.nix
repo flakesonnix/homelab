@@ -198,7 +198,19 @@
         target = "google.com";
         dnsServer = "1.1.1.1";
       };
+      lldap-ui = {
+        type = "http";
+        target = "http://10.8.0.12:17170/";
+      };
+      ldap-port = {
+        type = "port";
+        target = "10.8.0.12";
+        port = 3890;
+      };
     };
   };
   sops.secrets."uptime-kuma/admin-password" = {};
+  # WARNUNG: erst entkommentieren wenn der Key in hosts/mireo/secrets.yaml
+  # liegt (sops-Aktivierung bricht sonst ab):
+  # sops.secrets."lldap/admin-password" = {};
 }
