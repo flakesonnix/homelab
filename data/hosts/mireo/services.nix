@@ -60,7 +60,7 @@
       username = "4309"; # Guru3 extension/SIP username
       passwordFile = "/run/secrets/voip/eventphone";
       did = "4309"; # Guru3 extension number (client_uri + inbound match)
-      inboundExtension = "999"; # local test ext
+      inboundExtension = "lucy"; # phone account name (PJSIP endpoint), NOT a dialplan ext!
       # EPVPN dialplan: 0-prefix specials (0310, 09…, 01999…) + 2100-7999
       # user range + emergency. Local numbers must avoid these (999/100/
       # phones do — no 0XXX/2XXX-7XXX locals, see module docs).
