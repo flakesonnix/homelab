@@ -106,7 +106,13 @@ A local SIP PBX using Asterisk PJSIP. Options namespace: `services.asteriskLocal
 | `secrets.mode` | str | `"0400"` | File permissions |
 | `extraExtensions` | lines | `""` | Extra dialplan lines in `[from-internal]` |
 | `openFirewall` | bool | false | Open 5060/udp + 10000-20000/udp |
-| `liveReload` | bool | true | Reload on switch instead of restart |
+| `liveReload` | bool | true | Reload on switch instead of restart (currently inert — restart manually) |
+| `fax.enable` | bool | false | Inbound fax receive: spandsp package + `udptl.conf` (T.38) + `[fax-in]` context |
+| `fax.inboxDir` | str or null | null | Runtime dir for received TIFF+PDF+`.txt` (required; NFS-safe, no chown) |
+| `faxSend.enable` | bool | false | Outbound poller: `<number>__<name>.pdf` → G3 TIFF → call file (SendFAX, 2 retries) |
+| `faxSend.outboxDir` / `.queuedDir` | str or null | null | Spool in / queued out (PDF+TIFF); both required |
+| `faxSend.trunk` / `.registrar` | str | `"easybell"` / `"voip.easybell.de"` | PJSIP endpoint + registrar for outbound fax (three-part dial, like voice) |
+| `faxSend.callerId` | str or null | null | CallerID number for outbound faxes (the fax DID) |
 
 Generates `pjsip.conf` and `extensions.conf` from phone attrs. Built-in extension 100 plays `hello-world` (connectivity test). Feature codes: `*1` record, `*2` blind transfer, `*3` attended transfer, `#72` park, `#74` retrieve, `*0` disconnect.
 
@@ -130,6 +136,7 @@ Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options 
 | `clients.<name>.did` | str or null | null | Public number / DID, E.164 without `+` (eventphone: Guru3 extension; required when enabled; `client_uri` + inbound routing) |
 | `clients.<name>.contactUser` | str or null | null | Head number for `contact_user`/AOR contact (falls back to `did`) |
 | `clients.<name>.inboundExtension` | str or null | null | Local target for inbound calls (required when enabled) |
+| `clients.<name>.faxDids` | list of str | `[]` | Inbound numbers routed to fax receive (`[fax-in]`, needs `asteriskLocal.fax`) instead of `inboundExtension` |
 | `clients.<name>.displayName` | str | `""` | Caller-ID display name (needs CLIP No Screening + From Display in my.easybell) |
 | `clients.<name>.codecs` | list of str | `[alaw ulaw g722]` | Allowed codecs in Easybell order |
 | `clients.<name>.localPatterns` | list of str | `[]` | Dial patterns in `[from-internal]` routed out via this trunk (e.g. EPVPN `["_0X." "_[2-7]XXX"]` + `"110" "112"`; keep local numbers outside these ranges) |

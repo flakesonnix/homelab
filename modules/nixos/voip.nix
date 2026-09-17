@@ -182,18 +182,22 @@
     provider = cfg.providers.${client.provider};
     trunkDial = "PJSIP/${name}/sip:\${EXTEN}@${provider.registrar}";
   in ''
-    ; ===== client '${name}' (services.voip) =====
-    [${name}]
-    exten => _X.,1,Dial(${trunkDial})
-        same => n,Hangup()
-    exten => 110,1,Dial(PJSIP/${name}/sip:110@${provider.registrar})
-        same => n,Hangup()
-    exten => 112,1,Dial(PJSIP/${name}/sip:112@${provider.registrar})
-        same => n,Hangup()
+        ; ===== client '${name}' (services.voip) =====
+        [${name}]
+        exten => _X.,1,Dial(${trunkDial})
+            same => n,Hangup()
+        exten => 110,1,Dial(PJSIP/${name}/sip:110@${provider.registrar})
+            same => n,Hangup()
+        exten => 112,1,Dial(PJSIP/${name}/sip:112@${provider.registrar})
+            same => n,Hangup()
 
-    [${name}_in]
-    exten => ${contactOf client},1,Dial(PJSIP/${client.inboundExtension},30)
-        same => n,Hangup()
+        [${name}_in]
+        exten => ${contactOf client},1,Dial(PJSIP/${client.inboundExtension},30)
+            same => n,Hangup()
+    ${lib.concatStringsSep "\n" (map (faxDid: ''
+      ; Fax DID -> fax receive (services.asteriskLocal.fax must be enabled).
+      exten => ${faxDid},1,Goto(fax-in,s,1)'')
+    client.faxDids)}
   '';
 
   # Local test extension (provider-free): SIP client -> Asterisk ->
@@ -321,6 +325,16 @@ in {
             type = lib.types.nullOr lib.types.str;
             default = null;
             description = "Local target for inbound calls to did (e.g. an asteriskLocal phone extension or the localTest extension). Required per enabled client.";
+          };
+          faxDids = lib.mkOption {
+            type = lib.types.listOf lib.types.str;
+            default = [];
+            description = ''
+              Inbound numbers routed to fax receive ([fax-in] in
+              services.asteriskLocal, needs fax.enable there) instead of
+              inboundExtension. Empty until the Easybell account (with fax
+              DID) arrives.
+            '';
           };
           displayName = lib.mkOption {
             type = lib.types.str;

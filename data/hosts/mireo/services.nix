@@ -19,6 +19,22 @@
       passwordSecret = "asterisk/phones/lucy";
     };
     extraExtensions = "";
+    # Fax scaffold (no secrets needed yet): res_fax package + T.38 + [fax-in]
+    # + poller are live but inert — no faxDids routed until the Easybell
+    # account (with fax DID) arrives. Then: faxDids + callerId + real DID.
+    # NOTE: package swap + dialplan need `systemctl restart asterisk` once.
+    fax = {
+      enable = true;
+      inboxDir = "/data/fax/inbox";
+    };
+    faxSend = {
+      enable = true;
+      outboxDir = "/data/fax/outbox";
+      queuedDir = "/data/fax/queued";
+      trunk = "easybell"; # placeholder client name until account exists
+      registrar = "voip.easybell.de"; # placeholder until account exists
+      callerId = null; # fax DID goes here with the account
+    };
   };
 
   # Password rotation: update sops, then

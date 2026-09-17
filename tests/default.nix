@@ -387,7 +387,7 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax;
 
   # ---- voip module unit tests (eval-time, no secrets, no network) ----
   # NOTE: voip.nix integrates with asterisk.nix (localTest assertion +
@@ -503,6 +503,55 @@
     && forceB (lib.hasInfix "http://10.8.0.9:3001" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: script targets the API"
     && forceB (lib.hasInfix "uptime-kuma-monitors.json" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: monitor data wired into service"
     && forceB (lib.hasInfix "--status-page" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: status page wired into service";
+
+  # ---- asterisk fax unit tests (eval-time, no calls) ----
+  # NOTE: asterisk.nix touches sops options (guarded, but this nixpkgs
+  # checks option paths structurally) — same stub pattern as asteriskStub.
+  sopsStub = {lib, ...}: {
+    options.sops = {
+      secrets = lib.mkOption {
+        type = lib.types.attrs;
+        default = {};
+      };
+      templates = lib.mkOption {
+        type = lib.types.attrs;
+        default = {};
+      };
+      defaultSopsFile = lib.mkOption {
+        type = lib.types.nullOr lib.types.path;
+        default = null;
+      };
+    };
+  };
+  faxEnabled = nixosEval [
+    sopsStub
+    ../modules/nixos/asterisk.nix
+    {
+      services.asteriskLocal.enable = true;
+      services.asteriskLocal.fax = {
+        enable = true;
+        inboxDir = "/tmp/fax-inbox-test";
+      };
+      services.asteriskLocal.faxSend = {
+        enable = true;
+        outboxDir = "/tmp/fax-outbox-test";
+        queuedDir = "/tmp/fax-queued-test";
+      };
+    }
+  ];
+  faxVanilla = nixosEval [
+    sopsStub
+    ../modules/nixos/asterisk.nix
+    {services.asteriskLocal.enable = true;}
+  ];
+  checkAsteriskFax =
+    forceB (faxEnabled.services.asterisk.confFiles ? "udptl.conf") "fax: udptl.conf rendered when enabled"
+    && forceB (lib.hasInfix "udptlstart=4000" faxEnabled.services.asterisk.confFiles."udptl.conf") "fax: UDPTL range present"
+    && forceB (!(faxVanilla.services.asterisk.confFiles ? "udptl.conf")) "fax: no udptl.conf when disabled"
+    && forceB (faxEnabled.services.asterisk.package.outPath != faxVanilla.services.asterisk.package.outPath) "fax: spandsp package override active"
+    && forceB (lib.any (r: lib.hasInfix "/tmp/fax-inbox-test" r) faxEnabled.systemd.tmpfiles.rules) "fax: inbox dir rule present"
+    && forceB (faxEnabled.systemd.services.fax-poller.serviceConfig.Type == "oneshot") "fax: poller is oneshot"
+    && forceB (faxEnabled.systemd.timers.fax-poller.timerConfig.OnUnitActiveSec == "2min") "fax: poller runs every 2min";
 
   notifCounter = dotfilesLib.waybarScripts.mkNotifCounter {};
   notifCounterCustom = dotfilesLib.waybarScripts.mkNotifCounter {
