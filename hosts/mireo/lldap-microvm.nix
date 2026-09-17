@@ -156,10 +156,17 @@ in {
                   --arg op "$op" --arg res "$res" \
                   '{query: "mutation M($user: \($op)Input!) {\($op)(user: $user) {\($res)}}", operationName: "M", variables: {user: $u}}' \
                 > "$tmp/mut.json"
-              out=$(api -X POST "$url/api/graphql" \
+              # No -f here: we want the body on HTTP errors (diagnosis).
+              resp=$(curl -s --max-time 15 -w '\n%{http_code}' -X POST "$url/api/graphql" \
                 -H "Authorization: Bearer $token" \
                 -H "Content-Type: application/json" \
-                -d @"$tmp/mut.json") || { err "user $id mutation transport failed"; continue; }
+                -d @"$tmp/mut.json")
+              code=$(tail -n 1 <<<"$resp")
+              out=$(sed '$d' <<<"$resp")
+              if [ "$code" != 200 ]; then
+                err "user $id mutation HTTP $code: $(head -c 300 <<<"$out")"
+                continue
+              fi
               msg=$(jq -r '.errors | if . == null then empty else .[].message end' <<<"$out")
               if [ -n "$msg" ]; then err "user $id: $msg"; continue; fi
               say "user $id ensured"
