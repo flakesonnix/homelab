@@ -236,6 +236,7 @@
       # follows automatically if the target IP ever moves).
       cname = [
         "prometheus.home.arpa,grafana.home.arpa"
+        "media.home.arpa,jellyfin.home.arpa"
       ];
       # NOTE (dropped 2026-09-16): UCS/AD is gone (libvirt domain ucs5.0
       # retired, no replacement). The AD SRV records lived here; if a new
@@ -344,6 +345,8 @@
       # IP from vm-ips.nix (single source) instead of a literal like above.
       uptime-kuma = "${(import ../../../hosts/mireo/vm-ips.nix).uptime-kuma}:3001";
       jellyfin = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
+      # Alias vhost (same target as jellyfin; DNS CNAME above).
+      media = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
     };
     # Vanity URL for the declarative status page (302 to the real path so
     # the page's relative /api calls keep working — a rewrite would break

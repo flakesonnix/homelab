@@ -46,6 +46,7 @@ One entrypoint for all web UIs: `http://<name>.home.arpa` (DNS from dnsmasq, no 
 | aptcache.home.arpa | 10.8.0.8:3142 |
 | uptime-kuma.home.arpa | 10.8.0.9:3001 |
 | jellyfin.home.arpa | 10.8.0.10:8096 |
+| media.home.arpa | alias → jellyfin (CNAME + VHost) |
 | status.home.arpa | 302 → uptime-kuma.home.arpa/status/homelab |
 | netdata.home.arpa | dropped 2026-09-16 (see Grafana/Prometheus) |
 
