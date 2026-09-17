@@ -1,8 +1,10 @@
 # Jellyfin media server (microVM on br0, behind Caddy on mireo).
 # Uses the official nixpkgs module (services.jellyfin) with defaults
 # (dataDir /var/lib/jellyfin, :8096, software transcoding). No TLS/state
-# inside the VM. Media libraries (/data/…) can be added later via an
-# extra read-only virtiofs share once the media directory exists.
+# inside the VM. Media library /data/Jellyfin is shared read-only via
+# virtiofs (auto-mounted at /media; files are world-readable, so the
+# guest jellyfin user needs no idmap). Add /media as library in the
+# Jellyfin UI once (runtime state, not declarative).
 {
   imports = [
     (import ./mk-microvm.nix {
@@ -11,6 +13,14 @@
       mem = 2304; # NB: never exactly 2048 (QEMU hangs, microvm.nix#171)
       vcpu = 2;
       tcpPorts = [22 8096];
+      shares = [
+        {
+          tag = "jellyfin-media";
+          source = "/data/Jellyfin";
+          mountPoint = "/media";
+          readOnly = true;
+        }
+      ];
       volumes = [
         {
           image = "jellyfin-data.img";

@@ -54,6 +54,25 @@ spec: {lib, ...}: let
         type = types.nullOr types.nonEmptyStr;
         default = null;
       };
+      shares = mkOption {
+        type = types.listOf (types.submodule {
+          options = {
+            tag = mkOption {type = types.nonEmptyStr;};
+            source = mkOption {type = types.nonEmptyStr;};
+            mountPoint = mkOption {type = types.nonEmptyStr;};
+            readOnly = mkOption {
+              type = types.bool;
+              default = true;
+            };
+            proto = mkOption {
+              type = types.enum ["virtiofs" "9p"];
+              default = "virtiofs";
+            };
+          };
+        });
+        default = [];
+        description = "Host directories shared into the guest (auto-mounted by microvm.nix at mountPoint).";
+      };
       config = mkOption {
         type = types.attrs;
         default = {};
@@ -80,6 +99,9 @@ spec: {lib, ...}: let
     networking.firewall.allowedUDPPorts = s.udpPorts;
     microvm.mem = s.mem;
     microvm.vcpu = s.vcpu;
+    # Merges (not replaces) microvm-base.nix's ro-store share: module
+    # lists concatenate across imports.
+    microvm.shares = s.shares;
     microvm.volumes = map (v: lib.removeAttrs v ["user" "group"]) volumes;
     systemd.tmpfiles.rules =
       s.tmpfiles
