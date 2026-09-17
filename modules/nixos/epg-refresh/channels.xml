@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<channels>
+  <channel site="sky.com" site_id="DE#662" lang="de" xmltv_id="123tv.de@SD">1-2-3.tv</channel>
+  <channel site="teleboy.ch" site_id="311" lang="de" xmltv_id="3sat.de">3sat</channel>
+  <channel site="sky.com" site_id="DE#377" lang="de" xmltv_id="ARD-alpha.de">ARD alpha HD</channel>
+  <channel site="sky.com" site_id="DE#604" lang="de" xmltv_id="ARTE.de">arte HD</channel>
+  <channel site="sky.com" site_id="DE#4440" lang="de" xmltv_id="AlJazeera.qa@English">Al Jazeera English</channel>
+  <channel site="web.magentatv.de" site_id="649" lang="de" xmltv_id="AlexBerlin.de@SD">ALEX Berlin</channel>
+  <channel site="sky.com" site_id="DE#764" lang="de" xmltv_id="AnixePlus.de@SD">ANIXE+</channel>
+  <channel site="sky.com" site_id="DE#5001" lang="de" xmltv_id="BBCNews.uk@Europe">BBC News</channel>
+  <channel site="sky.com" site_id="DE#631" lang="de" xmltv_id="BRFernsehen.de@Sud">BR Fernsehen Süd HD</channel>
+  <channel site="sky.com" site_id="DE#2122" lang="de" xmltv_id="BibelTV.de">Bibel TV</channel>
+  <channel site="sky.com" site_id="DE#6801" lang="de" xmltv_id="CGTN.cn@SD">CGTN News HD</channel>
+  <channel site="web.magentatv.de" site_id="5176" lang="de" xmltv_id="CHANNEL21.de">CHANNEL21</channel>
+  <channel site="sky.com" site_id="GB#1088" lang="en" xmltv_id="CNBCEurope.uk@SD">CNBC HD</channel>
+  <channel site="sky.com" site_id="DE#4422" lang="de" xmltv_id="CNNInternational.us@MENA">CNN Int.</channel>
+  <channel site="sky.com" site_id="DE#8676" lang="de" xmltv_id="ComedyCentral.de">Comedy Central</channel>
+  <channel site="sky.com" site_id="DE#4914" lang="de" xmltv_id="DF1.de">DF1 HD</channel>
+  <channel site="sky.com" site_id="DE#63" lang="de" xmltv_id="DMAX.de">DMAX</channel>
+  <channel site="sky.com" site_id="DE#2604" lang="de" xmltv_id="DMF.de">DMF</channel>
+  <channel site="sky.com" site_id="DE#826" lang="de" xmltv_id="DasErste.de">Das Erste HD</channel>
+  <channel site="sky.com" site_id="DE#65" lang="de" xmltv_id="DeluxeMusic.de">DELUXE MUSIC</channel>
+  <channel site="sky.com" site_id="DE#1793" lang="de" xmltv_id="DisneyChannel.de">Disney Channel</channel>
+  <channel site="sky.com" site_id="DE#2029" lang="de" xmltv_id="Dokusat.de@SD">Dokusat</channel>
+  <channel site="sky.com" site_id="DE#1230" lang="de" xmltv_id="EuronewsGerman.fr@SD">EURONEWS GERMAN SD</channel>
+  <channel site="sky.com" site_id="DE#1202" lang="de" xmltv_id="Eurosport1.fr@Germany">Eurosport 1 Deutschland</channel>
+  <channel site="sky.com" site_id="DE#38" lang="de" xmltv_id="HGTV.de">HGTV</channel>
+  <channel site="sky.com" site_id="DE#40" lang="de" xmltv_id="HSE.de">HSE SD</channel>
+  <channel site="sky.com" site_id="DE#5501" lang="de" xmltv_id="HSEExtra.de@HD">HSE Extra HD</channel>
+  <channel site="sky.com" site_id="DE#1210" lang="de" xmltv_id="HSEExtra.de@SD">HSE Extra</channel>
+  <channel site="sky.com" site_id="DE#77" lang="de" xmltv_id="HSETrend.de@SD">HSE Trend SD</channel>
+  <channel site="sky.com" site_id="DE#3227" lang="de" xmltv_id="HopeChannelGerman.de@SD">Hope TV</channel>
+  <channel site="sky.com" site_id="DE#2616" lang="de" xmltv_id="Juwelo.de@SD">Juwelo TV</channel>
+  <channel site="sky.com" site_id="DE#2601" lang="de" xmltv_id="KTV.de">K-TV</channel>
+  <channel site="web.magentatv.de" site_id="387" lang="de" xmltv_id="KiKA.de">KiKA</channel>
+  <channel site="sky.com" site_id="DE#651" lang="de" xmltv_id="MDRFernsehen.de@Sachsen">MDR Sachsen HD</channel>
+  <channel site="sky.com" site_id="DE#8678" lang="de" xmltv_id="MTV.de">MTV</channel>
+  <channel site="sky.com" site_id="DE#48" lang="de" xmltv_id="N24Doku.de">N24 DOKU</channel>
+  <channel site="sky.com" site_id="DE#635" lang="de" xmltv_id="NDRFernsehen.de@Niedersachsen">NDR FS NDS HD</channel>
+  <channel site="sky.com" site_id="DE#2061" lang="de" xmltv_id="NITRO.de">NITRO</channel>
+  <channel site="tv.magenta.at" site_id="206969384238" lang="de" xmltv_id="Nickelodeon.de">Nickelodeon</channel>
+  <channel site="sky.com" site_id="DE#605" lang="de" xmltv_id="ONE.de">ONE HD</channel>
+  <channel site="tv.blue.ch" site_id="2110" lang="de" xmltv_id="Parlamentsfernsehen1.de@SD">Deutscher Bundestag</channel>
+  <channel site="sky.com" site_id="DE#1301" lang="de" xmltv_id="ProSieben.de">ProSieben HD</channel>
+  <channel site="sky.com" site_id="DE#7505" lang="de" xmltv_id="ProSiebenMaxx.de@SD">Pro7 MAXX</channel>
+  <channel site="sky.com" site_id="DE#2100" lang="de" xmltv_id="QVC.de">QVC Deutschland</channel>
+  <channel site="sky.com" site_id="DE#803" lang="de" xmltv_id="QVCStyle.de@SD">QVC STYLE HD</channel>
+  <channel site="sky.com" site_id="DE#5504" lang="de" xmltv_id="QVCZWEI.de">QVC ZWEI HD</channel>
+  <channel site="web.magentatv.de" site_id="404" lang="de" xmltv_id="RTL.de">RTL</channel>
+  <channel site="sky.com" site_id="DE#2040" lang="de" xmltv_id="RTLSuper.de@SD">SUPER RTL</channel>
+  <channel site="sky.com" site_id="DE#2020" lang="de" xmltv_id="RTLZWEI.de">RTLZWEI</channel>
+  <channel site="sky.com" site_id="DE#2080" lang="de" xmltv_id="RTLup.de">RTLup</channel>
+  <channel site="sky.com" site_id="DE#7500" lang="de" xmltv_id="SAT1.de">SAT.1</channel>
+  <channel site="sky.com" site_id="DE#7504" lang="de" xmltv_id="SAT1Gold.de@SD">SAT.1 Gold</channel>
+  <channel site="sky.com" site_id="IT#5431" lang="it" xmltv_id="SBNTVInternational.us@SD">SonLife Broadcasting Network</channel>
+  <channel site="sky.com" site_id="DE#900" lang="de" xmltv_id="SPORT1.de">SPORT1</channel>
+  <channel site="sky.com" site_id="DE#690" lang="de" xmltv_id="SRFernsehen.de">SR Fernsehen HD</channel>
+  <channel site="sky.com" site_id="DE#638" lang="de" xmltv_id="SWRFernsehenRheinlandPfalz.de@SD">SWR RP HD</channel>
+  <channel site="sky.com" site_id="DE#35" lang="de" xmltv_id="SchlagerDeluxe.de">Schlager Deluxe</channel>
+  <channel site="sky.com" site_id="DE#1107" lang="de" xmltv_id="ShopLCDeutschland.de@SD">ShopLC HD</channel>
+  <channel site="sky.com" site_id="DE#32" lang="de" xmltv_id="SonnenklarTV.de@SD">Sonnenklar TV</channel>
+  <channel site="sky.com" site_id="DE#51" lang="de" xmltv_id="TELE5.de@SD">TELE 5</channel>
+  <channel site="sky.com" site_id="DE#772" lang="de" xmltv_id="TLC.de">TLC</channel>
+  <channel site="sky.com" site_id="DE#2030" lang="de" xmltv_id="TOGGOplus.de">TOGGO plus</channel>
+  <channel site="web.magentatv.de" site_id="599" lang="de" xmltv_id="TVBerlin.de">tv.berlin</channel>
+  <channel site="sky.com" site_id="DE#2060" lang="de" xmltv_id="VOX.de">VOX</channel>
+  <channel site="sky.com" site_id="DE#1207" lang="de" xmltv_id="VOXup.de">VOXup HD</channel>
+  <channel site="sky.com" site_id="DE#8332" lang="de" xmltv_id="WDRFernsehen.de@Koln">WDR HD Köln</channel>
+  <channel site="sky.com" site_id="DE#1108" lang="de" xmltv_id="WELT.de">WELT HD</channel>
+  <channel site="teleboy.ch" site_id="306" lang="de" xmltv_id="ZDF.de">ZDF</channel>
+  <channel site="web.magentatv.de" site_id="378" lang="de" xmltv_id="ZDFinfo.de">ZDFinfo</channel>
+  <channel site="web.magentatv.de" site_id="391" lang="de" xmltv_id="ZDFneo.de">ZDFneo</channel>
+  <channel site="sky.com" site_id="DE#650" lang="de" xmltv_id="hr-fernsehen.de">hr-fernsehen HD</channel>
+  <channel site="sky.com" site_id="DE#1302" lang="de" xmltv_id="kabeleins.de@SD">kabel eins HD</channel>
+  <channel site="sky.com" site_id="DE#7509" lang="de" xmltv_id="kabeleinsDoku.de@SD">kabel eins Doku</channel>
+  <channel site="sky.com" site_id="DE#1204" lang="de" xmltv_id="n-tv.de">ntv HD</channel>
+  <channel site="sky.com" site_id="DE#609" lang="de" xmltv_id="phoenix.de">phoenix HD</channel>
+  <channel site="sky.com" site_id="DE#654" lang="de" xmltv_id="rbbFernsehen.de@Berlin">rbb Berlin HD</channel>
+  <channel site="sky.com" site_id="DE#655" lang="de" xmltv_id="rbbFernsehen.de@Brandenburg">rbb Brandenburg HD</channel>
+  <channel site="sky.com" site_id="DE#776" lang="de" xmltv_id="sixx.de">SIXX</channel>
+  <channel site="sky.com" site_id="DE#734" lang="de" xmltv_id="tagesschau24.de">tagesschau24 HD</channel>
+</channels>

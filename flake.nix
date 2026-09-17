@@ -154,6 +154,7 @@
         ./profiles/desktop.nix
         ./hosts/x270
         ./modules/nixos/audio-stream.nix
+        ./modules/nixos/epg-refresh.nix # services.epg-refresh: täglicher Jellyfin-XMLTV-Guide
         ./modules/nixos/fonts.nix
         ./modules/nixos/gaming.nix
         ./modules/nixos/gnome.nix
