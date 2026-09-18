@@ -22,7 +22,7 @@ nixfleet/Go api/agent/web + manifest.nix → artifacts/manifest+ui.json
 tests/dotfiles-tests + topology-unit + builders-unit + nixfleet
 docs/hosts modules data-model secrets printing gaming-x270 apt-cache audio-latency nfs-ubuntu-client topology/*.svg
 wiki/                # ← this vault (Obsidian)
-justfile nix-settings.nix topology.nix patches/nix-topology-spacing.patch scripts/new-host.sh
+justfile nix-settings.nix topology.nix scripts/new-host.sh
 ```
 
 Framework entry points: `hosts/*/host.nix:17`, `home/lucy/default.nix:40`. No external rivotril.

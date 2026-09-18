@@ -110,11 +110,12 @@
   }: let
     pkgsForPatch = import nixpkgs {system = "x86_64-linux";};
     nixfleetPkgs = import ./nixfleet/default.nix {pkgs = pkgsForPatch;};
-    patchedNixTopologySrc = pkgsForPatch.applyPatches {
-      name = "nix-topology-patched";
-      src = inputs.nix-topology;
-      patches = [./patches/nix-topology-spacing.patch];
-    };
+    # NOTE: nix-topology is used unpatched via inputs.nix-topology.flakeModule.
+    # A previous ELK spacing tweak (nodeNode=120, see git history) was applied
+    # via pkgs.applyPatches + import from derivation output, which is IFD and
+    # breaks `nix flake show` (IFD is forbidden during flake listing).
+    # Label overlap is still handled at build time by fix-network-svg post-processing
+    # in packages.topology. Do not reintroduce applyPatches/import-from-derivation here.
     mkHost = {
       modules,
       specialArgs ? {},
@@ -211,7 +212,7 @@
   in
     flake-parts.lib.mkFlake {inherit inputs;} (
       {
-        imports = [(import "${patchedNixTopologySrc}/flake-module.nix")];
+        imports = [nix-topology.flakeModule];
         systems = ["x86_64-linux"];
 
         perSystem = {

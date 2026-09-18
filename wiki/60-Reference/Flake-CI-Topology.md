@@ -10,7 +10,7 @@ type: reference
 
 ## Inputs (16)
 
-`nixpkgs/nixos-unstable`, `home-manager/master`, `stylix`, `wrappers/lassulus`, `nix-flatpak`, `sops-nix`, `flake-parts`, `nixos-hardware`, `nixGaming/fufexan`, `nur`, `lanzaboote`, `run0-sudo-shim`, `yammat/gitea.c3d2`, `deploy-rs`, `microvm.nix`, `nix-topology/oddlama` (+ patch `patches/nix-topology-spacing.patch`).
+`nixpkgs/nixos-unstable`, `home-manager/master`, `stylix`, `wrappers/lassulus`, `nix-flatpak`, `sops-nix`, `flake-parts`, `nixos-hardware`, `nixGaming/fufexan`, `nur`, `lanzaboote`, `run0-sudo-shim`, `yammat/gitea.c3d2`, `deploy-rs`, `microvm.nix`, `nix-topology/oddlama` (unpatched; label overlap handled by `fix-network-svg` post-processing in `packages.topology`).
 
 Custom outputs (the warning is expected and fine): `deploy`, `topology`, `nixfleetArtifacts`.
 
