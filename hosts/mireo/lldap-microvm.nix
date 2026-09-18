@@ -235,12 +235,12 @@ in {
               gid=$(jq --arg n "$group" -r '(.data.groups // [])[] | select(.displayName == $n) | .id // empty' <<<"$groups_json")
               if [ -z "$gid" ]; then err "membership $user -> $group: group missing"; continue; fi
               jq -n --argjson id "$gid" \
-                '{query: "query M($id: Int!) { group(groupId: $id) { users { id } } }", operationName: "M", variables: {groupId: $id}}' \
+                '{query: "query M($groupId: Int!) { group(groupId: $groupId) { users { id } } }", operationName: "M", variables: {groupId: $id}}' \
                 > "$tmp/gm.json"
               member=$(gql "$tmp/gm.json" | jq --arg u "$user" -r '[(.data.group.users // [])[].id] | index($u) != null')
               if [ "$member" = "true" ]; then say "membership $user -> $group ensured"; continue; fi
               jq -n --arg u "$user" --argjson g "$gid" \
-                '{query: "mutation A($u: String!, $g: Int!) { addUserToGroup(userId: $u, groupId: $g) { ok } }", operationName: "A", variables: {userId: $u, groupId: $g}}' \
+                '{query: "mutation A($userId: String!, $groupId: Int!) { addUserToGroup(userId: $userId, groupId: $groupId) { ok } }", operationName: "A", variables: {userId: $u, groupId: $g}}' \
                 > "$tmp/am.json"
               out=$(gql "$tmp/am.json")
               msg=$(gerr "$out")
