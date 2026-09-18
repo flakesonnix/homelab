@@ -8,7 +8,7 @@
 #   (mkKeyGenService, same pattern as grafana secret.key) — never in the
 #   store, stable across reboots. Do NOT rotate while the DB lives.
 # - LDAP bind reuses the LLDAP admin password: the host renders it via a
-#   sops template into /run/secrets-rendered/pocket-id/ (single file, least
+#   sops template into /run/secrets/rendered/pocket-id/ (single file, least
 #   privilege — NOT the whole /run/secrets/lldap share), staged to tmpfs
 #   below (EOPNOTSUPP-safe, same quirk class as lldap-secrets-setup).
 #
@@ -32,7 +32,7 @@ in {
   # LDAP bind reuses the LLDAP admin password (single source, no duplicated
   # secret): rendered into a dedicated dir so the guest share sees exactly
   # one file, not all of /run/secrets/lldap. Default template path is
-  # /run/secrets-rendered/pocket-id/ldap-bind-password (shared below).
+  # /run/secrets/rendered/pocket-id/ldap-bind-password (shared below).
   sops.templates."pocket-id/ldap-bind-password" = {
     content = config.sops.placeholder."lldap/admin-password";
   };
@@ -55,7 +55,7 @@ in {
       shares = [
         {
           tag = "pocket-id-secrets";
-          source = "/run/secrets-rendered/pocket-id";
+          source = "/run/secrets/rendered/pocket-id";
           mountPoint = "/run/secrets/pocket-id";
           readOnly = true;
         }
