@@ -19,7 +19,7 @@
   # Declarative users. email/displayName/firstName are LLDAP-visible;
   # passwordFile is staged from host sops (see lldap-secrets-setup).
   # New person: append entry + add sops key lldap/users/<id> on a machine
-  # with the age key (sops set hosts/mireo/secrets.yaml '["lldap"]["users"]["<id>"]' '<pw>').
+  # with the age key (sops set hosts/mireo/secrets.yaml '["lldap"]["users"]["<id>"]' '"<pw>"').
   seedUsers = [
     {
       id = "lucy";

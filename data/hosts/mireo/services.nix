@@ -228,7 +228,7 @@
   sops.secrets."lldap/users/lucy" = {};
   # OIDC client secret for Grafana (created in the Pocket ID UI, step 3 of
   # hosts/mireo/pocket-id-microvm.nix bootstrap). Placeholder first:
-  #   sops set hosts/mireo/secrets.yaml '["grafana"]["oidc-client-secret"]' 'CHANGEME'
+  #   sops set hosts/mireo/secrets.yaml '["grafana"]["oidc-client-secret"]' '"CHANGEME"'
   # then the real secret after the OIDC client exists. Grafana keeps
   # anonymous Viewer access until then — no lockout while bootstrapping.
   sops.secrets."grafana/oidc-client-secret" = {};
