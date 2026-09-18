@@ -346,6 +346,7 @@
       uptime-kuma = "${(import ../../../hosts/mireo/vm-ips.nix).uptime-kuma}:3001";
       jellyfin = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
       lldap = "${(import ../../../hosts/mireo/vm-ips.nix).lldap}:17170";
+      pocket-id = "${(import ../../../hosts/mireo/vm-ips.nix).pocket-id}:1411";
       # Alias vhost (same target as jellyfin; DNS CNAME above).
       media = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
     };

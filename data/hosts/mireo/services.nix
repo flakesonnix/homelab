@@ -202,6 +202,15 @@
         type = "http";
         target = "http://10.8.0.12:17170/";
       };
+      pocket-id = {
+        type = "http";
+        target = "http://10.8.0.13:1411/";
+      };
+      pocket-id-port = {
+        type = "port";
+        target = "10.8.0.13";
+        port = 1411;
+      };
       ldap-port = {
         type = "port";
         target = "10.8.0.12";
@@ -217,4 +226,10 @@
   sops.secrets."lldap/admin-password" = {};
   # Per-user passwords for the declarative seed (lldap-microvm.nix).
   sops.secrets."lldap/users/lucy" = {};
+  # OIDC client secret for Grafana (created in the Pocket ID UI, step 3 of
+  # hosts/mireo/pocket-id-microvm.nix bootstrap). Placeholder first:
+  #   sops set hosts/mireo/secrets.yaml '["grafana"]["oidc-client-secret"]' 'CHANGEME'
+  # then the real secret after the OIDC client exists. Grafana keeps
+  # anonymous Viewer access until then — no lockout while bootstrapping.
+  sops.secrets."grafana/oidc-client-secret" = {};
 }

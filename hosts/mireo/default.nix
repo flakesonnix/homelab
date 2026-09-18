@@ -12,6 +12,7 @@
     ./jellyfin-microvm.nix
     ./ntp-microvm.nix
     ./lldap-microvm.nix
+    ./pocket-id-microvm.nix
   ];
 
   # All microvm tap interfaces join the LAN bridge.

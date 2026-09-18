@@ -543,6 +543,14 @@ in {
           group = "prometheus";
         }
       ];
+      shares = [
+        {
+          tag = "grafana-secrets";
+          source = "/run/secrets/grafana";
+          mountPoint = "/run/secrets/grafana";
+          readOnly = true;
+        }
+      ];
       config = {
         imports = [
           (mkKeyGenService {
@@ -557,6 +565,25 @@ in {
             extraCommands = "chown grafana:grafana /var/lib/grafana/secret.key";
           })
         ];
+        # Stage the host-shared OIDC client secret into guest tmpfs
+        # (same EOPNOTSUPP-safe pattern as lldap-secrets-setup: guest root
+        # stages once, grafana only ever reads /run/grafana).
+        systemd.services.grafana-secrets-setup = {
+          description = "Stage Grafana secrets from virtiofs share into tmpfs";
+          before = ["grafana.service"];
+          requiredBy = ["grafana.service"];
+          wantedBy = ["multi-user.target"];
+          serviceConfig = {
+            Type = "oneshot";
+            RemainAfterExit = true;
+          };
+          script = ''
+            set -eu
+            mkdir -p /run/grafana
+            install -D -o grafana -g grafana -m0400 \
+              /run/secrets/grafana/oidc-client-secret /run/grafana/oidc-client-secret
+          '';
+        };
 
         services.journald.extraConfig = ''
           ForwardToConsole=yes
@@ -604,15 +631,47 @@ in {
             server = {
               http_addr = "0.0.0.0";
               http_port = 3000;
-              domain = "10.8.0.2";
+              # LAN name (via Caddy + dnsmasq). OIDC redirect_uri is built
+              # from root_url, so this must be the URL users log in through.
+              domain = "grafana.home.arpa";
+              root_url = "http://grafana.home.arpa/";
             };
             users = {
               default_theme = "dark";
               viewers_can_edit = false;
             };
+            # Anonymous Viewer stays ON during the SSO migration: the Pocket
+            # ID login button works in parallel, so a broken/missing OIDC
+            # secret can never lock anyone out. Disable (enabled = false)
+            # only after "Sign in with Pocket ID" is verified.
             "auth.anonymous" = {
               enabled = true;
               org_role = "Viewer";
+            };
+            # SSO via Pocket ID (OIDC). Client `grafana` is registered in
+            # the Pocket ID UI (callback http://grafana.home.arpa/login/generic_oauth);
+            # its secret lands in sops grafana/oidc-client-secret.
+            # Endpoints are split on purpose: the browser goes through Caddy
+            # (auth_url), Grafana server-side calls Pocket ID directly
+            # (token/api via IP:port — the VM has nothing on :80).
+            # Verify against http://pocket-id.home.arpa/.well-known/openid-configuration
+            # at bootstrap. Role mapping is fail-safe: unknown/missing
+            # groups claim falls through to Viewer, never Admin.
+            "auth.generic_oauth" = {
+              enabled = true;
+              name = "Pocket ID";
+              allow_sign_up = true;
+              auto_login = false;
+              client_id = "grafana";
+              client_secret = "$__file{/run/grafana/oidc-client-secret}";
+              scopes = "openid email profile groups";
+              login_attribute_path = "preferred_username";
+              name_attribute_path = "name";
+              email_attribute_path = "email";
+              auth_url = "http://pocket-id.home.arpa/authorize";
+              token_url = "http://10.8.0.13:1411/api/oidc/token";
+              api_url = "http://10.8.0.13:1411/api/oidc/userinfo";
+              role_attribute_path = "contains(groups[*], 'admins') && 'Admin' || 'Viewer'";
             };
             security = {
               # File provider: key generated at activation (grafana-secret-key.service)
