@@ -99,6 +99,12 @@ in {
             APP_URL = "http://pocket-id.home.arpa";
             TRUST_PROXY = true;
             ANALYTICS_DISABLED = true;
+            UI_CONFIG_DISABLED = true;
+            # REQUIRED for env-based LDAP (and all app config): without it
+            # the database defaults win (ldapEnabled=false) and SyncLdap
+            # no-ops — verified live (35µs "success", zero connections to
+            # LLDAP). Only locks Application Configuration in the UI;
+            # user/group/OIDC-client management stays usable.
             # Default Pocket ID port; kept explicit so Caddy (settings.nix)
             # and Grafana oauth endpoints can't drift apart silently.
             PORT = "1411";
