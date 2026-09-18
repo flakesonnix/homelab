@@ -69,6 +69,9 @@ in {
             group = "pocket-id";
             bytes = 32;
             format = "base64";
+            # Self-heal stale root-owned keys (same phenomenon as grafana
+            # 2026-09-14: service user can't read root-owned key file).
+            extraCommands = "chown pocket-id:pocket-id /var/lib/pocket-id/encryption.key";
           })
         ];
         # Stage the host-rendered LDAP bind password into guest tmpfs
