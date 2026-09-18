@@ -169,11 +169,13 @@ in {
                   -H "Content-Type: application/json" \
                   -d @"$tmp/list.json" \
                 | jq --arg id "$id" '[.data.users[].id] | index($id) != null')
-              if [ "$exists" = "true" ]; then op=UpdateUser; res=ok;
-              else op=CreateUser; res="id"; fi
+              if [ "$exists" = "true" ]; then op=UpdateUser; field=updateUser; res=ok;
+              else op=CreateUser; field=createUser; res="id"; fi
+              # NOTE: GraphQL field names are camelCase (createUser), only
+              # the input types are PascalCase (CreateUserInput).
               jq -n --argjson u "$(jq -c '{id,email,displayName,firstName,lastName}' <<<"$user")" \
-                  --arg op "$op" --arg res "$res" \
-                  '{query: "mutation M($user: \($op)Input!) {\($op)(user: $user) {\($res)}}", operationName: "M", variables: {user: $u}}' \
+                  --arg op "$op" --arg field "$field" --arg res "$res" \
+                  '{query: "mutation M($user: \($op)Input!) {\($field)(user: $user) {\($res)}}", operationName: "M", variables: {user: $u}}' \
                 > "$tmp/mut.json"
               # No -f here: we want the body on HTTP errors (diagnosis).
               resp=$(curl -s --max-time 15 -w '\n%{http_code}' -X POST "$url/api/graphql" \
@@ -211,7 +213,9 @@ in {
             jq -n '{query: "{ groups { id displayName } }"}' > "$tmp/groups.json"
             groups_json=$(gql "$tmp/groups.json")
             jq -r '.[]' ${seedGroupsJson} | while read -r name; do
-              gid=$(jq --arg n "$name" -r '.data.groups[] | select(.displayName == $n) | .id // empty' <<<"$groups_json")
+              # Null-safe lookups: NixOS runs unit scripts with `set -e`,
+              # an unguarded failing jq would abort the whole seed.
+              gid=$(jq --arg n "$name" -r '(.data.groups // [])[] | select(.displayName == $n) | .id // empty' <<<"$groups_json")
               if [ -z "$gid" ]; then
                 jq -n --arg n "$name" \
                   '{query: "mutation C($name: String!) { createGroup(name: $name) { id } }", operationName: "C", variables: {name: $n}}' \
@@ -228,12 +232,12 @@ in {
             jq -c '.[]' ${seedMembershipsJson} | while read -r m; do
               user=$(jq -r .user <<<"$m")
               group=$(jq -r .group <<<"$m")
-              gid=$(jq --arg n "$group" -r '.data.groups[] | select(.displayName == $n) | .id // empty' <<<"$groups_json")
+              gid=$(jq --arg n "$group" -r '(.data.groups // [])[] | select(.displayName == $n) | .id // empty' <<<"$groups_json")
               if [ -z "$gid" ]; then err "membership $user -> $group: group missing"; continue; fi
               jq -n --argjson id "$gid" \
                 '{query: "query M($id: Int!) { group(groupId: $id) { users { id } } }", operationName: "M", variables: {groupId: $id}}' \
                 > "$tmp/gm.json"
-              member=$(gql "$tmp/gm.json" | jq --arg u "$user" -r '[.data.group.users[].id] | index($u) != null')
+              member=$(gql "$tmp/gm.json" | jq --arg u "$user" -r '[(.data.group.users // [])[].id] | index($u) != null')
               if [ "$member" = "true" ]; then say "membership $user -> $group ensured"; continue; fi
               jq -n --arg u "$user" --argjson g "$gid" \
                 '{query: "mutation A($u: String!, $g: Int!) { addUserToGroup(userId: $u, groupId: $g) { ok } }", operationName: "A", variables: {userId: $u, groupId: $g}}' \
