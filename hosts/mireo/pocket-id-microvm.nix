@@ -117,6 +117,21 @@ in {
             LDAP_BIND_DN = "uid=admin,ou=people,dc=home,dc=arpa";
             LDAP_USER_SEARCH_FILTER = "(objectClass=person)";
             LDAP_GROUP_SEARCH_FILTER = "(objectClass=groupOfNames)";
+            # Attribute mapping (LLDAP schema). The unique identifiers are
+            # REQUIRED — without them SyncLdap skips every user/group
+            # ("without a valid unique identifier", seen live).
+            LDAP_ATTRIBUTE_USER_UNIQUE_IDENTIFIER = "uid";
+            LDAP_ATTRIBUTE_USER_USERNAME = "uid";
+            LDAP_ATTRIBUTE_USER_EMAIL = "mail";
+            LDAP_ATTRIBUTE_USER_FIRST_NAME = "givenName";
+            LDAP_ATTRIBUTE_USER_LAST_NAME = "sn";
+            LDAP_ATTRIBUTE_USER_DISPLAY_NAME = "displayName";
+            LDAP_ATTRIBUTE_GROUP_UNIQUE_IDENTIFIER = "cn";
+            LDAP_ATTRIBUTE_GROUP_NAME = "cn";
+            LDAP_ATTRIBUTE_GROUP_MEMBER = "member";
+            # Members of this LLDAP group become Pocket ID admins
+            # (needed for OIDC client management in the UI).
+            LDAP_ADMIN_GROUP_NAME = "admins";
           };
           credentials = {
             ENCRYPTION_KEY = "/var/lib/pocket-id/encryption.key";
