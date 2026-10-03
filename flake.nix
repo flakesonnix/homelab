@@ -151,6 +151,10 @@
         ./modules/nixos/gaming.nix
         ./modules/nixos/gnome.nix
         ./modules/nixos/gnome-extensions.nix
+        ./modules/nixos/plasma.nix
+        ./modules/nixos/sunshine.nix
+        ./modules/nixos/nvidia.nix
+        ./modules/nixos/nvidia-resume.nix
         ./modules/nixos/niri.nix
         ./modules/nixos/serial-getty.nix
         ./modules/nixos/sops.nix
@@ -190,6 +194,26 @@
         ./modules/nixos/uptime-kuma-sync.nix # services.uptime-kuma-sync declarative monitors
         ./modules/nixos/nixfleet.nix
         ./modules/nixos/sops.nix
+        # ── Homelab platform modules ──────────────
+        ./modules/nixos/postgres.nix
+        ./modules/nixos/identity-openldap.nix
+        ./modules/nixos/identity-keycloak.nix
+        ./modules/nixos/dns-adguard.nix
+        ./modules/nixos/reverse-proxy.nix
+        ./modules/nixos/nextcloud.nix
+        ./modules/nixos/syncthing.nix
+        ./modules/nixos/immich.nix
+        ./modules/nixos/paperless.nix
+        ./modules/nixos/woodpecker.nix
+        ./modules/nixos/hydra.nix
+        ./modules/nixos/registry.nix
+        ./modules/nixos/attic.nix
+        ./modules/nixos/netbox.nix
+        ./modules/nixos/librenms.nix
+        ./modules/nixos/matrix.nix
+        ./modules/nixos/ntfy.nix
+        ./modules/nixos/rustdesk.nix
+        ./modules/nixos/osm.nix
         sops-nix.nixosModules.sops
         run0-sudo-shim.nixosModules.default
         ({lib, ...}: {

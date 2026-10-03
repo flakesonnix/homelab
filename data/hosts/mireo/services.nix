@@ -232,4 +232,38 @@
   # then the real secret after the OIDC client exists. Grafana keeps
   # anonymous Viewer access until then — no lockout while bootstrapping.
   sops.secrets."grafana/oidc-client-secret" = {};
+
+  # ── Homelab platform secrets ──────────────────────
+  # LDAP
+  sops.secrets."ldap/replication-password" = {};
+  # PostgreSQL databases
+  sops.secrets."database/keycloak" = {};
+  sops.secrets."database/nextcloud" = {};
+  sops.secrets."database/immich" = {};
+  sops.secrets."database/paperless" = {};
+  sops.secrets."database/netbox" = {};
+  sops.secrets."database/hydra" = {};
+  sops.secrets."database/woodpecker" = {};
+  sops.secrets."database/librenms" = {};
+  sops.secrets."database/matrix" = {};
+  # Keycloak
+  sops.secrets."database/keycloak-admin" = {};
+  # Devops
+  sops.secrets."devops/woodpecker-secret" = {};
+  sops.secrets."devops/netbox-secret" = {};
+  sops.secrets."devops/hydra-secret" = {};
+  # Registry
+  sops.secrets."registry/auth" = {};
+  # Matrix
+  sops.secrets."matrix/registration_shared_secret" = {};
+  sops.secrets."matrix/macaroon_secret" = {};
+  sops.secrets."matrix/form_secret" = {};
+  # ntfy
+  sops.secrets."ntfy/admin-token" = {};
+  # Backups
+  sops.secrets."backup/postgres" = {};
+  sops.secrets."backup/hydra" = {};
+  sops.secrets."backup/nextcloud" = {};
+  # Nextcloud admin
+  sops.secrets."database/nextcloud-admin" = {};
 }

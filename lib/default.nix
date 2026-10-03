@@ -1,20 +1,86 @@
 pkgs: let
   inherit (pkgs) lib;
   inherit (import ./types.nix {inherit lib;}) checked packageRegistryType;
+  servicesLib = import ./services.nix {inherit lib pkgs;};
+  identityLib = import ./identity.nix {inherit lib pkgs;};
+  networkLib = import ./network.nix {inherit lib pkgs;};
+  storageLib = import ./storage.nix {inherit lib pkgs;};
+  reconciliationLib = import ./reconciliation.nix {inherit lib pkgs;};
 in {
-  # ── Package registry helper ──────────────────────────────────
+  # ── Package registry helper ──────────────────────────
   # Imports data/packages/<type>.nix and validates it against the typed
   # registry schema; unknown fields or bad types abort evaluation.
   mkPackageRegistry = type: checked packageRegistryType (import (./. + "/../data/packages/${type}.nix") {inherit pkgs;});
 
-  # ── Domain script libraries ──────────────────────────────────
+  # ── Service helpers ──────────────────────────────────
+  inherit
+    (servicesLib)
+    mkPostgresDatabase
+    mkPostgresDatabases
+    mkServiceUser
+    mkDataDirectory
+    mkReverseProxy
+    mkFirewallRule
+    mkOIDCClient
+    mkPrometheusExporter
+    mkSopsSecret
+    ;
+
+  # ── Identity helpers ─────────────────────────────────
+  inherit
+    (identityLib)
+    mkLDAPService
+    mkKeycloakService
+    mkKeycloakRealm
+    mkKeycloakReconciler
+    mkLDAPReconciler
+    ;
+
+  # ── Network helpers ──────────────────────────────────
+  inherit
+    (networkLib)
+    mkDNSRecord
+    mkDNSZone
+    mkAdGuardHome
+    mkNetworkDevice
+    mkNetworkSite
+    mkNetboxReconciler
+    mkLibrenmsReconciler
+    mkSNMPConfig
+    ;
+
+  # ── Storage helpers ──────────────────────────────────
+  inherit
+    (storageLib)
+    mkStorageVolume
+    mkStorageShare
+    mkDataDirectoryHost
+    mkBackupPolicy
+    as
+    mkBackupPolicyStorage
+    mkPostgreSQLBackup
+    mkQuota
+    ;
+
+  # ── Reconciliation helpers ───────────────────────────
+  inherit
+    (reconciliationLib)
+    mkReconciler
+    mkSafeReconciler
+    mkDeclarativeService
+    mkSyncConfig
+    mkStageSecrets
+    mkSopsSecretReference
+    ;
+
+  # ── Domain script libraries ──────────────────────────
   waybarScripts = import ./waybar-scripts.nix pkgs;
   systemScripts = import ./system-scripts.nix pkgs;
   topologyScripts = import ./topology.nix pkgs;
   ciScripts = import ./ci.nix pkgs;
   secretKeys = import ./secret-keys.nix pkgs;
 
-  # ── Sops setup keygen ────────────────────────────────────────
+  # ── Sops setup keygen ────────────────────────────────
   mkSetupSops = name:
     pkgs.writeShellApplication {
       inherit name;

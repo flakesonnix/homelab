@@ -14,4 +14,22 @@
   ntp = "10.8.0.11";
   lldap = "10.8.0.12";
   pocket-id = "10.8.0.13";
+  identity = "10.8.0.29";
+  postgres = "10.8.0.28";
+  dns = "10.8.0.30";
+  nextcloud = "10.8.0.14";
+  netbox = "10.8.0.15";
+  librenms = "10.8.0.16";
+  woodpecker = "10.8.0.17";
+  hydra = "10.8.0.18";
+  registry = "10.8.0.19";
+  attic = "10.8.0.20";
+  immich = "10.8.0.21";
+  paperless = "10.8.0.22";
+  matrix = "10.8.0.23";
+  ntfy = "10.8.0.24";
+  rustdesk = "10.8.0.25";
+  syncthing = "10.8.0.26";
+  osm = "10.8.0.27";
+  kodi = "10.8.0.31";
 }

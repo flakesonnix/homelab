@@ -12,16 +12,36 @@
         default = true;
         description = "Enable kernel mode setting";
       };
+      legacy580 = lib.mkOption {
+        type = lib.types.bool;
+        default = false;
+        description = "Use the 580 legacy branch (Maxwell/Pascal/Volta, z.B. Quadro M1000M). Production >= 590 unterstützt diese nicht mehr.";
+      };
       prime = lib.mkOption {
         type = lib.types.bool;
         default = false;
         description = "Enable NVIDIA PRIME offload";
       };
+      intelBusId = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "PCI:0:2:0";
+        description = "PCI bus ID of the Intel iGPU (PRIME offload).";
+      };
+      nvidiaBusId = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        example = "PCI:1:0:0";
+        description = "PCI bus ID of the NVIDIA dGPU (PRIME offload).";
+      };
     };
   };
 
   config = lib.mkIf config.lucy.nvidia.enable {
-    services.xserver.videoDrivers = ["nvidia"];
+    services.xserver.videoDrivers =
+      if config.lucy.nvidia.prime
+      then ["modesetting" "nvidia"]
+      else ["nvidia"];
     hardware.graphics = {
       enable = true;
       enable32Bit = true;
@@ -32,7 +52,17 @@
       open = false;
       modesetting.enable = config.lucy.nvidia.modesetting;
       nvidiaSettings = true;
-      package = config.boot.kernelPackages.nvidiaPackages.production;
+      package =
+        if config.lucy.nvidia.legacy580
+        then config.boot.kernelPackages.nvidiaPackages.legacy_580
+        else config.boot.kernelPackages.nvidiaPackages.production;
+      prime = lib.mkIf (config.lucy.nvidia.prime && config.lucy.nvidia.intelBusId != null && config.lucy.nvidia.nvidiaBusId != null) {
+        inherit (config.lucy.nvidia) intelBusId nvidiaBusId;
+        offload = {
+          enable = true;
+          enableOffloadCmd = true;
+        };
+      };
     };
 
     boot.blacklistedKernelModules = ["nouveau"];
@@ -49,11 +79,11 @@
     services.logind = {
       settings = {
         Login = {
-          HandlePowerKey = "poweroff";
-          HandleSuspendKey = "suspend";
-          HandleLidSwitch = "suspend";
-          HandleLidSwitchExternalPower = "suspend";
-          HandleLidSwitchDocked = "ignore";
+          HandlePowerKey = lib.mkDefault "poweroff";
+          HandleSuspendKey = lib.mkDefault "suspend";
+          HandleLidSwitch = lib.mkDefault "suspend";
+          HandleLidSwitchExternalPower = lib.mkDefault "suspend";
+          HandleLidSwitchDocked = lib.mkDefault "ignore";
         };
       };
     };

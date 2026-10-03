@@ -161,6 +161,15 @@
     '';
   };
 
+  # --- USB passthrough for the Kodi music-box VM ---
+  # Behringer Xenyx 302USB (TI PCM2902, 08bb:2902): QEMU usb-host needs
+  # host-side access. microvm.nix sets up PCI permissions automatically,
+  # but USB needs this manual rule (GROUP=kvm, same as upstream docs).
+  # Must stay in sync with microvm.devices in hosts/mireo/kodi-microvm.nix.
+  services.udev.extraRules = ''
+    SUBSYSTEM=="usb", ATTR{idVendor}=="08bb", ATTR{idProduct}=="2902", GROUP="kvm"
+  '';
+
   # --- libvirtd (virt-manager remote target, Weg A) ---
   # Desktop-Client (x270) verbindet via qemu+ssh://root@10.8.0.1/system.
   # microVMs (microvm.nix, systemd microvm@*) bleiben daneben bestehen und
@@ -349,6 +358,8 @@
       pocket-id = "${(import ../../../hosts/mireo/vm-ips.nix).pocket-id}:1411";
       # Alias vhost (same target as jellyfin; DNS CNAME above).
       media = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
+      # Kodi music box web UI (Chorus) + JSON-RPC over HTTP.
+      kodi = "${(import ../../../hosts/mireo/vm-ips.nix).kodi}:8080";
     };
     # Vanity URL for the declarative status page (302 to the real path so
     # the page's relative /api calls keep working — a rewrite would break

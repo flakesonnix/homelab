@@ -77,9 +77,22 @@
 
     SSH="ssh -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes ${cfg.remoteUser}@${cfg.epgHost}"
     M3US="${cfg.m3uPaths}"
+    SSH_ERR="$STATE/ssh.err"
 
     # --- 2. Drift-Check (M3U auf VM vs. channels.xml) ---
-    M3U_IDS=$($SSH "grep -h '^#EXTINF' ''${M3US}" 2>/dev/null | ${pkgs.gnused}/bin/sed -n 's/.*tvg-id="\([^"]*\)".*/\1/p' | sort -u) || die "M3Us auf VM nicht lesbar"
+    # SSH separat vorab prüfen: sonst verschlucken pipefail/2>/dev/null die
+    # eigentliche Ursache (z.B. "Host key verification failed" bei fehlendem
+    # known_hosts-Eintrag) und im Journal steht nur "M3Us nicht lesbar".
+    if ! $SSH true 2>"$SSH_ERR"; then
+      log "SSH-Details (${cfg.remoteUser}@${cfg.epgHost}):"
+      cat "$SSH_ERR" >&2 || true
+      die "Jellyfin-VM per SSH nicht erreichbar — known_hosts-Key? User-Key autorisiert? VM down?"
+    fi
+    M3U_IDS=$($SSH "grep -h '^#EXTINF' ''${M3US}" 2>"$SSH_ERR" | ${pkgs.gnused}/bin/sed -n 's/.*tvg-id="\([^"]*\)".*/\1/p' | sort -u) || {
+      log "SSH-Details:"
+      cat "$SSH_ERR" >&2 || true
+      die "M3Us auf VM nicht lesbar (Pfade prüfen: ${cfg.m3uPaths})"
+    }
     KNOWN_IDS=$(grep -o 'xmltv_id="[^"]*"' "${channelsFile}" | sed 's/xmltv_id="//;s/"//' | sort -u)
     DRIFT=$(comm -23 <(echo "$M3U_IDS") <(echo "$KNOWN_IDS") || true)
     if [ -n "$DRIFT" ]; then

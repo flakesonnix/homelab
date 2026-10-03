@@ -93,6 +93,9 @@ spec: {lib, ...}: let
           else s.interfaceId;
         inherit (s) extraDns;
       })
+      # Every guest gets the lucy.services.* option tree, so specs can
+      # set `lucy.services.<svc>` without importing it per-VM.
+      ../../modules/nixos/lucy-services.nix
     ];
     networking.hostName = s.name;
     networking.firewall.allowedTCPPorts = s.tcpPorts;

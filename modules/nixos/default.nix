@@ -1,6 +1,31 @@
-_: {
+{
+  lib,
+  config,
+  ...
+}: {
   imports = [
     ./base.nix
     ./packages.nix
+    ./lucy-services.nix
+    ./postgres.nix
+    ./identity-openldap.nix
+    ./identity-keycloak.nix
+    ./dns-adguard.nix
+    ./reverse-proxy.nix
+    ./nextcloud.nix
+    ./syncthing.nix
+    ./immich.nix
+    ./paperless.nix
+    ./woodpecker.nix
+    ./hydra.nix
+    ./registry.nix
+    ./attic.nix
+    ./netbox.nix
+    ./librenms.nix
+    ./matrix.nix
+    ./ntfy.nix
+    ./rustdesk.nix
+    ./kodi-box.nix
+    ./osm.nix
   ];
 }

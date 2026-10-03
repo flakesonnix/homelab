@@ -387,7 +387,7 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkKodiBox;
 
   # ---- voip module unit tests (eval-time, no secrets, no network) ----
   # NOTE: voip.nix integrates with asterisk.nix (localTest assertion +
@@ -513,6 +513,36 @@
     && forceB (lib.hasInfix "http://10.8.0.9:3001" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: script targets the API"
     && forceB (lib.hasInfix "uptime-kuma-monitors.json" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: monitor data wired into service"
     && forceB (lib.hasInfix "--status-page" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: status page wired into service";
+
+  # ---- kodi-box module unit tests (eval-time, no hardware) ----
+  kodiBoxEnabled = nixosEval [
+    ../modules/nixos/lucy-services.nix
+    ../modules/nixos/kodi-box.nix
+    {
+      lucy.services."kodi-box" = {
+        enable = true;
+        jellyfinHost = "10.8.0.10";
+      };
+    }
+  ];
+  kodiBoxDisabled = nixosEval [
+    ../modules/nixos/lucy-services.nix
+    ../modules/nixos/kodi-box.nix
+  ];
+  checkKodiBox =
+    forceB (kodiBoxDisabled.lucy.services."kodi-box".enable == false) "kodibox: must be disabled by default"
+    && forceB (kodiBoxEnabled.systemd.services.kodi.wantedBy == ["multi-user.target"]) "kodibox: service wanted by multi-user"
+    && forceB (kodiBoxEnabled.systemd.services.kodi.serviceConfig.User == "kodi") "kodibox: service runs as kodi"
+    && forceB (lib.hasInfix "xvfb-run" kodiBoxEnabled.systemd.services.kodi.script) "kodibox: headless via Xvfb"
+    && forceB (builtins.elem 8080 kodiBoxEnabled.networking.firewall.allowedTCPPorts) "kodibox: web UI port open"
+    && forceB (builtins.elem 9090 kodiBoxEnabled.networking.firewall.allowedTCPPorts) "kodibox: JSON-RPC port open"
+    && forceB (builtins.elem 9777 kodiBoxEnabled.networking.firewall.allowedUDPPorts) "kodibox: EventServer port open"
+    && forceB (kodiBoxEnabled.services.avahi.enable == true) "kodibox: avahi for Kore/Yatse discovery"
+    && forceB (lib.hasInfix "snd-usb-audio" (builtins.toString kodiBoxEnabled.boot.kernelModules)) "kodibox: USB audio module loaded"
+    && forceB (kodiBoxEnabled.lucy.services."kodi-box".jellyfinHost == "10.8.0.10") "kodibox: jellyfin host plumbed"
+    && forceB (lib.any (r: lib.hasInfix "addon_data/plugin.video.jellycon/settings.xml" r) kodiBoxEnabled.systemd.tmpfiles.rules) "kodibox: jellycon server seed wired"
+    && forceB (lib.any (r: lib.hasInfix "userdata/guisettings.xml" r) kodiBoxEnabled.systemd.tmpfiles.rules) "kodibox: guisettings seed wired"
+    && forceB (!(kodiBoxDisabled.systemd.services ? kodi)) "kodibox: no service when disabled";
 
   # ---- asterisk fax unit tests (eval-time, no calls) ----
   # NOTE: asterisk.nix touches sops options (guarded, but this nixpkgs
