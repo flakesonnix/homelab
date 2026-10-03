@@ -80,6 +80,13 @@ in {
     };
     users.groups.kodi = {};
 
+    # Kodi braucht trotz headless-Betrieb (Steuerung per Web/API) beim
+    # Start einen X11-GL-Kontext (--windowing kennt nur x11, kein
+    # --headless). Xvfb stellt das Display, Mesa/llvmpipe das Software-GL
+    # (keine GPU in der VM). Ohne hardware.graphics fehlt /run/opengl-driver
+    # und Kodi stirbt mit SIGABRT vor jeder Log-Ausgabe (seen 2026-10-03).
+    hardware.graphics.enable = true;
+
     # USB mixer as default ALSA card (host must NOT grab it: exclusive
     # passthrough, mireo runs no audio stack).
     boot.kernelModules = ["snd-usb-audio"];

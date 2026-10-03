@@ -51,6 +51,13 @@
           enable = true;
           dataDir = "/data/ntfy";
         };
+        # Add pci-setup script to satisfy ConditionPathExists in microvm-pci-devices@.service
+        systemd.services."pci-setup-communication" = {
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = "/bin/true";
+          };
+        };
       };
     })
   ];

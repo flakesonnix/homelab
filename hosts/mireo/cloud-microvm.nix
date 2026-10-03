@@ -45,6 +45,13 @@
           databasePasswordSecret = "database/nextcloud";
           adminPasswordSecret = "database/nextcloud";
         };
+        # Add pci-setup script to satisfy ConditionPathExists in microvm-pci-devices@.service
+        systemd.services."pci-setup-cloud" = {
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = "/bin/true";
+          };
+        };
       };
     })
   ];

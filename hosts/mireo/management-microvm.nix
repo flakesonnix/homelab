@@ -55,6 +55,13 @@
           databaseUser = "librenms";
           databasePasswordSecret = "database/librenms";
         };
+        # Add pci-setup script to satisfy ConditionPathExists in microvm-pci-devices@.service
+        systemd.services."pci-setup-management" = {
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = "/bin/true";
+          };
+        };
       };
     })
   ];

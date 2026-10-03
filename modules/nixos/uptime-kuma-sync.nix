@@ -381,7 +381,18 @@ in {
       wantedBy = ["multi-user.target"];
       wants = ["network-online.target"];
       after = ["network-online.target" "microvm@uptime-kuma.service"];
-      serviceConfig.Type = "oneshot";
+      # Self-heal transient API login flakes (seen daily 00:00 runs +
+      # deploy-time race while the kuma VM boots): retry 3x, then give up
+      # until the next timer run (no infinite loop on permanent failure).
+      unitConfig = {
+        StartLimitIntervalSec = "30m";
+        StartLimitBurst = 3;
+      };
+      serviceConfig = {
+        Type = "oneshot";
+        Restart = "on-failure";
+        RestartSec = "2m";
+      };
       script = ''
         set -eu
         exec ${syncScript} \

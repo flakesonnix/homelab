@@ -37,6 +37,13 @@
           databaseUser = "paperless";
           databasePasswordSecret = "database/paperless";
         };
+        # Add pci-setup script to satisfy ConditionPathExists in microvm-pci-devices@.service
+        systemd.services."pci-setup-documents" = {
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = "/bin/true";
+          };
+        };
       };
     })
   ];

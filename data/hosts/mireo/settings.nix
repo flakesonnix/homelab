@@ -28,9 +28,9 @@
   #   WAN addr:  2a02:3102:4c00:3b::1b5/64 (SLAAC, fallback)
   #   delegated: 2a02:3102:4cec:b500::/64  (DHCPv6 PD, assigned to br0 LAN)
   # WAN runs a DHCPv6 client (IA_NA address + IA_PD prefix) alongside the
-  # static IPv4. The delegated prefix is handed to br0 below; dnsmasq keeps
-  # sending the LAN RAs (constructor:br0 picks the delegated GUA up
-  # automatically). No IPv6SendRA in networkd — dnsmasq owns RA.
+  # static IPv4. The delegated prefix is handed to br0 below; LAN RAs for
+  # it came from dnsmasq (removed 2026-10-03, AdGuard sends ULA RAs only).
+  # automatically). No IPv6SendRA in networkd.
   # NOTE: br0 has IPv6Forwarding=true, which flips net.ipv6.conf.all.forwarding
   # to router mode. Under forwarding the kernel ignores RAs with accept_ra=1,
   # so the WAN SLAAC address may disappear — the DHCPv6 IA_NA address replaces
@@ -70,10 +70,10 @@
   };
   systemd.network.networks."30-br0" = {
     matchConfig.Name = "br0";
-    # Static ULA stays as fallback/seed so LAN-local v6 + dnsmasq constructor
-    # keep working even if the FritzBox delegation ever fails.
-    # HE routed LAN (via nyagate wg0, Tunnel ID 1039084): SLAAC kommt aus
-    # dnsmasq constructor:br0 automatisch, sobald die Adresse hier liegt.
+    # Static ULA stays so LAN-local v6 keeps working even if the FritzBox
+    # delegation ever fails.
+    # HE routed LAN (via nyagate wg0, Tunnel ID 1039084): no RAs anymore
+    # (dnsmasq removed 2026-10-03) — GUA-SLAAC degraded to FritzBox scope.
     address = ["10.8.0.1/24" "fd00:cafe:1::1/64" "2001:470:1f15:54f::1/64"];
     networkConfig = {
       ConfigureWithoutCarrier = true;
@@ -121,7 +121,7 @@
 
   # --- Transparent LAN :80 → Caddy (nftables REDIRECT) ---
   # Diagnose 2026-09-15: *.home.arpa löst DIREKT auf die VM-IPs auf
-  # (dnsmasq host-records), der Traffic geht an Caddy vorbei ins Leere
+  # (AdGuard hosts-Einträge, vorher dnsmasq host-records), der Traffic geht
   # (VM-Firewalls droppen :80) — die Caddy-VHosts bekamen nie Traffic.
   # Deshalb wird LAN-HTTP an LAN-Ziele transparent auf Caddy (:80)
   # umgebogen; der Host-Header bleibt erhalten, Caddy routet per Name.
@@ -175,7 +175,7 @@
   # microVMs (microvm.nix, systemd microvm@*) bleiben daneben bestehen und
   # erscheinen NICHT in virt-manager (andere Tech) — GUI nur für neue
   # libvirt-Gäste. Bridge br0 nutzen (NICHT virbr0/default-Netz): br0 ist
-  # bereits trusted + dnsmasq/DNS vorhanden. IPs statisch ausserhalb
+  # bereits trusted + AdGuard/DNS vorhanden. IPs statisch ausserhalb
   # DHCP-Range (10.8.0.100-.199) wählen + in hosts/mireo/vm-ips.nix eintragen.
   # Risiko: libvirt 12.4 secrets-encryption-key/TPM-Bug (243/CREDENTIALS).
   # Recovery: rm /var/lib/libvirt/secrets/secrets-encryption-key + reboot.
@@ -201,140 +201,15 @@
     });
   '';
 
-  # --- dnsmasq: DHCP + DNS for LAN (br0) ---
-  # DNS from a single shared map (hosts/mireo/vm-ips.nix): the same
-  # file feeds the microVM specs, so declare a VM IP once and its
-  # home.arpa names appear automatically. Plus mireo itself.
-  # DHCP clients resolve via their lease names.
-  services.dnsmasq = let
-    lanDomain = "home.arpa";
-    staticHosts = (import ../../../hosts/mireo/vm-ips.nix) // {mireo = "10.8.0.1";};
-  in {
-    enable = true;
-    settings = {
-      interface = "br0";
-      bind-interfaces = true;
-      # /etc/hosts NICHT servieren (Diagnose 2026-09-14): NixOS trägt dort
-      # 127.0.0.2 <hostname> ein, dnsmasq hätte `mireo` sonst doppelt
-      # beantwortet (10.8.0.1 + 127.0.0.2) und `ping mireo` landet auf
-      # localhost. Alle statischen Namen kommen aus host-record unten.
-      no-hosts = true;
-      domain-needed = true;
-      bogus-priv = true;
-      # Local DNS domain (RFC 8375): <hostname>.home.arpa resolves for
-      # DHCP leases (automatic), static host-records (FQDN first name
-      # below) and short names (expand-hosts). local= keeps the whole
-      # domain strictly local — never forwarded upstream. DHCP clients
-      # also receive home.arpa as search domain automatically.
-      domain = lanDomain;
-      expand-hosts = true;
-      local = "/${lanDomain}/";
-      # Authoritative zone (RFC 1034/1035 hygiene + debuggability):
-      # serves proper SOA/NS at the apex instead of NODATA. Zone data
-      # still comes from host-record/DHCP as before; no subnets pinned
-      # (prefix-change-proof) and no secondaries. Serial: date + counter,
-      # bump when zone data changes.
-      # NOTE: auth-zone REQUIRES auth-server or dnsmasq refuses to start
-      # (seen 2026-09-15: "FAILED to start up", deploy rolled back).
-      # auth-server with our own IP only enables auth on top of the
-      # normal recursive/DHCP service — no behavior change otherwise.
-      auth-zone = lanDomain;
-      auth-server = "${lanDomain},10.8.0.1";
-      auth-soa = "2026091501,hostmaster.home.arpa";
-      # Service aliases (CNAME; target must be known to dnsmasq, so it
-      # follows automatically if the target IP ever moves).
-      cname = [
-        "prometheus.home.arpa,grafana.home.arpa"
-        "media.home.arpa,jellyfin.home.arpa"
-      ];
-      # NOTE (dropped 2026-09-16): UCS/AD is gone (libvirt domain ucs5.0
-      # retired, no replacement). The AD SRV records lived here; if a new
-      # directory ever returns, re-add them scoped to its name.
-      dhcp-authoritative = true;
-      enable-ra = true;
-      dhcp-range = [
-        "10.8.0.100,10.8.0.199,255.255.255.0,24h"
-        # RA/SLAAC for every prefix on br0 (ULA + HE routed GUA, FritzBox PD
-        # falls je durch).
-        # NOTE: dnsmasq has NO `ra-stateful` flag (it fails with
-        # "bad dhcp-range"): a bare `::,constructor:…` range is
-        # stateless-only; stateful needs an explicit address range below
-        # (dnsmasq then sets the RA managed bit automatically).
-        "::,constructor:br0,ra-stateless,64,24h"
-        # Stateful DHCPv6 on the static ULA (works independent of PD)
-        # + HE routed LAN (via nyagate wg0).
-        "fd00:cafe:1::100,fd00:cafe:1::1ff,64,24h"
-        "2001:470:1f15:54f::100,2001:470:1f15:54f::1ff,64,24h"
-      ];
-      dhcp-option = [
-        "option:router,10.8.0.1"
-        "option:dns-server,10.8.0.1"
-        # Same explicitly for DHCPv6 + RA (RDNSS/DNSSL): without this,
-        # clients only learn the link-local address via RA default, which
-        # some stubs can't use (missing %iface scope). ULA is static.
-        "option6:dns-server,[fd00:cafe:1::1]"
-        "option6:domain-search,home.arpa"
-      ];
-      # Static IPs via DHCP reservations (not on-guest statics): every
-      # homelab service keeps its vm-ips.nix address, but dnsmasq hands it
-      # out, so IPs stay centrally managed in one file. Guest MACs are
-      # deterministic (02:00:00:10:08:XX from the last octet — same formula
-      # as hosts/mireo/microvm-base.nix). Format MAC,IP,name: dnsmasq pins
-      # the IP AND serves the DNS name for the lease (short + home.arpa via
-      # expand-hosts above; host-record below keeps AAAA + pre-lease A).
-      # Reservations live outside the dynamic pool (10.8.0.100-.199), so no
-      # collisions. (UCS reservation dropped with UCS itself, 2026-09-16.)
-      dhcp-host = lib.mapAttrsToList (
-        name: ip: let
-          lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
-          hex = n: builtins.elemAt ["0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "a" "b" "c" "d" "e" "f"] n;
-        in "02:00:00:10:08:${hex (builtins.div lastOctet 16)}${hex (lib.mod lastOctet 16)},${ip},${name}"
-      ) (import ../../../hosts/mireo/vm-ips.nix);
-      # --- PXE boot (dnsmasq-nativ, netboot.xyz-Menü) ---
-      # iPXE-Clients (erkennbar an Option 175) chainloaden direkt das
-      # netboot.xyz-Menü per HTTP; klassische PXE-ROMs laden erst iPXE
-      # per TFTP (Binaries aus nixpkgs, kein /data nötig) und landen in
-      # Runde 2 ebenfalls im Menü. Normale Clients kriegen keinen
-      # Dateinamen (ungetaggte dhcp-boot fehlt absichtlich).
-      # Ablauf BIOS-VM: undionly.kpxe (TFTP) → iPXE → http-Menü.
-      # WICHTIG: tag:ipxe-Regel MUSS als letzte stehen — dnsmasq nimmt bei
-      # mehreren passenden dhcp-boot-Zeilen die letzte (iPXE-Clients matchen
-      # zugleich client-arch 0 UND Option 175; Diagnose 2026-09-14: mit
-      # ipxe-Regel zuerst luden sie endlos undionly.kpxe neu).
-      dhcp-match = [
-        "set:bios,option:client-arch,0"
-        "set:efi-bc,option:client-arch,7"
-        "set:efi64,option:client-arch,9"
-        "set:ipxe,175"
-      ];
-      dhcp-boot = [
-        "tag:bios,undionly.kpxe,,10.8.0.1"
-        "tag:efi-bc,snp.efi,,10.8.0.1"
-        "tag:efi64,snp.efi,,10.8.0.1"
-        "tag:ipxe,http://boot.netboot.xyz/menu.ipxe"
-      ];
-      enable-tftp = true;
-      tftp-root = "${pkgs.ipxe}";
-      # Everyone else gets dynamic addresses via DHCPv4/DHCPv6. dnsmasq
-      # serves DNS names for its leases automatically, so clients stay
-      # reachable as <hostname>.home.arpa.
-      host-record =
-        lib.mapAttrsToList (name: ip: let
-          # ULA mirrors the IPv4 last octet, same as microvm-base.nix
-          # assigns on the guest (10.8.0.N -> fd00:cafe:1::N).
-          lastOctet = lib.last (lib.splitString "." ip);
-        in "${name}.${lanDomain},${name},${ip},fd00:cafe:1::${lastOctet}")
-        staticHosts
-        # Status page vanity name (points at the uptime-kuma VM; the
-        # transparent :80 redirect + Caddy redir below route it to
-        # /status/homelab — same pattern as the other webUIs).
-        ++ ["status.${lanDomain},status,10.8.0.9,fd00:cafe:1::9"];
-      server = ["1.1.1.1" "9.9.9.9" "2606:4700:4700::1111" "2620:fe::9"];
-    };
-  };
+  # --- LAN DHCP + DNS: AdGuard Home (dns VM, 10.8.0.30) ---
+  # dnsmasq wurde 2026-10-03 durch AdGuard ersetzt (hosts/mireo/dns-microvm.nix):
+  # DHCPv4-Leases + DNS-Records (A/AAAA/Aliase) werden dort aus
+  # hosts/mireo/vm-ips.nix generiert (single source bleibt).
+  # Bewusst entfallen: PXE/iPXE (Ersatz: iVentoy via podman),
+  # FritzBox-PD-RAs, HE-GUA-stateful-DHCPv6. Rollback = alte Generation deployen.
 
   # --- Caddy: name-based reverse proxy on port 80 for all LAN web UIs ---
-  # One entrypoint: http://<name>.home.arpa (DNS from dnsmasq above).
+  # One entrypoint: http://<name>.home.arpa (DNS from the AdGuard VM above).
   # The http:// prefix disables Caddy's automatic HTTPS — no public CA
   # issues certs for .home.arpa (RFC 8375). WAN port 80 stays closed by
   # the default firewall (only br0 is trusted), so this is LAN-only.
@@ -360,6 +235,10 @@
       media = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
       # Kodi music box web UI (Chorus) + JSON-RPC over HTTP.
       kodi = "${(import ../../../hosts/mireo/vm-ips.nix).kodi}:8080";
+      # Homelab dashboard (Homepage).
+      dash = "${(import ../../../hosts/mireo/vm-ips.nix).dash}:8082";
+      # AdGuard Home (DNS + DHCP server UI).
+      adguard = "${(import ../../../hosts/mireo/vm-ips.nix).dns}:3000";
     };
     # Vanity URL for the declarative status page (302 to the real path so
     # the page's relative /api calls keep working — a rewrite would break
@@ -446,7 +325,7 @@
   # explicitly published inbound traffic (DNAT'd on nyagate, SNAT'd back so
   # return path stays symmetric via the tunnel — no 0.0.0.0/0 AllowedIPs here,
   # which would hijack the default route and break LAN/NFS/IPv6/microVMs).
-  # LAN-only services (NFS /data, dnsmasq DHCP/DNS, PXE, Avahi) stay bound to
+  # LAN-only services (NFS /data, AdGuard DHCP/DNS, Avahi) stay bound to
   # br0 / 10.8.0.0/24 and are NOT reachable via wg0 (firewall below allows
   # only the published ports; Avahi is pinned to br0+lo).
   # Private key via `sops hosts/mireo/secrets.yaml`, peer key in
@@ -497,14 +376,6 @@
     allowedTCPPorts = [80 443 25565];
     allowedUDPPorts = [25565 19132];
   };
-
-  # Ensure dnsmasq starts after br0 exists (avoids "unknown interface" race)
-  # Make dnsmasq restart on failure but not block NixOS activation (optional
-  # runtime service — failure should not trigger deploy-rs rollback).
-  systemd.services.dnsmasq.after = ["sys-devices-virtual-net-br0.device"];
-  systemd.services.dnsmasq.bindsTo = ["sys-devices-virtual-net-br0.device"];
-  systemd.services.dnsmasq.serviceConfig.Restart = "on-failure";
-  systemd.services.dnsmasq.serviceConfig.RestartSec = "5s";
 
   boot.loader.systemd-boot.enable = true;
 

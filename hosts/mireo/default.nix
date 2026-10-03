@@ -28,6 +28,7 @@
     ./remote-microvm.nix
     ./maps-microvm.nix
     ./kodi-microvm.nix
+    ./dash-microvm.nix
   ];
 
   # All microvm tap interfaces join the LAN bridge.

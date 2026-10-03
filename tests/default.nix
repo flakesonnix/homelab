@@ -387,7 +387,7 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkKodiBox;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkKodiBox && checkMinecraft;
 
   # ---- voip module unit tests (eval-time, no secrets, no network) ----
   # NOTE: voip.nix integrates with asterisk.nix (localTest assertion +
@@ -512,7 +512,9 @@
     && forceB (kumaEnabled.systemd.timers.uptime-kuma-sync.timerConfig.OnCalendar == "daily") "kuma: daily convergence timer"
     && forceB (lib.hasInfix "http://10.8.0.9:3001" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: script targets the API"
     && forceB (lib.hasInfix "uptime-kuma-monitors.json" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: monitor data wired into service"
-    && forceB (lib.hasInfix "--status-page" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: status page wired into service";
+    && forceB (lib.hasInfix "--status-page" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: status page wired into service"
+    && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.serviceConfig.Restart == "on-failure") "kuma: retries transient login flakes"
+    && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.unitConfig.StartLimitBurst == 3) "kuma: bounded retries, no infinite loop";
 
   # ---- kodi-box module unit tests (eval-time, no hardware) ----
   kodiBoxEnabled = nixosEval [
@@ -534,6 +536,7 @@
     && forceB (kodiBoxEnabled.systemd.services.kodi.wantedBy == ["multi-user.target"]) "kodibox: service wanted by multi-user"
     && forceB (kodiBoxEnabled.systemd.services.kodi.serviceConfig.User == "kodi") "kodibox: service runs as kodi"
     && forceB (lib.hasInfix "xvfb-run" kodiBoxEnabled.systemd.services.kodi.script) "kodibox: headless via Xvfb"
+    && forceB (kodiBoxEnabled.hardware.graphics.enable == true) "kodibox: Mesa GL for X11 init (no GPU in VM)"
     && forceB (builtins.elem 8080 kodiBoxEnabled.networking.firewall.allowedTCPPorts) "kodibox: web UI port open"
     && forceB (builtins.elem 9090 kodiBoxEnabled.networking.firewall.allowedTCPPorts) "kodibox: JSON-RPC port open"
     && forceB (builtins.elem 9777 kodiBoxEnabled.networking.firewall.allowedUDPPorts) "kodibox: EventServer port open"
@@ -543,6 +546,28 @@
     && forceB (lib.any (r: lib.hasInfix "addon_data/plugin.video.jellycon/settings.xml" r) kodiBoxEnabled.systemd.tmpfiles.rules) "kodibox: jellycon server seed wired"
     && forceB (lib.any (r: lib.hasInfix "userdata/guisettings.xml" r) kodiBoxEnabled.systemd.tmpfiles.rules) "kodibox: guisettings seed wired"
     && forceB (!(kodiBoxDisabled.systemd.services ? kodi)) "kodibox: no service when disabled";
+
+  # ---- minecraft module unit tests (eval-time, no game) ----
+  minecraftEnabled = nixosEval [
+    ../modules/nixos/lucy-services.nix
+    ../modules/nixos/minecraft.nix
+    {lucy.services.minecraft.enable = true;}
+  ];
+  minecraftDisabled = nixosEval [
+    ../modules/nixos/lucy-services.nix
+    ../modules/nixos/minecraft.nix
+  ];
+  checkMinecraft =
+    forceB (minecraftDisabled.lucy.services.minecraft.enable == false) "minecraft: must be disabled by default"
+    && forceB (minecraftEnabled.systemd.services.minecraft.wantedBy == ["multi-user.target"]) "minecraft: service wanted by multi-user"
+    && forceB (minecraftEnabled.systemd.services.minecraft.serviceConfig.User == "lucy") "minecraft: service runs as lucy"
+    && forceB (minecraftEnabled.systemd.services.minecraft.serviceConfig.WorkingDirectory == "/home/lucy/mcserver") "minecraft: runs in ~/mcserver"
+    && forceB (lib.hasInfix "nogui" minecraftEnabled.systemd.services.minecraft.serviceConfig.ExecStart) "minecraft: headless flag present"
+    && forceB (lib.hasInfix "server.jar" minecraftEnabled.systemd.services.minecraft.serviceConfig.ExecStart) "minecraft: starts server.jar"
+    && forceB (lib.hasInfix "temurin-jre-bin-25" minecraftEnabled.systemd.services.minecraft.serviceConfig.ExecStart) "minecraft: Java 25 for Paper 26.x"
+    && forceB (minecraftEnabled.systemd.services.minecraft.serviceConfig.Restart == "on-failure") "minecraft: restarts only on crash"
+    && forceB (lib.hasInfix "minecraft.service" minecraftEnabled.security.polkit.extraConfig) "minecraft: lucy polkit rule present"
+    && forceB (!(minecraftDisabled.systemd.services ? minecraft)) "minecraft: no service when disabled";
 
   # ---- asterisk fax unit tests (eval-time, no calls) ----
   # NOTE: asterisk.nix touches sops options (guarded, but this nixpkgs

@@ -1,4 +1,8 @@
-{lib, ...}: {
+{
+  lib,
+  pkgs,
+  ...
+}: {
   options.lucy.services = {
     # ── Platform services ────────────────────────────────
     postgres = lib.mkOption {
@@ -450,6 +454,39 @@
           eventPort = lib.mkOption {
             type = lib.types.port;
             default = 9777;
+          };
+        };
+      });
+    };
+
+    minecraft = lib.mkOption {
+      type = lib.types.submodule ({config, ...}: {
+        options = {
+          enable = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+          };
+          user = lib.mkOption {
+            type = lib.types.nonEmptyStr;
+            default = "lucy";
+          };
+          dataDir = lib.mkOption {
+            type = lib.types.path;
+            default = "/home/lucy/mcserver";
+          };
+          jar = lib.mkOption {
+            type = lib.types.nonEmptyStr;
+            default = "server.jar";
+          };
+          memory = lib.mkOption {
+            type = lib.types.nonEmptyStr;
+            default = "6G";
+          };
+          javaPackage = lib.mkOption {
+            type = lib.types.package;
+            # Paper 26.x needs Java 25 (class file 69.0); Temurin 21 dies
+            # with UnsupportedClassVersionError (seen 2026-10-03, exit 1).
+            default = pkgs.temurin-jre-bin-25;
           };
         };
       });

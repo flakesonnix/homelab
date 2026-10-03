@@ -25,7 +25,9 @@
         {
           image = "jellyfin-data.img";
           mountPoint = "/var/lib/jellyfin";
-          size = 8192;
+          # 2026-10-03: vollgelaufen (8G, v.a. livetv-Aufnahmen) -> 16G.
+          # Image auf mireo per qemu-img/resize2fs erweitert.
+          size = 16384;
           user = "jellyfin";
           group = "jellyfin";
         }

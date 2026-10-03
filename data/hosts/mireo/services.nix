@@ -82,6 +82,17 @@
   sops.secrets."voip/eventphone" = {};
   sops.secrets."voip/eventphone-fax" = {};
 
+  # --- Minecraft server (Paper + Geyser, manual ~/mcserver dir) ---
+  # Only the SERVICE is declarative (modules/nixos/minecraft.nix): the unit
+  # runs `java -jar server.jar nogui` as lucy in /home/lucy/mcserver, world,
+  # plugins and configs stay manual files. Public via nyagate DNAT
+  # 25565/tcp+udp + 19132/udp -> wg0 (no host firewall change: wg0 rules +
+  # trusted br0 already cover it). lucy manages the unit without root
+  # (polkit): systemctl start/stop/restart/status minecraft.
+  lucy.services.minecraft = {
+    enable = true;
+  };
+
   # --- Declarative Uptime Kuma monitors (authoritative API sync) ---
   # Targets verified live 2026-09-16 (only 2xx/3xx + reachable hosts).
   # Skipped deliberately: x270 (roaming), notifications (no channel yet).
@@ -215,6 +226,20 @@
         type = "port";
         target = "10.8.0.12";
         port = 3890;
+      };
+      adguard = {
+        type = "http";
+        target = "http://10.8.0.30:3000/";
+      };
+      adguard-dns-port = {
+        type = "port";
+        target = "10.8.0.30";
+        port = 53;
+      };
+      lan-dns-adguard = {
+        type = "dns";
+        target = "kodi.home.arpa";
+        dnsServer = "10.8.0.30";
       };
     };
   };
