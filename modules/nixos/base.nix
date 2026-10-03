@@ -21,13 +21,13 @@ in {
         description = "Default locale";
       };
       sshKey = lib.mkOption {
-        type = lib.types.str;
-        description = "SSH public key for user authentication";
+        type = lib.types.listOf lib.types.str;
+        description = "SSH public keys for user authentication (one per line, with comment)";
       };
       sshKeyComment = lib.mkOption {
-        type = lib.types.str;
-        default = "lucy@dotfiles";
-        description = "SSH key comment";
+        type = lib.types.null;
+        default = null;
+        description = "";
       };
       initrdSshPort = lib.mkOption {
         type = lib.types.int;
@@ -98,13 +98,9 @@ in {
       allowedUDPPorts = lib.optionals (!config.lucy.base.isServer) [5555 5585];
     };
 
-    users.users.lucy.openssh.authorizedKeys.keys = [
-      "${config.lucy.base.sshKey} ${config.lucy.base.sshKeyComment}"
-    ];
+    users.users.lucy.openssh.authorizedKeys.keys = config.lucy.base.sshKey;
 
-    users.users.root.openssh.authorizedKeys.keys = [
-      "${config.lucy.base.sshKey} ${config.lucy.base.sshKeyComment}"
-    ];
+    users.users.root.openssh.authorizedKeys.keys = config.lucy.base.sshKey;
 
     boot.initrd.network.ssh = {
       enable = true;
