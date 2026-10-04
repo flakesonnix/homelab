@@ -84,6 +84,11 @@ in {
             DNS = ["127.0.0.1"];
           };
         };
+        # AdGuard binds 0.0.0.0:53 — systemd-resolved's stub listeners
+        # (127.0.0.53:53, 127.0.0.54:53) would steal the bind (EADDRINUSE)
+        # and kill LAN DNS. The guest resolves via 127.0.0.1 = AdGuard
+        # itself (networkd DNS above), so resolved is expendable here.
+        services.resolved.enable = lib.mkForce false;
         services.adguardhome = {
           enable = true;
           settings = {
