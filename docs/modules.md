@@ -171,7 +171,7 @@ Declarative Uptime Kuma monitors (GitOps API sync, host-side on `mireo`). Option
 | `statusPage.enable` | bool | false | Single public page (`/status/<slug>`, all Nix monitors, others deleted) |
 | `statusPage.slug` / `.title` / `.description` | str | `"homelab"` / `"Homelab Status"` / … | Page identity |
 
-Oneshot `uptime-kuma-sync.service` (after `microvm@uptime-kuma`) + daily `uptime-kuma-sync.timer` (Persistent). Dry-run preview without writes: `/etc/uptime-kuma-sync/preview`. Notifications are NOT managed (none exist; needs channel + secrets — follow-up).
+Timer-driven `uptime-kuma-sync.service` (oneshot, after `microvm@uptime-kuma`, deliberately NOT in `multi-user.target` so a Kuma outage can never fail a switch/rollback) + `uptime-kuma-sync.timer` (`OnBootSec=10m` + daily, Persistent). Sync after monitor changes: `systemctl start uptime-kuma-sync`. Dry-run preview without writes: `/etc/uptime-kuma-sync/preview`. Notifications are NOT managed (none exist; needs channel + secrets — follow-up).
 
 ---
 

@@ -34,7 +34,7 @@ namespace: lucy.*
 | `comfyui` | `lucy.comfyui.*` | Stable Diffusion web UI `:8188`, `gpuSupport none/cuda/rocm` |
 | `audio-stream` | `hq.audio.streamTo` | PipeWire tunnel sink → `${streamTo}:4713` |
 | `asterisk` | `services.asteriskLocal.*` | SIP PBX via PJSIP, phones/ext 100 hello-world, `*1/*2/*3/#72/#74/*0`, sops templates |
-| `uptime-kuma-sync` | `services.uptime-kuma-sync.*` | Declarative monitors via API (authoritative), oneshot + daily timer, passwordFile |
+| `uptime-kuma-sync` | `services.uptime-kuma-sync.*` | Declarative monitors via API (authoritative), timer-driven (boot + daily, never blocks switch), passwordFile |
 | `deskflow` | `hq.deskflow.*` | Keyboard/mouse sharing server/client, `settings.ini`+`server.conf`, user service lucy |
 | `waydroid` | `lucy.waydroid.*` | `enable`, `gapps=true`, oneshot `waydroid init -s GAPPS` |
 

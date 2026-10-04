@@ -9,7 +9,11 @@
 *
 * Runs on the mireo HOST (not in the VM): no secret sharing into the
 * guest needed, the admin password stays in host sops (/run/secrets).
-* oneshot at boot + daily timer (Persistent) for convergence.
+* Timer-driven only (boot + daily, Persistent) for convergence: the
+* service is deliberately NOT wanted by multi-user.target, so a transient
+* API outage (e.g. kuma VM restarting mid-switch) can never fail a
+* nixos-rebuild/deploy and trigger a rollback. Sync right after a monitor
+* change: systemctl start uptime-kuma-sync (timer retries daily anyway).
 * Notifications are NOT managed (none exist; needs channel + secrets —
 * follow-up once a channel is chosen).
 *
@@ -378,7 +382,10 @@ in {
 
     systemd.services.uptime-kuma-sync = {
       description = "Sync declarative Uptime Kuma monitors (authoritative)";
-      wantedBy = ["multi-user.target"];
+      # No wantedBy on purpose: starting at switch time races the kuma VM
+      # restart (2026-10-03 deploy failed + rolled back on a connect
+      # timeout). Convergence comes from the timer (boot + daily) and
+      # manual `systemctl start uptime-kuma-sync`.
       wants = ["network-online.target"];
       after = ["network-online.target" "microvm@uptime-kuma.service"];
       # Self-heal transient API login flakes (seen daily 00:00 runs +
@@ -405,9 +412,11 @@ in {
     };
 
     systemd.timers.uptime-kuma-sync = {
-      description = "Daily Uptime Kuma monitor convergence";
+      description = "Uptime Kuma monitor convergence (boot + daily)";
       wantedBy = ["timers.target"];
       timerConfig = {
+        # Boot-delayed so the kuma VM is up (no switch-time race).
+        OnBootSec = "10m";
         OnCalendar = "daily";
         Persistent = true;
       };
