@@ -24,12 +24,17 @@
           group = "librenms";
         }
       ];
-      # NOTE: no management-secrets share — the per-VM host secrets dir
-      # doesn't exist yet (no sops secrets). A virtiofs share with a
-      # missing source fails QEMU at start and breaks the whole switch
-      # (2026-10-04 incident). Land host sops secrets first, then re-add
-      # the share in that commit (and drop "management" from secretlessVMs
-      # in tests/default.nix).
+      # Secrets land here via host sops (management/*); the API tokens are
+      # placeholders until minted in the LibreNMS/NetBox UIs (see
+      # data/hosts/mireo/services.nix).
+      shares = [
+        {
+          tag = "management-secrets";
+          source = "/run/secrets/management";
+          mountPoint = "/run/secrets/management";
+          readOnly = true;
+        }
+      ];
       tmpfiles = [
         "d /data/netbox 0750 netbox netbox - -"
         "d /data/librenms 0750 librenms librenms - -"

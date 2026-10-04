@@ -1,6 +1,12 @@
 # Identity microVM: OpenLDAP + Keycloak
 # Dedicated IP 10.8.0.29, security boundary for identity services.
-{...}: {
+{config, ...}: {
+  # Keycloak DB password reuses the host database/keycloak secret (single
+  # source, no duplicated secret): rendered into a dedicated dir so the
+  # guest share sees exactly one file (same pattern as pocket-id).
+  sops.templates."identity/database/keycloak" = {
+    content = config.sops.placeholder."database/keycloak";
+  };
   imports = [
     (import ./mk-microvm.nix {
       name = "identity";
@@ -24,14 +30,16 @@
           group = "keycloak";
         }
       ];
-      # NOTE: no identity-secrets share — the per-VM host secrets dir
-      # doesn't exist yet (no sops secrets), so keycloak-secrets-setup
-      # will fail inside the guest until they land (guest-local only, never
-      # blocks the host switch). A virtiofs share with a missing source
-      # would instead fail QEMU at start and break the whole switch
-      # (2026-10-04 incident). Land host sops secrets first, then re-add
-      # the share in that commit (and drop "identity" from secretlessVMs
-      # in tests/default.nix).
+      # Rendered template above lands at
+      # /run/secrets/rendered/identity/database/keycloak on the host.
+      shares = [
+        {
+          tag = "identity-secrets";
+          source = "/run/secrets/rendered/identity";
+          mountPoint = "/run/secrets/identity/database";
+          readOnly = true;
+        }
+      ];
       tmpfiles = [
         "d /var/lib/openldap 0750 openldap openldap - -"
         "d /var/lib/keycloak 0750 keycloak keycloak - -"

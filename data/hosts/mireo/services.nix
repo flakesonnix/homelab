@@ -291,4 +291,12 @@
   sops.secrets."backup/nextcloud" = {};
   # Nextcloud admin
   sops.secrets."database/nextcloud-admin" = {};
+  # Attic binary cache token secret (artifacts VM, environmentFile).
+  sops.secrets."artifacts/attic-env" = {};
+  # Management VM API tokens (least privilege: per-VM dir, not shared).
+  # PLACEHOLDERS — mint real tokens in the LibreNMS/NetBox UIs, then:
+  #   sops set hosts/mireo/secrets.yaml '["management"]["librenms-api-key"]' '"<token>"'
+  #   sops set hosts/mireo/secrets.yaml '["management"]["netbox-api-token"]' '"<token>"'
+  sops.secrets."management/librenms-api-key" = {};
+  sops.secrets."management/netbox-api-token" = {};
 }

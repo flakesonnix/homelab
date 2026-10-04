@@ -24,12 +24,14 @@
           group = "registry";
         }
       ];
-      # NOTE: no artifacts-secrets share — the per-VM host secrets dir
-      # doesn't exist yet (no sops secrets). A virtiofs share with a
-      # missing source fails QEMU at start and breaks the whole switch
-      # (2026-10-04 incident). Land host sops secrets first, then re-add
-      # the share in that commit (and drop "artifacts" from secretlessVMs
-      # in tests/default.nix).
+      shares = [
+        {
+          tag = "artifacts-secrets";
+          source = "/run/secrets/artifacts";
+          mountPoint = "/run/secrets/artifacts";
+          readOnly = true;
+        }
+      ];
       tmpfiles = [
         "d /data/attic 0750 attic attic - -"
         "d /data/registry 0750 registry registry - -"

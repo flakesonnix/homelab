@@ -526,7 +526,7 @@
   # scripts referencing the path are fine — only the share breaks QEMU).
   # Re-adding a share requires landing the host secret in the same commit
   # — then drop the name from this list.
-  secretlessVMs = ["artifacts" "cloud" "communication" "documents" "identity" "management" "media" "postgres" "sync"];
+  secretlessVMs = ["cloud" "communication" "documents" "media" "sync"];
   checkMicrovmSecretsShares = builtins.all builtins.isBool (map (
       vm:
         forceB (!(lib.hasInfix "source = \"/run/secrets/${vm}\"" (builtins.readFile ../hosts/mireo/${vm}-microvm.nix)))

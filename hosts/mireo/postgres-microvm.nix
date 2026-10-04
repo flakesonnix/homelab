@@ -17,14 +17,18 @@
           group = "postgres";
         }
       ];
-      # NOTE: no postgres-secrets share — the per-VM host secrets dir
-      # doesn't exist yet (no sops secrets), so postgres-secrets-setup
-      # stages nothing inside the guest until they land (guest-local only,
-      # never blocks the host switch). A virtiofs share with a missing
-      # source would instead fail QEMU at start and break the whole switch
-      # (2026-10-04 incident). Land host sops secrets first, then re-add
-      # the share in that commit (and drop "postgres" from secretlessVMs
-      # in tests/default.nix).
+      # DB passwords live in host sops (database/*) and are shared here as
+      # /run/secrets/postgres so postgres-secrets-setup stages them
+      # unchanged into /run/secrets/database. This VM *is* the database
+      # host, so sharing the whole database dir is least surprise.
+      shares = [
+        {
+          tag = "postgres-secrets";
+          source = "/run/secrets/database";
+          mountPoint = "/run/secrets/postgres";
+          readOnly = true;
+        }
+      ];
       tmpfiles = [
         "d /var/lib/postgresql 0750 postgres postgres - -"
       ];
