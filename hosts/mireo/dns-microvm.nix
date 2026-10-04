@@ -113,7 +113,11 @@ in {
             };
             dhcp = {
               enabled = true;
-              interface_name = "";
+              # Guest virtio NIC name (verified live in the dns VM via
+              # `ip -o link`: lo + enp0s3). Empty string leaves the DHCP
+              # server unbound — LAN would have no DHCP after the
+              # dnsmasq→AdGuard migration (2026-10-04 incident).
+              interface_name = "enp0s3";
               local_domain_name = "home.arpa";
               dhcpv4 = {
                 gateway_ip = "10.8.0.1";
