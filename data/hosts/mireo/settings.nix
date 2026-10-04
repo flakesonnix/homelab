@@ -293,16 +293,17 @@
       # expand-hosts above; host-record below keeps AAAA + pre-lease A).
       # Reservations live outside the dynamic pool (10.8.0.100-.199), so no
       # collisions. (UCS reservation dropped with UCS itself, 2026-09-16.)
-      dhcp-host = lib.mapAttrsToList (
-        name: ip: let
-          lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
-          hex = n: builtins.elemAt ["0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "a" "b" "c" "d" "e" "f"] n;
-        in "02:00:00:10:08:${hex (builtins.div lastOctet 16)}${hex (lib.mod lastOctet 16)},${ip},${name}"
-      ) (import ../../../hosts/mireo/vm-ips.nix)
-      # Freifunk box (real hardware, not a microVM): pins its current .193
-      # so monitoring/DNS stay stable. Named ff-bb — its own hostname is
-      # "mireo", which collides with ours (seen 2026-10-04 in leases).
-      ++ ["44:d4:37:8b:d8:69,10.8.0.193,ff-bb"];
+      dhcp-host =
+        lib.mapAttrsToList (
+          name: ip: let
+            lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
+            hex = n: builtins.elemAt ["0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "a" "b" "c" "d" "e" "f"] n;
+          in "02:00:00:10:08:${hex (builtins.div lastOctet 16)}${hex (lib.mod lastOctet 16)},${ip},${name}"
+        ) (import ../../../hosts/mireo/vm-ips.nix)
+        # Freifunk box (real hardware, not a microVM): pins its current .193
+        # so monitoring/DNS stay stable. Named ff-bb — its own hostname is
+        # "mireo", which collides with ours (seen 2026-10-04 in leases).
+        ++ ["44:d4:37:8b:d8:69,10.8.0.193,ff-bb"];
       # --- PXE boot (dnsmasq-nativ, netboot.xyz-Menü) ---
       # iPXE-Clients (erkennbar an Option 175) chainloaden direkt das
       # netboot.xyz-Menü per HTTP; klassische PXE-ROMs laden erst iPXE
