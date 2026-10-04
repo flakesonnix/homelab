@@ -112,6 +112,9 @@
           status_page.pop("incidents", None)
           status_page.pop("maintenanceList")
           status_page.update(kwargs)
+          # slug travels as our own argument (don't rely on the server
+          # echoing it inside config).
+          status_page["slug"] = slug
           params = {k: v for k, v in status_page.items()
                     if k in _STATUS_PAGE_PARAMS}
           _slug, config, icon, groups = api._build_status_page_data(**params)
@@ -262,7 +265,7 @@
                   # it the deploy): monitors are the contract, the page is
                   # presentation. Loud log, next run retries.
                   try:
-                      sync_status_page(api, page, live, args.dry_run)
+                      sync_status_page(api, args.api_url, page, live, args.dry_run)
                   except Exception as e:  # noqa: BLE001
                       log(f"status page failed, monitors are in sync: {e}")
               return 0
@@ -270,7 +273,7 @@
               api.disconnect()
 
 
-      def sync_status_page(api, page, live, dry_run):
+      def sync_status_page(api, api_url, page, live, dry_run):
           """Reconcile the single public status page (all Nix monitors in
           one group). Other slugs are deleted (authoritative). Never uses
           get_status_page: it crashes on incident parsing in lib 1.2.1, so
@@ -294,7 +297,7 @@
               return
           log(f"~ save status page /status/{slug} ({len(member_ids)} monitors)")
           save_status_page_v2(
-              api, args.api_url,
+              api, api_url,
               slug, id=slugs[slug]["id"], title=page["title"],
               description=page["description"], published=True,
               publicGroupList=want_groups)

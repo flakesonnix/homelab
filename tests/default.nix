@@ -506,6 +506,87 @@
     }
   ];
   kumaDisabled = nixosEval [../modules/nixos/uptime-kuma-sync.nix];
+  # Runtime test for the kuma>=2.1 status-page save backport: runs the real
+  # sync function against a stubbed API serving Kuma 2.x shapes (plural
+  # `incidents`). Would have caught the NameError that broke saves live.
+  kumaSyncPy = pkgs.python3.withPackages (ps: [ps.uptime-kuma-api]);
+  kumaSyncSrc = pkgs.runCommand "uptime-kuma-sync-src" {} ''
+    sed -n '/^      import argparse$/,/^          sys.exit(main())$/p' ${../modules/nixos/uptime-kuma-sync.nix} | sed 's/^      //' > $out
+  '';
+  kumaStatusPageTest = pkgs.writeText "kuma-status-page-test.py" ''
+    import json
+    import sys
+    import urllib.request
+    from unittest.mock import patch
+    from uptime_kuma_api import Event, UptimeKumaApi
+
+    with open(sys.argv[1]) as f:
+        src = f.read()
+    g = {"__name__": "kuma_sync_test"}
+    exec(compile(src, "uptime-kuma-sync.py", "exec"), g)
+
+    # Kuma >= 2.1 shape: plural incidents, no singular incident key.
+    R2 = {
+        "config": {"id": 7, "title": "Old", "theme": "auto",
+                   "showCertificateExpiry": False},
+        "incidents": [],
+        "publicGroupList": [],
+        "maintenanceList": [],
+    }
+
+    class FakeResp:
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+        def read(self):
+            return json.dumps(R2).encode()
+
+    # version is a read-only property on the real class: drive its real
+    # builder with a version-carrying namespace instead of subclassing.
+    import types
+    _versioned = types.SimpleNamespace(version="2.4.0")
+
+    class FakeApi:
+        def __init__(self):
+            self.calls = []
+            self._event_data = {Event.STATUS_PAGE_LIST: {
+                "7": {"slug": "homelab", "id": 7}}}
+        def _build_status_page_data(self, **kwargs):
+            return UptimeKumaApi._build_status_page_data(_versioned, **kwargs)
+        def get_status_pages(self):
+            return list(self._event_data[Event.STATUS_PAGE_LIST].values())
+        def _call(self, method, *args):
+            self.calls.append((method, args))
+            if method == "getStatusPage":
+                return {"config": {"id": 7, "slug": "homelab"}}
+            if method == "saveStatusPage":
+                return {"msg": "OK"}
+            raise AssertionError(f"unexpected api call: {method}")
+
+    page = {"slug": "homelab", "title": "Homelab Status",
+            "description": "d", "monitors": ["a", "b", "ghost"]}
+    live = {"a": 10, "b": 20}
+
+    api = FakeApi()
+    with patch.object(urllib.request, "urlopen", return_value=FakeResp()):
+        g["sync_status_page"](api, "http://10.8.0.9:3001", page, live, False)
+    saved = [c for c in api.calls if c[0] == "saveStatusPage"]
+    assert len(saved) == 1, f"expected one save, got: {api.calls}"
+    slug_, config, icon, groups = saved[0][1][0]
+    assert slug_ == "homelab", slug_
+    assert config["id"] == 7, config
+    assert config["title"] == "Homelab Status", config
+    assert config["analyticsType"] is None, config
+    assert groups == [{"name": "Services", "weight": 1,
+                       "monitorList": [{"id": 10}, {"id": 20}]}], groups
+
+    dry = FakeApi()
+    with patch.object(urllib.request, "urlopen", return_value=FakeResp()):
+        g["sync_status_page"](dry, "http://10.8.0.9:3001", page, live, True)
+    assert not [c for c in dry.calls if c[0] == "saveStatusPage"], dry.calls
+    print("kuma status page v2 save: OK")
+  '';
   checkKuma =
     forceB (kumaDisabled.services.uptime-kuma-sync.enable == false) "kuma: must be disabled by default"
     && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.serviceConfig.Type == "oneshot") "kuma: sync service is oneshot"
@@ -515,7 +596,6 @@
     && forceB (lib.hasInfix "http://10.8.0.9:3001" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: script targets the API"
     && forceB (lib.hasInfix "uptime-kuma-monitors.json" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: monitor data wired into service"
     && forceB (lib.hasInfix "--status-page" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: status page wired into service"
-    && forceB (lib.hasInfix "save_status_page_v2" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: v2 save backport present (incident/analyticsType)"
     && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.serviceConfig.Restart == "on-failure") "kuma: retries transient login flakes"
     && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.unitConfig.StartLimitBurst == 3) "kuma: bounded retries, no infinite loop";
 
@@ -700,6 +780,10 @@
       MAKO_FIXTURE="$empty" bash counter-custom.sh | grep -q '"text":"I"'
       MAKO_FIXTURE="$two" bash counter-custom.sh | grep -q '"text":"A 2"'
       echo "  OK: custom icons"
+
+      echo "=== kuma status page save (v2 backport) ==="
+      ${kumaSyncPy}/bin/python3 ${kumaStatusPageTest} ${kumaSyncSrc}
+      echo "  OK: incidents-tolerant save with analyticsType, dry-run clean"
 
       echo "=== ci check app ==="
       grep -rq 'nix eval --option warn-dirty false a --raw >/dev/null' ${testCheckApp}/
