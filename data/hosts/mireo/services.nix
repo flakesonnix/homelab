@@ -187,6 +187,10 @@
         type = "ping";
         target = "192.168.178.1";
       };
+      ff-bb = {
+        type = "ping";
+        target = "10.8.0.193";
+      };
       internet = {
         type = "ping";
         target = "1.1.1.1";
