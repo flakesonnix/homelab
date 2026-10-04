@@ -24,14 +24,14 @@
           group = "keycloak";
         }
       ];
-      shares = [
-        {
-          tag = "identity-secrets";
-          source = "/run/secrets/identity";
-          mountPoint = "/run/secrets/identity";
-          readOnly = true;
-        }
-      ];
+      # NOTE: no identity-secrets share — /run/secrets/identity doesn't
+      # exist on the host yet (no sops secrets), so keycloak-secrets-setup
+      # will fail inside the guest until they land (guest-local only, never
+      # blocks the host switch). A virtiofs share with a missing source
+      # would instead fail QEMU at start and break the whole switch
+      # (2026-10-04 incident). Land host sops secrets first, then re-add
+      # the share in that commit (and drop "identity" from secretlessVMs
+      # in tests/default.nix).
       tmpfiles = [
         "d /var/lib/openldap 0750 openldap openldap - -"
         "d /var/lib/keycloak 0750 keycloak keycloak - -"

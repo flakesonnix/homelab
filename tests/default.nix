@@ -387,7 +387,7 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkKodiBox && checkMinecraft;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkKodiBox && checkMinecraft && checkMicrovmSecretsShares;
 
   # ---- voip module unit tests (eval-time, no secrets, no network) ----
   # NOTE: voip.nix integrates with asterisk.nix (localTest assertion +
@@ -517,6 +517,20 @@
     && forceB (lib.hasInfix "--status-page" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: status page wired into service"
     && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.serviceConfig.Restart == "on-failure") "kuma: retries transient login flakes"
     && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.unitConfig.StartLimitBurst == 3) "kuma: bounded retries, no infinite loop";
+
+  # ---- mireo microvm secrets-share guard (regression 2026-10-04) ----
+  # A virtiofs share whose host source dir doesn't exist kills QEMU at
+  # start (socket connect refused) and fails the whole switch + rollback.
+  # These VMs have no host sops secrets yet, so their specs must not
+  # reference /run/secrets/<name>. Re-adding a share requires landing the
+  # host secret in the same commit — then drop the name from this list.
+  secretlessVMs = ["artifacts" "cloud" "communication" "documents" "identity" "management" "media" "postgres" "sync"];
+  checkMicrovmSecretsShares = builtins.all builtins.isBool (map (
+      vm:
+        forceB (!(lib.hasInfix "/run/secrets/${vm}" (builtins.readFile ../hosts/mireo/${vm}-microvm.nix)))
+        "microvm ${vm}: no /run/secrets/${vm} reference without host sops secrets (breaks QEMU at switch)"
+    )
+    secretlessVMs);
 
   # ---- kodi-box module unit tests (eval-time, no hardware) ----
   kodiBoxEnabled = nixosEval [

@@ -17,14 +17,12 @@
           group = "paperless";
         }
       ];
-      shares = [
-        {
-          tag = "documents-secrets";
-          source = "/run/secrets/documents";
-          mountPoint = "/run/secrets/documents";
-          readOnly = true;
-        }
-      ];
+      # NOTE: no documents-secrets share — /run/secrets/documents doesn't
+      # exist on the host yet (no sops secrets). A virtiofs share with a
+      # missing source fails QEMU at start and breaks the whole switch
+      # (2026-10-04 incident). Land host sops secrets first, then re-add
+      # the share in that commit (and drop "documents" from secretlessVMs
+      # in tests/default.nix).
       tmpfiles = [
         "d /data/paperless 0750 paperless paperless - -"
       ];

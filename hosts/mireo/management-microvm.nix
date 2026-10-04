@@ -24,14 +24,12 @@
           group = "librenms";
         }
       ];
-      shares = [
-        {
-          tag = "management-secrets";
-          source = "/run/secrets/management";
-          mountPoint = "/run/secrets/management";
-          readOnly = true;
-        }
-      ];
+      # NOTE: no management-secrets share — /run/secrets/management doesn't
+      # exist on the host yet (no sops secrets). A virtiofs share with a
+      # missing source fails QEMU at start and breaks the whole switch
+      # (2026-10-04 incident). Land host sops secrets first, then re-add
+      # the share in that commit (and drop "management" from secretlessVMs
+      # in tests/default.nix).
       tmpfiles = [
         "d /data/netbox 0750 netbox netbox - -"
         "d /data/librenms 0750 librenms librenms - -"

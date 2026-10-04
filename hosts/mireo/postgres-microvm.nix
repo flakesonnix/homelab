@@ -5,7 +5,7 @@
     (import ./mk-microvm.nix {
       name = "postgres";
       ip = (import ./vm-ips.nix).postgres;
-      mem = 2048;
+      mem = 2304; # NB: never exactly 2048 (QEMU hangs, microvm.nix#171)
       vcpu = 4;
       tcpPorts = [22 5432];
       volumes = [
@@ -17,14 +17,14 @@
           group = "postgres";
         }
       ];
-      shares = [
-        {
-          tag = "postgres-secrets";
-          source = "/run/secrets/postgres";
-          mountPoint = "/run/secrets/postgres";
-          readOnly = true;
-        }
-      ];
+      # NOTE: no postgres-secrets share — /run/secrets/postgres doesn't
+      # exist on the host yet (no sops secrets), so postgres-secrets-setup
+      # stages nothing inside the guest until they land (guest-local only,
+      # never blocks the host switch). A virtiofs share with a missing
+      # source would instead fail QEMU at start and break the whole switch
+      # (2026-10-04 incident). Land host sops secrets first, then re-add
+      # the share in that commit (and drop "postgres" from secretlessVMs
+      # in tests/default.nix).
       tmpfiles = [
         "d /var/lib/postgresql 0750 postgres postgres - -"
       ];
