@@ -168,6 +168,7 @@ Declarative Uptime Kuma monitors (GitOps API sync, host-side on `mireo`). Option
 | `monitors.<name>.maxRetries` | unsigned int | 1 | Retries before DOWN |
 | `monitors.<name>.dnsServer` | str | `"10.8.0.1"` | Resolver for `dns` (default tests our own dnsmasq) |
 | `monitors.<name>.dnsType` | str | `"A"` | Record type for `dns` |
+| `monitors.<name>.group` | str | `"Services"` | Status page category: `Services` / `Network` / `DNS` / `Public` (unknown names sort last) |
 | `statusPage.enable` | bool | false | Single public page (`/status/<slug>`, all Nix monitors, others deleted) |
 | `statusPage.slug` / `.title` / `.description` | str | `"homelab"` / `"Homelab Status"` / … | Page identity |
 

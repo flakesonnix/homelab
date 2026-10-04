@@ -567,10 +567,12 @@
     page = {"slug": "homelab", "title": "Homelab Status",
             "description": "d", "monitors": ["a", "b", "ghost"]}
     live = {"a": 10, "b": 20}
+    desired = {"a": {"group": "Network"}, "b": {}}
 
     api = FakeApi()
     with patch.object(urllib.request, "urlopen", return_value=FakeResp()):
-        g["sync_status_page"](api, "http://10.8.0.9:3001", page, live, False)
+        g["sync_status_page"](api, "http://10.8.0.9:3001", page, live,
+                              desired, False)
     saved = [c for c in api.calls if c[0] == "saveStatusPage"]
     assert len(saved) == 1, f"expected one save, got: {api.calls}"
     slug_, config, icon, groups = saved[0][1][0]
@@ -579,11 +581,14 @@
     assert config["title"] == "Homelab Status", config
     assert config["analyticsType"] is None, config
     assert groups == [{"name": "Services", "weight": 1,
-                       "monitorList": [{"id": 10}, {"id": 20}]}], groups
+                       "monitorList": [{"id": 20}]},
+                      {"name": "Network", "weight": 2,
+                       "monitorList": [{"id": 10}]}], groups
 
     dry = FakeApi()
     with patch.object(urllib.request, "urlopen", return_value=FakeResp()):
-        g["sync_status_page"](dry, "http://10.8.0.9:3001", page, live, True)
+        g["sync_status_page"](dry, "http://10.8.0.9:3001", page, live,
+                              desired, True)
     assert not [c for c in dry.calls if c[0] == "saveStatusPage"], dry.calls
     print("kuma status page v2 save: OK")
   '';
@@ -596,6 +601,7 @@
     && forceB (lib.hasInfix "http://10.8.0.9:3001" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: script targets the API"
     && forceB (lib.hasInfix "uptime-kuma-monitors.json" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: monitor data wired into service"
     && forceB (lib.hasInfix "--status-page" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: status page wired into service"
+    && forceB (kumaEnabled.services.uptime-kuma-sync.monitors.grafana.group == "Services") "kuma: monitor group defaults to Services"
     && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.serviceConfig.Restart == "on-failure") "kuma: retries transient login flakes"
     && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.unitConfig.StartLimitBurst == 3) "kuma: bounded retries, no infinite loop";
 

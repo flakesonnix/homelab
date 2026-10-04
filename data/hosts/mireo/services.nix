@@ -134,79 +134,97 @@
       uptime-vhost = {
         type = "http";
         target = "http://uptime-kuma.home.arpa/";
+        group = "Public";
       };
       grafana-vhost = {
         type = "http";
         target = "http://grafana.home.arpa/";
+        group = "Public";
       };
       grafana-public = {
         type = "http";
         target = "https://grafana.db210.org/";
+        group = "Public";
       };
       yammat-public = {
         type = "http";
         target = "https://yammat.db210.org/";
+        group = "Public";
       };
       monero-orport = {
         type = "port";
         target = "10.8.0.4";
         port = 9001;
+        group = "Network";
       };
       minecraft = {
         type = "port";
         target = "10.66.0.2";
         port = 25565;
+        group = "Network";
       };
       nfs = {
         type = "port";
         target = "10.8.0.1";
         port = 2049;
+        group = "Network";
       };
       ssh-mireo = {
         type = "port";
         target = "10.8.0.1";
         port = 22;
+        group = "Network";
       };
       mireo = {
         type = "ping";
         target = "10.8.0.1";
+        group = "Network";
       };
       network-services = {
         type = "ping";
         target = "10.8.0.3";
+        group = "Network";
       };
       monerod = {
         type = "ping";
         target = "10.8.0.4";
+        group = "Network";
       };
       ntp = {
         type = "ping";
         target = "10.8.0.11";
+        group = "Network";
       };
       fritzbox = {
         type = "ping";
         target = "192.168.178.1";
+        group = "Network";
       };
       ff-bb = {
         type = "ping";
         target = "10.8.0.193";
+        group = "Network";
       };
       internet = {
         type = "ping";
         target = "1.1.1.1";
+        group = "Network";
       };
       nyagate = {
         type = "ping";
         target = "188.220.148.24";
+        group = "Network";
       };
       lan-dns = {
         type = "dns";
         target = "grafana.home.arpa";
+        group = "DNS";
       };
       uplink-dns = {
         type = "dns";
         target = "google.com";
         dnsServer = "1.1.1.1";
+        group = "DNS";
       };
       lldap-ui = {
         type = "http";
@@ -234,11 +252,13 @@
         type = "port";
         target = "10.8.0.30";
         port = 53;
+        group = "DNS";
       };
       lan-dns-adguard = {
         type = "dns";
         target = "kodi.home.arpa";
         dnsServer = "10.8.0.30";
+        group = "DNS";
       };
       dash = {
         type = "http";
@@ -257,10 +277,12 @@
         type = "port";
         target = "10.8.0.3";
         port = 80;
+        group = "Network";
       };
       dns-host = {
         type = "ping";
         target = "10.8.0.30";
+        group = "DNS";
       };
     };
   };

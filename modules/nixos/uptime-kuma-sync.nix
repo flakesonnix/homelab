@@ -31,11 +31,11 @@
 
   py = pkgs.python3.withPackages (ps: [ps.uptime-kuma-api]);
 
-  # Store-safe JSON (names/targets only, no secrets).
+  # Store-safe JSON (names/targets/groups only, no secrets).
   desiredJson = pkgs.writeText "uptime-kuma-monitors.json" (builtins.toJSON
     (lib.mapAttrs (name: m: {
         inherit name;
-        inherit (m) type target interval maxRetries dnsServer dnsType;
+        inherit (m) type target interval maxRetries dnsServer dnsType group;
         port = m.port;
       })
       cfg.monitors));
@@ -265,7 +265,7 @@
                   # it the deploy): monitors are the contract, the page is
                   # presentation. Loud log, next run retries.
                   try:
-                      sync_status_page(api, args.api_url, page, live, args.dry_run)
+                      sync_status_page(api, args.api_url, page, live, desired, args.dry_run)
                   except Exception as e:  # noqa: BLE001
                       log(f"status page failed, monitors are in sync: {e}")
               return 0
@@ -273,19 +273,30 @@
               api.disconnect()
 
 
-      def sync_status_page(api, api_url, page, live, dry_run):
-          """Reconcile the single public status page (all Nix monitors in
-          one group). Other slugs are deleted (authoritative). Never uses
-          get_status_page: it crashes on incident parsing in lib 1.2.1, so
-          existence comes from the list and the save is unconditional
-          (idempotent) instead of drift-compared."""
+      # Display order of the status page categories (groups not listed
+      # here sort in alphabetically after the known ones).
+      GROUP_ORDER = ["Services", "Network", "DNS", "Public"]
+
+
+      def sync_status_page(api, api_url, page, live, desired, dry_run):
+          """Reconcile the single public status page (Nix monitors grouped
+          into categories). Other slugs are deleted (authoritative). Never
+          uses get_status_page: it crashes on incident parsing in lib
+          1.2.1, so existence comes from the list and the save is
+          unconditional (idempotent) instead of drift-compared."""
           slug = page["slug"]
-          member_ids = [live[name] for name in page["monitors"] if name in live]
-          missing = [name for name in page["monitors"] if name not in live]
-          for name in missing:
-              log(f"status page: monitor {name} unknown, skipped")
-          want_groups = [{"name": "Services", "weight": 1,
-                          "monitorList": [{"id": i} for i in member_ids]}]
+          grouped = {}
+          for name in page["monitors"]:
+              if name in live:
+                  grouped.setdefault(
+                      desired[name].get("group", "Services"), []).append(live[name])
+              else:
+                  log(f"status page: monitor {name} unknown, skipped")
+          ordered = sorted(grouped, key=lambda g: (
+              GROUP_ORDER.index(g) if g in GROUP_ORDER else len(GROUP_ORDER), g))
+          want_groups = [{"name": g, "weight": pos + 1,
+                          "monitorList": [{"id": mid} for mid in grouped[g]]}
+                         for pos, g in enumerate(ordered)]
           slugs = {p["slug"]: p for p in api.get_status_pages()}
           if slug not in slugs:
               log(f"+ create status page /status/{slug}")
@@ -295,7 +306,9 @@
           if dry_run:
               log(f"dry-run: status page /status/{slug} not saved")
               return
-          log(f"~ save status page /status/{slug} ({len(member_ids)} monitors)")
+          total = sum(len(ids) for ids in grouped.values())
+          log(f"~ save status page /status/{slug} ({total} monitors, "
+              f"{len(ordered)} groups)")
           save_status_page_v2(
               api, api_url,
               slug, id=slugs[slug]["id"], title=page["title"],
@@ -374,6 +387,11 @@ in {
             type = lib.types.str;
             default = "A";
             description = "Record type for type=dns.";
+          };
+          group = lib.mkOption {
+            type = lib.types.str;
+            default = "Services";
+            description = "Status page category for this monitor.";
           };
         };
       });
