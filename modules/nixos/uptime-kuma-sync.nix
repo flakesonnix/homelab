@@ -60,6 +60,7 @@
       import argparse
       import json
       import sys
+      import urllib.request
 
       from uptime_kuma_api import Event, MonitorType, UptimeKumaApi
       from uptime_kuma_api.api import _check_arguments_monitor, _convert_monitor_input
@@ -77,6 +78,50 @@
           _check_arguments_monitor(data)
           with api.wait_for_event(Event.MONITOR_LIST):
               return api._call("add", data)
+
+
+      # lib 1.2.1 _build_status_page_data params (pinned: extra server keys
+      # must not reach it as **kwargs, and analyticsType isn't one of them).
+      _STATUS_PAGE_PARAMS = {
+          "slug", "id", "title", "description", "theme", "published",
+          "showTags", "domainNameList", "googleAnalyticsId", "customCSS",
+          "footerText", "showPoweredBy", "showCertificateExpiry", "icon",
+          "publicGroupList",
+      }
+
+
+      def save_status_page_v2(api, api_url, slug, **kwargs):
+          """save_status_page backport for kuma>=2.1: lib 1.2.1 crashes in
+          get_status_page (`incident` renamed to `incidents`, KeyError) and
+          omits analyticsType (v2 rejects the save with "Invalid analytics
+          type"). Mirrors the lib's save path with raw calls. Remove once
+          nixpkgs ships a v2-capable lib (upstream is unmaintained; the
+          maintained fork is uptime-kuma-api2)."""
+          r1 = api._call("getStatusPage", slug)
+          with urllib.request.urlopen(f"{api_url}/api/status-page/{slug}",
+                                       timeout=15) as resp:
+              r2 = json.load(resp)
+          config = r1["config"]
+          config.update(r2["config"])
+          status_page = {
+              **config,
+              "publicGroupList": r2["publicGroupList"],
+              "maintenanceList": r2.get("maintenanceList", []),
+          }
+          status_page.pop("incident", None)
+          status_page.pop("incidents", None)
+          status_page.pop("maintenanceList")
+          status_page.update(kwargs)
+          params = {k: v for k, v in status_page.items()
+                    if k in _STATUS_PAGE_PARAMS}
+          _slug, config, icon, groups = api._build_status_page_data(**params)
+          # v2 requires analyticsType present (null = no analytics).
+          config["analyticsType"] = status_page.get("analyticsType")
+          r = api._call("saveStatusPage", (_slug, config, icon, groups))
+          # refresh cached list like the lib does (it misses save events)
+          cache = api._event_data.setdefault(Event.STATUS_PAGE_LIST, {})
+          cache[str(config["id"])] = api._call("getStatusPage", slug)["config"]
+          return r
 
       TYPES = {
           "http": MonitorType.HTTP,
@@ -248,7 +293,8 @@
               log(f"dry-run: status page /status/{slug} not saved")
               return
           log(f"~ save status page /status/{slug} ({len(member_ids)} monitors)")
-          api.save_status_page(
+          save_status_page_v2(
+              api, args.api_url,
               slug, id=slugs[slug]["id"], title=page["title"],
               description=page["description"], published=True,
               publicGroupList=want_groups)
