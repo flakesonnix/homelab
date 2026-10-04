@@ -236,6 +236,28 @@
         target = "kodi.home.arpa";
         dnsServer = "10.8.0.30";
       };
+      dash = {
+        type = "http";
+        target = "http://10.8.0.32:8082/";
+      };
+      kodi = {
+        type = "http";
+        target = "http://10.8.0.31:8080/";
+      };
+      maps-osm = {
+        type = "port";
+        target = "10.8.0.27";
+        port = 80;
+      };
+      network-services-http = {
+        type = "port";
+        target = "10.8.0.3";
+        port = 80;
+      };
+      dns-host = {
+        type = "ping";
+        target = "10.8.0.30";
+      };
     };
   };
   sops.secrets."uptime-kuma/admin-password" = {};
