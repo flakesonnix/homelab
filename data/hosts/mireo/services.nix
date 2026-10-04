@@ -147,11 +147,6 @@
         type = "http";
         target = "https://yammat.db210.org/";
       };
-      aptcache = {
-        type = "port";
-        target = "10.8.0.8";
-        port = 3142;
-      };
       monero-orport = {
         type = "port";
         target = "10.8.0.4";

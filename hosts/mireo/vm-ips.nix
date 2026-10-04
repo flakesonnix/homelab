@@ -8,7 +8,6 @@
   yammat = "10.8.0.5";
   cups = "10.8.0.6";
   sshkeys = "10.8.0.7";
-  aptcache = "10.8.0.8";
   uptime-kuma = "10.8.0.9";
   jellyfin = "10.8.0.10";
   ntp = "10.8.0.11";

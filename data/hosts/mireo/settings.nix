@@ -358,7 +358,6 @@
       yammat = "10.8.0.5:3000";
       cups = "10.8.0.6:631";
       sshkeys = "10.8.0.7:80";
-      aptcache = "10.8.0.8:3142";
       # IP from vm-ips.nix (single source) instead of a literal like above.
       uptime-kuma = "${(import ../../../hosts/mireo/vm-ips.nix).uptime-kuma}:3001";
       jellyfin = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";

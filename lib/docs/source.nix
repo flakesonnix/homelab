@@ -38,7 +38,7 @@
       # mireo has no roles.nix (server profile)
       roles = [];
       services = ["dnsmasq" "nixfleet" "nfs" "avahi" "podman"];
-      microvms = ["grafana" "network-services" "monerod" "yammat" "cups" "sshkeys" "aptcache"];
+      microvms = ["grafana" "network-services" "monerod" "yammat" "cups" "sshkeys"];
       modules = ["base" "microvm" "cups" "dnsmasq" "nat"];
       network = {
         ipv4 = "10.8.0.1/24";
@@ -97,14 +97,6 @@
       vcpu = 1;
       services = ["caddy"];
       description = "SSH keys web";
-    };
-    aptcache = {
-      host = "mireo";
-      ip = "10.8.0.8";
-      mem = 512;
-      vcpu = 1;
-      services = ["apt-cacher-ng"];
-      description = "APT cache";
     };
   };
 

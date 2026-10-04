@@ -199,13 +199,6 @@
                   };
                 }
                 {
-                  AptCache = {
-                    icon = "debian";
-                    href = "http://aptcache.home.arpa";
-                    description = "Paket-Cache";
-                  };
-                }
-                {
                   SSH-Keys = {
                     icon = "key";
                     href = "http://sshkeys.home.arpa";

@@ -112,6 +112,9 @@ in {
 
     systemd.tmpfiles.rules = [
       "d ${cfg.dataDir} 0750 kodi kodi - -"
+      # Kodi aborts (SIGABRT) when its log dir is missing instead of
+      # creating it (seen 2026-10-04: kodi.log unwritable) — pre-create.
+      "d ${cfg.dataDir}/.kodi/temp 0750 kodi kodi - -"
       "d ${cfg.dataDir}/.kodi/userdata/addon_data/plugin.video.jellycon 0750 kodi kodi - -"
       "C ${cfg.dataDir}/.kodi/userdata/guisettings.xml 0640 kodi kodi - ${seedGuiSettings}"
       "C ${cfg.dataDir}/.kodi/userdata/sources.xml 0640 kodi kodi - ${seedSources}"
