@@ -251,6 +251,7 @@
       cname = [
         "prometheus.home.arpa,grafana.home.arpa"
         "media.home.arpa,jellyfin.home.arpa"
+        "adguard.home.arpa,dns.home.arpa"
       ];
       # NOTE (dropped 2026-09-16): UCS/AD is gone (libvirt domain ucs5.0
       # retired, no replacement). The AD SRV records lived here; if a new
