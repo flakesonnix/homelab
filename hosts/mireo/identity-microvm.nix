@@ -24,8 +24,8 @@
           group = "keycloak";
         }
       ];
-      # NOTE: no identity-secrets share — /run/secrets/identity doesn't
-      # exist on the host yet (no sops secrets), so keycloak-secrets-setup
+      # NOTE: no identity-secrets share — the per-VM host secrets dir
+      # doesn't exist yet (no sops secrets), so keycloak-secrets-setup
       # will fail inside the guest until they land (guest-local only, never
       # blocks the host switch). A virtiofs share with a missing source
       # would instead fail QEMU at start and break the whole switch

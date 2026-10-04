@@ -522,13 +522,15 @@
   # A virtiofs share whose host source dir doesn't exist kills QEMU at
   # start (socket connect refused) and fails the whole switch + rollback.
   # These VMs have no host sops secrets yet, so their specs must not
-  # reference /run/secrets/<name>. Re-adding a share requires landing the
-  # host secret in the same commit — then drop the name from this list.
+  # declare a share with source /run/secrets/<name> (guest-side staging
+  # scripts referencing the path are fine — only the share breaks QEMU).
+  # Re-adding a share requires landing the host secret in the same commit
+  # — then drop the name from this list.
   secretlessVMs = ["artifacts" "cloud" "communication" "documents" "identity" "management" "media" "postgres" "sync"];
   checkMicrovmSecretsShares = builtins.all builtins.isBool (map (
       vm:
-        forceB (!(lib.hasInfix "/run/secrets/${vm}" (builtins.readFile ../hosts/mireo/${vm}-microvm.nix)))
-        "microvm ${vm}: no /run/secrets/${vm} reference without host sops secrets (breaks QEMU at switch)"
+        forceB (!(lib.hasInfix "source = \"/run/secrets/${vm}\"" (builtins.readFile ../hosts/mireo/${vm}-microvm.nix)))
+        "microvm ${vm}: no share with source /run/secrets/${vm} without host sops secrets (breaks QEMU at switch)"
     )
     secretlessVMs);
 

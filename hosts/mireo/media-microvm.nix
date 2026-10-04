@@ -17,8 +17,8 @@
           group = "immich";
         }
       ];
-      # NOTE: no media-secrets share — /run/secrets/media doesn't exist on
-      # the host yet (no sops secrets). A virtiofs share with a missing
+      # NOTE: no media-secrets share — the per-VM host secrets dir doesn't
+      # exist yet (no sops secrets). A virtiofs share with a missing
       # source fails QEMU at start and breaks the whole switch (2026-10-04
       # incident). Land host sops secrets first, then re-add the share in
       # that commit (and drop "media" from secretlessVMs in

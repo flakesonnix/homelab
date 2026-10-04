@@ -26,11 +26,11 @@
           group = "ntfy";
         }
       ];
-      # NOTE: no communication-secrets share — /run/secrets/communication
-      # doesn't exist on the host yet (no sops secrets). A virtiofs share
-      # with a missing source fails QEMU at start and breaks the whole
-      # switch (2026-10-04 incident). Land host sops secrets first, then
-      # re-add the share in that commit (and drop "communication" from
+      # NOTE: no communication-secrets share — the per-VM host secrets dir
+      # doesn't exist yet (no sops secrets). A virtiofs share with a
+      # missing source fails QEMU at start and breaks the whole switch
+      # (2026-10-04 incident). Land host sops secrets first, then re-add
+      # the share in that commit (and drop "communication" from
       # secretlessVMs in tests/default.nix).
       tmpfiles = [
         "d /data/matrix 0750 matrix matrix - -"

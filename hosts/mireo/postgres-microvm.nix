@@ -17,8 +17,8 @@
           group = "postgres";
         }
       ];
-      # NOTE: no postgres-secrets share — /run/secrets/postgres doesn't
-      # exist on the host yet (no sops secrets), so postgres-secrets-setup
+      # NOTE: no postgres-secrets share — the per-VM host secrets dir
+      # doesn't exist yet (no sops secrets), so postgres-secrets-setup
       # stages nothing inside the guest until they land (guest-local only,
       # never blocks the host switch). A virtiofs share with a missing
       # source would instead fail QEMU at start and break the whole switch
