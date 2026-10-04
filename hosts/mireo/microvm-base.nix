@@ -39,17 +39,18 @@ in {
   systemd.network.enable = true;
   systemd.network.networks."20-lan" = {
     matchConfig.Type = "ether";
-    # IPv4 via DHCP reservation: AdGuard pins this MAC to `ip`
-    # (static_leases generated from the same vm-ips.nix, so the address
+    # IPv4 via DHCP reservation: dnsmasq pins this MAC to `ip`
+    # (dhcp-host generated from the same vm-ips.nix, so the address
     # stays centrally declared). Gateway + DNS server arrive via DHCP
-    # options (router 10.8.0.1, DNS 10.8.0.30 = AdGuard itself);
+    # options (router 10.8.0.1, DNS 10.8.0.30 = AdGuard filter first,
+    # host 10.8.0.1 fallback);
     # extraDns merges on top.
     # Static ULA mirrors the IPv4 last octet (10.8.0.N -> fd00:cafe:1::N),
     # same single source as the MAC above. On-link LAN needs no v6 route;
-    # DNS serves the matching AAAA (generated /etc/hosts on the dns VM).
+    # DNS serves the matching AAAA (dnsmasq host-record on the host).
     address = ["fd00:cafe:1::${lib.last (lib.splitString "." ip)}/64"];
     networkConfig = {
-      DNS = ["10.8.0.30"] ++ extraDns;
+      DNS = ["10.8.0.30" "10.8.0.1"] ++ extraDns;
       DHCP = "ipv4";
       IPv6AcceptRA = false;
     };

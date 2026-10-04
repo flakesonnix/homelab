@@ -1,7 +1,6 @@
 # Single source of truth for static LAN IPs (microVMs on br0).
-# Imported by the *-microvm.nix specs AND by the AdGuard config generator
-# in hosts/mireo/dns-microvm.nix (DHCP static_leases + DNS records) —
-# declare an IP once.
+# Imported by the *-microvm.nix specs AND by the dnsmasq (dhcp-host) +
+# AdGuard (hosts records) config generators — declare an IP once.
 {
   grafana = "10.8.0.2";
   network-services = "10.8.0.3";

@@ -1,18 +1,10 @@
-# DNS + DHCP microVM: AdGuard Home (replaces dnsmasq on mireo).
-# Single source of truth stays hosts/mireo/vm-ips.nix: static DHCP leases
-# (MAC formula identical to microvm-base.nix) and /etc/hosts records
-# (A+AAAA+aliases, served via hostsfile_enabled) are generated from it.
-# Trade-offs vs dnsmasq (accepted): no PXE/TFTP, no FritzBox-PD RAs
-# (ULA RA/DHCPv6 only), GUA-SLAAC degrades to FritzBox scope.
-# Safety: static IPv4 for this VM (no DHCP chicken-and-egg — it IS the
-# DHCP server), rollback = redeploy previous generation (dnsmasq back).
+# DNS filtering microVM: AdGuard Home (blocklists only).
+# dnsmasq on the host stays authoritative for LAN DHCP+DNS; AdGuard is a
+# filtering frontend (DHCP advertises .30 first, host .1 as fallback).
+# /etc/hosts records (A+AAAA+aliases, served via hostsfile_enabled) are
+# generated from hosts/mireo/vm-ips.nix (single source stays).
 {lib, ...}: let
   vmIps = import ./vm-ips.nix;
-  # Must match microvm-base.nix + the old dnsmasq dhcp-host generator.
-  hexDigit = d: builtins.elemAt ["0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "a" "b" "c" "d" "e" "f"] d;
-  macForIp = ip: let
-    lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
-  in "02:00:00:10:08:${hexDigit (builtins.div lastOctet 16)}${hexDigit (lib.mod lastOctet 16)}";
   lastOctetOf = ip: lib.last (lib.splitString "." ip);
   # CNAME-equivalents as extra hosts names (AdGuard rewrites serve A, so
   # aliases ride on the target's lines — same answers, no CNAME needed).
@@ -33,7 +25,7 @@ in {
       mem = 384;
       vcpu = 1;
       tcpPorts = [22 53 3000];
-      udpPorts = [53 67 547];
+      udpPorts = [53];
       volumes = [
         {
           image = "adguard-data.img";
@@ -73,7 +65,8 @@ in {
           v6 = lib.mapAttrs' (name: ip: lib.nameValuePair "fd00:cafe:1::${lastOctetOf ip}" (namesFor name)) base;
         in
           v4 // v6;
-        # Static IPv4: this VM IS the DHCP server (no chicken-and-egg).
+        # Static IPv4 (DHCP would be circular for DNS infra; dnsmasq hands
+        # out .30 statically via reservation anyway).
         # ULA mirrors microvm-base (10.8.0.N -> fd00:cafe:1::N); the address
         # list REPLACES base's, so both families are listed explicitly.
         systemd.network.networks."20-lan" = {
@@ -96,7 +89,10 @@ in {
               bind_hosts = ["0.0.0.0" "::"];
               port = 53;
               bootstrap_dns = ["1.1.1.1" "9.9.9.9"];
-              upstream_dns = ["1.1.1.1" "9.9.9.9" "2606:4700:4700::1111" "2620:fe::9"];
+              # Single upstream: host dnsmasq (.1) answers LAN authoritatively
+              # and forwards the rest (never leaks home.arpa; no upstream
+              # race between local NXDOMAIN and local answer).
+              upstream_dns = ["10.8.0.1"];
               local_domain_name = "home.arpa";
               hostsfile_enabled = true;
               protection_enabled = true;
@@ -116,35 +112,7 @@ in {
                 }
               ];
             };
-            dhcp = {
-              enabled = true;
-              # Guest virtio NIC name (verified live in the dns VM via
-              # `ip -o link`: lo + enp0s3). Empty string leaves the DHCP
-              # server unbound — LAN would have no DHCP after the
-              # dnsmasq→AdGuard migration (2026-10-04 incident).
-              interface_name = "enp0s3";
-              local_domain_name = "home.arpa";
-              dhcpv4 = {
-                gateway_ip = "10.8.0.1";
-                subnet_mask = "255.255.255.0";
-                range_start = "10.8.0.100";
-                range_end = "10.8.0.199";
-                lease_duration = 86400;
-              };
-              dhcpv6 = {
-                enabled = true;
-                range_start = "fd00:cafe:1::100";
-                range_end = "fd00:cafe:1::1ff";
-                lease_duration = 86400;
-              };
-              static_leases =
-                lib.mapAttrsToList (name: ip: {
-                  mac = macForIp ip;
-                  ip = ip;
-                  hostname = name;
-                })
-                vmIps;
-            };
+            # NOTE: no dhcp section on purpose — host dnsmasq owns DHCP.
           };
         };
       };
