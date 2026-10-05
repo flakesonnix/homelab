@@ -1,9 +1,12 @@
 # Common NixOS module for all mireo microvms.
-# Usage: imports = [ (import ./microvm-base.nix { ip = "10.8.0.6"; interfaceId = "vm-cups"; }) ];
+# Usage: imports = [ (import ./microvm-base.nix { name = "cups"; ip = "10.8.0.6"; interfaceId = "vm-cups"; }) ];
+# name selects /var/lib/microvms/<name>/ on the host (stable SSH host keys;
+# provision once per new VM: ssh-keygen -f .../ssh-host-keys/ssh_host_ed25519_key).
 {
   ip,
   interfaceId,
   extraDns ? [],
+  name,
 }: {lib, ...}: let
   keys = import ../../ssh-public-keys.nix {inherit lib;};
   hexDigit = d: builtins.elemAt ["0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "a" "b" "c" "d" "e" "f"] d;
@@ -35,6 +38,22 @@ in {
       tag = "ro-store";
       source = "/nix/store";
       mountPoint = "/nix/.ro-store";
+    }
+    # Stable host keys (host-provisioned, survive rebuilds/reboots —
+    # without this every VM rebuild rotates keys and breaks automation
+    # SSH like epg-refresh). Replaces the ephemeral default hostKeys.
+    {
+      proto = "virtiofs";
+      tag = "ssh-host-keys";
+      source = "/var/lib/microvms/${name}/ssh-host-keys";
+      mountPoint = "/run/vm-host-keys";
+    }
+  ];
+
+  services.openssh.hostKeys = [
+    {
+      path = "/run/vm-host-keys/ssh_host_ed25519_key";
+      type = "ed25519";
     }
   ];
 

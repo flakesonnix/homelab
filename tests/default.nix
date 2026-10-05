@@ -387,7 +387,7 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkMopidy && checkMinecraft && checkMicrovmSecretsShares;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkMopidy && checkMinecraft && checkMicrovmSecretsShares && checkMicrovmHostKeys;
 
   # ---- voip module unit tests (eval-time, no secrets, no network) ----
   # NOTE: voip.nix integrates with asterisk.nix (localTest assertion +
@@ -644,6 +644,25 @@
         "microvm ${vm}: no share with source /run/secrets/${vm} without host sops secrets (breaks QEMU at switch)"
     )
     secretlessVMs);
+
+  # ---- microvm stable host keys (no rotation on rebuild) ----
+  hostKeysCfg = nixosEval [
+    microvm.nixosModules.microvm
+    (import ../hosts/mireo/microvm-base.nix {
+      name = "testvm";
+      ip = "10.8.0.99";
+      interfaceId = "vm-testvm";
+    })
+  ];
+  checkMicrovmHostKeys =
+    forceB (hostKeysCfg.services.openssh.hostKeys
+      == [
+        {
+          path = "/run/vm-host-keys/ssh_host_ed25519_key";
+          type = "ed25519";
+        }
+      ]) "microvm: stable hostKeys replace ephemeral defaults"
+    && forceB (lib.any (s: (s.tag or "") == "ssh-host-keys" && s.source == "/var/lib/microvms/testvm/ssh-host-keys") hostKeysCfg.microvm.shares) "microvm: host key share wired to per-VM host dir";
 
   # ---- mopidy module unit tests (eval-time, no audio hardware) ----
   mopidyEnabled = nixosEval [
