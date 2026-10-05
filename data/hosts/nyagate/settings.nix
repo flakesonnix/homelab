@@ -102,7 +102,12 @@
     script = ''
       ip tunnel del he-ipv6 2>/dev/null || true
       ip tunnel add he-ipv6 mode sit remote 216.66.84.46 local 188.220.148.24 ttl 255
-      ip link set he-ipv6 up mtu 1480
+      # MTU 1280 (IPv6 minimum), NOT 1480: the provider path drops
+      # encapsulated packets above ~1450 bytes (measured 2026-10-05:
+      # 1448 pass, 1458 die), and the stack ignored advmss for data
+      # segments (1408B segments with MSS 1340 observed). Interface MTU
+      # is always honored (MSS = MTU - headers), advmss/mangle were not.
+      ip link set he-ipv6 up mtu 1280
       # Kein GSO/TSO auf dem SIT-Device (Diagnose 2026-09-14): der Kernel
       # batcht sonst einzelne Writes zu >MTU-SKBs, das Device fragmentiert
       # statt zu segmentieren, und das 2. Fragment kommt nie an (Anbieter
