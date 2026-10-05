@@ -387,7 +387,7 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkMopidy && checkMinecraft && checkMicrovmSecretsShares && checkMicrovmHostKeys;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkMopidy && checkMinecraft && checkMicrovmSecretsShares && checkMicrovmHostKeys && checkEpg;
 
   # ---- voip module unit tests (eval-time, no secrets, no network) ----
   # NOTE: voip.nix integrates with asterisk.nix (localTest assertion +
@@ -695,6 +695,19 @@
     && forceB (lib.hasInfix "snd-usb-audio" (builtins.toString mopidyEnabled.boot.kernelModules)) "mopidy: USB audio module loaded"
     && forceB (builtins.elem 6600 mopidyEnabled.networking.firewall.interfaces.wg0.allowedTCPPorts) "mopidy: MPD port open on VPN"
     && forceB (!(mopidyDisabled.systemd.services ? mopidy)) "mopidy: no service when disabled";
+
+  # ---- epg-refresh unit tests (must never block switch/rollback) ----
+  epgEnabled = nixosEval [
+    sopsStub
+    ../modules/nixos/epg-refresh.nix
+    {
+      services.epg-refresh.enable = true;
+      services.epg-refresh.apiTokenFile = "/run/secrets/jellyfin/epg-api-token";
+    }
+  ];
+  checkEpg =
+    forceB (epgEnabled.systemd.services.epg-refresh.wantedBy == []) "epg: never wanted by multi-user (timer-driven only)"
+    && forceB (epgEnabled.systemd.timers.epg-refresh.timerConfig.OnCalendar == "daily") "epg: daily convergence timer";
 
   # ---- minecraft module unit tests (eval-time, no game) ----
   minecraftEnabled = nixosEval [

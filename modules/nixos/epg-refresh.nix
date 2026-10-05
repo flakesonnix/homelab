@@ -233,7 +233,10 @@ in {
 
     systemd.services.epg-refresh = {
       description = "XMLTV-Guide bauen (iptv-org/epg) und auf Jellyfin schieben";
-      wantedBy = ["multi-user.target"];
+      # No wantedBy on purpose: starting at switch time races the jellyfin
+      # VM restart (2026-10-05: connection refused mid-deploy failed the
+      # whole x270 switch + revoked all nodes). Timer-driven only; a failed
+      # run retries at the next timer tick, never blocks deploys.
       wants = ["network-online.target"];
       after = ["network-online.target"];
       serviceConfig = {
