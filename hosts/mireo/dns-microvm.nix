@@ -90,12 +90,19 @@ in {
               bind_hosts = ["0.0.0.0" "::"];
               port = 53;
               bootstrap_dns = ["1.1.1.1" "9.9.9.9"];
-              # Single upstream: host dnsmasq (.1) answers LAN authoritatively
-              # and forwards the rest (never leaks home.arpa; no upstream
-              # race between local NXDOMAIN and local answer).
-              upstream_dns = ["10.8.0.1"];
+              # Public upstreams directly: host dnsmasq REFUSES queries with
+              # the DO bit (no DNSSEC in its build) and AdGuard always sets
+              # it upstream — .1 as upstream broke all external resolution
+              # (seen 2026-10-05, REFUSED). LAN names never leave anyway
+              # (local_domain_name + hostsfile answer them locally).
+              upstream_dns = ["1.1.1.1" "9.9.9.9" "2606:4700:4700::1111" "2620:fe::9"];
               local_domain_name = "home.arpa";
               hostsfile_enabled = true;
+              # Cap query-log retention: default 90d filled 276M/512M volume
+              # (seen 2026-10-05, mostly NTP pool noise). 7d is plenty.
+              querylog = {
+                interval = "168h";
+              };
               protection_enabled = true;
               filtering_enabled = true;
               filters = [

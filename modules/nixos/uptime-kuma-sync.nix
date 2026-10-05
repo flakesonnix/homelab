@@ -31,11 +31,11 @@
 
   py = pkgs.python3.withPackages (ps: [ps.uptime-kuma-api]);
 
-  # Store-safe JSON (names/targets/groups only, no secrets).
+  # Store-safe JSON (names/targets/groups/tags only, no secrets).
   desiredJson = pkgs.writeText "uptime-kuma-monitors.json" (builtins.toJSON
     (lib.mapAttrs (name: m: {
         inherit name;
-        inherit (m) type target interval maxRetries dnsServer dnsType group;
+        inherit (m) type target interval maxRetries dnsServer dnsType group tags;
         port = m.port;
       })
       cfg.monitors));
@@ -255,6 +255,13 @@
                   log(f"in sync ({len(desired)} monitors)")
               elif args.dry_run:
                   log("dry-run: no writes performed")
+              # Tags are annotations, not contract: loud log on failure,
+              # never fail the sync (or the deploy) over them.
+              try:
+                  sync_monitor_tags(api, desired, live, existing,
+                                    args.dry_run)
+              except Exception as e:  # noqa: BLE001
+                  log(f"tags failed, monitors are in sync: {e}")
               with open(args.status_page, encoding="utf-8") as f:
                   page = json.load(f)
               if page.get("slug"):
@@ -273,9 +280,48 @@
               api.disconnect()
 
 
-      # Display order of the status page categories (groups not listed
-      # here sort in alphabetically after the known ones).
-      GROUP_ORDER = ["Services", "Network", "DNS", "Public"]
+      # Display order of the status page categories = sites (groups not
+      # listed here sort in alphabetically after the known ones).
+      GROUP_ORDER = ["Homelab", "Internet", "Remote"]
+
+
+      def sync_monitor_tags(api, desired, live, existing, dry_run):
+          """Ensure monitor tag assignments: automatic `target` tag (so the
+          probed address is one click away in the UI) plus the Nix `tags`
+          map. Additive only — UI-added tags are never deleted. Failures
+          are loud but never fail the sync (annotations, not contract)."""
+          try:
+              server_tags = {t["name"]: t for t in api.get_tags()}
+          except Exception as e:  # noqa: BLE001
+              log(f"tags skipped (cannot list server tags): {e}")
+              return
+          for name, spec in desired.items():
+              if name not in live:
+                  continue
+              want = {"target": spec["target"]}
+              want.update(spec.get("tags", {}))
+              have = set()
+              for t in existing.get(name, {}).get("tags", []) or []:
+                  tid = t.get("tag_id", t.get("id"))
+                  if tid is not None:
+                      have.add((tid, t.get("value", "")))
+              for tag_name, value in want.items():
+                  if tag_name not in server_tags:
+                      if dry_run:
+                          log(f"tags dry-run: would create tag {tag_name}")
+                          continue
+                      log(f"+ create tag {tag_name}")
+                      server_tags[tag_name] = api.add_tag(
+                          name=tag_name, color="#5b8def")
+                  tid = server_tags[tag_name]["id"]
+                  if (tid, value) in have:
+                      continue
+                  if dry_run:
+                      log(f"tags dry-run: would tag {name} "
+                          f"{tag_name}={value}")
+                      continue
+                  log(f"+ tag {name} {tag_name}={value}")
+                  api.add_monitor_tag(tid, live[name], value)
 
 
       def sync_status_page(api, api_url, page, live, desired, dry_run):
@@ -289,7 +335,7 @@
           for name in page["monitors"]:
               if name in live:
                   grouped.setdefault(
-                      desired[name].get("group", "Services"), []).append(live[name])
+                      desired[name].get("group", "Homelab"), []).append(live[name])
               else:
                   log(f"status page: monitor {name} unknown, skipped")
           ordered = sorted(grouped, key=lambda g: (
@@ -390,8 +436,17 @@ in {
           };
           group = lib.mkOption {
             type = lib.types.str;
-            default = "Services";
-            description = "Status page category for this monitor.";
+            default = "Homelab";
+            description = "Status page category (site) for this monitor.";
+          };
+          tags = lib.mkOption {
+            type = lib.types.attrsOf lib.types.str;
+            default = {};
+            description = ''
+              Extra monitor tags (name -> value), e.g. { role = "metrics"; }.
+              The target address is always tagged automatically. Tags are
+              only ever added, never deleted (UI-added tags survive).
+            '';
           };
         };
       });

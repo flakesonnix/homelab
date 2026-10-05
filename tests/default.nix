@@ -550,12 +550,24 @@
     class FakeApi:
         def __init__(self):
             self.calls = []
+            self.tag_ids = {}
             self._event_data = {Event.STATUS_PAGE_LIST: {
                 "7": {"slug": "homelab", "id": 7}}}
         def _build_status_page_data(self, **kwargs):
             return UptimeKumaApi._build_status_page_data(_versioned, **kwargs)
         def get_status_pages(self):
             return list(self._event_data[Event.STATUS_PAGE_LIST].values())
+        def get_tags(self):
+            return [{"id": i, "name": n} for n, i in self.tag_ids.items()]
+        def add_tag(self, **kwargs):
+            self.calls.append(("addTag", (kwargs,)))
+            self.tag_ids[kwargs["name"]] = 100 + len(self.tag_ids)
+            return {"id": self.tag_ids[kwargs["name"]],
+                    "name": kwargs["name"]}
+        def add_monitor_tag(self, tag_id, monitor_id, value=""):
+            self.calls.append(("addMonitorTag", (tag_id, monitor_id,
+                                                 value)))
+            return {"msg": "Added Successfully."}
         def _call(self, method, *args):
             self.calls.append((method, args))
             if method == "getStatusPage":
@@ -567,7 +579,10 @@
     page = {"slug": "homelab", "title": "Homelab Status",
             "description": "d", "monitors": ["a", "b", "ghost"]}
     live = {"a": 10, "b": 20}
-    desired = {"a": {"group": "Network"}, "b": {}}
+    existing = {"a": {"tags": []}, "b": {"tags": []}}
+    desired = {"a": {"group": "Remote", "target": "10.8.0.9",
+                     "tags": {"role": "metrics"}},
+               "b": {"target": "http://10.8.0.2:3000/"}}
 
     api = FakeApi()
     with patch.object(urllib.request, "urlopen", return_value=FakeResp()):
@@ -580,16 +595,24 @@
     assert config["id"] == 7, config
     assert config["title"] == "Homelab Status", config
     assert config["analyticsType"] is None, config
-    assert groups == [{"name": "Services", "weight": 1,
+    assert groups == [{"name": "Homelab", "weight": 1,
                        "monitorList": [{"id": 20}]},
-                      {"name": "Network", "weight": 2,
+                      {"name": "Remote", "weight": 2,
                        "monitorList": [{"id": 10}]}], groups
+    g["sync_monitor_tags"](api, desired, live, existing, False)
+    assert api.tag_ids == {"target": 100, "role": 101}, api.tag_ids
+    assigned = {(c[1][0], c[1][1], c[1][2]) for c in api.calls
+                if c[0] == "addMonitorTag"}
+    assert assigned == {(100, 10, "10.8.0.9"), (101, 10, "metrics"),
+                        (100, 20, "http://10.8.0.2:3000/")}, assigned
 
     dry = FakeApi()
     with patch.object(urllib.request, "urlopen", return_value=FakeResp()):
         g["sync_status_page"](dry, "http://10.8.0.9:3001", page, live,
                               desired, True)
     assert not [c for c in dry.calls if c[0] == "saveStatusPage"], dry.calls
+    g["sync_monitor_tags"](dry, desired, live, existing, True)
+    assert not [c for c in dry.calls if c[0] in ("addTag", "addMonitorTag")], dry.calls
     print("kuma status page v2 save: OK")
   '';
   checkKuma =
@@ -601,7 +624,8 @@
     && forceB (lib.hasInfix "http://10.8.0.9:3001" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: script targets the API"
     && forceB (lib.hasInfix "uptime-kuma-monitors.json" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: monitor data wired into service"
     && forceB (lib.hasInfix "--status-page" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: status page wired into service"
-    && forceB (kumaEnabled.services.uptime-kuma-sync.monitors.grafana.group == "Services") "kuma: monitor group defaults to Services"
+    && forceB (kumaEnabled.services.uptime-kuma-sync.monitors.grafana.group == "Homelab") "kuma: monitor group defaults to Homelab"
+    && forceB (kumaEnabled.services.uptime-kuma-sync.monitors.grafana.tags == {}) "kuma: monitor tags default to empty"
     && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.serviceConfig.Restart == "on-failure") "kuma: retries transient login flakes"
     && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.unitConfig.StartLimitBurst == 3) "kuma: bounded retries, no infinite loop";
 
