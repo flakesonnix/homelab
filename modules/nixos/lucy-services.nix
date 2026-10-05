@@ -437,7 +437,7 @@
           };
           musicDirectory = lib.mkOption {
             type = lib.types.path;
-            default = "/data/Music";
+            default = "/data/Jellyfin/Music";
           };
           alsaDevice = lib.mkOption {
             type = lib.types.nonEmptyStr;

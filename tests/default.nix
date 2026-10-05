@@ -671,7 +671,7 @@
     && forceB (mopidyEnabled.services.mopidy.settings.http.hostname == "127.0.0.1") "mopidy: HTTP loopback only (Caddy in front)"
     && forceB (lib.hasInfix "alsasink" mopidyEnabled.services.mopidy.settings.audio.output) "mopidy: direct ALSA output (no PipeWire)"
     && forceB (lib.hasInfix "hw:CARD=CODEC" mopidyEnabled.services.mopidy.settings.audio.output) "mopidy: stable ALSA device (no hw:N,M)"
-    && forceB (mopidyEnabled.services.mopidy.settings.local.media_dir == "/data/Music") "mopidy: music on /data"
+    && forceB (mopidyEnabled.services.mopidy.settings.local.media_dir == "/data/Jellyfin/Music") "mopidy: music on /data"
     && forceB (builtins.elem "audio" mopidyEnabled.users.users.mopidy.extraGroups) "mopidy: audio group for USB interface"
     && forceB (lib.hasInfix "snd-usb-audio" (builtins.toString mopidyEnabled.boot.kernelModules)) "mopidy: USB audio module loaded"
     && forceB (builtins.elem 6600 mopidyEnabled.networking.firewall.interfaces.wg0.allowedTCPPorts) "mopidy: MPD port open on VPN"
