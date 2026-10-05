@@ -387,7 +387,7 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkKodiBox && checkMinecraft && checkMicrovmSecretsShares;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkMopidy && checkMinecraft && checkMicrovmSecretsShares;
 
   # ---- voip module unit tests (eval-time, no secrets, no network) ----
   # NOTE: voip.nix integrates with asterisk.nix (localTest assertion +
@@ -621,36 +621,37 @@
     )
     secretlessVMs);
 
-  # ---- kodi-box module unit tests (eval-time, no hardware) ----
-  kodiBoxEnabled = nixosEval [
+  # ---- mopidy module unit tests (eval-time, no audio hardware) ----
+  mopidyEnabled = nixosEval [
+    sopsStub
     ../modules/nixos/lucy-services.nix
-    ../modules/nixos/kodi-box.nix
+    ../modules/nixos/mopidy.nix
     {
-      lucy.services."kodi-box" = {
-        enable = true;
-        jellyfinHost = "10.8.0.10";
-      };
+      lucy.services.mopidy.enable = true;
+      sops.placeholder."mopidy/jellyfin-password" = "/run/secrets/mopidy/jellyfin-password";
     }
   ];
-  kodiBoxDisabled = nixosEval [
+  mopidyDisabled = nixosEval [
+    sopsStub
     ../modules/nixos/lucy-services.nix
-    ../modules/nixos/kodi-box.nix
+    ../modules/nixos/mopidy.nix
   ];
-  checkKodiBox =
-    forceB (kodiBoxDisabled.lucy.services."kodi-box".enable == false) "kodibox: must be disabled by default"
-    && forceB (kodiBoxEnabled.systemd.services.kodi.wantedBy == ["multi-user.target"]) "kodibox: service wanted by multi-user"
-    && forceB (kodiBoxEnabled.systemd.services.kodi.serviceConfig.User == "kodi") "kodibox: service runs as kodi"
-    && forceB (lib.hasInfix "xvfb-run" kodiBoxEnabled.systemd.services.kodi.script) "kodibox: headless via Xvfb"
-    && forceB (kodiBoxEnabled.hardware.graphics.enable == true) "kodibox: Mesa GL for X11 init (no GPU in VM)"
-    && forceB (builtins.elem 8080 kodiBoxEnabled.networking.firewall.allowedTCPPorts) "kodibox: web UI port open"
-    && forceB (builtins.elem 9090 kodiBoxEnabled.networking.firewall.allowedTCPPorts) "kodibox: JSON-RPC port open"
-    && forceB (builtins.elem 9777 kodiBoxEnabled.networking.firewall.allowedUDPPorts) "kodibox: EventServer port open"
-    && forceB (kodiBoxEnabled.services.avahi.enable == true) "kodibox: avahi for Kore/Yatse discovery"
-    && forceB (lib.hasInfix "snd-usb-audio" (builtins.toString kodiBoxEnabled.boot.kernelModules)) "kodibox: USB audio module loaded"
-    && forceB (kodiBoxEnabled.lucy.services."kodi-box".jellyfinHost == "10.8.0.10") "kodibox: jellyfin host plumbed"
-    && forceB (lib.any (r: lib.hasInfix "addon_data/plugin.video.jellycon/settings.xml" r) kodiBoxEnabled.systemd.tmpfiles.rules) "kodibox: jellycon server seed wired"
-    && forceB (lib.any (r: lib.hasInfix "userdata/guisettings.xml" r) kodiBoxEnabled.systemd.tmpfiles.rules) "kodibox: guisettings seed wired"
-    && forceB (!(kodiBoxDisabled.systemd.services ? kodi)) "kodibox: no service when disabled";
+  checkMopidy =
+    forceB (mopidyDisabled.lucy.services.mopidy.enable == false) "mopidy: must be disabled by default"
+    && forceB (mopidyEnabled.services.mopidy.enable == true) "mopidy: service enabled"
+    && forceB (builtins.elem pkgs.mopidy-mpd mopidyEnabled.services.mopidy.extensionPackages) "mopidy: MPD protocol for M.A.L.P./mpc"
+    && forceB (builtins.elem pkgs.mopidy-local mopidyEnabled.services.mopidy.extensionPackages) "mopidy: local files backend"
+    && forceB (builtins.elem pkgs.mopidy-jellyfin mopidyEnabled.services.mopidy.extensionPackages) "mopidy: jellyfin backend"
+    && forceB (builtins.elem pkgs.mopidy-iris mopidyEnabled.services.mopidy.extensionPackages) "mopidy: iris web client"
+    && forceB (mopidyEnabled.services.mopidy.settings.mpd.hostname == "10.8.0.1") "mopidy: MPD on LAN, not 0.0.0.0"
+    && forceB (mopidyEnabled.services.mopidy.settings.http.hostname == "127.0.0.1") "mopidy: HTTP loopback only (Caddy in front)"
+    && forceB (lib.hasInfix "alsasink" mopidyEnabled.services.mopidy.settings.audio.output) "mopidy: direct ALSA output (no PipeWire)"
+    && forceB (lib.hasInfix "hw:CARD=CODEC" mopidyEnabled.services.mopidy.settings.audio.output) "mopidy: stable ALSA device (no hw:N,M)"
+    && forceB (mopidyEnabled.services.mopidy.settings.local.media_dir == "/data/Music") "mopidy: music on /data"
+    && forceB (builtins.elem "audio" mopidyEnabled.users.users.mopidy.extraGroups) "mopidy: audio group for USB interface"
+    && forceB (lib.hasInfix "snd-usb-audio" (builtins.toString mopidyEnabled.boot.kernelModules)) "mopidy: USB audio module loaded"
+    && forceB (builtins.elem 6600 mopidyEnabled.networking.firewall.interfaces.wg0.allowedTCPPorts) "mopidy: MPD port open on VPN"
+    && forceB (!(mopidyDisabled.systemd.services ? mopidy)) "mopidy: no service when disabled";
 
   # ---- minecraft module unit tests (eval-time, no game) ----
   minecraftEnabled = nixosEval [
@@ -680,6 +681,10 @@
   sopsStub = {lib, ...}: {
     options.sops = {
       secrets = lib.mkOption {
+        type = lib.types.attrs;
+        default = {};
+      };
+      placeholder = lib.mkOption {
         type = lib.types.attrs;
         default = {};
       };

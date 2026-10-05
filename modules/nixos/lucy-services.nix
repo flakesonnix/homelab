@@ -428,32 +428,28 @@
       });
     };
 
-    kodi-box = lib.mkOption {
+    mopidy = lib.mkOption {
       type = lib.types.submodule ({config, ...}: {
         options = {
           enable = lib.mkOption {
             type = lib.types.bool;
             default = false;
           };
-          dataDir = lib.mkOption {
+          musicDirectory = lib.mkOption {
             type = lib.types.path;
-            default = "/var/lib/kodi";
+            default = "/data/Music";
+          };
+          alsaDevice = lib.mkOption {
+            type = lib.types.nonEmptyStr;
+            default = "hw:CARD=CODEC,DEV=0";
           };
           jellyfinHost = lib.mkOption {
             type = lib.types.nonEmptyStr;
-            default = "10.8.0.10";
+            default = "10.8.0.10:8096";
           };
-          httpPort = lib.mkOption {
-            type = lib.types.port;
-            default = 8080;
-          };
-          jsonRpcPort = lib.mkOption {
-            type = lib.types.port;
-            default = 9090;
-          };
-          eventPort = lib.mkOption {
-            type = lib.types.port;
-            default = 9777;
+          jellyfinUser = lib.mkOption {
+            type = lib.types.nonEmptyStr;
+            default = "mopidy";
           };
         };
       });

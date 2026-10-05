@@ -26,7 +26,6 @@
     ./communication-microvm.nix
     ./remote-microvm.nix
     ./maps-microvm.nix
-    ./kodi-microvm.nix
     ./dash-microvm.nix
   ];
 

@@ -170,14 +170,10 @@
     '';
   };
 
-  # --- USB passthrough for the Kodi music-box VM ---
-  # Behringer Xenyx 302USB (TI PCM2902, 08bb:2902): QEMU usb-host needs
-  # host-side access. microvm.nix sets up PCI permissions automatically,
-  # but USB needs this manual rule (GROUP=kvm, same as upstream docs).
-  # Must stay in sync with microvm.devices in hosts/mireo/kodi-microvm.nix.
-  services.udev.extraRules = ''
-    SUBSYSTEM=="usb", ATTR{idVendor}=="08bb", ATTR{idProduct}=="2902", GROUP="kvm"
-  '';
+  # --- USB audio interface for MPD (host ALSA, no VM) ---
+  # Behringer Xenyx 302USB (TI PCM2902, 08bb:2902): default ALSA nodes
+  # are already root:audio, the mpd user just joins the audio group
+  # (see modules/nixos/mpd.nix). No manual udev rule needed.
 
   # --- libvirtd (virt-manager remote target, Weg A) ---
   # Desktop-Client (x270) verbindet via qemu+ssh://root@10.8.0.1/system.
@@ -381,7 +377,8 @@
       # Alias vhost (same target as jellyfin; DNS CNAME above).
       media = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
       # Kodi music box web UI (Chorus) + JSON-RPC over HTTP.
-      kodi = "${(import ../../../hosts/mireo/vm-ips.nix).kodi}:8080";
+      # Mopidy web client (Iris on localhost, LAN-only via Caddy).
+      music = "127.0.0.1:6680";
       # Homelab dashboard (Homepage).
       dash = "${(import ../../../hosts/mireo/vm-ips.nix).dash}:8082";
       # AdGuard Home (filtering + stats UI; DHCP/DNS authoritative: dnsmasq).

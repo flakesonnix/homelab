@@ -71,10 +71,10 @@
                   };
                 }
                 {
-                  Kodi = {
-                    icon = "kodi";
-                    href = "http://kodi.home.arpa";
-                    description = "Musikbox (Behringer)";
+                  Music = {
+                    icon = "musicbrainz";
+                    href = "http://music.home.arpa";
+                    description = "Musik (MPD + Behringer)";
                   };
                 }
                 {

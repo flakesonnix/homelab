@@ -12,6 +12,7 @@
     prometheus = "grafana";
     media = "jellyfin";
     status = "uptime-kuma";
+    adguard = "dns";
   };
   aliasNamesFor = host:
     lib.concatLists (lib.mapAttrsToList (alias: target:

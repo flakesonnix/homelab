@@ -93,6 +93,20 @@
     enable = true;
   };
 
+  # --- Mopidy music server (host ALSA -> USB mixer, no VM) ---
+  # Replaces the retired kodi music-box VM. Backends: local /data/Music,
+  # Jellyfin, streams/radio. Clients: M.A.L.P. (Android), mpc CLI, Iris
+  # web UI via Caddy (music.home.arpa). Spotify/SoundCloud/YouTube are
+  # deliberately NOT wired yet (all fragile, see docs, Oct 2026).
+  lucy.services.mopidy = {
+    enable = true;
+  };
+  # Jellyfin password for the mopidy backend user. Bootstrap: create user
+  # `mopidy` on Jellyfin (10.8.0.10), then replace the placeholder:
+  #   sops set hosts/mireo/secrets.yaml '["mopidy"]["jellyfin-password"]' '"<pw>"'
+  # Until then the jellyfin backend logs auth errors (others keep working).
+  sops.secrets."mopidy/jellyfin-password" = {};
+
   # --- Declarative Uptime Kuma monitors (authoritative API sync) ---
   # Targets verified live 2026-09-16 (only 2xx/3xx + reachable hosts).
   # Skipped deliberately: x270 (roaming), notifications (no channel yet).
@@ -256,7 +270,7 @@
       };
       lan-dns-adguard = {
         type = "dns";
-        target = "kodi.home.arpa";
+        target = "music.home.arpa";
         dnsServer = "10.8.0.30";
         group = "DNS";
       };
@@ -264,9 +278,16 @@
         type = "http";
         target = "http://10.8.0.32:8082/";
       };
-      kodi = {
+      mpd = {
+        type = "port";
+        target = "10.8.0.1";
+        port = 6600;
+        group = "Services";
+      };
+      music = {
         type = "http";
-        target = "http://10.8.0.31:8080/";
+        target = "http://music.home.arpa/";
+        group = "Services";
       };
       maps-osm = {
         type = "port";
