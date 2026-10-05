@@ -4,10 +4,17 @@
   ...
 }: {
   lucy.base.enable = true;
+  # All owner keys: 5× github.com/flakesonnix.keys + x270-local omen key
+  # + helianthus deploy key. Same set on every host with SSH.
   lucy.base.sshKey = [
-  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS"
-];
-  lucy.base.sshKeyComment = "lucy@x270";
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOgPFwTysg5vOZ77Zqo9AehacYvO4iTm/T4QTy7MtfD2"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzrW5cHMre50s8jFSbG6Yzg2TlQkKNQ59qRejIRUM0T"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFSg7uG+/7pn6biGGzHTynH7FZUu0YzhfurY0L5GW7Di"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINMermWS2Yxd5lthm6QpCxooP08ppv2+MJxYbHhoBYCz"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOppWJbYYY/Uwy2x4fb5RUUW+VLzLkRODyiha6QRM/tW lucy@omen"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFrxXlvevZfbBd5Ey07hahyXQYrDjk/0I7mrERillcHZ helianthus@nixos"
+  ];
 
   networking.hostName = "x270";
   networking.networkmanager.enable = true;

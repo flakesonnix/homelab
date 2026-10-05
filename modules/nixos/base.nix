@@ -24,11 +24,6 @@ in {
         type = lib.types.listOf lib.types.str;
         description = "SSH public keys for user authentication (one per line, with comment)";
       };
-      sshKeyComment = lib.mkOption {
-        type = lib.types.null;
-        default = null;
-        description = "";
-      };
       initrdSshPort = lib.mkOption {
         type = lib.types.int;
         default = 2222;

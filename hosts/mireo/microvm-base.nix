@@ -13,7 +13,9 @@
 in {
   system.stateVersion = "25.11";
 
-  users.users.root.openssh.authorizedKeys.keys = [keys.lucy.servers];
+  # keys file holds one key per line (all owner keys); split into list
+  # entries (tolerates trailing newline).
+  users.users.root.openssh.authorizedKeys.keys = builtins.filter (k: k != "") (lib.splitString "\n" keys.lucy.servers);
   services.openssh = {
     enable = true;
     settings.PermitRootLogin = "yes";
