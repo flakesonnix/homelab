@@ -20,8 +20,7 @@ All via `microvm.nixosModules.host`, tap→br0, MAC derived from IP, units `micr
 | yammat | 10.8.0.5 | 2304M | 2 | 8G pg +128M | YAMMAT event management :3000 |
 | cups | 10.8.0.6 | 512M | 1 | 256M | CUPS IPP print server, Epson ET-2860 + Lexmark — [[40-Guides/Printing|printing guide]] |
 | sshkeys | 10.8.0.7 | 256M | 1 | — | Nginx serving SSH public keys |
-| aptcache | 10.8.0.8 | 512M | 1 | 8G | apt-cacher-ng caching proxy — `docs/apt-cache.md` |
-| … | … | … | … | … | … (uptime-kuma .9, jellyfin .10, ntp .11 — table lags, see `vm-ips.nix`) |
+| … | … | … | … | … | … (26 VMs total as of Oct 2026 — uptime-kuma .9, jellyfin .10, ntp .11, lldap .12, pocket-id .13, cloud .14, management .15, devops .17, artifacts .20, media .21, documents .22, communication .23, remote .25, sync .26, maps .27, postgres .28, identity .29, dns .30, dash .32 — full map in `hosts/mireo/vm-ips.nix`; retired: aptcache .8 (2026-10-05), kodi music-box (replaced by Mopidy)) |
 | lldap | 10.8.0.12 | 512M | 1 | 512M | LDAP directory `dc=home,dc=arpa` (:3890 + UI :17170) |
 
 ## Ops

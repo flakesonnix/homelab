@@ -20,6 +20,6 @@ SORT file.name ASC
 - [[40-Guides/New-Host-VM|New host / new VM]]
 - [[40-Guides/Printing|Printing]]
 - [[40-Guides/Audio-Latency|Audio latency]]
-- [[40-Guides/Apt-Cache|APT cache]]
+- [[40-Guides/Apt-Cache|APT cache]] (retired 2026-10-05)
 - [[40-Guides/NFS-Client|NFS client]]
 - [[40-Guides/Troubleshooting|Troubleshooting]]

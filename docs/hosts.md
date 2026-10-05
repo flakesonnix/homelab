@@ -15,10 +15,30 @@ Internet (IPv4 + IPv6 via FritzBox)
     ├── 10.8.0.5  yammat microvm      (YAMMAT event management)
     ├── 10.8.0.6  cups microvm        (CUPS print server)
     ├── 10.8.0.7  sshkeys microvm     (SSH public key web)
-    ├── 10.8.0.8  aptcache microvm    (apt-cacher-ng proxy)
     ├── 10.8.0.9  uptime-kuma microvm (status monitoring :3001)
     ├── 10.8.0.10 jellyfin microvm    (media server :8096)
     ├── 10.8.0.11 ntp microvm         (chrony NTP :123/udp)
+    ├── 10.8.0.12 lldap microvm       (LDAP directory)
+    ├── 10.8.0.13 pocket-id microvm   (OIDC provider)
+    ├── 10.8.0.14 cloud microvm       (Nextcloud, stub)
+    ├── 10.8.0.15 management microvm  (NetBox + LibreNMS, stub)
+    ├── 10.8.0.16 —                   (reserved: librenms, unassigned)
+    ├── 10.8.0.17 devops microvm       (Hydra + Woodpecker CI, stub)
+    ├── 10.8.0.18 —                   (reserved: hydra, unassigned)
+    ├── 10.8.0.19 —                   (reserved: registry, unassigned)
+    ├── 10.8.0.20 artifacts microvm   (Attic cache + OCI registry)
+    ├── 10.8.0.21 media microvm       (Immich, stub)
+    ├── 10.8.0.22 documents microvm   (Paperless, stub)
+    ├── 10.8.0.23 communication microvm (Matrix + ntfy)
+    ├── 10.8.0.24 —                   (reserved: ntfy, unassigned)
+    ├── 10.8.0.25 remote microvm       (RustDesk relay)
+    ├── 10.8.0.26 sync microvm        (Syncthing, stub)
+    ├── 10.8.0.27 maps microvm        (OSM tiles)
+    ├── 10.8.0.28 postgres microvm    (PostgreSQL platform, stub)
+    ├── 10.8.0.29 identity microvm    (OpenLDAP + Keycloak, stub)
+    ├── 10.8.0.30 dns microvm         (AdGuard Home filtering :53/:3000)
+    ├── 10.8.0.32 dash microvm        (Homepage dashboard :8082)
+    ├── 10.8.0.193 ff-bb              (Freifunk box, DHCP reservation)
     └── (DHCP)      x270 (dynamic, see below)
 ```
 
@@ -92,22 +112,39 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 - NFS export of `/data` to `10.8.0.0/24`
 - Avahi mDNS advertising NFS share (`_nfs._tcp`) for Nautilus autodiscovery
 - Metrics via Grafana/Prometheus + uptime-kuma alerting + nixfleet agent (netdata dropped 2026-09-16)
-- Caddy reverse proxy on `:80` — every web UI as `http://<name>.home.arpa` (grafana, prometheus, yammat, cups, sshkeys, aptcache, uptime-kuma, jellyfin) + `http://status.home.arpa` (302 → Uptime Kuma status page)
-- Seven microVMs running on br0:
+- Caddy reverse proxy on `:80` — every web UI as `http://<name>.home.arpa` (grafana, prometheus, yammat, cups, sshkeys, uptime-kuma, jellyfin, lldap, pocket-id, dash, adguard, music) + `http://status.home.arpa` (302 → Uptime Kuma status page)
+- Mopidy music server on the host (no VM): `/data/Jellyfin/Music` + Jellyfin backend to the USB mixer (Behringer Xenyx 302USB) via ALSA; clients M.A.L.P./mpc + Iris web UI via `music.home.arpa`
+- AdGuard Home (dns VM) as filtering-only DNS frontend (blocklists); dnsmasq on the host stays authoritative for DHCP + LAN DNS (advertises `.30` first, `.1` fallback)
+- 26 microVMs running on br0 (single `mk-microvm.nix` spec pattern, stable per-VM SSH host keys):
   - **grafana** (10.8.0.2): Prometheus scraping router + all hosts, Grafana with mireo-router dashboard
   - **network-services** (10.8.0.3): bridge tap stub (no services)
   - **monerod** (10.8.0.4): Pruned Monero node + Tor relay (nickname `mireoMoneroRelay`)
   - **yammat** (10.8.0.5): YAMMAT event management (C3D2 matemat, port 3000)
   - **cups** (10.8.0.6): CUPS print server (IPP, Avahi, Epson ET-2860 + Lexmark)
   - **sshkeys** (10.8.0.7): Nginx serving SSH public keys
-  - **aptcache** (10.8.0.8): apt-cacher-ng caching proxy for LAN
   - **uptime-kuma** (10.8.0.9): Uptime Kuma status monitoring (port 3001, via `http://uptime-kuma.home.arpa`)
   - **jellyfin** (10.8.0.10): Jellyfin media server (port 8096, via `http://jellyfin.home.arpa`)
   - **ntp** (10.8.0.11): chrony NTP server (UDP 123, via DHCP option 42)
   - **lldap** (10.8.0.12): LDAP directory (`dc=home,dc=arpa`, :3890 + UI :17170 via `http://lldap.home.arpa`)
+  - **pocket-id** (10.8.0.13): OIDC provider
+  - **cloud** (10.8.0.14): Nextcloud (stub)
+  - **management** (10.8.0.15): NetBox + LibreNMS (stub)
+  - **devops** (10.8.0.17): Hydra + Woodpecker CI (stub)
+  - **artifacts** (10.8.0.20): Attic binary cache + OCI registry
+  - **media** (10.8.0.21): Immich (stub)
+  - **documents** (10.8.0.22): Paperless (stub)
+  - **communication** (10.8.0.23): Matrix Synapse + ntfy
+  - **remote** (10.8.0.25): RustDesk relay
+  - **sync** (10.8.0.26): Syncthing (stub)
+  - **maps** (10.8.0.27): OSM tiles (:80)
+  - **postgres** (10.8.0.28): PostgreSQL platform (stub)
+  - **identity** (10.8.0.29): OpenLDAP + Keycloak (stub)
+  - **dns** (10.8.0.30): AdGuard Home filtering (:53/:3000, via `http://adguard.home.arpa`)
+  - **dash** (10.8.0.32): Homepage dashboard (:8082, via `http://dash.home.arpa`)
+  - (retired: **aptcache** 10.8.0.8 decommissioned 2026-10-05, **kodi** music-box replaced by Mopidy)
 - No desktop (`lucy.base.isServer = true`)
 - node_exporter running on 10.8.0.1:9100 for self-monitoring
-- libvirtd daemon for virt-manager remote (Weg A): x270 connects via `qemu+ssh://root@10.8.0.1/system`, new libvirt guests bridge to `br0` (`allowedBridges`), static IP outside DHCP range + entry in `hosts/mireo/vm-ips.nix`. The 10 microVMs (microvm.nix) do NOT show in virt-manager. Recovery on `243/CREDENTIALS`: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
+- libvirtd daemon for virt-manager remote (Weg A): x270 connects via `qemu+ssh://root@10.8.0.1/system`, new libvirt guests bridge to `br0` (`allowedBridges`), static IP outside DHCP range + entry in `hosts/mireo/vm-ips.nix`. The 26 microVMs (microvm.nix) do NOT show in virt-manager. Recovery on `243/CREDENTIALS`: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
 - CLI tools: tcpdump, mtr, nmap, iperf3, ethtool, socat, btop, htop, ncdu, jq, lsof, sysstat, smartmontools
 
 ### NixFleet (M1 — mireo runtime control plane)
@@ -130,8 +167,8 @@ None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` inte
 - `hosts/mireo/yammat-microvm.nix` — YAMMAT microvm
 - `hosts/mireo/cups-microvm.nix` — CUPS print server microvm
 - `hosts/mireo/sshkeys-microvm.nix` — SSH public key web server microvm
-- `hosts/mireo/aptcache-microvm.nix` — apt-cacher-ng proxy microvm
-- `hosts/mireo/microvm-base.nix` — shared microvm base config
+- `hosts/mireo/mk-microvm.nix` — typed microVM spec builder (all VMs use it)
+- `hosts/mireo/microvm-base.nix` — shared microvm base config (virtiofs shares, stable per-VM SSH host keys)
 
 ### Microvm resource allocation
 | VM | IP | Memory | vCPUs | Storage |
@@ -142,10 +179,25 @@ None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` inte
 | yammat | 10.8.0.5 | 2304 MB | 2 | 8 GB postgres + 128 MB state |
 | cups | 10.8.0.6 | 512 MB | 1 | 256 MB cups config |
 | sshkeys | 10.8.0.7 | 256 MB | 1 | — |
-| aptcache | 10.8.0.8 | 512 MB | 1 | 8 GB cache |
 | uptime-kuma | 10.8.0.9 | 512 MB | 1 | 1 GB state (SQLite) |
 | jellyfin | 10.8.0.10 | 2304 MB | 2 | 8 GB state + 4 GB transcode cache |
 | ntp | 10.8.0.11 | 256 MB | 1 | — (stateless, drift re-learns) |
+| lldap | 10.8.0.12 | 512 MB | 1 | 512 MB state |
+| pocket-id | 10.8.0.13 | 512 MB | 1 | 512 MB state |
+| cloud | 10.8.0.14 | 2304 MB | 4 | 8 GB state |
+| management | 10.8.0.15 | 1024 MB | 2 | 1 GB netbox + 1 GB librenms |
+| devops | 10.8.0.17 | 2048 MB | 4 | 1 GB woodpecker + 2 GB hydra |
+| artifacts | 10.8.0.20 | 1024 MB | 2 | 4 GB attic + 4 GB registry |
+| media | 10.8.0.21 | 4096 MB | 4 | 8 GB state |
+| documents | 10.8.0.22 | 1024 MB | 2 | 2 GB state |
+| communication | 10.8.0.23 | 2304 MB | 2 | 4 GB matrix + 1 GB ntfy |
+| remote | 10.8.0.25 | 512 MB | 1 | 512 MB state |
+| sync | 10.8.0.26 | 512 MB | 1 | 2 GB state |
+| maps | 10.8.0.27 | 8192 MB | 4 | OSM planet + tiles images |
+| postgres | 10.8.0.28 | 2304 MB | 4 | 8 GB data |
+| identity | 10.8.0.29 | 1024 MB | 2 | 2 GB ldap + 2 GB keycloak |
+| dns | 10.8.0.30 | 384 MB | 1 | 512 MB AdGuard data |
+| dash | 10.8.0.32 | 1024 MB | 1 | 512 MB state |
 
 ### Monero port forwarding
 Port 9001/tcp (Tor ORPort) forwarded from WAN to monerod VM.
