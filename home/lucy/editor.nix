@@ -49,10 +49,22 @@
         (python3.withPackages (ps: [ps.debugpy]))
         # PHP (phpactor: LSP + format + diagnostics in one, no Node needed)
         phpactor
+        php
+        phpPackages.composer
+        phpPackages.php-cs-fixer
+        phpstan
+        phpunit
+        pretty-php
         # Kotlin (JVM-based server)
-        phpactor
         kotlin-language-server
         jre
+        # Lua (Runtime + Rocks + LSP + Lint)
+        lua
+        luajit
+        lua5_1 # Neovim-Plugins/luarocks laufen auf 5.1/LuaJIT
+        luarocks
+        selene
+        emmylua-check
         # Lua/Sh/YAML/TOML/Markdown/Docker/Terraform
         lua-language-server
         stylua
@@ -72,9 +84,12 @@
         cmp-nvim-lsp
         cmp-buffer
         cmp-path
+        cmp-nvim-lua # Lua/Neovim-API in Completion
         luasnip
         cmp_luasnip
         friendly-snippets
+        lazydev-nvim # Neovim-Lua-API (vim.*) für lua_ls
+        one-small-step-for-vimkind # Lua-DAP: eigene Nvim-Config debuggen
         # Finder/tree/git
         telescope-nvim
         telescope-fzf-native-nvim
@@ -127,6 +142,8 @@
         neotest-python
         neotest-rust
         neotest-jest
+        neotest-phpunit
+        phpactor # :Phpactor* Commands (ContextMenu, Import, Transform)
         nvim-treesitter-context
         # Format + lint
         conform-nvim
@@ -254,6 +271,7 @@
           }),
           sources = cmp.config.sources({
             { name = "nvim_lsp" },
+            { name = "nvim_lua" },
             { name = "luasnip" },
             { name = "path" },
           }, {
@@ -298,15 +316,45 @@
 
         -- Language servers (binaries come from extraPackages, no mason).
         local servers = {
-          "gopls", "pyright", "ruff", "ts_ls", "lua_ls", "yamlls",
+          "gopls", "pyright", "ruff", "ts_ls", "yamlls",
           "bashls", "marksman", "taplo", "jsonls", "dockerls",
           "terraformls", "clangd", "kotlin_language_server",
-          "csharp_ls", "phpactor",
+          "csharp_ls",
         }
         for _, name in ipairs(servers) do
           vim.lsp.config(name, { capabilities = caps })
           vim.lsp.enable(name)
         end
+        -- Lua: vim.* kennen (Neovim-Config + luarocks-Projekte), kein Telemetrie.
+        -- lazydev (Plugin oben) liefert vim-API + workspace-Lib, das hier
+        -- ist das Fallback falls lazydev mal fehlt.
+        vim.lsp.config("lua_ls", {
+          capabilities = caps,
+          settings = {
+            Lua = {
+              runtime = { version = "LuaJIT" },
+              diagnostics = { globals = { "vim" } },
+              workspace = {
+                checkThirdParty = false,
+                library = vim.api.nvim_get_runtime_file("", true),
+              },
+              completion = { callSnippet = "Replace" },
+              telemetry = { enable = false },
+              format = { enable = false }, -- stylua via conform macht das
+            },
+          },
+        })
+        vim.lsp.enable("lua_ls")
+        -- PHP: phpactor ( Hover/Goto/Complete/Refactor in einem ).
+        -- composer/phpstan/php-cs-fixer kommen aus extraPackages.
+        vim.lsp.config("phpactor", {
+          capabilities = caps,
+          init_options = {
+            ["language_server_phpstan.enabled"] = false,
+            ["language_server_psalm.enabled"] = false,
+          },
+        })
+        vim.lsp.enable("phpactor")
         vim.lsp.config("rust_analyzer", {
           capabilities = caps,
           settings = { ["rust-analyzer"] = { check = { command = "clippy" } } },
@@ -369,6 +417,8 @@
             c = { "clang_format" },
             cpp = { "clang_format" },
             rust = { "rustfmt" },
+            php = { "php_cs_fixer" },
+            blade = { "prettierd" },
           },
           format_on_save = { timeout_ms = 2000, lsp_format = "fallback" },
         })
@@ -378,10 +428,40 @@
           sh = { "shellcheck" },
           javascript = { "eslint_d" },
           typescript = { "eslint_d" },
+          lua = { "selene" },
+          php = { "phpstan" },
         }
         vim.api.nvim_create_autocmd({ "BufWritePost" }, {
           callback = function() require("lint").try_lint() end,
         })
+
+        -- Lua + PHP Feinschliff.
+        -- lazydev: vim.*-API für lua_ls (eigene Nvim-Config + Plugins).
+        require("lazydev").setup({ library = { "lazy.nvim" } })
+        -- Blade (*.blade.php) als php+html behandeln (Treesitter php/html
+        -- ist schon in withPlugins, kein extra Parser in Nix nötig).
+        vim.filetype.add({
+          extension = { blade = "blade" },
+          pattern = { [".*%.blade%.php"] = "blade" },
+        })
+        -- Indents: Lua 2 Spaces (stylua-Default), PHP/Blade 4 Spaces
+        -- (PSR-12), passend zu tabstop=2 global oben.
+        vim.api.nvim_create_autocmd("FileType", {
+          group = vim.api.nvim_create_augroup("LuaPhpIndent", { clear = true }),
+          callback = function(args)
+            if args.match == "lua" then
+              vim.bo[args.buf].shiftwidth = 2
+              vim.bo[args.buf].tabstop = 2
+            elseif args.match == "php" or args.match == "blade" then
+              vim.bo[args.buf].shiftwidth = 4
+              vim.bo[args.buf].tabstop = 4
+            end
+          end,
+        })
+        -- luarocks-Hinweis: `luarocks --lua-version=5.1 init` im Projekt,
+        -- dann `lua_modules/` per .luarc.json an lua_ls melden:
+        -- {"workspace":{"library":["lua_modules/share/lua/5.1"]}}.
+        -- Auf NixOS: Rocks mit C-Anteil brauchen gcc via `nix-shell -p lua51Packages.luarocks gcc`.
 
         -- Small UI helpers (all defaults, just enabled).
         require("neo-tree").setup({ close_if_last_window = true })
@@ -564,6 +644,14 @@
         require("dap-go").setup()
         -- Rust/C++/C debugging (codelldb/lldb-dap) needs its adapter
         -- store path verified first — follow-up, Python+Go are wired.
+        -- Lua: eigene Nvim-Config live debuggen via :lua require"osv".launch().
+        -- PHP/Xdebug: Adapter nicht in Nixpkgs (kein php-debug-adapter),
+        -- Template zum Selbst-Verdrahten falls du vscode-php-debug manuell holst:
+        -- dap.adapters.php = { type = "executable",
+        --   command = vim.fn.expand("~/.vscode-php-debug/out/phpDebug.js") };
+        -- dap.configurations.php = { { type = "php", request = "launch",
+        --   name = "Listen for Xdebug", port = 9003 } };
+        -- Dazu in php.ini: xdebug.mode=debug, xdebug.client_port=9003.
         vim.keymap.set("n", "<leader>db", dap.toggle_breakpoint, { silent = true })
         vim.keymap.set("n", "<leader>dc", dap.continue, { silent = true })
         vim.keymap.set("n", "<leader>do", dap.step_over, { silent = true })
@@ -585,6 +673,7 @@
             require("neotest-python"),
             require("neotest-rust"),
             require("neotest-jest"),
+            require("neotest-phpunit"),
           },
         })
         vim.keymap.set("n", "<leader>tt", function() require("neotest").run.run() end, { silent = true })
