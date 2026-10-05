@@ -58,6 +58,33 @@
         # Kotlin (JVM-based server)
         kotlin-language-server
         jre
+        # Java (jdtls + neotest; no java-debug DAP in this pin)
+        jdt-language-server
+        # Scala (metals + scalafmt; DAP via metals worksheet only)
+        metals
+        scalafmt
+        # Haskell (hls + fourmolu)
+        haskell-language-server
+        fourmolu
+        # Zig (zls + zig fmt)
+        zls
+        zig
+        # Ruby (solargraph + rubocop; rspec via neotest)
+        solargraph
+        rubocop
+        # HTML/CSS snippets
+        emmet-language-server
+        # SQL (sqlfluff lint+format)
+        sqlfluff
+        # LaTeX (texlab LSP; latexmk/zathura from the latex system module)
+        texlab
+        # Typst (tinymist LSP+format, typst compiler)
+        tinymist
+        typst
+        # JS/TS debugging (node + chrome)
+        vscode-js-debug
+        # C# debugging
+        netcoredbg
         # Lua (Runtime + Rocks + LSP + Lint)
         lua
         luajit
@@ -143,6 +170,12 @@
         neotest-rust
         neotest-jest
         neotest-phpunit
+        neotest-java
+        neotest-rspec
+        nvim-jdtls
+        nvim-metals
+        vimtex
+        render-markdown-nvim
         phpactor # :Phpactor* Commands (ContextMenu, Import, Transform)
         nvim-treesitter-context
         # Format + lint
@@ -182,6 +215,14 @@
             html
             java
             php
+            ruby
+            scala
+            haskell
+            zig
+            sql
+            latex
+            bibtex
+            typst
           ]))
       ];
       extraConfig = ''
@@ -319,7 +360,8 @@
           "gopls", "pyright", "ruff", "ts_ls", "yamlls",
           "bashls", "marksman", "taplo", "jsonls", "dockerls",
           "terraformls", "clangd", "kotlin_language_server",
-          "csharp_ls",
+          "csharp_ls", "hls", "zls", "solargraph", "emmet_ls",
+          "texlab", "tinymist",
         }
         for _, name in ipairs(servers) do
           vim.lsp.config(name, { capabilities = caps })
@@ -355,6 +397,35 @@
           },
         })
         vim.lsp.enable("phpactor")
+        -- Java via nvim-jdtls (lspconfig alone misses Lombok/tests/DAP wiring).
+        -- No java-debug DAP in this pin: debugging Java needs the jar manually.
+        vim.api.nvim_create_autocmd("FileType", {
+          group = vim.api.nvim_create_augroup("JdtlsStart", { clear = true }),
+          pattern = { "java" },
+          callback = function(args)
+            local root = vim.fs.root(args.buf, { "gradlew", "mvnw", ".git" })
+            local project = vim.fn.fnamemodify(root or vim.fn.getcwd(), ":p:h:t")
+            require("jdtls").start_or_attach({
+              cmd = {
+                "jdt-language-server",
+                "-data", vim.fn.stdpath("cache") .. "/jdtls/" .. project,
+              },
+              root_dir = root,
+              capabilities = caps,
+            })
+          end,
+        })
+        -- Scala via nvim-metals (bare config: no lspconfig wrapper for it).
+        local metals_config = require("metals").bare_config()
+        metals_config.capabilities = caps
+        metals_config.init_options.statusBarProvider = "show-message"
+        vim.api.nvim_create_autocmd("FileType", {
+          group = vim.api.nvim_create_augroup("MetalsStart", { clear = true }),
+          pattern = { "scala", "sbt" },
+          callback = function()
+            require("metals").initialize_or_attach(metals_config)
+          end,
+        })
         vim.lsp.config("rust_analyzer", {
           capabilities = caps,
           settings = { ["rust-analyzer"] = { check = { command = "clippy" } } },
@@ -419,6 +490,11 @@
             rust = { "rustfmt" },
             php = { "php_cs_fixer" },
             blade = { "prettierd" },
+            ruby = { "rubocop" },
+            haskell = { "fourmolu" },
+            scala = { "scalafmt" },
+            zig = { "zigfmt" },
+            sql = { "sqlfluff" },
           },
           format_on_save = { timeout_ms = 2000, lsp_format = "fallback" },
         })
@@ -430,7 +506,8 @@
           typescript = { "eslint_d" },
           lua = { "selene" },
           php = { "phpstan" },
-        }
+          ruby = { "rubocop" },
+          sql = { "sqlfluff" },
         vim.api.nvim_create_autocmd({ "BufWritePost" }, {
           callback = function() require("lint").try_lint() end,
         })
@@ -452,12 +529,18 @@
             if args.match == "lua" then
               vim.bo[args.buf].shiftwidth = 2
               vim.bo[args.buf].tabstop = 2
-            elseif args.match == "php" or args.match == "blade" then
+            elseif args.match == "php" or args.match == "blade" or args.match == "java" then
               vim.bo[args.buf].shiftwidth = 4
               vim.bo[args.buf].tabstop = 4
             end
           end,
         })
+        -- LaTeX: vimtex (latexmk baut, zathura zeigt), texlab liefert LSP.
+        vim.g.vimtex_view_method = "zathura"
+        vim.g.vimtex_quickfix_open_on_warning = 0
+        vim.g.tex_flavor = "latex"
+        -- Markdown-Vorschau inline (kein Browser nötig).
+        require("render-markdown").setup({})
         -- luarocks-Hinweis: `luarocks --lua-version=5.1 init` im Projekt,
         -- dann `lua_modules/` per .luarc.json an lua_ls melden:
         -- {"workspace":{"library":["lua_modules/share/lua/5.1"]}}.
@@ -642,8 +725,53 @@
         dap.listeners.before.event_exited["dapui"] = function() dapui.close() end
         require("dap-python").setup("${pkgs.python3.withPackages (ps: [ps.debugpy])}/bin/python")
         require("dap-go").setup()
-        -- Rust/C++/C debugging (codelldb/lldb-dap) needs its adapter
-        -- store path verified first — follow-up, Python+Go are wired.
+        -- JS/TS debugging (node + chrome). No codelldb/lldb-dap in this
+        -- pin, so no native Rust/C++ DAP (delve/debugpy/js/netcoredbg wired).
+        dap.adapters["pwa-node"] = {
+          type = "server",
+          host = "localhost",
+          port = "''${port}",
+          executable = {
+            command = "${pkgs.vscode-js-debug}/bin/js-debug",
+            args = { "''${port}" },
+          },
+        }
+        dap.configurations.javascript = {
+          {
+            type = "pwa-node",
+            request = "launch",
+            name = "Launch node (current file)",
+            program = "''${file}",
+            cwd = "''${workspaceFolder}",
+          },
+          {
+            type = "pwa-chrome",
+            request = "attach",
+            name = "Attach chrome (:9222)",
+            port = 9222,
+            webRoot = "''${workspaceFolder}",
+          },
+        }
+        for _, ft in ipairs({ "typescript", "typescriptreact", "javascriptreact" }) do
+          dap.configurations[ft] = dap.configurations.javascript
+        end
+        -- C# debugging (netcoredbg, console apps).
+        dap.adapters.netcoredbg = {
+          type = "executable",
+          command = "${pkgs.netcoredbg}/bin/netcoredbg",
+          args = { "--interpreter=vscode" },
+        }
+        dap.configurations.cs = {
+          {
+            type = "netcoredbg",
+            request = "launch",
+            name = "Launch .NET (dll path?)",
+            program = function()
+              return vim.fn.input("dll: ", vim.fn.getcwd() .. "/bin/Debug/", "file")
+            end,
+            cwd = "''${workspaceFolder}",
+          },
+        }
         -- Lua: eigene Nvim-Config live debuggen via :lua require"osv".launch().
         -- PHP/Xdebug: Adapter nicht in Nixpkgs (kein php-debug-adapter),
         -- Template zum Selbst-Verdrahten falls du vscode-php-debug manuell holst:
@@ -674,6 +802,8 @@
             require("neotest-rust"),
             require("neotest-jest"),
             require("neotest-phpunit"),
+            require("neotest-java"),
+            require("neotest-rspec"),
           },
         })
         vim.keymap.set("n", "<leader>tt", function() require("neotest").run.run() end, { silent = true })
