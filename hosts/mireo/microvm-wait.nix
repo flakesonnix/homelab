@@ -14,17 +14,32 @@
   waitForVirtiofsd = pkgs.writeShellScript "microvm-wait-virtiofsd" ''
     set -eu
     vm="$1"
-    conf=""
+    dir="/var/lib/microvms/$vm"
+    # Expected sockets, derived from the SAME runner QEMU is about to use,
+    # so the expectation can never drift from reality. (Polling the
+    # supervisor control socket is impossible: the generated config has
+    # no control section for it.)
+    socks=$(grep -o 'path=[^,]*\.sock' "$dir/current/bin/microvm-run" 2>/dev/null | sed 's/^path=//' || true)
+    if [ -z "$socks" ]; then
+      echo "microvm-wait-virtiofsd@$vm: no virtiofs sockets in runner" >&2
+      exit 1
+    fi
     stable=0
     i=0
     while [ "$i" -lt 45 ]; do
       i=$((i + 1))
-      # NOTE: the conf path comes from the runner script, NOT from the
-      # unit's ExecStart property (that only yields the wrapper path, so
-      # discovery never matched and every VM timed out, 2026-10-06).
-      cur=$(grep -o '/nix/store/[^ ]*-virtiofsd-supervisord.conf' "/var/lib/microvms/$vm/current/bin/virtiofsd-run" 2>/dev/null | head -1 || true)
-      if [ -n "$cur" ]; then conf="$cur"; fi
-      if [ -n "$conf" ] && out=$(${pkgs.python3Packages.supervisor}/bin/supervisorctl -c "$conf" status 2>/dev/null) && [ -n "$out" ] && ! printf '%s\n' "$out" | grep -v RUNNING | grep -q .; then
+      ready=1
+      for s in $socks; do
+        case "$s" in
+          /*) sock="$s" ;;
+          *) sock="$dir/$s" ;;
+        esac
+        if ! timeout 1 ${pkgs.socat}/bin/socat - "UNIX-CONNECT:$sock" </dev/null >/dev/null 2>&1; then
+          ready=0
+          break
+        fi
+      done
+      if [ "$ready" = 1 ]; then
         stable=$((stable + 1))
         if [ "$stable" -ge 2 ]; then exit 0; fi
       else
@@ -32,7 +47,7 @@
       fi
       sleep 2
     done
-    echo "microvm-wait-virtiofsd@$vm: virtiofsd never settled" >&2
+    echo "microvm-wait-virtiofsd@$vm: virtiofs sockets never came up" >&2
     exit 1
   '';
 in {
