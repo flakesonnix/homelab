@@ -28,17 +28,27 @@
       echo "microvm-wait-virtiofsd@$vm: no virtiofs sockets in runner" >&2
       exit 1
     fi
+    # NOTE: only shell builtins + coreutils/findutils/grep/sed/systemd
+    # here. The unit PATH is almost empty (microvm.nix forces it) — every
+    # external must exist there or the gate fails closed for all VMs at
+    # once (seen 2026-10-06).
     stable=0
     i=0
     while [ "$i" -lt 45 ]; do
       i=$((i + 1))
-      bound=$(awk '{print $NF}' /proc/net/unix 2>/dev/null || true)
+      live=""
+      while read -r _ _ _ _ _ _ _ p; do
+        live="$live ''${p##*/}"
+      done < /proc/net/unix
       ready=1
       for s in $socks; do
-        if ! printf '%s\n' "$bound" | grep -qxF "$s"; then
-          ready=0
-          break
-        fi
+        case " $live " in
+          *" $s "*) ;;
+          *)
+            ready=0
+            break
+            ;;
+        esac
       done
       if [ "$ready" = 1 ]; then
         stable=$((stable + 1))
