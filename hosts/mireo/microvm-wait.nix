@@ -19,7 +19,10 @@
     i=0
     while [ "$i" -lt 45 ]; do
       i=$((i + 1))
-      cur=$(systemctl show -p ExecStart "microvm-virtiofsd@$vm" 2>/dev/null | grep -o '/nix/store/[^ ]*-virtiofsd-supervisord.conf' | head -1 || true)
+      # NOTE: the conf path comes from the runner script, NOT from the
+      # unit's ExecStart property (that only yields the wrapper path, so
+      # discovery never matched and every VM timed out, 2026-10-06).
+      cur=$(grep -o '/nix/store/[^ ]*-virtiofsd-supervisord.conf' "/var/lib/microvms/$vm/current/bin/virtiofsd-run" 2>/dev/null | head -1 || true)
       if [ -n "$cur" ]; then conf="$cur"; fi
       if [ -n "$conf" ] && out=$(${pkgs.python3Packages.supervisor}/bin/supervisorctl -c "$conf" status 2>/dev/null) && [ -n "$out" ] && ! printf '%s\n' "$out" | grep -v RUNNING | grep -q .; then
         stable=$((stable + 1))

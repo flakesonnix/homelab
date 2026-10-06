@@ -674,7 +674,9 @@
   ];
   checkMicrovmWait =
     forceB (waitCfg.systemd.services."microvm@dns".serviceConfig.ExecStartPre != []) "microvm: dns gated on settled virtiofsd"
-    && forceB (lib.any (c: lib.hasInfix "microvm-wait-virtiofsd dns" c) waitCfg.systemd.services."microvm@dns".serviceConfig.ExecStartPre) "microvm: gate passes the VM name";
+    && forceB (lib.any (c: lib.hasInfix "microvm-wait-virtiofsd dns" c) waitCfg.systemd.services."microvm@dns".serviceConfig.ExecStartPre) "microvm: gate passes the VM name"
+    && forceB (lib.hasInfix "virtiofsd-run" (builtins.readFile ../hosts/mireo/microvm-wait.nix)) "microvm: conf discovery via runner script"
+    && forceB (!(lib.hasInfix "systemctl show -p ExecStart" (builtins.readFile ../hosts/mireo/microvm-wait.nix))) "microvm: no dead systemctl-show discovery (timed out all VMs, 2026-10-06)";
 
   # ---- mopidy module unit tests (eval-time, no audio hardware) ----
   mopidyEnabled = nixosEval [
