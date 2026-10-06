@@ -677,6 +677,7 @@
     && forceB (lib.any (c: lib.hasInfix "microvm-wait-virtiofsd dns" c) waitCfg.systemd.services."microvm@dns".serviceConfig.ExecStartPre) "microvm: gate passes the VM name"
     && forceB (lib.hasInfix "/proc/net/unix" (builtins.readFile ../hosts/mireo/microvm-wait.nix)) "microvm: bound sockets read from kernel (connect-probes suicide virtiofsd)"
     && forceB (!(lib.hasInfix "UNIX-CONNECT" (builtins.readFile ../hosts/mireo/microvm-wait.nix))) "microvm: no connect-probes (killed all daemons, 2026-10-06)"
+    && forceB (lib.hasInfix "systemctl restart" (builtins.readFile ../hosts/mireo/microvm-wait.nix)) "microvm: gate refreshes stale virtiofsd itself"
     && forceB (!(lib.hasInfix "supervisorctl" (builtins.readFile ../hosts/mireo/microvm-wait.nix))) "microvm: no supervisorctl (unusable without section, failed all VMs)"
     && forceB (!(lib.hasInfix "awk" (builtins.readFile ../hosts/mireo/microvm-wait.nix))) "microvm: no tools outside unit PATH (gawk missing failed all VMs, 2026-10-06)";
 

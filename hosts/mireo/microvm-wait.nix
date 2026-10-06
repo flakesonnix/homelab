@@ -32,6 +32,14 @@
     # here. The unit PATH is almost empty (microvm.nix forces it) — every
     # external must exist there or the gate fails closed for all VMs at
     # once (seen 2026-10-06).
+    # Fresh daemons first: the running virtiofsd may still serve the
+    # previous generation (its unit files carry no store paths, so a
+    # switch does not reliably restart it). Restarting here is safe —
+    # QEMU hasn't started yet — and makes the gate self-healing.
+    # --no-block: never wait on systemd jobs from inside a start
+    # transaction (would deadlock against the switch itself); the poll
+    # loop below observes convergence instead.
+    systemctl --no-block restart "microvm-virtiofsd@$vm"
     stable=0
     i=0
     while [ "$i" -lt 45 ]; do
@@ -67,7 +75,9 @@ in {
   systemd.services = lib.mapAttrs' (vmName: _:
     lib.nameValuePair "microvm@${vmName}" {
       overrideStrategy = "asDropin";
-      serviceConfig.ExecStartPre = ["${waitForVirtiofsd} ${vmName}"];
+      # Leading +: runs as root despite the unit's microvm user (needed
+      # for the systemctl restart below).
+      serviceConfig.ExecStartPre = ["+${waitForVirtiofsd} ${vmName}"];
     })
   config.microvm.vms;
 }
