@@ -16,10 +16,14 @@
     vm="$1"
     dir="/var/lib/microvms/$vm"
     # Expected sockets, derived from the SAME runner QEMU is about to use,
-    # so the expectation can never drift from reality. (Polling the
-    # supervisor control socket is impossible: the generated config has
-    # no control section for it.)
-    socks=$(grep -o 'path=[^,]*\.sock' "$dir/current/bin/microvm-run" 2>/dev/null | sed 's/^path=//' || true)
+    # so the expectation can never drift from reality.
+    # Deliberately WITHOUT connecting: virtiofsd shuts down when its last
+    # client disconnects, so a connect-probe (socat) suicides the daemon
+    # it checks (all 26 VMs down, 2026-10-06). Instead match bound socket
+    # basenames in /proc/net/unix (kernel state: bound = listening; stale
+    # files don't show). Same for the supervisor control client: the generated config has
+    # no control section for it.
+    socks=$(grep -o 'path=[^,]*\.sock' "$dir/current/bin/microvm-run" 2>/dev/null | sed 's/^path=//;s|^.*/||' || true)
     if [ -z "$socks" ]; then
       echo "microvm-wait-virtiofsd@$vm: no virtiofs sockets in runner" >&2
       exit 1
@@ -28,13 +32,10 @@
     i=0
     while [ "$i" -lt 45 ]; do
       i=$((i + 1))
+      bound=$(awk '{print $NF}' /proc/net/unix 2>/dev/null || true)
       ready=1
       for s in $socks; do
-        case "$s" in
-          /*) sock="$s" ;;
-          *) sock="$dir/$s" ;;
-        esac
-        if ! timeout 1 ${pkgs.socat}/bin/socat - "UNIX-CONNECT:$sock" </dev/null >/dev/null 2>&1; then
+        if ! printf '%s\n' "$bound" | grep -qxF "$s"; then
           ready=0
           break
         fi
@@ -47,7 +48,7 @@
       fi
       sleep 2
     done
-    echo "microvm-wait-virtiofsd@$vm: virtiofs sockets never came up" >&2
+    echo "microvm-wait-virtiofsd@$vm: virtiofs sockets never bound" >&2
     exit 1
   '';
 in {

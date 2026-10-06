@@ -675,7 +675,8 @@
   checkMicrovmWait =
     forceB (waitCfg.systemd.services."microvm@dns".serviceConfig.ExecStartPre != []) "microvm: dns gated on settled virtiofsd"
     && forceB (lib.any (c: lib.hasInfix "microvm-wait-virtiofsd dns" c) waitCfg.systemd.services."microvm@dns".serviceConfig.ExecStartPre) "microvm: gate passes the VM name"
-    && forceB (lib.hasInfix "UNIX-CONNECT" (builtins.readFile ../hosts/mireo/microvm-wait.nix)) "microvm: sockets probed directly (no supervisorctl section exists)"
+    && forceB (lib.hasInfix "/proc/net/unix" (builtins.readFile ../hosts/mireo/microvm-wait.nix)) "microvm: bound sockets read from kernel (connect-probes suicide virtiofsd)"
+    && forceB (!(lib.hasInfix "UNIX-CONNECT" (builtins.readFile ../hosts/mireo/microvm-wait.nix))) "microvm: no connect-probes (killed all daemons, 2026-10-06)"
     && forceB (!(lib.hasInfix "supervisorctl" (builtins.readFile ../hosts/mireo/microvm-wait.nix))) "microvm: no supervisorctl (unusable without section, failed all VMs)";
 
   # ---- mopidy module unit tests (eval-time, no audio hardware) ----
