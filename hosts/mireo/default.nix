@@ -2,6 +2,7 @@
   imports = [
     ./hardware-configuration.nix
     ./host.nix
+    ./microvm-wait.nix
     ../../modules/nixos/lucy-services.nix
     ./cups-microvm.nix
     ./monerod-microvm.nix

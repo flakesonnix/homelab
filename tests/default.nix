@@ -387,7 +387,7 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkMopidy && checkMinecraft && checkMicrovmSecretsShares && checkMicrovmHostKeys && checkEpg;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkMopidy && checkMinecraft && checkMicrovmSecretsShares && checkMicrovmHostKeys && checkMicrovmWait && checkEpg;
 
   # ---- voip module unit tests (eval-time, no secrets, no network) ----
   # NOTE: voip.nix integrates with asterisk.nix (localTest assertion +
@@ -663,6 +663,18 @@
         }
       ]) "microvm: stable hostKeys replace ephemeral defaults"
     && forceB (lib.any (s: (s.tag or "") == "ssh-host-keys" && s.source == "/var/lib/microvms/testvm/ssh-host-keys") hostKeysCfg.microvm.shares) "microvm: host key share wired to per-VM host dir";
+
+  # ---- microvm virtiofsd settle gate (no QEMU-vs-socket race) ----
+  waitCfg = nixosEval [
+    microvm.nixosModules.host
+    ../hosts/mireo/microvm-wait.nix
+    ../hosts/mireo/dns-microvm.nix
+    ../modules/nixos/lucy-services.nix
+    ../modules/nixos/dns-adguard.nix
+  ];
+  checkMicrovmWait =
+    forceB (waitCfg.systemd.services."microvm@dns".serviceConfig.ExecStartPre != []) "microvm: dns gated on settled virtiofsd"
+    && forceB (lib.any (c: lib.hasInfix "microvm-wait-virtiofsd dns" c) waitCfg.systemd.services."microvm@dns".serviceConfig.ExecStartPre) "microvm: gate passes the VM name";
 
   # ---- mopidy module unit tests (eval-time, no audio hardware) ----
   mopidyEnabled = nixosEval [
