@@ -39,5 +39,6 @@ in {
     lib.nameValuePair "microvm@${vmName}" {
       overrideStrategy = "asDropin";
       serviceConfig.ExecStartPre = ["${waitForVirtiofsd} ${vmName}"];
-    }) config.microvm.vms;
+    })
+  config.microvm.vms;
 }
