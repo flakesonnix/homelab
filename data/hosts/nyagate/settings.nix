@@ -7,8 +7,17 @@
 }: {
   lucy.base.enable = true;
   lucy.base.isServer = true;
-  lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
-  lucy.base.sshKeyComment = "lucy@nyagate";
+  # All owner keys: 5× github.com/flakesonnix.keys + x270-local omen key
+  # + helianthus deploy key. Same set on every host with SSH.
+  lucy.base.sshKey = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOgPFwTysg5vOZ77Zqo9AehacYvO4iTm/T4QTy7MtfD2"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzrW5cHMre50s8jFSbG6Yzg2TlQkKNQ59qRejIRUM0T"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFSg7uG+/7pn6biGGzHTynH7FZUu0YzhfurY0L5GW7Di"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINMermWS2Yxd5lthm6QpCxooP08ppv2+MJxYbHhoBYCz"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOppWJbYYY/Uwy2x4fb5RUUW+VLzLkRODyiha6QRM/tW lucy@omen"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFrxXlvevZfbBd5Ey07hahyXQYrDjk/0I7mrERillcHZ helianthus@nixos"
+  ];
 
   networking.hostName = "nyagate";
 
@@ -93,7 +102,12 @@
     script = ''
       ip tunnel del he-ipv6 2>/dev/null || true
       ip tunnel add he-ipv6 mode sit remote 216.66.84.46 local 188.220.148.24 ttl 255
-      ip link set he-ipv6 up mtu 1480
+      # MTU 1280 (IPv6 minimum), NOT 1480: the provider path drops
+      # encapsulated packets above ~1450 bytes (measured 2026-10-05:
+      # 1448 pass, 1458 die), and the stack ignored advmss for data
+      # segments (1408B segments with MSS 1340 observed). Interface MTU
+      # is always honored (MSS = MTU - headers), advmss/mangle were not.
+      ip link set he-ipv6 up mtu 1280
       # Kein GSO/TSO auf dem SIT-Device (Diagnose 2026-09-14): der Kernel
       # batcht sonst einzelne Writes zu >MTU-SKBs, das Device fragmentiert
       # statt zu segmentieren, und das 2. Fragment kommt nie an (Anbieter

@@ -1,4 +1,8 @@
-{lib, ...}: {
+{
+  lib,
+  pkgs,
+  ...
+}: {
   options.lucy.services = {
     # ── Platform services ────────────────────────────────
     postgres = lib.mkOption {
@@ -424,32 +428,61 @@
       });
     };
 
-    kodi-box = lib.mkOption {
+    mopidy = lib.mkOption {
       type = lib.types.submodule ({config, ...}: {
         options = {
           enable = lib.mkOption {
             type = lib.types.bool;
             default = false;
           };
-          dataDir = lib.mkOption {
+          musicDirectory = lib.mkOption {
             type = lib.types.path;
-            default = "/var/lib/kodi";
+            default = "/data/Jellyfin/Music";
+          };
+          alsaDevice = lib.mkOption {
+            type = lib.types.nonEmptyStr;
+            default = "hw:CARD=CODEC,DEV=0";
           };
           jellyfinHost = lib.mkOption {
             type = lib.types.nonEmptyStr;
-            default = "10.8.0.10";
+            default = "10.8.0.10:8096";
           };
-          httpPort = lib.mkOption {
-            type = lib.types.port;
-            default = 8080;
+          jellyfinUser = lib.mkOption {
+            type = lib.types.nonEmptyStr;
+            default = "mopidy";
           };
-          jsonRpcPort = lib.mkOption {
-            type = lib.types.port;
-            default = 9090;
+        };
+      });
+    };
+
+    minecraft = lib.mkOption {
+      type = lib.types.submodule ({config, ...}: {
+        options = {
+          enable = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
           };
-          eventPort = lib.mkOption {
-            type = lib.types.port;
-            default = 9777;
+          user = lib.mkOption {
+            type = lib.types.nonEmptyStr;
+            default = "lucy";
+          };
+          dataDir = lib.mkOption {
+            type = lib.types.path;
+            default = "/home/lucy/mcserver";
+          };
+          jar = lib.mkOption {
+            type = lib.types.nonEmptyStr;
+            default = "server.jar";
+          };
+          memory = lib.mkOption {
+            type = lib.types.nonEmptyStr;
+            default = "6G";
+          };
+          javaPackage = lib.mkOption {
+            type = lib.types.package;
+            # Paper 26.x needs Java 25 (class file 69.0); Temurin 21 dies
+            # with UnsupportedClassVersionError (seen 2026-10-03, exit 1).
+            default = pkgs.temurin-jre-bin-25;
           };
         };
       });

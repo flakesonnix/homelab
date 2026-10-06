@@ -25,7 +25,8 @@
     ./matrix.nix
     ./ntfy.nix
     ./rustdesk.nix
-    ./kodi-box.nix
+    ./minecraft.nix
+    ./mopidy.nix
     ./osm.nix
   ];
 }

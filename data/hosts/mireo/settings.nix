@@ -5,8 +5,17 @@
 }: {
   lucy.base.enable = true;
   lucy.base.isServer = true;
-  lucy.base.sshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS";
-  lucy.base.sshKeyComment = "lucy@mireo";
+  # All owner keys: 5× github.com/flakesonnix.keys + x270-local omen key
+  # + helianthus deploy key. Same set on every host with SSH.
+  lucy.base.sshKey = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOgPFwTysg5vOZ77Zqo9AehacYvO4iTm/T4QTy7MtfD2"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAT5LcBzQCMfPyq0t29vGjz6UCcTXKZWROmUy82A0lrS"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAzrW5cHMre50s8jFSbG6Yzg2TlQkKNQ59qRejIRUM0T"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFSg7uG+/7pn6biGGzHTynH7FZUu0YzhfurY0L5GW7Di"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINMermWS2Yxd5lthm6QpCxooP08ppv2+MJxYbHhoBYCz"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOppWJbYYY/Uwy2x4fb5RUUW+VLzLkRODyiha6QRM/tW lucy@omen"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFrxXlvevZfbBd5Ey07hahyXQYrDjk/0I7mrERillcHZ helianthus@nixos"
+  ];
 
   # --- sops-nix secrets (WireGuard private key, future service secrets) ---
   # Prerequisite: age key deployed at /etc/sops/age/keys.txt BEFORE first
@@ -121,7 +130,7 @@
 
   # --- Transparent LAN :80 → Caddy (nftables REDIRECT) ---
   # Diagnose 2026-09-15: *.home.arpa löst DIREKT auf die VM-IPs auf
-  # (dnsmasq host-records), der Traffic geht an Caddy vorbei ins Leere
+  # (dnsmasq host-records; AdGuard filtert davor, gleiche Namen), der Traffic geht
   # (VM-Firewalls droppen :80) — die Caddy-VHosts bekamen nie Traffic.
   # Deshalb wird LAN-HTTP an LAN-Ziele transparent auf Caddy (:80)
   # umgebogen; der Host-Header bleibt erhalten, Caddy routet per Name.
@@ -161,14 +170,10 @@
     '';
   };
 
-  # --- USB passthrough for the Kodi music-box VM ---
-  # Behringer Xenyx 302USB (TI PCM2902, 08bb:2902): QEMU usb-host needs
-  # host-side access. microvm.nix sets up PCI permissions automatically,
-  # but USB needs this manual rule (GROUP=kvm, same as upstream docs).
-  # Must stay in sync with microvm.devices in hosts/mireo/kodi-microvm.nix.
-  services.udev.extraRules = ''
-    SUBSYSTEM=="usb", ATTR{idVendor}=="08bb", ATTR{idProduct}=="2902", GROUP="kvm"
-  '';
+  # --- USB audio interface for MPD (host ALSA, no VM) ---
+  # Behringer Xenyx 302USB (TI PCM2902, 08bb:2902): default ALSA nodes
+  # are already root:audio, the mpd user just joins the audio group
+  # (see modules/nixos/mpd.nix). No manual udev rule needed.
 
   # --- libvirtd (virt-manager remote target, Weg A) ---
   # Desktop-Client (x270) verbindet via qemu+ssh://root@10.8.0.1/system.
@@ -206,6 +211,9 @@
   # file feeds the microVM specs, so declare a VM IP once and its
   # home.arpa names appear automatically. Plus mireo itself.
   # DHCP clients resolve via their lease names.
+  # NOTE (2026-10-04): dnsmasq stays authoritative for LAN DHCP+DNS.
+  # AdGuard Home (dns VM, 10.8.0.30) is only a filtering frontend
+  # (blocklists) — DHCP advertises it first, host second as fallback.
   services.dnsmasq = let
     lanDomain = "home.arpa";
     staticHosts = (import ../../../hosts/mireo/vm-ips.nix) // {mireo = "10.8.0.1";};
@@ -246,6 +254,7 @@
       cname = [
         "prometheus.home.arpa,grafana.home.arpa"
         "media.home.arpa,jellyfin.home.arpa"
+        "adguard.home.arpa,dns.home.arpa"
       ];
       # NOTE (dropped 2026-09-16): UCS/AD is gone (libvirt domain ucs5.0
       # retired, no replacement). The AD SRV records lived here; if a new
@@ -268,7 +277,10 @@
       ];
       dhcp-option = [
         "option:router,10.8.0.1"
-        "option:dns-server,10.8.0.1"
+        # AdGuard (filtering frontend) first, host second: clients get
+        # adblock via .30 and keep resolving (unfiltered) if the dns VM
+        # is ever down. glibc falls through on timeout/refused.
+        "option:dns-server,10.8.0.30,10.8.0.1"
         # Same explicitly for DHCPv6 + RA (RDNSS/DNSSL): without this,
         # clients only learn the link-local address via RA default, which
         # some stubs can't use (missing %iface scope). ULA is static.
@@ -284,12 +296,17 @@
       # expand-hosts above; host-record below keeps AAAA + pre-lease A).
       # Reservations live outside the dynamic pool (10.8.0.100-.199), so no
       # collisions. (UCS reservation dropped with UCS itself, 2026-09-16.)
-      dhcp-host = lib.mapAttrsToList (
-        name: ip: let
-          lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
-          hex = n: builtins.elemAt ["0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "a" "b" "c" "d" "e" "f"] n;
-        in "02:00:00:10:08:${hex (builtins.div lastOctet 16)}${hex (lib.mod lastOctet 16)},${ip},${name}"
-      ) (import ../../../hosts/mireo/vm-ips.nix);
+      dhcp-host =
+        lib.mapAttrsToList (
+          name: ip: let
+            lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
+            hex = n: builtins.elemAt ["0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "a" "b" "c" "d" "e" "f"] n;
+          in "02:00:00:10:08:${hex (builtins.div lastOctet 16)}${hex (lib.mod lastOctet 16)},${ip},${name}"
+        ) (import ../../../hosts/mireo/vm-ips.nix)
+        # Freifunk box (real hardware, not a microVM): pins its current .193
+        # so monitoring/DNS stay stable. Named ff-bb — its own hostname is
+        # "mireo", which collides with ours (seen 2026-10-04 in leases).
+        ++ ["44:d4:37:8b:d8:69,10.8.0.193,ff-bb"];
       # --- PXE boot (dnsmasq-nativ, netboot.xyz-Menü) ---
       # iPXE-Clients (erkennbar an Option 175) chainloaden direkt das
       # netboot.xyz-Menü per HTTP; klassische PXE-ROMs laden erst iPXE
@@ -325,6 +342,8 @@
           lastOctet = lib.last (lib.splitString "." ip);
         in "${name}.${lanDomain},${name},${ip},fd00:cafe:1::${lastOctet}")
         staticHosts
+        # Freifunk box as ff-bb (v4 only — no known ULA; see dhcp-host).
+        ++ ["ff-bb.${lanDomain},ff-bb,10.8.0.193"]
         # Status page vanity name (points at the uptime-kuma VM; the
         # transparent :80 redirect + Caddy redir below route it to
         # /status/homelab — same pattern as the other webUIs).
@@ -350,7 +369,6 @@
       yammat = "10.8.0.5:3000";
       cups = "10.8.0.6:631";
       sshkeys = "10.8.0.7:80";
-      aptcache = "10.8.0.8:3142";
       # IP from vm-ips.nix (single source) instead of a literal like above.
       uptime-kuma = "${(import ../../../hosts/mireo/vm-ips.nix).uptime-kuma}:3001";
       jellyfin = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
@@ -359,7 +377,12 @@
       # Alias vhost (same target as jellyfin; DNS CNAME above).
       media = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
       # Kodi music box web UI (Chorus) + JSON-RPC over HTTP.
-      kodi = "${(import ../../../hosts/mireo/vm-ips.nix).kodi}:8080";
+      # Mopidy web client (Iris on localhost, LAN-only via Caddy).
+      music = "127.0.0.1:6680";
+      # Homelab dashboard (Homepage).
+      dash = "${(import ../../../hosts/mireo/vm-ips.nix).dash}:8082";
+      # AdGuard Home (filtering + stats UI; DHCP/DNS authoritative: dnsmasq).
+      adguard = "${(import ../../../hosts/mireo/vm-ips.nix).dns}:3000";
     };
     # Vanity URL for the declarative status page (302 to the real path so
     # the page's relative /api calls keep working — a rewrite would break
@@ -446,7 +469,7 @@
   # explicitly published inbound traffic (DNAT'd on nyagate, SNAT'd back so
   # return path stays symmetric via the tunnel — no 0.0.0.0/0 AllowedIPs here,
   # which would hijack the default route and break LAN/NFS/IPv6/microVMs).
-  # LAN-only services (NFS /data, dnsmasq DHCP/DNS, PXE, Avahi) stay bound to
+  # LAN-only services (NFS /data, dnsmasq DHCP/DNS, Avahi) stay bound to
   # br0 / 10.8.0.0/24 and are NOT reachable via wg0 (firewall below allows
   # only the published ports; Avahi is pinned to br0+lo).
   # Private key via `sops hosts/mireo/secrets.yaml`, peer key in
@@ -497,14 +520,6 @@
     allowedTCPPorts = [80 443 25565];
     allowedUDPPorts = [25565 19132];
   };
-
-  # Ensure dnsmasq starts after br0 exists (avoids "unknown interface" race)
-  # Make dnsmasq restart on failure but not block NixOS activation (optional
-  # runtime service — failure should not trigger deploy-rs rollback).
-  systemd.services.dnsmasq.after = ["sys-devices-virtual-net-br0.device"];
-  systemd.services.dnsmasq.bindsTo = ["sys-devices-virtual-net-br0.device"];
-  systemd.services.dnsmasq.serviceConfig.Restart = "on-failure";
-  systemd.services.dnsmasq.serviceConfig.RestartSec = "5s";
 
   boot.loader.systemd-boot.enable = true;
 

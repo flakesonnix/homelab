@@ -13,9 +13,9 @@ No mason — LSP binaries via `extraPackages`, servers via `vim.lsp.config` + `v
 
 ## LSP (`vim.lsp.config/enable`)
 
-Toolchain: `nil`/`alejandra`/`statix` · `go`/`gopls`/`gofumpt` · `pyright`/`ruff` · `typescript-language-server`/`eslint_d`/`prettierd`/`vscode-langservers-extracted` · `rust-analyzer`/`rustc`/`cargo`/`rustfmt`/`clippy` (`RUST_SRC_PATH` set) · `clang-tools` · `csharp-ls` · `phpactor` · `kotlin-language-server` + `jre` · `lua-language-server`/`stylua` · `bash-language-server`/`shfmt`/`shellcheck` · `yaml-language-server`/`taplo`/`marksman`/`dockerfile-language-server`/`terraform-ls` · `tree-sitter`/`ripgrep`/`fd`/`nodejs`.
+Toolchain: `nil`/`alejandra`/`statix` · `go`/`gopls`/`gofumpt` · `pyright`/`ruff` · `typescript-language-server`/`eslint_d`/`prettierd`/`vscode-langservers-extracted` · `rust-analyzer`/`rustc`/`cargo`/`rustfmt`/`clippy` (`RUST_SRC_PATH` set) · `clang-tools` · `csharp-ls` + `netcoredbg` · `phpactor` (+`phpstan`/`php-cs-fixer`/`phpunit`) · `kotlin-language-server` + `jre` · `jdt-language-server` + `nvim-jdtls` · `metals`/`scalafmt` + `nvim-metals` · `haskell-language-server`/`fourmolu` · `zls` + `zig` · `solargraph`/`rubocop` · `emmet-language-server` · `sqlfluff` · `texlab` + `vimtex` (viewer: zathura) · `tinymist` + `typst` · `vscode-js-debug` · `lua-language-server`/`stylua`/`selene` · `bash-language-server`/`shfmt`/`shellcheck` · `yaml-language-server`/`taplo`/`marksman`/`dockerfile-language-server`/`terraform-ls` · `tree-sitter`/`ripgrep`/`fd`/`nodejs`.
 
-Enabled: `gopls` `pyright` `ruff` `ts_ls` `lua_ls` `yamlls` `bashls` `marksman` `taplo` `jsonls` `dockerls` `terraformls` `clangd` `kotlin_language_server` `csharp_ls` `phpactor` + `rust_analyzer` (clippy check) + `nil_ls` (alejandra format) + `gopls` (gofumpt). `cmp_nvim_lsp` caps, `inlay_hint` on `LspAttach`.
+Enabled: `gopls` `pyright` `ruff` `ts_ls` `lua_ls` `yamlls` `bashls` `marksman` `taplo` `jsonls` `dockerls` `terraformls` `clangd` `kotlin_language_server` `csharp_ls` `phpactor` `hls` `zls` `solargraph` `emmet_ls` `texlab` `tinymist` + `rust_analyzer` (clippy check) + `nil_ls` (alejandra format) + `gopls` (gofumpt) + `nvim-jdtls`/`nvim-metals` (own attach flow, not lspconfig loop). `cmp_nvim_lsp` caps, `inlay_hint` on `LspAttach`. No native DAP for C++/Rust/Java/Kotlin/PHP in this pin (no codelldb/java-debug/php-debug/kotlin-debug binaries).
 
 Keys: `gd/gD/gr/gi` goto · `K` hover · `<leader>ca` action · `<leader>rn` IncRename · `<leader>D` typedef · `<leader>f` format · `[d`/`]d` diag nav · `<leader>ds/ws` symbols · `<leader>ci/co` calls.
 
@@ -23,14 +23,15 @@ Keys: `gd/gD/gr/gi` goto · `K` hover · `<leader>ca` action · `<leader>rn` Inc
 
 - Complete: `nvim-cmp` + `cmp-nvim-lsp/buffer/path` + `luasnip` + `friendly-snippets` + `lspkind`, ghost text, `<C-b/f/Space/e/CR/Tab/S-Tab>`.
 - Find/tree/git: `telescope` + `telescope-fzf-native` (`<leader>ff/fg/fb/fh`, `ds/ws/ci/co`) · `neo-tree` (`<leader>e`, netrw off) · `gitsigns` (blame) · `nui/plenary/devicons`.
-- Format (`conform`, on save): nix→alejandra, go→gofumpt, python→ruff_format, js/ts/json/yaml/md→prettierd, toml→taplo, lua→stylua, sh→shfmt, c/cpp→clang_format, rust→rustfmt.
-- Lint (`nvim-lint`, `BufWritePost`): python→ruff, nix→statix, sh→shellcheck, js/ts→eslint_d.
+- Format (`conform`, on save): nix→alejandra, go→gofumpt, python→ruff_format, js/ts/json/yaml/md→prettierd, toml→taplo, lua→stylua, sh→shfmt, c/cpp→clang_format, rust→rustfmt, php→php_cs_fixer, ruby→rubocop, haskell→fourmolu, scala→scalafmt, zig→zigfmt, sql→sqlfluff. Java/Kotlin/LaTeX/Typst via their LSP servers.
+- Lint (`nvim-lint`, `BufWritePost`): python→ruff, nix→statix, sh→shellcheck, js/ts→eslint_d, lua→selene, php→phpstan, ruby→rubocop, sql→sqlfluff.
 - Search/replace/rename/undo: `grug-far` (`<leader>sr`) · `inc-rename-nvim` · `undotree` (`<leader>u`) · `nvim-hlslens` + `nvim-bqf`.
 
 ## DAP / test / terminal / outline
 
-- DAP: `nvim-dap` + `dap-ui` + `virtual-text` + `nvim-nio`, `dap-python` (debugpy store path) + `dap-go`. Keys `<leader>db/dc/do/di/du/dr`. Rust/C++ adapter (codelldb) → follow-up, Python+Go wired.
-- Tests: `neotest` + `neotest-go/python/rust/jest` (`<leader>tt/tf/ts/to`).
+- DAP: `nvim-dap` + `dap-ui` + `virtual-text` + `nvim-nio`, `dap-python` (debugpy store path) + `dap-go` + `pwa-node`/`pwa-chrome` (vscode-js-debug) + `netcoredbg` (C#, DLL path prompt). Keys `<leader>db/dc/do/di/du/dr`.
+- Tests: `neotest` + `neotest-go/python/rust/jest/phpunit/java/rspec` (`<leader>tt/tf/ts/to`).
+- LaTeX/Markdown: `vimtex` (zathura) + `render-markdown-nvim`; `tinymist` serves Typst.
 - Tasks/terminal: `overseer` (`<leader>ot/or`) · `toggleterm` (`<C-\>` float).
 - Outline/marks/diff/start: `aerial` (`<leader>o`) + `dropbar` + `treesitter-context` · `harpoon2` (`<leader>a`, `<C-e>`) · `diffview` (`<leader>gd`) · `alpha/startify` · `trouble` (`<leader>q`).
 
@@ -42,4 +43,4 @@ Defaults: `number`, 2-space `expandtab`, `cursorline`, `scrolloff=8`, `colorcolu
 
 ## History
 
-- Full IDE setup (LSP/completion/finder/format/lint) → `vim.lsp.config/enable` migration + Go toolchain → DAP/terminal/outline/tests/UI round → UX round (Noice/notify/scrollbar/defaults) → font swap JetBrainsMono→GeistMono → smooth round (mini.animate/ghost text/large-file guard) → IDE round 3 (sessions/tasks/replace/symbols) → Rust fix + PHP (`phpactor`) → cyberdeck lualine + presence.
+- Full IDE setup (LSP/completion/finder/format/lint) → `vim.lsp.config/enable` migration + Go toolchain → DAP/terminal/outline/tests/UI round → UX round (Noice/notify/scrollbar/defaults) → font swap JetBrainsMono→GeistMono → smooth round (mini.animate/ghost text/large-file guard) → IDE round 3 (sessions/tasks/replace/symbols) → Rust fix + PHP (`phpactor`) → cyberdeck lualine + presence → IDE round 4: Java/Scala/Haskell/Zig/Ruby/SQL/LaTeX/Typst + JS/C# DAP + render-markdown (Oct 2026).

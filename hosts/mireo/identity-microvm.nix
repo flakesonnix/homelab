@@ -1,6 +1,12 @@
 # Identity microVM: OpenLDAP + Keycloak
 # Dedicated IP 10.8.0.29, security boundary for identity services.
-{...}: {
+{config, ...}: {
+  # Keycloak DB password reuses the host database/keycloak secret (single
+  # source, no duplicated secret): rendered into a dedicated dir so the
+  # guest share sees exactly one file (same pattern as pocket-id).
+  sops.templates."identity/database/keycloak" = {
+    content = config.sops.placeholder."database/keycloak";
+  };
   imports = [
     (import ./mk-microvm.nix {
       name = "identity";
@@ -24,11 +30,13 @@
           group = "keycloak";
         }
       ];
+      # Rendered template above lands at
+      # /run/secrets/rendered/identity/database/keycloak on the host.
       shares = [
         {
           tag = "identity-secrets";
-          source = "/run/secrets/identity";
-          mountPoint = "/run/secrets/identity";
+          source = "/run/secrets/rendered/identity";
+          mountPoint = "/run/secrets/identity/database";
           readOnly = true;
         }
       ];

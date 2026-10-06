@@ -24,6 +24,7 @@ deploy: nix run .#deploy-mireo
 - dnsmasq: DHCPv4 (+ static reservations from `vm-ips.nix` for all services)/stateful DHCPv6 (explicit ULA range)/DNS/RA+SLAAC (constructor:br0) (`bindsTo sys-devices-virtual-net-br0.device` fix)
 - PXE boot via dnsmasq (iPXE from nixpkgs, netboot.xyz menu; iVentoy removed Sep 2026)
 - NFS export of `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, node_exporter :9100 (netdata dropped 2026-09-16)
+- Mopidy music server (host ALSA → Behringer USB mixer): `/data/Jellyfin/Music` + Jellyfin backend, MPD `:6600`, Iris via `music.home.arpa` (replaced kodi VM Oct 2026)
 - libvirtd for virt-manager remote (Weg A): `qemu+ssh://root@10.8.0.1/system`, `allowedBridges=["br0"]`
 - CLI tools: tcpdump, mtr, nmap, iperf3, ethtool, socat, btop, jq, lsof, sysstat, smartmontools
 - `lucy.base.isServer = true` (no desktop)
@@ -43,7 +44,6 @@ One entrypoint for all web UIs: `http://<name>.home.arpa` (DNS from dnsmasq, no 
 | yammat.home.arpa | 10.8.0.5:3000 |
 | cups.home.arpa | 10.8.0.6:631 (web UI; IPP printing stays direct) |
 | sshkeys.home.arpa | 10.8.0.7:80 |
-| aptcache.home.arpa | 10.8.0.8:3142 |
 | uptime-kuma.home.arpa | 10.8.0.9:3001 |
 | jellyfin.home.arpa | 10.8.0.10:8096 |
 | lldap.home.arpa | 10.8.0.12:17170 |
@@ -74,7 +74,6 @@ Source: `webUIs` map in `data/hosts/mireo/settings.nix` → `services.caddy.virt
 | yammat | 10.8.0.5 | 2304M | 2 |
 | cups | 10.8.0.6 | 512M | 1 |
 | sshkeys | 10.8.0.7 | 256M | 1 |
-| aptcache | 10.8.0.8 | 512M | 1 |
 
 → [[10-Hosts/MicroVMs|MicroVM details]], Monero 9001/tcp WAN→VM forwarding.
 

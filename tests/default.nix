@@ -387,7 +387,7 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkKodiBox;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkMopidy && checkMinecraft && checkMicrovmSecretsShares && checkMicrovmHostKeys && checkMicrovmWait && checkEpg;
 
   # ---- voip module unit tests (eval-time, no secrets, no network) ----
   # NOTE: voip.nix integrates with asterisk.nix (localTest assertion +
@@ -506,43 +506,247 @@
     }
   ];
   kumaDisabled = nixosEval [../modules/nixos/uptime-kuma-sync.nix];
+  # Runtime test for the kuma>=2.1 status-page save backport: runs the real
+  # sync function against a stubbed API serving Kuma 2.x shapes (plural
+  # `incidents`). Would have caught the NameError that broke saves live.
+  kumaSyncPy = pkgs.python3.withPackages (ps: [ps.uptime-kuma-api]);
+  kumaSyncSrc = pkgs.runCommand "uptime-kuma-sync-src" {} ''
+    sed -n '/^      import argparse$/,/^          sys.exit(main())$/p' ${../modules/nixos/uptime-kuma-sync.nix} | sed 's/^      //' > $out
+  '';
+  kumaStatusPageTest = pkgs.writeText "kuma-status-page-test.py" ''
+    import json
+    import sys
+    import urllib.request
+    from unittest.mock import patch
+    from uptime_kuma_api import Event, UptimeKumaApi
+
+    with open(sys.argv[1]) as f:
+        src = f.read()
+    g = {"__name__": "kuma_sync_test"}
+    exec(compile(src, "uptime-kuma-sync.py", "exec"), g)
+
+    # Kuma >= 2.1 shape: plural incidents, no singular incident key.
+    R2 = {
+        "config": {"id": 7, "title": "Old", "theme": "auto",
+                   "showCertificateExpiry": False},
+        "incidents": [],
+        "publicGroupList": [],
+        "maintenanceList": [],
+    }
+
+    class FakeResp:
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+        def read(self):
+            return json.dumps(R2).encode()
+
+    # version is a read-only property on the real class: drive its real
+    # builder with a version-carrying namespace instead of subclassing.
+    import types
+    _versioned = types.SimpleNamespace(version="2.4.0")
+
+    class FakeApi:
+        def __init__(self):
+            self.calls = []
+            self.tag_ids = {}
+            self._event_data = {Event.STATUS_PAGE_LIST: {
+                "7": {"slug": "homelab", "id": 7}}}
+        def _build_status_page_data(self, **kwargs):
+            return UptimeKumaApi._build_status_page_data(_versioned, **kwargs)
+        def get_status_pages(self):
+            return list(self._event_data[Event.STATUS_PAGE_LIST].values())
+        def get_tags(self):
+            return [{"id": i, "name": n} for n, i in self.tag_ids.items()]
+        def add_tag(self, **kwargs):
+            self.calls.append(("addTag", (kwargs,)))
+            self.tag_ids[kwargs["name"]] = 100 + len(self.tag_ids)
+            return {"id": self.tag_ids[kwargs["name"]],
+                    "name": kwargs["name"]}
+        def add_monitor_tag(self, tag_id, monitor_id, value=""):
+            self.calls.append(("addMonitorTag", (tag_id, monitor_id,
+                                                 value)))
+            return {"msg": "Added Successfully."}
+        def _call(self, method, *args):
+            self.calls.append((method, args))
+            if method == "getStatusPage":
+                return {"config": {"id": 7, "slug": "homelab"}}
+            if method == "saveStatusPage":
+                return {"msg": "OK"}
+            raise AssertionError(f"unexpected api call: {method}")
+
+    page = {"slug": "homelab", "title": "Homelab Status",
+            "description": "d", "monitors": ["a", "b", "ghost"]}
+    live = {"a": 10, "b": 20}
+    existing = {"a": {"tags": []}, "b": {"tags": []}}
+    desired = {"a": {"group": "Remote", "target": "10.8.0.9",
+                     "tags": {"role": "metrics"}},
+               "b": {"target": "http://10.8.0.2:3000/"}}
+
+    api = FakeApi()
+    with patch.object(urllib.request, "urlopen", return_value=FakeResp()):
+        g["sync_status_page"](api, "http://10.8.0.9:3001", page, live,
+                              desired, False)
+    saved = [c for c in api.calls if c[0] == "saveStatusPage"]
+    assert len(saved) == 1, f"expected one save, got: {api.calls}"
+    slug_, config, icon, groups = saved[0][1][0]
+    assert slug_ == "homelab", slug_
+    assert config["id"] == 7, config
+    assert config["title"] == "Homelab Status", config
+    assert config["analyticsType"] is None, config
+    assert groups == [{"name": "Homelab", "weight": 1,
+                       "monitorList": [{"id": 20}]},
+                      {"name": "Remote", "weight": 2,
+                       "monitorList": [{"id": 10}]}], groups
+    g["sync_monitor_tags"](api, desired, live, existing, False)
+    assert api.tag_ids == {"target": 100, "role": 101}, api.tag_ids
+    assigned = {(c[1][0], c[1][1], c[1][2]) for c in api.calls
+                if c[0] == "addMonitorTag"}
+    assert assigned == {(100, 10, "10.8.0.9"), (101, 10, "metrics"),
+                        (100, 20, "http://10.8.0.2:3000/")}, assigned
+
+    dry = FakeApi()
+    with patch.object(urllib.request, "urlopen", return_value=FakeResp()):
+        g["sync_status_page"](dry, "http://10.8.0.9:3001", page, live,
+                              desired, True)
+    assert not [c for c in dry.calls if c[0] == "saveStatusPage"], dry.calls
+    g["sync_monitor_tags"](dry, desired, live, existing, True)
+    assert not [c for c in dry.calls if c[0] in ("addTag", "addMonitorTag")], dry.calls
+    print("kuma status page v2 save: OK")
+  '';
   checkKuma =
     forceB (kumaDisabled.services.uptime-kuma-sync.enable == false) "kuma: must be disabled by default"
     && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.serviceConfig.Type == "oneshot") "kuma: sync service is oneshot"
     && forceB (kumaEnabled.systemd.timers.uptime-kuma-sync.timerConfig.OnCalendar == "daily") "kuma: daily convergence timer"
+    && forceB (kumaEnabled.systemd.timers.uptime-kuma-sync.timerConfig.OnBootSec == "10m") "kuma: boot-delayed convergence (no switch-time race)"
+    && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.wantedBy == []) "kuma: sync never blocks switch/rollback (timer-driven only)"
     && forceB (lib.hasInfix "http://10.8.0.9:3001" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: script targets the API"
     && forceB (lib.hasInfix "uptime-kuma-monitors.json" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: monitor data wired into service"
-    && forceB (lib.hasInfix "--status-page" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: status page wired into service";
+    && forceB (lib.hasInfix "--status-page" kumaEnabled.systemd.services.uptime-kuma-sync.script) "kuma: status page wired into service"
+    && forceB (kumaEnabled.services.uptime-kuma-sync.monitors.grafana.group == "Homelab") "kuma: monitor group defaults to Homelab"
+    && forceB (kumaEnabled.services.uptime-kuma-sync.monitors.grafana.tags == {}) "kuma: monitor tags default to empty"
+    && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.serviceConfig.Restart == "on-failure") "kuma: retries transient login flakes"
+    && forceB (kumaEnabled.systemd.services.uptime-kuma-sync.unitConfig.StartLimitBurst == 3) "kuma: bounded retries, no infinite loop";
 
-  # ---- kodi-box module unit tests (eval-time, no hardware) ----
-  kodiBoxEnabled = nixosEval [
+  # ---- mireo microvm secrets-share guard (regression 2026-10-04) ----
+  # A virtiofs share whose host source dir doesn't exist kills QEMU at
+  # start (socket connect refused) and fails the whole switch + rollback.
+  # These VMs have no host sops secrets yet, so their specs must not
+  # declare a share with source /run/secrets/<name> (guest-side staging
+  # scripts referencing the path are fine — only the share breaks QEMU).
+  # Re-adding a share requires landing the host secret in the same commit
+  # — then drop the name from this list.
+  secretlessVMs = ["cloud" "communication" "documents" "media" "sync"];
+  checkMicrovmSecretsShares = builtins.all builtins.isBool (map (
+      vm:
+        forceB (!(lib.hasInfix "source = \"/run/secrets/${vm}\"" (builtins.readFile ../hosts/mireo/${vm}-microvm.nix)))
+        "microvm ${vm}: no share with source /run/secrets/${vm} without host sops secrets (breaks QEMU at switch)"
+    )
+    secretlessVMs);
+
+  # ---- microvm stable host keys (no rotation on rebuild) ----
+  hostKeysCfg = nixosEval [
+    microvm.nixosModules.microvm
+    (import ../hosts/mireo/microvm-base.nix {
+      name = "testvm";
+      ip = "10.8.0.99";
+      interfaceId = "vm-testvm";
+    })
+  ];
+  checkMicrovmHostKeys =
+    forceB (hostKeysCfg.services.openssh.hostKeys
+      == [
+        {
+          path = "/run/vm-host-keys/ssh_host_ed25519_key";
+          type = "ed25519";
+        }
+      ]) "microvm: stable hostKeys replace ephemeral defaults"
+    && forceB (lib.any (s: (s.tag or "") == "ssh-host-keys" && s.source == "/var/lib/microvms/testvm/ssh-host-keys") hostKeysCfg.microvm.shares) "microvm: host key share wired to per-VM host dir";
+
+  # ---- microvm virtiofsd settle gate (no QEMU-vs-socket race) ----
+  waitCfg = nixosEval [
+    microvm.nixosModules.host
+    ../hosts/mireo/microvm-wait.nix
+    ../hosts/mireo/dns-microvm.nix
     ../modules/nixos/lucy-services.nix
-    ../modules/nixos/kodi-box.nix
+    ../modules/nixos/dns-adguard.nix
+  ];
+  checkMicrovmWait =
+    forceB (waitCfg.systemd.services."microvm@dns".serviceConfig.ExecStartPre != []) "microvm: dns gated on settled virtiofsd"
+    && forceB (lib.any (c: lib.hasInfix "microvm-wait-virtiofsd dns" c) waitCfg.systemd.services."microvm@dns".serviceConfig.ExecStartPre) "microvm: gate passes the VM name"
+    && forceB (lib.hasInfix "/proc/net/unix" (builtins.readFile ../hosts/mireo/microvm-wait.nix)) "microvm: bound sockets read from kernel (connect-probes suicide virtiofsd)"
+    && forceB (!(lib.hasInfix "UNIX-CONNECT" (builtins.readFile ../hosts/mireo/microvm-wait.nix))) "microvm: no connect-probes (killed all daemons, 2026-10-06)"
+    && forceB (lib.hasInfix "systemctl restart" (builtins.readFile ../hosts/mireo/microvm-wait.nix)) "microvm: gate refreshes stale virtiofsd itself"
+    && forceB (!(lib.hasInfix "supervisorctl" (builtins.readFile ../hosts/mireo/microvm-wait.nix))) "microvm: no supervisorctl (unusable without section, failed all VMs)"
+    && forceB (!(lib.hasInfix "awk" (builtins.readFile ../hosts/mireo/microvm-wait.nix))) "microvm: no tools outside unit PATH (gawk missing failed all VMs, 2026-10-06)";
+
+  # ---- mopidy module unit tests (eval-time, no audio hardware) ----
+  mopidyEnabled = nixosEval [
+    sopsStub
+    ../modules/nixos/lucy-services.nix
+    ../modules/nixos/mopidy.nix
     {
-      lucy.services."kodi-box" = {
-        enable = true;
-        jellyfinHost = "10.8.0.10";
-      };
+      lucy.services.mopidy.enable = true;
+      sops.placeholder."mopidy/jellyfin-password" = "/run/secrets/mopidy/jellyfin-password";
     }
   ];
-  kodiBoxDisabled = nixosEval [
+  mopidyDisabled = nixosEval [
+    sopsStub
     ../modules/nixos/lucy-services.nix
-    ../modules/nixos/kodi-box.nix
+    ../modules/nixos/mopidy.nix
   ];
-  checkKodiBox =
-    forceB (kodiBoxDisabled.lucy.services."kodi-box".enable == false) "kodibox: must be disabled by default"
-    && forceB (kodiBoxEnabled.systemd.services.kodi.wantedBy == ["multi-user.target"]) "kodibox: service wanted by multi-user"
-    && forceB (kodiBoxEnabled.systemd.services.kodi.serviceConfig.User == "kodi") "kodibox: service runs as kodi"
-    && forceB (lib.hasInfix "xvfb-run" kodiBoxEnabled.systemd.services.kodi.script) "kodibox: headless via Xvfb"
-    && forceB (builtins.elem 8080 kodiBoxEnabled.networking.firewall.allowedTCPPorts) "kodibox: web UI port open"
-    && forceB (builtins.elem 9090 kodiBoxEnabled.networking.firewall.allowedTCPPorts) "kodibox: JSON-RPC port open"
-    && forceB (builtins.elem 9777 kodiBoxEnabled.networking.firewall.allowedUDPPorts) "kodibox: EventServer port open"
-    && forceB (kodiBoxEnabled.services.avahi.enable == true) "kodibox: avahi for Kore/Yatse discovery"
-    && forceB (lib.hasInfix "snd-usb-audio" (builtins.toString kodiBoxEnabled.boot.kernelModules)) "kodibox: USB audio module loaded"
-    && forceB (kodiBoxEnabled.lucy.services."kodi-box".jellyfinHost == "10.8.0.10") "kodibox: jellyfin host plumbed"
-    && forceB (lib.any (r: lib.hasInfix "addon_data/plugin.video.jellycon/settings.xml" r) kodiBoxEnabled.systemd.tmpfiles.rules) "kodibox: jellycon server seed wired"
-    && forceB (lib.any (r: lib.hasInfix "userdata/guisettings.xml" r) kodiBoxEnabled.systemd.tmpfiles.rules) "kodibox: guisettings seed wired"
-    && forceB (!(kodiBoxDisabled.systemd.services ? kodi)) "kodibox: no service when disabled";
+  checkMopidy =
+    forceB (mopidyDisabled.lucy.services.mopidy.enable == false) "mopidy: must be disabled by default"
+    && forceB (mopidyEnabled.services.mopidy.enable == true) "mopidy: service enabled"
+    && forceB (builtins.elem pkgs.mopidy-mpd mopidyEnabled.services.mopidy.extensionPackages) "mopidy: MPD protocol for M.A.L.P./mpc"
+    && forceB (builtins.elem pkgs.mopidy-local mopidyEnabled.services.mopidy.extensionPackages) "mopidy: local files backend"
+    && forceB (builtins.elem pkgs.mopidy-jellyfin mopidyEnabled.services.mopidy.extensionPackages) "mopidy: jellyfin backend"
+    && forceB (builtins.elem pkgs.mopidy-iris mopidyEnabled.services.mopidy.extensionPackages) "mopidy: iris web client"
+    && forceB (mopidyEnabled.services.mopidy.settings.mpd.hostname == "10.8.0.1") "mopidy: MPD on LAN, not 0.0.0.0"
+    && forceB (mopidyEnabled.services.mopidy.settings.http.hostname == "127.0.0.1") "mopidy: HTTP loopback only (Caddy in front)"
+    && forceB (lib.hasInfix "alsasink" mopidyEnabled.services.mopidy.settings.audio.output) "mopidy: direct ALSA output (no PipeWire)"
+    && forceB (lib.hasInfix "hw:CARD=CODEC" mopidyEnabled.services.mopidy.settings.audio.output) "mopidy: stable ALSA device (no hw:N,M)"
+    && forceB (mopidyEnabled.services.mopidy.settings.local.media_dir == "/data/Jellyfin/Music") "mopidy: music on /data"
+    && forceB (builtins.elem "audio" mopidyEnabled.users.users.mopidy.extraGroups) "mopidy: audio group for USB interface"
+    && forceB (lib.hasInfix "snd-usb-audio" (builtins.toString mopidyEnabled.boot.kernelModules)) "mopidy: USB audio module loaded"
+    && forceB (builtins.elem 6600 mopidyEnabled.networking.firewall.interfaces.wg0.allowedTCPPorts) "mopidy: MPD port open on VPN"
+    && forceB (!(mopidyDisabled.systemd.services ? mopidy)) "mopidy: no service when disabled";
+
+  # ---- epg-refresh unit tests (must never block switch/rollback) ----
+  epgEnabled = nixosEval [
+    sopsStub
+    ../modules/nixos/epg-refresh.nix
+    {
+      services.epg-refresh.enable = true;
+      services.epg-refresh.apiTokenFile = "/run/secrets/jellyfin/epg-api-token";
+    }
+  ];
+  checkEpg =
+    forceB (epgEnabled.systemd.services.epg-refresh.wantedBy == []) "epg: never wanted by multi-user (timer-driven only)"
+    && forceB (epgEnabled.systemd.timers.epg-refresh.timerConfig.OnCalendar == "daily") "epg: daily convergence timer";
+
+  # ---- minecraft module unit tests (eval-time, no game) ----
+  minecraftEnabled = nixosEval [
+    ../modules/nixos/lucy-services.nix
+    ../modules/nixos/minecraft.nix
+    {lucy.services.minecraft.enable = true;}
+  ];
+  minecraftDisabled = nixosEval [
+    ../modules/nixos/lucy-services.nix
+    ../modules/nixos/minecraft.nix
+  ];
+  checkMinecraft =
+    forceB (minecraftDisabled.lucy.services.minecraft.enable == false) "minecraft: must be disabled by default"
+    && forceB (minecraftEnabled.systemd.services.minecraft.wantedBy == ["multi-user.target"]) "minecraft: service wanted by multi-user"
+    && forceB (minecraftEnabled.systemd.services.minecraft.serviceConfig.User == "lucy") "minecraft: service runs as lucy"
+    && forceB (minecraftEnabled.systemd.services.minecraft.serviceConfig.WorkingDirectory == "/home/lucy/mcserver") "minecraft: runs in ~/mcserver"
+    && forceB (lib.hasInfix "nogui" minecraftEnabled.systemd.services.minecraft.serviceConfig.ExecStart) "minecraft: headless flag present"
+    && forceB (lib.hasInfix "server.jar" minecraftEnabled.systemd.services.minecraft.serviceConfig.ExecStart) "minecraft: starts server.jar"
+    && forceB (lib.hasInfix "temurin-jre-bin-25" minecraftEnabled.systemd.services.minecraft.serviceConfig.ExecStart) "minecraft: Java 25 for Paper 26.x"
+    && forceB (minecraftEnabled.systemd.services.minecraft.serviceConfig.Restart == "on-failure") "minecraft: restarts only on crash"
+    && forceB (lib.hasInfix "minecraft.service" minecraftEnabled.security.polkit.extraConfig) "minecraft: lucy polkit rule present"
+    && forceB (!(minecraftDisabled.systemd.services ? minecraft)) "minecraft: no service when disabled";
 
   # ---- asterisk fax unit tests (eval-time, no calls) ----
   # NOTE: asterisk.nix touches sops options (guarded, but this nixpkgs
@@ -550,6 +754,10 @@
   sopsStub = {lib, ...}: {
     options.sops = {
       secrets = lib.mkOption {
+        type = lib.types.attrs;
+        default = {};
+      };
+      placeholder = lib.mkOption {
         type = lib.types.attrs;
         default = {};
       };
@@ -656,6 +864,10 @@
       MAKO_FIXTURE="$empty" bash counter-custom.sh | grep -q '"text":"I"'
       MAKO_FIXTURE="$two" bash counter-custom.sh | grep -q '"text":"A 2"'
       echo "  OK: custom icons"
+
+      echo "=== kuma status page save (v2 backport) ==="
+      ${kumaSyncPy}/bin/python3 ${kumaStatusPageTest} ${kumaSyncSrc}
+      echo "  OK: incidents-tolerant save with analyticsType, dry-run clean"
 
       echo "=== ci check app ==="
       grep -rq 'nix eval --option warn-dirty false a --raw >/dev/null' ${testCheckApp}/

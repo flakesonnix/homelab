@@ -24,6 +24,9 @@
           group = "librenms";
         }
       ];
+      # Secrets land here via host sops (management/*); the API tokens are
+      # placeholders until minted in the LibreNMS/NetBox UIs (see
+      # data/hosts/mireo/services.nix).
       shares = [
         {
           tag = "management-secrets";
@@ -54,6 +57,13 @@
           databaseName = "librenms";
           databaseUser = "librenms";
           databasePasswordSecret = "database/librenms";
+        };
+        # Add pci-setup script to satisfy ConditionPathExists in microvm-pci-devices@.service
+        systemd.services."pci-setup-management" = {
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = "/bin/true";
+          };
         };
       };
     })

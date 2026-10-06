@@ -214,6 +214,8 @@
         ./modules/nixos/ntfy.nix
         ./modules/nixos/rustdesk.nix
         ./modules/nixos/osm.nix
+        ./modules/nixos/minecraft.nix # lucy.services.minecraft (~/mcserver wrapper)
+        ./modules/nixos/mopidy.nix # lucy.services.mopidy (music server, host ALSA)
         sops-nix.nixosModules.sops
         run0-sudo-shim.nixosModules.default
         ({lib, ...}: {

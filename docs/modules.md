@@ -168,10 +168,25 @@ Declarative Uptime Kuma monitors (GitOps API sync, host-side on `mireo`). Option
 | `monitors.<name>.maxRetries` | unsigned int | 1 | Retries before DOWN |
 | `monitors.<name>.dnsServer` | str | `"10.8.0.1"` | Resolver for `dns` (default tests our own dnsmasq) |
 | `monitors.<name>.dnsType` | str | `"A"` | Record type for `dns` |
+| `monitors.<name>.group` | str | `"Homelab"` | Status page category (site): `Homelab` / `Internet` / `Remote` (unknown names sort last) |
+| `monitors.<name>.tags` | attrs | `{}` | Extra monitor tags (`{ role = "metrics"; }`); target address always tagged; additive only, UI tags survive |
 | `statusPage.enable` | bool | false | Single public page (`/status/<slug>`, all Nix monitors, others deleted) |
 | `statusPage.slug` / `.title` / `.description` | str | `"homelab"` / `"Homelab Status"` / … | Page identity |
 
-Oneshot `uptime-kuma-sync.service` (after `microvm@uptime-kuma`) + daily `uptime-kuma-sync.timer` (Persistent). Dry-run preview without writes: `/etc/uptime-kuma-sync/preview`. Notifications are NOT managed (none exist; needs channel + secrets — follow-up).
+Timer-driven `uptime-kuma-sync.service` (oneshot, after `microvm@uptime-kuma`, deliberately NOT in `multi-user.target` so a Kuma outage can never fail a switch/rollback) + `uptime-kuma-sync.timer` (`OnBootSec=10m` + daily, Persistent). Monitors land in site categories on the status page (`Homelab` / `Internet` / `Remote`, per-monitor `group`, default `Homelab`) with `tags` (auto `target` address + custom map, additive only). Sync after monitor changes: `systemctl start uptime-kuma-sync`. Dry-run preview without writes: `/etc/uptime-kuma-sync/preview`. Notifications are NOT managed (none exist; needs channel + secrets — follow-up). Kuma ≥2.1 needs the in-script `save_status_page` backport (upstream lib unmaintained); covered by a runtime test in `tests/default.nix`.
+
+### `mopidy.nix`
+
+Mopidy music server on the mireo host (replaced the kodi music-box VM, Oct 2026): local `/data/Jellyfin/Music` + Jellyfin backend + streams/radio to the USB mixer (Behringer Xenyx 302USB) via direct ALSA. Clients: MPD protocol `:6600` (M.A.L.P., mpc) + Iris web UI behind Caddy (`music.home.arpa`).
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enable` | bool | false | Enable mopidy + ympd-less Iris stack |
+| `musicDirectory` | path | `/data/Jellyfin/Music` | Local library (Jellyfin media dir) |
+| `alsaDevice` | str | `"hw:CARD=CODEC,DEV=0"` | Stable ALSA name (verify with `aplay -L`) |
+| `jellyfinHost` / `jellyfinUser` | str | `10.8.0.10:8096` / `mopidy` | Jellyfin backend (password via sops `mopidy/jellyfin-password`) |
+
+Extension set: `mopidy-mpd`, `mopidy-local`, `mopidy-jellyfin`, `mopidy-somafm`, `mopidy-iris`. Spotify/SoundCloud/YouTube deliberately NOT wired (all fragile as of Oct 2026; Deezer has no viable extension).
 
 ---
 

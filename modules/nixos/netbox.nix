@@ -31,7 +31,8 @@ in {
         RemainAfterExit = true;
       };
       environment.NETBOX_URL = "https://netbox.${domain}";
-      environment.NETBOX_TOKEN_FILE = "/run/secrets/devops/netbox-api-token";
+      # Per-VM secrets dir (least privilege); key: management/netbox-api-token.
+      environment.NETBOX_TOKEN_FILE = "/run/secrets/management/netbox-api-token";
       path = with pkgs; [curl jq];
       script = ''
         set -eu
