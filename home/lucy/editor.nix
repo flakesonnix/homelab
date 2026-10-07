@@ -134,6 +134,7 @@
         todo-comments-nvim
         comment-nvim
         nvim-autopairs
+        mini-nvim
         trouble-nvim
         # Messages, cmdline, quickfix, search, scrollbar, sessions,
         # tasks, replace, rename, undo
@@ -257,7 +258,8 @@
         vim.opt.confirm = true
         vim.opt.colorcolumn = "120"
         vim.opt.pumheight = 10
-        vim.opt.showmode = false -- lualine shows the mode already        vim.opt.list = true
+        vim.opt.showmode = false -- lualine shows the mode already
+        vim.opt.list = true
         vim.opt.listchars = { tab = "→ ", trail = "·", nbsp = "␣" }
         vim.opt.timeoutlen = 300
         vim.api.nvim_create_autocmd("TextYankPost", {
@@ -440,6 +442,7 @@
           capabilities = caps,
           settings = { gopls = { gofumpt = true } },
         })
+        vim.lsp.enable("gopls")
 
         -- Treesitter main-branch API: no ensure_installed (parsers come
         -- from Nix), start per buffer when a parser exists. No jsonc
@@ -508,6 +511,7 @@
           php = { "phpstan" },
           ruby = { "rubocop" },
           sql = { "sqlfluff" },
+        }
         vim.api.nvim_create_autocmd({ "BufWritePost" }, {
           callback = function() require("lint").try_lint() end,
         })
@@ -709,11 +713,6 @@
         vim.keymap.set("n", "<leader>ws", builtin.lsp_workspace_symbols, { silent = true })
         vim.keymap.set("n", "<leader>ci", builtin.lsp_incoming_calls, { silent = true })
         vim.keymap.set("n", "<leader>co", builtin.lsp_outgoing_calls, { silent = true })
-        local hl_opts = { noremap = true, silent = true }
-        vim.keymap.set("n", "n", [[<Cmd>execute('normal! ' . v:count1 . 'n')<CR><Cmd>lua require('hlslens').start()<CR>]], hl_opts)
-        vim.keymap.set("n", "N", [[<Cmd>execute('normal! ' . v:count1 . 'N')<CR><Cmd>lua require('hlslens').start()<CR>]], hl_opts)
-        vim.keymap.set("n", "*", [[*<Cmd>lua require('hlslens').start()<CR>]], hl_opts)
-        vim.keymap.set("n", "#", [[#<Cmd>lua require('hlslens').start()<CR>]], hl_opts)
 
         -- Debugging (adapters from Nix store paths, no mason).
         local dap = require("dap")
