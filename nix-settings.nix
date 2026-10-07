@@ -29,18 +29,6 @@ _: {
 
   nixpkgs.overlays = [
     (final: prev: {
-      libdisplay-info = prev.libdisplay-info.overrideAttrs (finalAttrs: {
-        version = "0.3.0";
-        src = final.fetchFromGitLab {
-          domain = "gitlab.freedesktop.org";
-          owner = "emersion";
-          repo = "libdisplay-info";
-          rev = finalAttrs.version;
-          sha256 = "sha256-nXf2KGovNKvcchlHlzKBkAOeySMJXgxMpbi5z9gLrdc=";
-        };
-      });
-      niri = prev.niri.override {inherit (final) libdisplay-info;};
-
       qemu_full = prev.qemu_full.override {
         cephSupport = false;
       };
