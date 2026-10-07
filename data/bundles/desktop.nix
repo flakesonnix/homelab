@@ -17,7 +17,9 @@
     thunderbird.enable = true;
     vesktop.enable = true;
     virtManager.enable = true;
-    waybar.enable = true;
+    # eww ist die Desktop-Shell (topbar + sidebar); waybar bleibt als
+    # Modul erhalten, ist aber deaktiviert (kein Parallelbetrieb).
+    waybar.enable = false;
     zathura.enable = true;
   };
 
