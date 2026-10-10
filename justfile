@@ -80,6 +80,10 @@ docs-build:
 docs-serve:
     nix run .#nixfleet -- docs serve
 
+# Build NixOS GNOME netboot payload for PXE (→ ./result/, sync to mireo:/data/pxe)
+pxe-boot:
+    nix build .#pxe-desktop-boot
+
 # Interactive command launcher (fzf)
 menu:
     nix run .#menu

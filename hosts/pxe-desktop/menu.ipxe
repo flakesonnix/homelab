@@ -1,0 +1,32 @@
+#!ipxe
+# Lokales PXE-Menü auf mireo (http://10.8.0.1/boot/menu.ipxe).
+# chain lädt relativ zum Skript-URL: netboot.ipxe + bzImage + initrd
+# liegen daneben in /data/pxe (gebaut via `nix build .#pxe-desktop-boot`).
+menu NixOS PXE-Boot (mireo)
+item --gap NixOS:
+item nixos-desktop NixOS mit GNOME-Desktop (Installer)
+item --gap Sonstiges:
+item netbootxyz netboot.xyz (Upstream-Menue)
+item shell iPXE-Shell
+item reboot Neustart
+item exit Von Platte booten (Exit)
+choose --default nixos-desktop --timeout 8000 target && goto ${target}
+
+:nixos-desktop
+chain netboot.ipxe || goto failed
+
+:netbootxyz
+chain http://boot.netboot.xyz/menu.ipxe || goto failed
+
+:shell
+shell
+
+:reboot
+reboot
+
+:exit
+exit
+
+:failed
+echo Booten fehlgeschlagen, wechsle in iPXE-Shell...
+shell

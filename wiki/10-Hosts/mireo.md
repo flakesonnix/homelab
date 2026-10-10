@@ -5,7 +5,7 @@ type: host
 host: mireo
 ip: 10.8.0.1
 wan: 192.168.178.25
-role: Homeserver / LAN router + 10 microVMs
+role: Homeserver / LAN router + 17 microVMs (8 Stubs deaktiviert)
 roles: []
 deploy: nix run .#deploy-mireo
 ---
@@ -20,9 +20,9 @@ deploy: nix run .#deploy-mireo
 
 ## Features
 
-- NAT for 10.8.0.0/24 + IPv6 via NAT66 (FritzBox PD configured but currently not landing — br0 is ULA-only, all LAN v6 egress masqueraded), systemd-networkd
+- NAT for 10.8.0.0/24 + natives IPv6 via FritzBox (WAN-SLAAC + NAT66 fürs ULA-LAN, PD angefragt/auto bei Delegation), systemd-networkd (HE-Tunnel über VPS entfernt 2026-10-10)
 - dnsmasq: DHCPv4 (+ static reservations from `vm-ips.nix` for all services)/stateful DHCPv6 (explicit ULA range)/DNS/RA+SLAAC (constructor:br0) (`bindsTo sys-devices-virtual-net-br0.device` fix)
-- PXE boot via dnsmasq (iPXE from nixpkgs, netboot.xyz menu; iVentoy removed Sep 2026)
+- PXE boot via dnsmasq (iPXE from nixpkgs via TFTP) + Caddy `/boot` aus `/data/pxe`: lokales Menü mit NixOS GNOME desktop (Default, Quelle `hosts/pxe-desktop/`, Bau via `just pxe-boot`) + netboot.xyz-Fallback; iVentoy removed Sep 2026
 - NFS export of `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, node_exporter :9100 (netdata dropped 2026-09-16)
 - Mopidy music server (host ALSA → Behringer USB mixer): `/data/Jellyfin/Music` + Jellyfin backend, MPD `:6600`, Iris via `music.home.arpa` (replaced kodi VM Oct 2026)
 - libvirtd for virt-manager remote (Weg A): `qemu+ssh://root@10.8.0.1/system`, `allowedBridges=["br0"]`
@@ -55,7 +55,7 @@ Source: `webUIs` map in `data/hosts/mireo/settings.nix` → `services.caddy.virt
 
 ## libvirt (virt-manager remote target, Weg A)
 
-`virtualisation.libvirtd` in `data/hosts/mireo/settings.nix:112` (`enable=true`, `allowedBridges=["br0"]`, `qemu.vhostUserPackages=[virtiofsd]`) — x270 verbindet via `qemu+ssh://root@10.8.0.1/system`. Neue Gäste an `br0` bridgen (NICHT `virbr0`/default-Netz: `br0` ist trusted + dnsmasq/DNS vorhanden), IP statisch außerhalb DHCP-Range (`10.8.0.100-.199`) + in `hosts/mireo/vm-ips.nix` eintragen. Die 10 microVMs (`microvm.nix`, `microvm@*`) erscheinen NICHT in virt-manager. Recovery bei `243/CREDENTIALS` (libvirt 12.4 secrets-encryption-key/TPM-Bug): `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
+`virtualisation.libvirtd` in `data/hosts/mireo/settings.nix:112` (`enable=true`, `allowedBridges=["br0"]`, `qemu.vhostUserPackages=[virtiofsd]`) — p53 verbindet via `qemu+ssh://root@10.8.0.1/system`. Neue Gäste an `br0` bridgen (NICHT `virbr0`/default-Netz: `br0` ist trusted + dnsmasq/DNS vorhanden), IP statisch außerhalb DHCP-Range (`10.8.0.100-.199`) + in `hosts/mireo/vm-ips.nix` eintragen. Die 17 aktiven microVMs (`microvm.nix`, `microvm@*`; 8 Stubs in `hosts/mireo/default.nix` auskommentiert) erscheinen NICHT in virt-manager. Recovery bei `243/CREDENTIALS` (libvirt 12.4 secrets-encryption-key/TPM-Bug): `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
 
 ## Config files
 

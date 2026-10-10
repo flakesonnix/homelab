@@ -338,6 +338,24 @@
           };
 
           nixfleetPkgs = import ./nixfleet/default.nix {inherit pkgs;};
+
+          # NixOS mit GNOME-Desktop als PXE-Netboot-Payload (bzImage + initrd
+          # mit eingebettetem squashfs + iPXE-Skripte). Separates Paket (kein
+          # nixosConfiguration/toplogy-Eintrag), damit mireo-Deploys nicht
+          # bei jedem Switch das GB-große Installer-Closure bauen.
+          # Sync nach dem Bauen: Dateien aus ./result nach mireo:/data/pxe
+          # kopieren (Caddy serviert sie unter http://10.8.0.1/boot/).
+          pxeDesktop = nixpkgs.lib.nixosSystem {
+            system = "x86_64-linux";
+            modules = [./hosts/pxe-desktop];
+          };
+          pxeDesktopBoot = pkgs.runCommand "pxe-desktop-boot" {} ''
+            mkdir -p $out
+            cp ${pxeDesktop.config.system.build.kernel}/${pxeDesktop.config.system.boot.loader.kernelFile} $out/bzImage
+            cp ${pxeDesktop.config.system.build.netbootRamdisk}/initrd $out/initrd
+            cp ${pxeDesktop.config.system.build.netbootIpxeScript}/netboot.ipxe $out/netboot.ipxe
+            cp ${./hosts/pxe-desktop/menu.ipxe} $out/menu.ipxe
+          '';
         in
           {
             formatter = pkgs.alejandra;
@@ -383,13 +401,14 @@
               nixfleet-web = nixfleetPkgs.web;
               nixfleet-manifest = pkgs.writeText "manifest.json" self.nixfleetArtifacts.manifestJson;
               nixfleet-ui = pkgs.writeText "ui.json" self.nixfleetArtifacts.uiJson;
+              pxe-desktop-boot = pxeDesktopBoot;
             };
 
             apps = {
               rebuild = {
                 type = "app";
                 program = "${rebuildApp}/bin/rebuild";
-                meta.description = "Rebuild the x270 host via nh";
+                meta.description = "Rebuild the p53 host via nh";
               };
               check = {
                 type = "app";

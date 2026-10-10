@@ -14,20 +14,23 @@
     ./ntp-microvm.nix
     ./lldap-microvm.nix
     ./pocket-id-microvm.nix
-    ./identity-microvm.nix
-    ./postgres-microvm.nix
     ./dns-microvm.nix
-    ./devops-microvm.nix
     ./artifacts-microvm.nix
-    ./management-microvm.nix
-    ./cloud-microvm.nix
-    ./sync-microvm.nix
-    ./media-microvm.nix
-    ./documents-microvm.nix
     ./communication-microvm.nix
     ./remote-microvm.nix
     ./maps-microvm.nix
     ./dash-microvm.nix
+    # DEAKTIVIERT (Stub-VMs ohne echte Dienste, fressen nur RAM/Build-Zeit;
+    # zum Reaktivieren einkommentieren — IPs/DNS in vm-ips.nix bleiben
+    # reserviert, daher kein Adress-Konflikt):
+    # ./identity-microvm.nix
+    # ./postgres-microvm.nix
+    # ./devops-microvm.nix
+    # ./management-microvm.nix
+    # ./cloud-microvm.nix
+    # ./sync-microvm.nix
+    # ./media-microvm.nix
+    # ./documents-microvm.nix
   ];
 
   # All microvm tap interfaces join the LAN bridge.

@@ -33,17 +33,22 @@
   networking.useNetworkd = true;
 
   systemd.network.enable = true;
-  # FritzBox IPv6 (as of 2026-05-29):
-  #   WAN addr:  2a02:3102:4c00:3b::1b5/64 (SLAAC, fallback)
-  #   delegated: 2a02:3102:4cec:b500::/64  (DHCPv6 PD, assigned to br0 LAN)
-  # WAN runs a DHCPv6 client (IA_NA address + IA_PD prefix) alongside the
-  # static IPv4. The delegated prefix is handed to br0 below; dnsmasq keeps
-  # sending the LAN RAs (constructor:br0 picks the delegated GUA up
-  # automatically). No IPv6SendRA in networkd — dnsmasq owns RA.
+  # FritzBox IPv6 (Diagnose 2026-10-10, live auf mireo verifiziert):
+  #   WAN-GUAs kommen per SLAAC (2a02:3102:4ce0:6700::/64, wechselt bei
+  #   Reconnects) + FritzBox-ULA (fd0b:f7ef:4ed5::/64). Der DHCPv6-Client
+  #   (IA_NA + IA_PD, s.u.) bekommt KEINE Antwort: /var/lib/systemd/network
+  #   bleibt leer, kein Lease — d.h. Entweder FritzBox-DHCPv6-Server aus
+  #   oder keine PD. Hausaufgabe in der FritzBox (Heimnetz → Netzwerk →
+  #   Netzwerkeinstellungen → IPv6): DHCPv6-Server AN + Präfix-Delegation
+  #   für nachgelagerte Router (braucht ISP-Präfix kürzer als /64).
+  #   Sobald PD landet, bekommt br0 automatisch ein GUA-/64 (s.u.) und
+  #   dnsmasq kündigt es per RA an (constructor:br0) — kein Deploy nötig.
+  # WAN läuft daneben mit statischem IPv4. No IPv6SendRA in networkd —
+  # dnsmasq owns RA.
   # NOTE: br0 has IPv6Forwarding=true, which flips net.ipv6.conf.all.forwarding
   # to router mode. Under forwarding the kernel ignores RAs with accept_ra=1,
-  # so the WAN SLAAC address may disappear — the DHCPv6 IA_NA address replaces
-  # it. IPv4, ULA, DHCPv4/DNS on br0 are unaffected either way.
+  # so WAN lives purely on SLAAC (renewed by FritzBox RAs). IPv4, ULA,
+  # DHCPv4/DNS on br0 are unaffected either way.
   systemd.network.networks."10-wan" = {
     matchConfig.Name = "enp4s0";
     address = ["192.168.178.25/24"];
@@ -79,11 +84,12 @@
   };
   systemd.network.networks."30-br0" = {
     matchConfig.Name = "br0";
-    # Static ULA stays as fallback/seed so LAN-local v6 + dnsmasq constructor
-    # keep working even if the FritzBox delegation ever fails.
-    # HE routed LAN (via nyagate wg0, Tunnel ID 1039084): SLAAC kommt aus
-    # dnsmasq constructor:br0 automatisch, sobald die Adresse hier liegt.
-    address = ["10.8.0.1/24" "fd00:cafe:1::1/64" "2001:470:1f15:54f::1/64"];
+    # Static ULA = das stabile LAN-v6 (DNS-AAAA + DHCPv6 bauen darauf).
+    # Ein FritzBox-PD-GUA landet hier automatisch daneben, sobald die
+    # FritzBox delegiert (s. WAN-Kommentar); dnsmasq kündigt dann beide
+    # Präfixe per RA an (constructor:br0). HE routed LAN entfernt
+    # 2026-10-10 (VPS-unabhängiges v6 via NAT66, s.u.).
+    address = ["10.8.0.1/24" "fd00:cafe:1::1/64"];
     networkConfig = {
       ConfigureWithoutCarrier = true;
       IPv6AcceptRA = false;
@@ -106,10 +112,11 @@
     internalInterfaces = ["br0"];
   };
 
-  # --- NAT66 outbound (no PD from FritzBox, so no LAN GUA) ---
+  # --- NAT66 outbound (primärer v6-Egress, VPS-unabhängig) ---
   # Masquerade LAN ULA behind whatever GUA is currently on enp4s0.
-  # Prefix-change-proof (no hardcoded GUA), GUA passes through untouched
-  # if PD ever lands. Native nftables (networking.nat is v4-only).
+  # Prefix-change-proof (no hardcoded GUA). Falls FritzBox-PD je landet,
+  # geht das delegierte GUA nativ raus (längeres Präfix schlägt NAT), ULA
+  # bleibt per NAT66 erreichbar. Native nftables (networking.nat is v4-only).
   # NOTE: br0's IPv6Forwarding only flips the per-link flag — LAN→WAN
   # forward needs all.forwarding=1 (was 0, v6 egress dead, 2026-09-14).
   boot.kernel.sysctl."net.ipv6.conf.all.forwarding" = 1;
@@ -263,17 +270,16 @@
       enable-ra = true;
       dhcp-range = [
         "10.8.0.100,10.8.0.199,255.255.255.0,24h"
-        # RA/SLAAC for every prefix on br0 (ULA + HE routed GUA, FritzBox PD
-        # falls je durch).
+        # RA/SLAAC for every prefix on br0 (ULA + FritzBox-PD-GUA, falls
+        # die FritzBox je delegiert — landet automatisch, kein Deploy).
         # NOTE: dnsmasq has NO `ra-stateful` flag (it fails with
         # "bad dhcp-range"): a bare `::,constructor:…` range is
         # stateless-only; stateful needs an explicit address range below
         # (dnsmasq then sets the RA managed bit automatically).
         "::,constructor:br0,ra-stateless,64,24h"
-        # Stateful DHCPv6 on the static ULA (works independent of PD)
-        # + HE routed LAN (via nyagate wg0).
+        # Stateful DHCPv6 on the static ULA (works independent of PD).
+        # (HE routed LAN entfernt 2026-10-10, VPS-unabhängiges v6.)
         "fd00:cafe:1::100,fd00:cafe:1::1ff,64,24h"
-        "2001:470:1f15:54f::100,2001:470:1f15:54f::1ff,64,24h"
       ];
       dhcp-option = [
         "option:router,10.8.0.1"
@@ -281,6 +287,8 @@
         # adblock via .30 and keep resolving (unfiltered) if the dns VM
         # is ever down. glibc falls through on timeout/refused.
         "option:dns-server,10.8.0.30,10.8.0.1"
+        # NTP server (chrony VM, hosts/mireo/ntp-microvm.nix, UDP 123).
+        "option:ntp-server,10.8.0.11"
         # Same explicitly for DHCPv6 + RA (RDNSS/DNSSL): without this,
         # clients only learn the link-local address via RA default, which
         # some stubs can't use (missing %iface scope). ULA is static.
@@ -307,13 +315,21 @@
         # so monitoring/DNS stay stable. Named ff-bb — its own hostname is
         # "mireo", which collides with ours (seen 2026-10-04 in leases).
         ++ ["44:d4:37:8b:d8:69,10.8.0.193,ff-bb"];
-      # --- PXE boot (dnsmasq-nativ, netboot.xyz-Menü) ---
-      # iPXE-Clients (erkennbar an Option 175) chainloaden direkt das
-      # netboot.xyz-Menü per HTTP; klassische PXE-ROMs laden erst iPXE
-      # per TFTP (Binaries aus nixpkgs, kein /data nötig) und landen in
-      # Runde 2 ebenfalls im Menü. Normale Clients kriegen keinen
-      # Dateinamen (ungetaggte dhcp-boot fehlt absichtlich).
-      # Ablauf BIOS-VM: undionly.kpxe (TFTP) → iPXE → http-Menü.
+      # --- PXE boot (dnsmasq-nativ, NixOS GNOME + netboot.xyz-Fallback) ---
+      # iPXE-Clients (erkennbar an Option 175) chainloaden das LOKALE Menü
+      # per HTTP (http://10.8.0.1/boot/menu.ipxe, Caddy file_server aus
+      # /data/pxe unten); Default-Eintrag ist NixOS mit GNOME-Desktop
+      # (Installer + Calamares). Zweiter Eintrag: netboot.xyz-Upstream.
+      # Klassische PXE-ROMs laden erst iPXE per TFTP (Binaries aus nixpkgs,
+      # kein /data nötig) und landen in Runde 2 ebenfalls im Menü. Normale
+      # Clients kriegen keinen Dateinamen (ungetaggte dhcp-boot fehlt
+      # absichtlich).
+      # Payload bauen + syncen (kein Build bei jedem mireo-Switch!):
+      #   nix build .#pxe-desktop-boot   (→ ./result: bzImage/initrd/*.ipxe)
+      #   scp result/* root@10.8.0.1:/data/pxe/
+      # Quelle: hosts/pxe-desktop/ (netboot-base + GNOME, ohne ISO-Kette).
+      # Ablauf BIOS-VM: undionly.kpxe (TFTP) → iPXE → lokales Menü → bzImage
+      # + initrd (HTTP, squashfs steckt in der initrd).
       # WICHTIG: tag:ipxe-Regel MUSS als letzte stehen — dnsmasq nimmt bei
       # mehreren passenden dhcp-boot-Zeilen die letzte (iPXE-Clients matchen
       # zugleich client-arch 0 UND Option 175; Diagnose 2026-09-14: mit
@@ -328,7 +344,7 @@
         "tag:bios,undionly.kpxe,,10.8.0.1"
         "tag:efi-bc,snp.efi,,10.8.0.1"
         "tag:efi64,snp.efi,,10.8.0.1"
-        "tag:ipxe,http://boot.netboot.xyz/menu.ipxe"
+        "tag:ipxe,http://10.8.0.1/boot/menu.ipxe"
       ];
       enable-tftp = true;
       tftp-root = "${pkgs.ipxe}";
@@ -394,6 +410,19 @@
       "yammat.db210.org" = "10.8.0.5:3000";
       "grafana.db210.org" = "10.8.0.2:3000";
     };
+    # PXE-Netboot-Payload (NixOS GNOME, siehe dnsmasq oben): statische
+    # Dateien aus /data/pxe unter http://10.8.0.1/boot/* (IP-Literal, damit
+    # iPXE kein DNS braucht). Alle anderen Pfade auf der IP bleiben 404
+    # wie ohne diesen VHost (Caddy-Default für unbekannte Sites).
+    pxeBoot = {
+      "http://10.8.0.1" = ''
+        handle /boot/* {
+          uri strip_prefix /boot
+          root * /data/pxe
+          file_server
+        }
+      '';
+    };
   in {
     enable = true;
     virtualHosts =
@@ -407,7 +436,8 @@
           extraConfig = "reverse_proxy ${target}";
         })
       publicWebUIs
-      // lib.mapAttrs' (name: cfg: lib.nameValuePair name {extraConfig = cfg;}) statusRedir;
+      // lib.mapAttrs' (name: cfg: lib.nameValuePair name {extraConfig = cfg;}) statusRedir
+      // lib.mapAttrs' (name: cfg: lib.nameValuePair name {extraConfig = cfg;}) pxeBoot;
   };
 
   fileSystems."/data" = {
@@ -418,6 +448,9 @@
 
   systemd.tmpfiles.rules = [
     "Z /data 0755 lucy users - -"
+    # PXE-Netboot-Ablage (bzImage/initrd/*.ipxe aus `nix build .#pxe-desktop-boot`,
+    # per scp hierher syncen; Caddy serviert sie unter http://10.8.0.1/boot/).
+    "d /data/pxe 0755 root root - -"
   ];
 
   services.avahi = {
@@ -474,8 +507,10 @@
   # only the published ports; Avahi is pinned to br0+lo).
   # Private key via `sops hosts/mireo/secrets.yaml`, peer key in
   # `hosts/nyagate/secrets.yaml`. After deploy: `wg show wg0` (both ends).
-  # v6: global unicast (2000::/3) geht via wg0 -> nyagate HE-Tunnel raus.
-  # ULA bleibt bewusst ausgenommen (weiter NAT66 via enp4s0 als Fallback).
+  # v6 läuft NATIV via FritzBox (ULA+NAT66, PD-GUA falls delegiert) —
+  # wg0 trägt nur 10.66.0.1/32-Transit (kein 2000::/3 mehr, HE entfernt
+  # 2026-10-10). Public-Inbound (80/443/25565) kommt weiter per DNAT über
+  # den Tunnel (v4).
   networking.wireguard.interfaces.wg0 = {
     ips = ["10.66.0.2/30"];
     listenPort = 51820;
@@ -488,7 +523,7 @@
         name = "nyagate";
         publicKey = "pKir9k3Af8ng24vW/vzoRkewoaMHdWysqxNX9xQbU0o=";
         endpoint = "188.220.148.24:51820";
-        allowedIPs = ["10.66.0.1/32" "2000::/3"];
+        allowedIPs = ["10.66.0.1/32"];
         persistentKeepalive = 25;
       }
     ];
@@ -497,22 +532,6 @@
   # WireGuard handshake responses (mireo initiates out, but keep the port open
   # so the tunnel survives keepalive gaps / nyagate-initiated handshakes).
   networking.firewall.allowedUDPPorts = [51820];
-
-  # --- Bevorzugte v6-Source fürs Tunnel-Routing (HE primär) ---
-  # Diagnose 2026-09-14: Kernel wählt sonst die FritzBox-GUA als Source
-  # (asymmetrisch: raus via WG/HE, zurück via FritzBox -> conntrack DROP).
-  # Diese Route (Metrik 512) sticht die WireGuard-Route (1024) aus und pinnt
-  # die HE-Adresse als Source. ULA/NAT66-Fallback unberührt.
-  systemd.network.networks."40-wg0" = {
-    matchConfig.Name = "wg0";
-    routes = [
-      {
-        Destination = "2000::/3";
-        PreferredSource = "2001:470:1f15:54f::1";
-        Metric = 512;
-      }
-    ];
-  };
 
   # Published services ONLY — must mirror nyagate's forwardPorts. Everything
   # else arriving via wg0 is dropped by default-deny.

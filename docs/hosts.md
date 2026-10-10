@@ -39,17 +39,17 @@ Internet (IPv4 + IPv6 via FritzBox)
     ├── 10.8.0.30 dns microvm         (AdGuard Home filtering :53/:3000)
     ├── 10.8.0.32 dash microvm        (Homepage dashboard :8082)
     ├── 10.8.0.193 ff-bb              (Freifunk box, DHCP reservation)
-    └── (DHCP)      x270 (dynamic, see below)
+    └── (DHCP)      p53 (dynamic, see below)
 ```
 
-mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (WAN). IPv6 prefix `2a02:3102:4cec:b500::/64` delegated from FritzBox to br0; dnsmasq issues RA + SLAAC (constructor:br0) to LAN clients and assigns addresses via DHCPv6 (stateful ULA range). LAN clients (x270 etc.) get fully dynamic addresses; only the 10 microVMs and mireo itself have static IPs + DNS records.
+mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (WAN). IPv6 nativ via FritzBox (WAN-SLAAC, LAN per ULA+NAT66; PD angefragt — bei Delegation kündigt dnsmasq das GUA per RA/SLAAC via constructor:br0 automatisch an); dnsmasq assigns addresses via DHCPv6 (stateful ULA range). LAN clients (p53 etc.) get fully dynamic addresses; the microVMs and mireo itself have static IPs + DNS records (teils als dhcp-host-Reservierungen).
 
 ---
 
-## x270
+## p53
 
 **Role:** Primary desktop / gaming laptop  
-**Hardware:** Lenovo ThinkPad X270, i7-7600U  
+**Hardware:** Lenovo ThinkPad P53, i7-9750H  
 **IP:** dynamic via DHCP (dnsmasq on mireo; reachable by hostname)
 
 ### Features
@@ -105,19 +105,19 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 **IP:** 10.8.0.1 (LAN), 192.168.178.25 (WAN)
 
 ### Features
-- NAT gateway for 10.8.0.0/24 + IPv6 (FritzBox DHCPv6-PD, prefix `2a02:3102:4cec:b500::/64`)
+- NAT gateway for 10.8.0.0/24 + native IPv6 via FritzBox (WAN-SLAAC + NAT66 fürs ULA-LAN; PD angefragt — landet ein Präfix, gehts nativ raus. HE-Tunnel über VPS entfernt 2026-10-10)
 - systemd-networkd (no NetworkManager)
-- dnsmasq on host: DHCPv4, stateful DHCPv6 (explicit ULA range), DNS, IPv6 RA/SLAAC (constructor:br0) for LAN (br0), authoritative home.arpa zone (SOA/NS via auth-zone)
-- PXE boot via dnsmasq (iPXE binaries from nixpkgs, netboot.xyz menu over HTTP)
+- dnsmasq on host: DHCPv4 (+NTP option 42 → ntp VM .11), stateful DHCPv6 (explicit ULA range), DNS, IPv6 RA/SLAAC (constructor:br0) for LAN (br0), authoritative home.arpa zone (SOA/NS via auth-zone)
+- PXE boot via dnsmasq (iPXE binaries from nixpkgs, TFTP) + Caddy file server: local iPXE menu at `http://10.8.0.1/boot/menu.ipxe` (NixOS with GNOME desktop as default, netboot.xyz as fallback). Payload built via `nix build .#pxe-desktop-boot` / `just pxe-boot` (source `hosts/pxe-desktop/`, no ISO chain) and synced to mireo `/data/pxe`
 - NFS export of `/data` to `10.8.0.0/24`
 - Avahi mDNS advertising NFS share (`_nfs._tcp`) for Nautilus autodiscovery
 - Metrics via Grafana/Prometheus + uptime-kuma alerting + nixfleet agent (netdata dropped 2026-09-16)
 - Caddy reverse proxy on `:80` — every web UI as `http://<name>.home.arpa` (grafana, prometheus, yammat, cups, sshkeys, uptime-kuma, jellyfin, lldap, pocket-id, dash, adguard, music) + `http://status.home.arpa` (302 → Uptime Kuma status page)
 - Mopidy music server on the host (no VM): `/data/Jellyfin/Music` + Jellyfin backend to the USB mixer (Behringer Xenyx 302USB) via ALSA; clients M.A.L.P./mpc + Iris web UI via `music.home.arpa`
 - AdGuard Home (dns VM) as filtering-only DNS frontend (blocklists); dnsmasq on the host stays authoritative for DHCP + LAN DNS (advertises `.30` first, `.1` fallback)
-- 26 microVMs running on br0 (single `mk-microvm.nix` spec pattern, stable per-VM SSH host keys):
+- 17 microVMs running on br0 (single `mk-microvm.nix` spec pattern, stable per-VM SSH host keys; 8 weitere Stub-VMs sind in `hosts/mireo/default.nix` auskommentiert — IPs/DNS in `vm-ips.nix` bleiben reserviert):
   - **grafana** (10.8.0.2): Prometheus scraping router + all hosts, Grafana with mireo-router dashboard
-  - **network-services** (10.8.0.3): bridge tap stub (no services)
+  - **network-services** (10.8.0.3): reserved stub (no services; DHCP/DNS/PXE live on the host dnsmasq)
   - **monerod** (10.8.0.4): Pruned Monero node + Tor relay (nickname `mireoMoneroRelay`)
   - **yammat** (10.8.0.5): YAMMAT event management (C3D2 matemat, port 3000)
   - **cups** (10.8.0.6): CUPS print server (IPP, Avahi, Epson ET-2860 + Lexmark)
@@ -127,24 +127,17 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
   - **ntp** (10.8.0.11): chrony NTP server (UDP 123, via DHCP option 42)
   - **lldap** (10.8.0.12): LDAP directory (`dc=home,dc=arpa`, :3890 + UI :17170 via `http://lldap.home.arpa`)
   - **pocket-id** (10.8.0.13): OIDC provider
-  - **cloud** (10.8.0.14): Nextcloud (stub)
-  - **management** (10.8.0.15): NetBox + LibreNMS (stub)
-  - **devops** (10.8.0.17): Hydra + Woodpecker CI (stub)
   - **artifacts** (10.8.0.20): Attic binary cache + OCI registry
-  - **media** (10.8.0.21): Immich (stub)
-  - **documents** (10.8.0.22): Paperless (stub)
   - **communication** (10.8.0.23): Matrix Synapse + ntfy
   - **remote** (10.8.0.25): RustDesk relay
-  - **sync** (10.8.0.26): Syncthing (stub)
   - **maps** (10.8.0.27): OSM tiles (:80)
-  - **postgres** (10.8.0.28): PostgreSQL platform (stub)
-  - **identity** (10.8.0.29): OpenLDAP + Keycloak (stub)
   - **dns** (10.8.0.30): AdGuard Home filtering (:53/:3000, via `http://adguard.home.arpa`)
   - **dash** (10.8.0.32): Homepage dashboard (:8082, via `http://dash.home.arpa`)
+  - (deaktiviert, nur reservierte IPs/DNS: **cloud** .14 Nextcloud, **management** .15 NetBox+LibreNMS, **devops** .17 Hydra+Woodpecker, **media** .21 Immich, **documents** .22 Paperless, **sync** .26 Syncthing, **postgres** .28 PostgreSQL, **identity** .29 OpenLDAP+Keycloak)
   - (retired: **aptcache** 10.8.0.8 decommissioned 2026-10-05, **kodi** music-box replaced by Mopidy)
 - No desktop (`lucy.base.isServer = true`)
 - node_exporter running on 10.8.0.1:9100 for self-monitoring
-- libvirtd daemon for virt-manager remote (Weg A): x270 connects via `qemu+ssh://root@10.8.0.1/system`, new libvirt guests bridge to `br0` (`allowedBridges`), static IP outside DHCP range + entry in `hosts/mireo/vm-ips.nix`. The 26 microVMs (microvm.nix) do NOT show in virt-manager. Recovery on `243/CREDENTIALS`: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
+- libvirtd daemon for virt-manager remote (Weg A): p53 connects via `qemu+ssh://root@10.8.0.1/system`, new libvirt guests bridge to `br0` (`allowedBridges`), static IP outside DHCP range + entry in `hosts/mireo/vm-ips.nix`. The 17 active microVMs (microvm.nix) do NOT show in virt-manager. Recovery on `243/CREDENTIALS`: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
 - CLI tools: tcpdump, mtr, nmap, iperf3, ethtool, socat, btop, htop, ncdu, jq, lsof, sysstat, smartmontools
 
 ### NixFleet (M1 — mireo runtime control plane)

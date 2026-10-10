@@ -150,8 +150,9 @@
   # + 19132/udp (Geyser Bedrock, ~/mcserver auf mireo)
   # are DNAT'd through the tunnel, SNAT'd back so the return path stays
   # symmetric. No 0.0.0.0/0 in allowedIPs — default route stays local.
-  # v6: HE routed LAN 2001:470:1f15:54f::/64 hängt hinter mireo (br0 ::1),
-  # nyagate routet es via wg0 (WireGuard setzt die Route aus allowedIPs).
+  # v6: nur noch Transit-Subnetz; das HE routed LAN hinter mireo ist
+  # entfernt (2026-10-10, mireo macht v6 nativ via FritzBox+NAT66).
+  # nyagates EIGENER v6-Uplink bleibt der HE-Tunnel (s.o.).
   networking.wireguard.interfaces.wg0 = {
     ips = ["10.66.0.1/30"];
     listenPort = 51820;
@@ -162,7 +163,7 @@
       {
         name = "mireo";
         publicKey = "SKNUqLUwDlpoSi1W588BiRGYmFjaIOXHdaJ898T8C2E=";
-        allowedIPs = ["10.66.0.2/32" "2001:470:1f15:54f::/64"];
+        allowedIPs = ["10.66.0.2/32"];
         persistentKeepalive = 25;
       }
     ];
@@ -171,19 +172,16 @@
   networking.firewall.allowedUDPPorts = [51820 25565 19132];
   networking.firewall.allowedTCPPorts = [80 443 25565];
 
-  # v6-Forward wg0<->he-ipv6 fürs HE-LAN (FORWARD läuft über
-  # nixos-filter-forward ohne v6-Accepts; v4 geht nur dank NAT-Modul).
-  # Nur das HE-/64 in beide Richtungen (echtes Ende-zu-Ende-v6), v4-Policy bleibt.
-  # MSS-Clamp: Doppel-Tunnel (WG 1420 + SIT 1480) — ohne hängen große Seiten.
+  # v6-Filter für he-ipv6 (FORWARD läuft über nixos-filter-forward ohne
+  # v6-Accepts; v4 geht nur dank NAT-Modul).
+  # MSS-Clamp nur noch für lokal erzeugtes TCP via he-ipv6 (Doppel-Tunnel
+  # WG+SIT ist mit dem HE-LAN entfallen): ohne den stallt jeder Response
+  # über ~1400 Bytes (Fragment-Blackhole, s. he-tunnel-Kommentar).
   networking.firewall.extraCommands = ''
-    ip6tables -w -I FORWARD 1 -i wg0 -o he-ipv6 -s 2001:470:1f15:54f::/64 -j ACCEPT
-    ip6tables -w -I FORWARD 2 -i he-ipv6 -o wg0 -d 2001:470:1f15:54f::/64 -j ACCEPT
     iptables -w -I INPUT 1 -p 41 -s 216.66.84.46 -j ACCEPT
     # NDP für eigene Adressen/DAD muss den Kernel erreichen.
     ip6tables -w -I INPUT 1 -p icmpv6 --icmpv6-type neighbour-solicitation -j ACCEPT
     ip6tables -w -I INPUT 2 -p icmpv6 --icmpv6-type neighbour-advertisement -j ACCEPT
-    ip6tables -w -t mangle -A FORWARD -i wg0 -o he-ipv6 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1340
-    ip6tables -w -t mangle -A FORWARD -i he-ipv6 -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1340
     # Gleicher Clamp für lokal erzeugtes TCP via he-ipv6 (nixos-fetch etc.):
     # ohne den stallt jeder Response über ~1400 Bytes (Fragment-Blackhole,
     # s. he-tunnel-Kommentar). Schützt nur die SYN-Ankündigung; das harte
@@ -191,13 +189,9 @@
     ip6tables -w -t mangle -A OUTPUT -o he-ipv6 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1340
   '';
   networking.firewall.extraStopCommands = ''
-    ip6tables -w -D FORWARD -i wg0 -o he-ipv6 -s 2001:470:1f15:54f::/64 -j ACCEPT || true
-    ip6tables -w -D FORWARD -i he-ipv6 -o wg0 -d 2001:470:1f15:54f::/64 -j ACCEPT || true
     iptables -w -D INPUT -p 41 -s 216.66.84.46 -j ACCEPT || true
     ip6tables -w -D INPUT -p icmpv6 --icmpv6-type neighbour-solicitation -j ACCEPT || true
     ip6tables -w -D INPUT -p icmpv6 --icmpv6-type neighbour-advertisement -j ACCEPT || true
-    ip6tables -w -t mangle -D FORWARD -i wg0 -o he-ipv6 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1340 || true
-    ip6tables -w -t mangle -D FORWARD -i he-ipv6 -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1340 || true
     ip6tables -w -t mangle -D OUTPUT -o he-ipv6 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1340 || true
   '';
 
@@ -205,7 +199,7 @@
   # NOTE: forwardPorts alone reicht NICHT — ohne SNAT käme das Paket mit
   # der echten Client-IP (z.B. 1.2.3.4) im Tunnel bei mireo an, und mireos
   # WireGuard verwirft alles, dessen Source nicht in seinen allowedIPs
-  # (10.66.0.1/32, 2000::/3) steht. Symptom: conntrack SYN_SENT
+  # (10.66.0.1/32) steht. Symptom: conntrack SYN_SENT
   # [UNREPLIED], auf mireo kommt nichts an (Diagnose 2026-09-14).
   # Deshalb SNAT auf 10.66.0.1: symmetrischer Return-Path + WG-konform.
   # Nebeneffekt: Server im LAN sehen Externe als 10.66.0.1 (kein IP-Ban
