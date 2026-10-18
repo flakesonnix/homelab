@@ -1,0 +1,58 @@
+{
+  "nodes": {
+    "flake-compat": {
+      "locked": {
+        "lastModified": 1733328505,
+        "narHash": "sha256-NeCCThCEP3eCl2l/+27kNNK7QrwZB1IJCrXfrbv5oqU=",
+        "rev": "ff81ac966bb2cae68946d5ed5fc4994f96d0ffec",
+        "revCount": 69,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/edolstra/flake-compat/1.1.0/01948eb7-9cba-704f-bbf3-3fa956735b52/source.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://flakehub.com/f/edolstra/flake-compat/1.tar.gz"
+      }
+    },
+    "nixbsd": {
+      "inputs": {
+        "flake-compat": "flake-compat",
+        "nixpkgs": "nixpkgs"
+      },
+      "locked": {
+        "lastModified": 1791907201,
+        "narHash": "sha256-aBfAqChNSvgmQG05d5qEpFvRFNjLN85PKSFRGBJ3qaA=",
+        "owner": "nix-community",
+        "repo": "nixbsd",
+        "rev": "8cf417b68b3426f6f4a3fcafdaf2fa3dfde0195d",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "nixbsd",
+        "rev": "8cf417b68b3426f6f4a3fcafdaf2fa3dfde0195d",
+        "type": "github"
+      }
+    },
+    "nixpkgs": {
+      "locked": {
+        "lastModified": 1784834273,
+        "narHash": "sha256-ARPrbHm5ReO4qHnxnIut1gGDz68gl2vyzUFTHenThz4=",
+        "rev": "7d4b60cc165478e9d2c87236a1740e09de951ded",
+        "type": "tarball",
+        "url": "https://releases.nixos.org/nixos/unstable-small/nixos-26.11pre1040699.7d4b60cc1654/nixexprs.tar.xz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://channels.nixos.org/nixos-unstable-small/nixexprs.tar.xz"
+      }
+    },
+    "root": {
+      "inputs": {
+        "nixbsd": "nixbsd"
+      }
+    }
+  },
+  "root": "root",
+  "version": 7
+}
