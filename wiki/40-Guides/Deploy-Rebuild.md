@@ -8,18 +8,18 @@ type: guide
 
 [[40-Guides/Guides-MOC|← Guides]] · [[00-Start/Quickstart|Quickstart]]
 
-## x270 locally (preferred, nh)
+## p53 locally (preferred, nh)
 
 ```bash
 nix run .#rebuild
 # just rebuild
-sudo nixos-rebuild switch --flake .#x270
+sudo nixos-rebuild switch --flake .#p53
 ```
 
 ## deploy-rs (custom activate + NIX_PATH stub, flake.nix:474)
 
 ```bash
-nix run .#deploy-x270    # localhost, root
+nix run .#deploy-p53    # localhost, root
 nix run .#deploy-mireo   # 10.8.0.1, root
 nix run .#deploy-nyagate # db210.org, lucy → root
 just deploy-all

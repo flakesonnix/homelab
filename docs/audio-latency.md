@@ -27,7 +27,7 @@ systemctl --user restart pipewire pipewire-pulse
 
 Reboot after adding user to `audio` group.
 
-## NixOS (x270/gaming role)
+## NixOS (p53/gaming role)
 
 Declarative via gaming role. Chain:
 

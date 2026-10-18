@@ -15,12 +15,12 @@ in {
       tags = ["infrastructure" "router" "gateway"];
       snmpCommunity = null;
     };
-    x270 = {
-      name = "x270";
+    p53 = {
+      name = "p53";
       site = "lan";
       role = "client";
       manufacturer = "ThinkPad";
-      model = "X270";
+      model = "P53";
       interfaces = ["wlan0" "eth0"];
       addresses = [];
       tags = ["workstation"];

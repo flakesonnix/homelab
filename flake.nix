@@ -80,6 +80,15 @@
       url = "github:oddlama/nix-topology";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # EWM (Emacs Wayland Manager) compositor + NixOS module, pinned 2026-10-14.
+    # Tarball input: lib.fileset.gitTracked evaluates store paths without
+    # filtering, so no git checkout is needed.
+    # Deliberately NOT following our nixpkgs (July 2026, libdisplay-info 0.2):
+    # EWM pins libdisplay-info 0.3, which only its own locked nixpkgs provides.
+    ewm = {
+      url = "https://codeberg.org/ezemtsov/ewm/archive/a26d17f885f86b3e3adde7315c9720283820286f.tar.gz";
+    };
   };
 
   # Custom flake outputs (intentional, used by external tools):
@@ -106,6 +115,7 @@
     yammat,
     deploy-rs,
     nix-topology,
+    ewm,
     ...
   }: let
     pkgsForPatch = import nixpkgs {system = "x86_64-linux";};
@@ -127,8 +137,8 @@
 
     frameworkLib = import ./lib/framework;
 
-    x270SpecialArgs = {
-      inherit wrappers stylix nix-flatpak nixos-hardware nixGaming frameworkLib;
+    p53SpecialArgs = {
+      inherit wrappers stylix nix-flatpak nixos-hardware nixGaming frameworkLib ewm;
     };
 
     serverSpecialArgs = {
@@ -139,12 +149,12 @@
       inherit wrappers yammat nixpkgs frameworkLib;
     };
 
-    x270-config = mkHost {
-      specialArgs = x270SpecialArgs;
+    p53-config = mkHost {
+      specialArgs = p53SpecialArgs;
       modules = [
         ./nix-settings.nix
         ./profiles/desktop.nix
-        ./hosts/x270
+        ./hosts/p53
         ./modules/nixos/audio-stream.nix
         ./modules/nixos/epg-refresh.nix # services.epg-refresh: täglicher Jellyfin-XMLTV-Guide
         ./modules/nixos/fonts.nix
@@ -156,6 +166,8 @@
         ./modules/nixos/nvidia.nix
         ./modules/nixos/nvidia-resume.nix
         ./modules/nixos/niri.nix
+        ./modules/nixos/ewm.nix
+        ewm.nixosModules.default
         ./modules/nixos/serial-getty.nix
         ./modules/nixos/sops.nix
         ./modules/nixos/waybar.nix
@@ -167,6 +179,10 @@
           boot.lanzaboote = {
             enable = true;
             pkiBundle = "/var/lib/sbctl";
+            # /boot ist nur 1 GB, ein initrd allein ~218 MB: höchstens 3
+            # Generationen behalten, sonst läuft die ESP wieder voll (ENOSPC
+            # bei Gen 240, Okt 2026).
+            configurationLimit = 3;
           };
         })
         ./modules/nixos/hm-base.nix
@@ -253,7 +269,7 @@
             builtins.removeAttrs
             (
               import ./lib/framework/flake/checks.nix {
-                inherit self pkgs x270-config;
+                inherit self pkgs p53-config;
               }
             ).checks ["webui-unit"];
           deployChecks = deploy-rs.lib.${system}.deployChecks self.deploy;
@@ -313,8 +329,8 @@
           # Curated, human-labeled command list used by the interactive
           # `menu` launcher. Single source of truth for what's discoverable.
           menuEntries = {
-            rebuild = "Rebuild local x270 via nh";
-            "deploy-x270" = "Deploy x270 via deploy-rs to localhost";
+            rebuild = "Rebuild local p53 via nh";
+            "deploy-p53" = "Deploy p53 via deploy-rs to localhost";
             "deploy-mireo" = "Deploy mireo via deploy-rs to 10.8.0.1";
             "deploy-nyagate" = "Deploy nyagate via deploy-rs to db210.org";
             check = "Run nix flake check";
@@ -430,10 +446,10 @@
                 program = "${updateApp}/bin/update";
                 meta.description = "Update flake inputs";
               };
-              deploy-x270 = {
+              deploy-p53 = {
                 type = "app";
-                program = "${deployApp "x270"}/bin/deploy-x270";
-                meta.description = "Deploy x270 via deploy-rs to localhost";
+                program = "${deployApp "p53"}/bin/deploy-p53";
+                meta.description = "Deploy p53 via deploy-rs to localhost";
               };
               deploy-mireo = {
                 type = "app";
@@ -491,7 +507,7 @@
           };
 
           nixosConfigurations = {
-            x270 = x270-config;
+            p53 = p53-config;
             mireo = mireo-config;
             nyagate = nyagate-config;
           };
@@ -520,12 +536,12 @@
               nixosConfig.config.system.build.toplevel
               "${nixPathEnv} $PROFILE/bin/switch-to-configuration switch";
           in {
-            x270 = {
+            p53 = {
               hostname = "localhost";
               sshUser = "root";
               profiles.system = {
                 user = "root";
-                path = activateNixosWithNixPath self.nixosConfigurations.x270;
+                path = activateNixosWithNixPath self.nixosConfigurations.p53;
               };
             };
             mireo = {

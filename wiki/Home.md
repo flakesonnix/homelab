@@ -19,7 +19,7 @@ type: moc
 ## 🖥️ Hosts
 
 - [[10-Hosts/Hosts-MOC|Hosts overview]] — map of all machines
-- [[10-Hosts/x270|x270]] — ThinkPad X270, desktop/gaming (dynamic IP via DHCP)
+- [[10-Hosts/p53|p53]] — ThinkPad P53, desktop/gaming (dynamic IP via DHCP)
 - [[10-Hosts/mireo|mireo]] — server/router + 7 microVMs (10.8.0.1)
 - [[10-Hosts/nyagate|nyagate]] — remote server QEMU (db210.org)
 - [[10-Hosts/MicroVMs|MicroVMs]] — grafana … dash in detail (26 VMs)

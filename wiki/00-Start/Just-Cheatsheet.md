@@ -11,8 +11,8 @@ type: guide
 | Command | What happens |
 |--------|--------------|
 | `just` / `nix run .#menu` | fzf launcher (all entries) |
-| `just rebuild` | `nix run .#rebuild` → `nh os switch` (local x270) |
-| `just deploy` / `just deploy-x270` | deploy-rs → localhost |
+| `just rebuild` | `nix run .#rebuild` → `nh os switch` (local p53) |
+| `just deploy` / `just deploy-p53` | deploy-rs → localhost |
 | `just deploy-mireo` | deploy-rs → 10.8.0.1 |
 | `just deploy-nyagate` | deploy-rs → db210.org |
 | `just deploy-all` | all three |
@@ -22,14 +22,14 @@ type: guide
 | `just update` | `nix flake update` |
 | `just fmt` | `nix fmt` (alejandra) |
 | `just lint` | `statix check` |
-| `just sops [host]` | `nix run .#setup-sops x270` → `/etc/sops/age/keys.txt` |
+| `just sops [host]` | `nix run .#setup-sops p53` → `/etc/sops/age/keys.txt` |
 | `just topology` | `nix build .#topology` → `docs/topology/{main,network}.svg` |
 | `just nixfleet` | `nix run .#nixfleet` CLI |
 | `just docs-generate/check/build/serve` | NixFleet docs framework |
 | `just new-host` | `scripts/new-host.sh host <name>` |
 | `just new-vm` | `scripts/new-host.sh vm <name>` (+ register IP in `vm-ips.nix`) |
 
-## Niri keys (x270, [[20-Modules/Home-Modules|Home modules]])
+## Niri keys (p53, [[20-Modules/Home-Modules|Home modules]])
 
 `Alt+Enter` alacritty · `Alt+D` fuzzel · `Alt+Shift+A` pwvucontrol · `Alt+Ctrl+Esc` swaylock · `Alt+Shift+S` screenshot.
 

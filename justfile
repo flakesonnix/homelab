@@ -5,17 +5,17 @@
 default:
     @just --list
 
-# Rebuild the local host (x270) via nh
+# Rebuild the local host (p53) via nh
 rebuild:
     nix run .#rebuild
 
-# Deploy x270 via deploy-rs to localhost
-deploy-x270:
-    nix run .#deploy-x270
+# Deploy p53 via deploy-rs to localhost
+deploy-p53:
+    nix run .#deploy-p53
 
-# Alias for deploy-x270 (local thinkpad)
+# Alias for deploy-p53 (local thinkpad)
 deploy:
-    nix run .#deploy-x270
+    nix run .#deploy-p53
 
 # Deploy mireo to 10.8.0.1 via deploy-rs
 deploy-mireo:
@@ -27,7 +27,7 @@ deploy-nyagate:
 
 # Deploy all hosts via deploy-rs
 deploy-all:
-    nix run .#deploy-x270
+    nix run .#deploy-p53
     nix run .#deploy-mireo
     nix run .#deploy-nyagate
 
@@ -55,8 +55,8 @@ fmt:
 lint:
     statix check
 
-# Generate sops-nix age key pair (host: x270)
-sops host="x270":
+# Generate sops-nix age key pair (host: p53)
+sops host="p53":
     nix run .#setup-sops {{host}}
 
 # Build network/host topology SVGs → ./result/

@@ -19,7 +19,7 @@
 * Design notes:
 * - Soft dependency on modules/nixos/asterisk.nix (localTest assertion
 *   + extraExtensions hook + trunk #includes, guarded via `options`).
-*   True on x270 via flake.nix. A live trunk REQUIRES asteriskLocal
+*   True on p53 via flake.nix. A live trunk REQUIRES asteriskLocal
 *   (clear assertion); localTest alone too.
 * - Reuses the existing Asterisk 22 stack (nixpkgs nixos-unstable,
 *   same major version as Easybell's official Asterisk guide). No new

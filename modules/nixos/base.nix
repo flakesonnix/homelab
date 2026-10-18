@@ -71,9 +71,8 @@ in {
       onShutdown = "shutdown";
     };
 
-    # virt-manager GUI client (polkit rules included). Decoupled from the
-    # local daemon so remote-only use (qemu+ssh://mireo/system) keeps working
-    # while the local daemon stays disabled (x270 TPM workaround).
+    # virt-manager GUI client (polkit rules included). Local daemon on p53
+    # (TPM present) + remote mireo via qemu+ssh://10.8.0.1/system.
     programs.virt-manager.enable = lib.mkIf (!config.lucy.base.isServer) true;
 
     environment.systemPackages = with pkgs; [

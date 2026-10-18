@@ -66,7 +66,7 @@ jobs:
           key: nix-store-${{ runner.os }}-${{ hashFiles('flake.lock') }}
           restore-keys: |
             nix-store-${{ runner.os }}-
-      - run: nix eval .#nixosConfigurations.x270.config.system.build.toplevel.outPath --raw
+      - run: nix eval .#nixosConfigurations.p53.config.system.build.toplevel.outPath --raw
         name: Evaluate NixOS config
 
   nixfleet:

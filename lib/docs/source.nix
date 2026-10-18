@@ -19,12 +19,12 @@
   # For now, define a minimal host inventory derived from known hosts.
   # This will be expanded to load from data/hosts and hosts/mireo.
   hosts = {
-    x270 = {
-      id = "x270";
-      title = "X270";
-      description = "Primary desktop / gaming laptop — ThinkPad X270";
-      hardware.info = "Lenovo ThinkPad X270 · i7-7600U";
-      roles = import ../../data/hosts/x270/roles.nix;
+    p53 = {
+      id = "p53";
+      title = "P53";
+      description = "Primary desktop / gaming laptop — ThinkPad P53";
+      hardware.info = "Lenovo ThinkPad P53 · i7-9750H";
+      roles = import ../../data/hosts/p53/roles.nix;
       services = ["niri" "waybar" "pipewire"];
       microvms = [];
       modules = ["base" "niri" "gaming"];

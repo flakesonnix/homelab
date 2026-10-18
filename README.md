@@ -7,7 +7,7 @@ It started as some dotfiles and somehow turned into a small framework for managi
 ## What's in here?
 
 * ❄️ NixOS + Home Manager
-* 🖥️ `x270` — my desktop/laptop
+* 🖥️ `p53` — my desktop/laptop (ThinkPad P53)
 * 🏠 `mireo` — my home server/router with 10 microVMs
 * ☁️ `nyagate` — remote VPS, public edge (WireGuard transit to mireo)
 * 📦 roles, bundles and presets for composing hosts
@@ -19,9 +19,9 @@ The framework stuff lives mostly under `lib/` and `data/`.
 
 ## Hosts
 
-### x270
+### p53
 
-ThinkPad X270.
+ThinkPad P53.
 
 Desktop setup, Niri, gaming stuff, Wayland things and the usual amount of configuration required to make Linux do what I want.
 
@@ -53,7 +53,7 @@ modules/
 └── home/
 
 hosts/
-├── x270/
+├── p53/
 ├── mireo/
 └── nyagate/
 

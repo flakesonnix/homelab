@@ -13,12 +13,12 @@ namespace: lucy.*
 
 | Module | Namespace | Purpose |
 |-------|-----------|-------|
-| `base` | `lucy.base.*` | SSH (key-only, no passwords), sudo, libvirtd (non-server; Ausnahmen: mireo `enable=true` als virt-manager-Target, x270 `mkForce false` per TPM-Workaround), FW 22/24800/5555-5585, initrd SSH :2222, `trusted-users` |
+| `base` | `lucy.base.*` | SSH (key-only, no passwords), sudo, libvirtd (non-server: p53 lokal + mireo `enable=true` als virt-manager-Target), FW 22/24800/5555-5585, initrd SSH :2222, `trusted-users` |
 | `packages` | `lucy.*` | `basePackages`/`hostPackages` + one toggle per `data/packages/system.nix` entry |
 | `sops` | `lucy.secrets.*` | sops-nix wrapper, asserts `sopsFile!=null`, `ageKeyPath=/etc/sops/age/keys.txt` |
 | `hm-base` | — | HM `useGlobalPkgs`/`useUserPackages`, passes `frameworkLib` via specialArgs |
 | `fonts` | `lucy.fonts.*` | e.g. `lucy.fonts.inter=true` |
-| `serial-getty` | `lucy.serialGetty.disabled` | e.g. x270 disables ttyS0-3 |
+| `serial-getty` | `lucy.serialGetty.disabled` | e.g. p53 disables ttyS0-3 |
 | `topology` | `lucy.topology.*` | → nix-topology `topology.self` |
 | `cups` | — | Client side (mireo hosts the cups VM, `profiles/base.nix !isServer` guard) |
 
@@ -42,7 +42,7 @@ namespace: lucy.*
 
 | Module | Namespace | Purpose |
 |-------|-----------|-------|
-| `nvidia` | `lucy.nvidia.*` | 32-bit graphics, production driver, `PreserveVideoMemory`, lazy `nvidia-loader` after graphical.target (unused — x270 is Intel) |
+| `nvidia` | `lucy.nvidia.*` | 32-bit graphics, production driver, `PreserveVideoMemory`, lazy `nvidia-loader` after graphical.target (unused — p53 is Intel) |
 | `nvidia-resume` | — | ACPI quirks for suspend/resume |
 | `nixfleet` | `lucy.nixfleet.*` | API :8443 + agent — [[50-NixFleet/Manifest-API|details]] |
 

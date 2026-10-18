@@ -1,8 +1,8 @@
-# Gaming — x270
+# Gaming — p53
 
 ## Stack overview
 
-Gaming on x270 is driven by three presets (activated via the `gaming` role):
+Gaming on p53 is driven by three presets (activated via the `gaming` role):
 
 | Preset | What it enables |
 |--------|----------------|
@@ -50,8 +50,8 @@ GameMode daemon runs as a system service. Games using `libgamemode` or launched 
 
 ## Performance governor
 
-`gaming-performance` preset sets `cpuFreqGovernor = "performance"` and disables the power profiles daemon to prevent it from resetting the governor. This is always active on x270 (not just during gaming).
+`gaming-performance` preset sets `cpuFreqGovernor = "performance"` and disables the power profiles daemon to prevent it from resetting the governor. This is always active on p53 (not just during gaming).
 
 ## Disable for non-gaming builds
 
-If x270 ever runs without the `gaming` role, the module flags simply won't be set and none of the gaming stack activates — the presets are purely additive.
+If p53 ever runs without the `gaming` role, the module flags simply won't be set and none of the gaming stack activates — the presets are purely additive.

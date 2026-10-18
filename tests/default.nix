@@ -16,7 +16,7 @@
   allRoles = readNixDir ../data/roles;
   allBundles = readNixDir ../data/bundles;
   allPresets = readNixDir ../data/presets;
-  hostDataDirs = ["x270" "mireo"];
+  hostDataDirs = ["p53" "mireo"];
   homeDataDirs = ["lucy"];
 
   force = cond: msg:
@@ -120,7 +120,7 @@
   _hostDeps = builtins.listToAttrs (map (host: {
     name = "host-${host}";
     value = depAttr host self.nixosConfigurations.${host}.config.system.build.toplevel;
-  }) ["x270" "mireo"]);
+  }) ["p53" "mireo"]);
   _formatterDep = {fmt = depAttr "fmt" self.formatter.${pkgs.stdenv.hostPlatform.system};};
   _devShellDeps = {
     shell-default = depAttr "shell-default" self.devShells.${pkgs.stdenv.hostPlatform.system}.default;
@@ -135,7 +135,7 @@
       "check-light"
       "check-full"
       "update"
-      "deploy-x270"
+      "deploy-p53"
       "deploy-mireo"
     ]);
   _nixfleetDeps = {
@@ -252,7 +252,7 @@
       echo "=== nixfleet artifacts ==="
       manifest="$nixfleetManifest"
       ui="$nixfleetUi"
-      jq -e '.hosts.x270.hostname and (.hosts | has("mireo"))' "$manifest" >/dev/null
+      jq -e '.hosts.p53.hostname and (.hosts | has("mireo"))' "$manifest" >/dev/null
       jq -e '.vms | has("cups")' "$manifest" >/dev/null
       jq -e '.navigation | any(.page == "dashboard")' "$ui" >/dev/null
       echo "  manifest.json and ui.json valid"
@@ -387,13 +387,70 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkMopidy && checkMinecraft && checkMicrovmSecretsShares && checkMicrovmHostKeys && checkMicrovmWait && checkEpg;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkMopidy && checkMinecraft && checkMicrovmSecretsShares && checkMicrovmHostKeys && checkMicrovmWait && checkEpg && checkOllama;
+
+  ollamaCfg = self.nixosConfigurations.p53.config;
+  checkOllama = let
+    cfg = ollamaCfg.services.ollama;
+    unit = ollamaCfg.systemd.services.ollama;
+  in
+    forceB cfg.enable "ollama: enabled on p53"
+    && forceB (cfg.package.outPath == self.nixosConfigurations.p53.pkgs.ollama-cuda.outPath) "ollama: CUDA package selected"
+    && forceB (lib.elem cfg.package ollamaCfg.environment.systemPackages) "ollama: CLI installed"
+    && forceB (lib.elem "multi-user.target" unit.wantedBy && unit.serviceConfig.ExecStart == "${lib.getExe cfg.package} serve") "ollama: server starts at boot"
+    && forceB (unit.environment.OLLAMA_HOST == "127.0.0.1:11434" && !cfg.openFirewall) "ollama: API remains local"
+    && forceB (cfg.loadModels == [] && !cfg.syncModels) "ollama: no implicit model downloads or deletions"
+    && forceB (!self.nixosConfigurations.mireo.config.services.ollama.enable && !self.nixosConfigurations.nyagate.config.services.ollama.enable) "ollama: servers unchanged";
+
+  swayfxCfg = self.nixosConfigurations.p53.config;
+  swayfxHome = swayfxCfg.home-manager.users.lucy;
+  swayfxPortal = self.nixosConfigurations.p53.pkgs.xdg-desktop-portal-wlr;
+  checkSwayfx =
+    forceB (swayfxCfg.services.desktopManager.gnome.enable && swayfxCfg.services.displayManager.gdm.enable) "swayfx: GNOME and GDM retained"
+    && forceB (!swayfxCfg.services.displayManager.sddm.enable && !swayfxCfg.services.greetd.enable) "swayfx: no competing display manager"
+    && forceB (swayfxCfg.services.displayManager.defaultSession == null) "swayfx: does not replace the default session"
+    && forceB (swayfxCfg.programs.sway.enable && lib.getName swayfxCfg.programs.sway.package == "swayfx") "swayfx: system package selected"
+    && forceB (lib.any (p: lib.elem "sway" (p.providedSessions or [])) swayfxCfg.services.displayManager.sessionPackages) "swayfx: display-manager session registered"
+    && forceB (swayfxCfg.xdg.portal.config.sway."org.freedesktop.impl.portal.ScreenCast" == "wlr") "swayfx: per-desktop screen-sharing portal"
+    && forceB (lib.versionAtLeast swayfxPortal.version "0.8.4" || lib.any (p: lib.hasSuffix "-xdg-desktop-portal-wlr-buffer-starvation.patch" (toString p)) (swayfxPortal.patches or [])) "swayfx: portal includes the PipeWire buffer-starvation fix"
+    && forceB (lib.elem swayfxPortal swayfxCfg.xdg.portal.extraPortals) "swayfx: fixed portal registered"
+    && forceB (lib.any (cmd: lib.hasPrefix "${swayfxPortal}/libexec/xdg-desktop-portal-wlr " cmd) swayfxCfg.systemd.user.services.xdg-desktop-portal-wlr.serviceConfig.ExecStart) "swayfx: service starts the fixed portal"
+    && forceB (!(swayfxCfg.environment.sessionVariables ? WLR_DRM_DEVICES) && !(swayfxHome.home.sessionVariables ? WLR_DRM_DEVICES)) "swayfx: GPU selection is session-local"
+    && forceB (lib.hasInfix "readlink -f /dev/dri/by-path/pci-0000:00:02.0-card" swayfxCfg.programs.sway.extraSessionCommands) "swayfx: stable Intel DRM selection"
+    && forceB (swayfxHome.wayland.windowManager.sway.enable && !swayfxHome.wayland.windowManager.sway.checkConfig) "swayfx: sandbox config check disabled (fx_renderer needs real DRM)"
+    && forceB (swayfxHome.wayland.windowManager.sway.config.modifier == "Mod4" && swayfxHome.wayland.windowManager.sway.config.floating.modifier == "Mod4") "swayfx: Super modifier"
+    && forceB (swayfxHome.wayland.windowManager.sway.config.keybindings."Mod4+w" == "kill" && swayfxHome.wayland.windowManager.sway.config.keybindings."Mod4+v" == "floating toggle") "swayfx: Niri-style close/floating binds"
+    && forceB (swayfxHome.wayland.windowManager.sway.config.keybindings."Mod4+Shift+e" == "exit" && swayfxHome.wayland.windowManager.sway.config.keybindings."Mod4+Shift+f" == "fullscreen toggle") "swayfx: Niri-style quit/fullscreen binds"
+    && forceB (swayfxHome.wayland.windowManager.sway.config.keybindings."Mod4+f" == null) "swayfx: no maximize-column bind without Sway equivalent"
+    && forceB (!lib.hasInfix "corner_radius" swayfxHome.wayland.windowManager.sway.extraConfig) "swayfx: square corners"
+    && forceB (lib.hasInfix "sway-shot-area" swayfxHome.wayland.windowManager.sway.config.keybindings."Print" && lib.hasInfix "sway-shot-area" swayfxHome.wayland.windowManager.sway.config.keybindings."Mod4+Shift+s") "swayfx: Niri screenshot binds"
+    && forceB (lib.hasInfix "--whole-window Mod4+button5 workspace next" swayfxHome.wayland.windowManager.sway.extraConfig) "swayfx: Niri wheel binds"
+    && forceB (lib.hasInfix "sway-shot-window" swayfxHome.wayland.windowManager.sway.config.keybindings."Mod4+Print") "swayfx: window screenshots work via absolute store refs"
+    && forceB (!lib.any (p: lib.elem (lib.getName p) ["slurp" "wl-clipboard" "playerctl" "jq"]) swayfxHome.home.packages) "swayfx: no helper packages that could collide with nix profile installs"
+    && forceB (swayfxHome.wayland.windowManager.sway.package == swayfxCfg.programs.sway.package) "swayfx: Home Manager uses the system wrapper"
+    && forceB (lib.hasInfix "blur enable" swayfxHome.wayland.windowManager.sway.extraConfig) "swayfx: effects configured"
+    && forceB (swayfxHome.programs.fuzzel.enable && swayfxHome.programs.i3status.enable && swayfxHome.programs.swaylock.enable) "swayfx: launcher, status and lock configured"
+    && forceB (swayfxCfg.security.pam.services ? swaylock) "swayfx: lock authentication configured"
+    && forceB (swayfxHome.services.swayidle.systemdTargets == ["sway-session.target"]) "swayfx: idle locking is Sway-only"
+    && forceB (swayfxHome.systemd.user.services.sway-polkit.Install.WantedBy == ["sway-session.target"]) "swayfx: polkit agent is Sway-only"
+    && forceB (!self.nixosConfigurations.mireo.config.programs.sway.enable && !self.nixosConfigurations.nyagate.config.programs.sway.enable) "swayfx: servers unchanged"
+    && forceB (swayfxCfg.programs.obs-studio.enable && swayfxCfg.programs.obs-studio.enableVirtualCamera) "obs: studio + virtual camera enabled for streaming"
+    && forceB (lib.any (p: lib.getName p == "obs-pipewire-audio-capture") swayfxCfg.programs.obs-studio.plugins) "obs: pipewire audio capture plugin present";
+
+  checkEwm =
+    forceB (swayfxCfg.lucy.ewm.enable && swayfxCfg.programs.ewm.enable) "ewm: enabled on p53"
+    && forceB (swayfxCfg.programs.ewm.package == swayfxCfg.programs.ewm.ewmPackage) "ewm: package alias consistent"
+    && forceB (builtins.isString swayfxCfg.programs.ewm.package.drvPath) "ewm: package derivation constructs against its locked nixpkgs"
+    && forceB (builtins.isString swayfxCfg.programs.ewm.emacsPackage.drvPath) "ewm: emacs derivation constructs"
+    && forceB (lib.any (p: lib.elem "ewm" (p.providedSessions or [])) swayfxCfg.services.displayManager.sessionPackages) "ewm: display-manager session registered"
+    && forceB (swayfxCfg.services.displayManager.gdm.enable && swayfxCfg.services.displayManager.defaultSession == null) "ewm: GDM retained without replacing the default session"
+    && forceB (lib.any (p: lib.getName p == "wl-clipboard") swayfxCfg.environment.systemPackages) "ewm: clipboard runtime dependency present";
 
   # ---- voip module unit tests (eval-time, no secrets, no network) ----
   # NOTE: voip.nix integrates with asterisk.nix (localTest assertion +
   # extraExtensions hook), but asterisk.nix needs the sops-nix module for
   # standalone eval. The stub below provides the touched options; the real
-  # co-import is covered by the x270 host eval (flake check).
+  # co-import is covered by the p53 host eval (flake check).
   asteriskStub = {lib, ...}: {
     options.services.asteriskLocal = {
       enable = lib.mkEnableOption "stub";
@@ -922,4 +979,14 @@ in {
   dotfiles-tests = dotfilesTests;
   topology-unit = topologyUnit;
   builders-unit = buildersUnit;
+  desktop-regressions = import ./desktop-regressions.nix {inherit pkgs lib self;};
+  ssh-activation = import ./ssh-activation.nix {inherit pkgs lib self;};
+  swayfx-session = assert checkSwayfx;
+    pkgs.runCommand "swayfx-session-check" {} ''
+      touch "$out"
+    '';
+  ewm-session = assert checkEwm;
+    pkgs.runCommand "ewm-session-check" {} ''
+      touch "$out"
+    '';
 }

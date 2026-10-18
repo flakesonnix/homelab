@@ -15,9 +15,9 @@ The private age key lives only on the target host at `/etc/sops/age/keys.txt`. T
 ## Setup
 
 ```bash
-nix run .#setup-sops x270
+nix run .#setup-sops p53
 # adopt the .sops.yaml snippet from the output
-SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/x270/secrets.yaml
+SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/p53/secrets.yaml
 
 sudo mkdir -p /etc/sops/age
 sudo cp .sops/keys.txt /etc/sops/age/keys.txt
@@ -53,9 +53,9 @@ asterisk:
 ## Editing / rotation
 
 ```bash
-SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/x270/secrets.yaml
+SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/p53/secrets.yaml
 # Rotation: generate a new key (delete .sops/keys.txt first), update .sops.yaml,
-SOPS_AGE_KEY_FILE=<old-key> sops updatekeys hosts/x270/secrets.yaml
+SOPS_AGE_KEY_FILE=<old-key> sops updatekeys hosts/p53/secrets.yaml
 ```
 
 ## Initrd SSH (:2222, remote unlock)

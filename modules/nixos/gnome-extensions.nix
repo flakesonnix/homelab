@@ -11,6 +11,7 @@
         type = lib.types.listOf lib.types.package;
         default = [
           pkgs.gnomeExtensions.dash-to-dock
+          pkgs.gnomeExtensions.appindicator
           pkgs.gnomeExtensions.vicinae
           pkgs.gnomeExtensions.caffeine
           pkgs.gnomeExtensions.user-themes
