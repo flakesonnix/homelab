@@ -70,7 +70,7 @@
           };
           upstream = lib.mkOption {
             type = lib.types.listOf lib.types.str;
-            default = ["1.1.1.1"];
+            default = ["9.9.9.9"];
           };
           blocklists = lib.mkOption {
             type = lib.types.listOf lib.types.str;

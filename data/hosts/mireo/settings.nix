@@ -5,7 +5,7 @@
 }: {
   lucy.base.enable = true;
   lucy.base.isServer = true;
-  # All owner keys: 5× github.com/flakesonnix.keys + x270-local omen key
+  # All owner keys: 5× github.com/flakesonnix.keys + p53-local omen key
   # + helianthus deploy key. Same set on every host with SSH.
   lucy.base.sshKey = [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOgPFwTysg5vOZ77Zqo9AehacYvO4iTm/T4QTy7MtfD2"
@@ -58,7 +58,7 @@
       }
     ];
     networkConfig = {
-      DNS = ["1.1.1.1" "9.9.9.9"];
+      DNS = ["9.9.9.9" "1.1.1.1"];
       IPv6AcceptRA = true;
       DHCP = "ipv6";
       DHCPPrefixDelegation = true;
@@ -144,7 +144,7 @@
   # Scope: nur br0-Eingang, nur Ziele in 10.8.0.0/24 (Internet-Traffic
   # und wg0 unberührt). Ausnahme 10.8.0.7 (sshkeys serviert :80 nativ).
   # Ping/SSH/DNS-Verhalten ändert sich nicht (nur TCP/80).
-  # Diagnose 2026-09-16: Regel feuerte NIE — x270/VMs sind L2-benachbart
+  # Diagnose 2026-09-16: Regel feuerte NIE — p53/VMs sind L2-benachbart
   # (gleiche Bridge), bridged Traffic umgeht `ip`-nftables ohne
   # br_netfilter (Modul war nicht geladen, keine /proc/sys/net/bridge/*).
   # br_netfilter unten lädt es + schaltet den L3-Pfad an; FORWARD-Policy
@@ -183,7 +183,7 @@
   # (see modules/nixos/mpd.nix). No manual udev rule needed.
 
   # --- libvirtd (virt-manager remote target, Weg A) ---
-  # Desktop-Client (x270) verbindet via qemu+ssh://root@10.8.0.1/system.
+  # Desktop-Client (p53) verbindet via qemu+ssh://root@10.8.0.1/system.
   # microVMs (microvm.nix, systemd microvm@*) bleiben daneben bestehen und
   # erscheinen NICHT in virt-manager (andere Tech) — GUI nur für neue
   # libvirt-Gäste. Bridge br0 nutzen (NICHT virbr0/default-Netz): br0 ist
@@ -223,7 +223,13 @@
   # (blocklists) — DHCP advertises it first, host second as fallback.
   services.dnsmasq = let
     lanDomain = "home.arpa";
-    staticHosts = (import ../../../hosts/mireo/vm-ips.nix) // {mireo = "10.8.0.1";};
+    staticHosts =
+      (import ../../../hosts/mireo/vm-ips.nix)
+      // {
+        mireo = "10.8.0.1";
+        # TLS terminates on the host, not on the Sync guest (.31).
+        fxsync = "10.8.0.1";
+      };
   in {
     enable = true;
     settings = {
@@ -244,18 +250,11 @@
       domain = lanDomain;
       expand-hosts = true;
       local = "/${lanDomain}/";
-      # Authoritative zone (RFC 1034/1035 hygiene + debuggability):
-      # serves proper SOA/NS at the apex instead of NODATA. Zone data
-      # still comes from host-record/DHCP as before; no subnets pinned
-      # (prefix-change-proof) and no secondaries. Serial: date + counter,
-      # bump when zone data changes.
-      # NOTE: auth-zone REQUIRES auth-server or dnsmasq refuses to start
-      # (seen 2026-09-15: "FAILED to start up", deploy rolled back).
-      # auth-server with our own IP only enables auth on top of the
-      # normal recursive/DHCP service — no behavior change otherwise.
-      auth-zone = lanDomain;
-      auth-server = "${lanDomain},10.8.0.1";
-      auth-soa = "2026091501,hostmaster.home.arpa";
+      # KEINE auth-zone/auth-server (Diagnose 2026-10-10, live bisectet):
+      # dnsmasq 2.93 bindet TFTP auf der auth-server-IPv4 dann NICHT mehr
+      # (10.8.0.1:69 fehlt, DNS/DHCP unberührt) — PXE wäre tot. Die
+      # SOA/NS-Apex-Kosmetik ist den funktionierenden PXE-Boot nicht wert;
+      # Namen kommen weiter aus host-record/DHCP/CNAME.
       # Service aliases (CNAME; target must be known to dnsmasq, so it
       # follows automatically if the target IP ever moves).
       cname = [
@@ -315,21 +314,20 @@
         # so monitoring/DNS stay stable. Named ff-bb — its own hostname is
         # "mireo", which collides with ours (seen 2026-10-04 in leases).
         ++ ["44:d4:37:8b:d8:69,10.8.0.193,ff-bb"];
-      # --- PXE boot (dnsmasq-nativ, NixOS GNOME + netboot.xyz-Fallback) ---
-      # iPXE-Clients (erkennbar an Option 175) chainloaden das LOKALE Menü
-      # per HTTP (http://10.8.0.1/boot/menu.ipxe, Caddy file_server aus
-      # /data/pxe unten); Default-Eintrag ist NixOS mit GNOME-Desktop
-      # (Installer + Calamares). Zweiter Eintrag: netboot.xyz-Upstream.
-      # Klassische PXE-ROMs laden erst iPXE per TFTP (Binaries aus nixpkgs,
-      # kein /data nötig) und landen in Runde 2 ebenfalls im Menü. Normale
-      # Clients kriegen keinen Dateinamen (ungetaggte dhcp-boot fehlt
-      # absichtlich).
+      # --- PXE boot (dnsmasq-nativ, GRUB lädt NixOS Xfce + netboot.xyz-Fallback) ---
+      # Klassische PXE-ROMs laden iPXE per TFTP (BIOS: undionly.kpxe,
+      # UEFI: snp.efi). iPXE-Clients (Option 175) laden das HTTP-Menü:
+      # NixOS chainloadet dort GRUB je Plattform, netboot.xyz bleibt als
+      # Fallback erreichbar. Nur GRUB lädt Kernel+große initrd per HTTP;
+      # iPXE lädt die initrd nie selbst (contiguous-lowmem-Limit).
+      # Normale Clients kriegen keinen Dateinamen (ungetaggte dhcp-boot
+      # fehlt absichtlich).
       # Payload bauen + syncen (kein Build bei jedem mireo-Switch!):
-      #   nix build .#pxe-desktop-boot   (→ ./result: bzImage/initrd/*.ipxe)
-      #   scp result/* root@10.8.0.1:/data/pxe/
-      # Quelle: hosts/pxe-desktop/ (netboot-base + GNOME, ohne ISO-Kette).
-      # Ablauf BIOS-VM: undionly.kpxe (TFTP) → iPXE → lokales Menü → bzImage
-      # + initrd (HTTP, squashfs steckt in der initrd).
+      #   nix build .#pxe-desktop-boot   (→ ./result: bzImage/initrd/grub*/ *.ipxe)
+      #   scp result/* root@10.8.0.1:/data/pxe/   (+ boot/grub rekursiv)
+      # Quelle: hosts/pxe-desktop/ (netboot-base + Xfce, ohne ISO-Kette).
+      # Ablauf: Firmware → iPXE-Menü → GRUB → bzImage + initrd (HTTP).
+      # Secure Boot: grub.pxe/grubx64.efi unsigniert → auf physischen Zielen aus.
       # WICHTIG: tag:ipxe-Regel MUSS als letzte stehen — dnsmasq nimmt bei
       # mehreren passenden dhcp-boot-Zeilen die letzte (iPXE-Clients matchen
       # zugleich client-arch 0 UND Option 175; Diagnose 2026-09-14: mit
@@ -347,7 +345,12 @@
         "tag:ipxe,http://10.8.0.1/boot/menu.ipxe"
       ];
       enable-tftp = true;
-      tftp-root = "${pkgs.ipxe}";
+      # Mutable Ablage (aus `nix build .#pxe-desktop-boot` gesynct: ipxe- +
+      # grub-Binaries, boot/grub/grub.cfg); Caddy serviert /boot/* daraus per
+      # HTTP (s.u.). Tmpfiles-Regel unten legt das Verzeichnis an.
+      tftp-root = "/data/pxe";
+      # Missing optional /data must not take DHCP/DNS down with TFTP.
+      tftp-no-fail = true;
       # Everyone else gets dynamic addresses via DHCPv4/DHCPv6. dnsmasq
       # serves DNS names for its leases automatically, so clients stay
       # reachable as <hostname>.home.arpa.
@@ -364,15 +367,24 @@
         # transparent :80 redirect + Caddy redir below route it to
         # /status/homelab — same pattern as the other webUIs).
         ++ ["status.${lanDomain},status,10.8.0.9,fd00:cafe:1::9"];
-      server = ["1.1.1.1" "9.9.9.9" "2606:4700:4700::1111" "2620:fe::9"];
+      server = ["9.9.9.9" "1.1.1.1" "2620:fe::9" "2606:4700:4700::1111"];
     };
+  };
+
+  # AdGuard normally maps VM names directly to their guest IPs. Keep the
+  # HTTPS service name on Caddy's host in this resolver as well.
+  microvm.vms.dns.config.networking.hosts = {
+    "10.8.0.31" = lib.mkForce [];
+    "fd00:cafe:1::31" = lib.mkForce [];
+    "10.8.0.1" = ["fxsync.home.arpa" "fxsync"];
+    "fd00:cafe:1::1" = ["fxsync.home.arpa" "fxsync"];
   };
 
   # --- Caddy: name-based reverse proxy on port 80 for all LAN web UIs ---
   # One entrypoint: http://<name>.home.arpa (DNS from dnsmasq above).
   # The http:// prefix disables Caddy's automatic HTTPS — no public CA
-  # issues certs for .home.arpa (RFC 8375). WAN port 80 stays closed by
-  # the default firewall (only br0 is trusted), so this is LAN-only.
+  # issues certs for .home.arpa (RFC 8375). Sync below uses internal TLS
+  # and explicit source filtering: the public edge also reaches Caddy.
   # Direct ports (CUPS :631 IPP, …) keep working untouched.
   # Public edge (via nyagate DNAT 80/443 → wg0, firewall interfaces.wg0):
   # bare domains below get automatic TLS from Caddy. Prerequisite: A
@@ -410,7 +422,7 @@
       "yammat.db210.org" = "10.8.0.5:3000";
       "grafana.db210.org" = "10.8.0.2:3000";
     };
-    # PXE-Netboot-Payload (NixOS GNOME, siehe dnsmasq oben): statische
+    # PXE-Netboot-Payload (NixOS Xfce, siehe dnsmasq oben): statische
     # Dateien aus /data/pxe unter http://10.8.0.1/boot/* (IP-Literal, damit
     # iPXE kein DNS braucht). Alle anderen Pfade auf der IP bleiben 404
     # wie ohne diesen VHost (Caddy-Default für unbekannte Sites).
@@ -437,7 +449,20 @@
         })
       publicWebUIs
       // lib.mapAttrs' (name: cfg: lib.nameValuePair name {extraConfig = cfg;}) statusRedir
-      // lib.mapAttrs' (name: cfg: lib.nameValuePair name {extraConfig = cfg;}) pxeBoot;
+      // lib.mapAttrs' (name: cfg: lib.nameValuePair name {extraConfig = cfg;}) pxeBoot
+      // {
+        "https://fxsync.home.arpa".extraConfig = ''
+          tls internal
+          # Check the socket peer, never a caller-supplied forwarded address.
+          @lan remote_ip 127.0.0.1 ::1 10.8.0.0/24 fd00:cafe:1::/64
+          handle @lan {
+            reverse_proxy ${(import ../../../hosts/mireo/vm-ips.nix).fxsync}:5000
+          }
+          handle {
+            respond 403
+          }
+        '';
+      };
   };
 
   fileSystems."/data" = {
@@ -448,8 +473,9 @@
 
   systemd.tmpfiles.rules = [
     "Z /data 0755 lucy users - -"
-    # PXE-Netboot-Ablage (bzImage/initrd/*.ipxe aus `nix build .#pxe-desktop-boot`,
-    # per scp hierher syncen; Caddy serviert sie unter http://10.8.0.1/boot/).
+    # PXE-Netboot-Ablage (aus `nix build .#pxe-desktop-boot`: bzImage/initrd,
+    # grub.pxe/grubx64.efi/boot-grub-cfg/*.ipxe, per scp hierher syncen;
+    # Caddy serviert /boot/*, dnsmasq-TFTP-root ist das Verzeichnis selbst).
     "d /data/pxe 0755 root root - -"
   ];
 
@@ -480,7 +506,7 @@
   services.nfs.server = {
     enable = true;
     exports = ''
-      /data 10.8.0.0/24(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=100,insecure)
+      /data 10.8.0.0/24(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=100,insecure,mountpoint)
     '';
   };
 

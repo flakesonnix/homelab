@@ -39,7 +39,12 @@
     # --no-block: never wait on systemd jobs from inside a start
     # transaction (would deadlock against the switch itself); the poll
     # loop below observes convergence instead.
-    systemctl --no-block restart "microvm-virtiofsd@$vm"
+    # --job-mode=ignore-requirements: microvm@$vm Requires
+    # microvm-virtiofsd@$vm, so a plain restart stops the gated unit
+    # itself mid-gate (TERM to this very script → fail loop every ~3s,
+    # fleet down 2026-10-11). Ignore requirement deps: the gate keeps
+    # running while virtiofsd restarts underneath it.
+    systemctl --no-block --job-mode=ignore-requirements restart "microvm-virtiofsd@$vm"
     stable=0
     i=0
     while [ "$i" -lt 45 ]; do

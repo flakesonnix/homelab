@@ -387,7 +387,7 @@
     forceB (lib.hasInfix "head -c 96 /dev/urandom > \"/var/lib/yammat/client_session_key.aes\"" keygenRawScript) "mkKeyGenService: raw generation"
     && forceB (!lib.hasInfix "base64" keygenRawScript) "mkKeyGenService: raw must not base64-encode";
 
-  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkMopidy && checkMinecraft && checkMicrovmSecretsShares && checkMicrovmHostKeys && checkMicrovmWait && checkEpg && checkOllama;
+  _evaluateBuilders = checkKeygen && checkKeygenRaw && checkVoip && checkKuma && checkAsteriskFax && checkMopidy && checkMinecraft && checkMicrovmSecretsShares && checkMicrovmHostKeys && checkMicrovmWait && checkEpg && checkOllama && checkMireoOptionalData;
 
   ollamaCfg = self.nixosConfigurations.p53.config;
   checkOllama = let
@@ -401,6 +401,35 @@
     && forceB (unit.environment.OLLAMA_HOST == "127.0.0.1:11434" && !cfg.openFirewall) "ollama: API remains local"
     && forceB (cfg.loadModels == [] && !cfg.syncModels) "ollama: no implicit model downloads or deletions"
     && forceB (!self.nixosConfigurations.mireo.config.services.ollama.enable && !self.nixosConfigurations.nyagate.config.services.ollama.enable) "ollama: servers unchanged";
+
+  mireoCfg = self.nixosConfigurations.mireo.config;
+  mireoDataUnits = ["nfs-server" "nfs-mountd" "asterisk" "fax-poller" "mopidy" "mopidy-scan" "microvm@jellyfin" "microvm-virtiofsd@jellyfin"];
+  checkMireoOptionalData = let
+    fs = mireoCfg.fileSystems."/data";
+    setup = mireoCfg.systemd.services.mireo-data-setup;
+    tmpfiles = mireoCfg.systemd.services;
+  in
+    forceB (!fs.neededForBoot && lib.all (option: lib.elem option fs.options) ["nofail" "x-systemd.device-timeout=10s" "x-systemd.mount-timeout=30s"]) "mireo: data disk optional with bounded mount waits"
+    && forceB (lib.hasInfix "insecure,mountpoint)" mireoCfg.services.nfs.server.exports) "mireo: NFS never exports the root filesystem fallback"
+    && forceB (mireoCfg.services.dnsmasq.settings.tftp-no-fail == [true]) "mireo: missing PXE storage cannot stop DHCP/DNS"
+    && forceB (lib.any (cmd: lib.hasInfix "--boot --exclude-prefix=/dev --exclude-prefix=/data" cmd) tmpfiles.systemd-tmpfiles-setup.serviceConfig.ExecStart) "mireo: boot tmpfiles excludes data"
+    && forceB (lib.hasInfix "--exclude-prefix=/data" tmpfiles.systemd-tmpfiles-resetup.serviceConfig.ExecStart) "mireo: activation tmpfiles excludes data"
+    && forceB (lib.elem "data.mount" setup.bindsTo && setup.unitConfig.ConditionPathIsMountPoint == "/data" && lib.hasInfix "--prefix=/data" setup.serviceConfig.ExecStart && setup.restartTriggers != []) "mireo: data directories initialized only on mounted disk"
+    && lib.all (name: let
+      unit = mireoCfg.systemd.services.${name};
+    in
+      forceB (lib.elem "data.mount" unit.bindsTo
+        && lib.elem "data.mount" unit.after
+        && lib.elem "mireo-data-setup.service" unit.requires
+        && lib.elem "mireo-data-setup.service" unit.after
+        && unit.unitConfig.RequiresMountsFor == "/data"
+        && unit.unitConfig.ConditionPathIsMountPoint == "/data") "mireo: ${name} requires mounted, initialized data")
+    mireoDataUnits
+    && lib.all (name: let
+      unit = mireoCfg.systemd.services.${name};
+    in
+      forceB (!lib.elem "data.mount" unit.bindsTo && !lib.elem "mireo-data-setup.service" unit.requires) "mireo: ${name} remains independent of data")
+    ["sshd" "dnsmasq" "systemd-networkd" "caddy" "microvm@dns" "microvm@fxsync"];
 
   swayfxCfg = self.nixosConfigurations.p53.config;
   swayfxHome = swayfxCfg.home-manager.users.lucy;
@@ -694,7 +723,7 @@
   # scripts referencing the path are fine — only the share breaks QEMU).
   # Re-adding a share requires landing the host secret in the same commit
   # — then drop the name from this list.
-  secretlessVMs = ["cloud" "communication" "documents" "media" "sync"];
+  secretlessVMs = ["cloud" "communication" "documents" "fxsync" "media" "sync"];
   checkMicrovmSecretsShares = builtins.all builtins.isBool (map (
       vm:
         forceB (!(lib.hasInfix "source = \"/run/secrets/${vm}\"" (builtins.readFile ../hosts/mireo/${vm}-microvm.nix)))
@@ -734,7 +763,7 @@
     && forceB (lib.any (c: lib.hasInfix "microvm-wait-virtiofsd dns" c) waitCfg.systemd.services."microvm@dns".serviceConfig.ExecStartPre) "microvm: gate passes the VM name"
     && forceB (lib.hasInfix "/proc/net/unix" (builtins.readFile ../hosts/mireo/microvm-wait.nix)) "microvm: bound sockets read from kernel (connect-probes suicide virtiofsd)"
     && forceB (!(lib.hasInfix "UNIX-CONNECT" (builtins.readFile ../hosts/mireo/microvm-wait.nix))) "microvm: no connect-probes (killed all daemons, 2026-10-06)"
-    && forceB (lib.hasInfix "systemctl restart" (builtins.readFile ../hosts/mireo/microvm-wait.nix)) "microvm: gate refreshes stale virtiofsd itself"
+    && forceB (lib.hasInfix "--job-mode=ignore-requirements" (builtins.readFile ../hosts/mireo/microvm-wait.nix)) "microvm: gate restart ignores requirements (plain restart stops the gated unit itself via Requires, fail loop 2026-10-11)"
     && forceB (!(lib.hasInfix "supervisorctl" (builtins.readFile ../hosts/mireo/microvm-wait.nix))) "microvm: no supervisorctl (unusable without section, failed all VMs)"
     && forceB (!(lib.hasInfix "awk" (builtins.readFile ../hosts/mireo/microvm-wait.nix))) "microvm: no tools outside unit PATH (gawk missing failed all VMs, 2026-10-06)";
 
@@ -979,7 +1008,9 @@ in {
   dotfiles-tests = dotfilesTests;
   topology-unit = topologyUnit;
   builders-unit = buildersUnit;
+  mireo-optional-data-vm = import ./mireo-optional-data.nix {inherit pkgs;};
   desktop-regressions = import ./desktop-regressions.nix {inherit pkgs lib self;};
+  fxsync-proxy = import ./fxsync-proxy.nix {inherit pkgs lib self;};
   ssh-activation = import ./ssh-activation.nix {inherit pkgs lib self;};
   swayfx-session = assert checkSwayfx;
     pkgs.runCommand "swayfx-session-check" {} ''

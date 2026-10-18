@@ -41,7 +41,7 @@ in {
         lucy.services.dns = {
           enable = true;
           domain = "home.arpa";
-          upstream = ["1.1.1.1" "9.9.9.9"];
+          upstream = ["9.9.9.9" "1.1.1.1"];
           blocklists = [];
         };
         users.users.adguardhome = {
@@ -89,13 +89,13 @@ in {
             dns = {
               bind_hosts = ["0.0.0.0" "::"];
               port = 53;
-              bootstrap_dns = ["1.1.1.1" "9.9.9.9"];
+              bootstrap_dns = ["9.9.9.9" "1.1.1.1"];
               # Public upstreams directly: host dnsmasq REFUSES queries with
               # the DO bit (no DNSSEC in its build) and AdGuard always sets
               # it upstream — .1 as upstream broke all external resolution
               # (seen 2026-10-05, REFUSED). LAN names never leave anyway
               # (local_domain_name + hostsfile answer them locally).
-              upstream_dns = ["1.1.1.1" "9.9.9.9" "2606:4700:4700::1111" "2620:fe::9"];
+              upstream_dns = ["9.9.9.9" "1.1.1.1" "2620:fe::9" "2606:4700:4700::1111"];
               local_domain_name = "home.arpa";
               hostsfile_enabled = true;
               # Cap query-log retention: default 90d filled 276M/512M volume

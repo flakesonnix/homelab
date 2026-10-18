@@ -355,22 +355,51 @@
 
           nixfleetPkgs = import ./nixfleet/default.nix {inherit pkgs;};
 
-          # NixOS mit GNOME-Desktop als PXE-Netboot-Payload (bzImage + initrd
-          # mit eingebettetem squashfs + iPXE-Skripte). Separates Paket (kein
-          # nixosConfiguration/toplogy-Eintrag), damit mireo-Deploys nicht
-          # bei jedem Switch das GB-große Installer-Closure bauen.
+          # NixOS mit Xfce-Desktop als PXE-Netboot-Payload. iPXE kann die
+          # ~2-GB-initrd NICHT laden (0x2a818006, contiguous-lowmem-Limit),
+          # darum lädt GRUB als Zwischenlader (legt initrd oberhalb 4 GB ab):
+          # Firmware → iPXE-Menü → grub.pxe/grubx64.efi (per TFTP), dann
+          # Kernel+initrd per HTTP. Separates Paket (kein nixosConfiguration/
+          # topology-Eintrag), damit mireo-Deploys nicht bei jedem Switch
+          # das GB-große Installer-Closure bauen.
           # Sync nach dem Bauen: Dateien aus ./result nach mireo:/data/pxe
-          # kopieren (Caddy serviert sie unter http://10.8.0.1/boot/).
+          # kopieren (Caddy serviert /boot/*, dnsmasq-TFTP-root ist /data/pxe).
+          # Secure Boot: Images unsigniert → auf physischen Zielen aus.
           pxeDesktop = nixpkgs.lib.nixosSystem {
             system = "x86_64-linux";
             modules = [./hosts/pxe-desktop];
           };
+          # GRUB-Netboot-Menü (Prefix /boot/grub per TFTP, Kernel+initrd per
+          # HTTP). Kernel-Params wie netboot.ipxe + serielle Konsole (VGA
+          # bleibt primär). ASCII-only: Textmodus kann kein UTF-8.
+          pxeGrubCfg = pkgs.writeText "grub.cfg" ''
+            serial --unit=0 --speed=115200
+            terminal_input console serial
+            terminal_output console serial
+            set timeout=8
+            set default=0
+            menuentry "NixOS Xfce-Desktop (Installer)" {
+              linux (http,10.8.0.1)/boot/bzImage init=${pxeDesktop.config.system.build.toplevel}/init initrd=initrd ${pkgs.lib.concatStringsSep " " pxeDesktop.config.boot.kernelParams} console=tty0 console=ttyS0
+              initrd (http,10.8.0.1)/boot/initrd
+            }
+          '';
           pxeDesktopBoot = pkgs.runCommand "pxe-desktop-boot" {} ''
-            mkdir -p $out
+            mkdir -p $out/boot/grub
             cp ${pxeDesktop.config.system.build.kernel}/${pxeDesktop.config.system.boot.loader.kernelFile} $out/bzImage
             cp ${pxeDesktop.config.system.build.netbootRamdisk}/initrd $out/initrd
             cp ${pxeDesktop.config.system.build.netbootIpxeScript}/netboot.ipxe $out/netboot.ipxe
             cp ${./hosts/pxe-desktop/menu.ipxe} $out/menu.ipxe
+            # Startskript für lokale qemu-SLIRP-Tests (TFTP-bootfile, chainloadet
+            # das HTTP-Menü; siehe hosts/pxe-desktop/slirp-boot.ipxe).
+            cp ${./hosts/pxe-desktop/slirp-boot.ipxe} $out/slirp-boot.ipxe
+            # Firmware startet iPXE für das Menü; nur NixOS lädt GRUB nach.
+            cp ${pkgs.ipxe}/undionly.kpxe $out/undionly.kpxe
+            cp ${pkgs.ipxe}/snp.efi $out/snp.efi
+            cp ${pxeGrubCfg} $out/boot/grub/grub.cfg
+            ${pkgs.grub2}/bin/grub-mkimage -O i386-pc-pxe -o $out/grub.pxe -p /boot/grub \
+              pxe tftp http boot linux normal serial terminal reboot halt echo configfile search test true sleep
+            ${pkgs.grub2_efi}/bin/grub-mkimage -O x86_64-efi -o $out/grubx64.efi -p /boot/grub \
+              efinet tftp http boot linux normal serial terminal reboot halt echo configfile search test
           '';
         in
           {

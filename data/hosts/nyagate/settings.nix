@@ -7,7 +7,7 @@
 }: {
   lucy.base.enable = true;
   lucy.base.isServer = true;
-  # All owner keys: 5× github.com/flakesonnix.keys + x270-local omen key
+  # All owner keys: 5× github.com/flakesonnix.keys + p53-local omen key
   # + helianthus deploy key. Same set on every host with SSH.
   lucy.base.sshKey = [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOgPFwTysg5vOZ77Zqo9AehacYvO4iTm/T4QTy7MtfD2"
@@ -35,7 +35,7 @@
     address = "10.0.0.1";
     interface = "eth0";
   };
-  networking.nameservers = ["1.1.1.1" "8.8.8.8" "2001:4860:4860::8888" "2001:4860:4860::8844"];
+  networking.nameservers = ["9.9.9.9" "1.1.1.1" "2620:fe::fe" "2606:4700:4700::1111"];
 
   # --- Natives IPv6 vom Provider (2a13:d200:11:1::/64, GW fd00::1) ---
   # Nur für nyagate selbst (Outbound ok, GW statisch via gateway-neigh unten).

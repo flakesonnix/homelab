@@ -3,6 +3,7 @@
     ./hardware-configuration.nix
     ./host.nix
     ./microvm-wait.nix
+    ./optional-data.nix
     ../../modules/nixos/lucy-services.nix
     ./cups-microvm.nix
     ./monerod-microvm.nix
@@ -31,6 +32,7 @@
     # ./sync-microvm.nix
     # ./media-microvm.nix
     # ./documents-microvm.nix
+    ./fxsync-microvm.nix
   ];
 
   # All microvm tap interfaces join the LAN bridge.

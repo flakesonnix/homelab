@@ -109,7 +109,7 @@
 
   # --- Declarative Uptime Kuma monitors (authoritative API sync) ---
   # Targets verified live 2026-09-16 (only 2xx/3xx + reachable hosts).
-  # Skipped deliberately: x270 (roaming), notifications (no channel yet).
+  # Skipped deliberately: p53 (roaming), notifications (no channel yet).
   services.uptime-kuma-sync = {
     enable = true;
     apiUrl = "http://10.8.0.9:3001";
@@ -213,7 +213,7 @@
       };
       internet = {
         type = "ping";
-        target = "1.1.1.1";
+        target = "9.9.9.9";
         group = "Internet";
       };
       nyagate = {
@@ -228,7 +228,7 @@
       uplink-dns = {
         type = "dns";
         target = "google.com";
-        dnsServer = "1.1.1.1";
+        dnsServer = "9.9.9.9";
         group = "Internet";
       };
       lldap-ui = {
@@ -302,6 +302,7 @@
   sops.secrets."lldap/admin-password" = {};
   # Per-user passwords for the declarative seed (lldap-microvm.nix).
   sops.secrets."lldap/users/lucy" = {};
+  sops.secrets."lldap/users/test" = {};
   # OIDC client secret for Grafana (created in the Pocket ID UI, step 3 of
   # hosts/mireo/pocket-id-microvm.nix bootstrap). Placeholder first:
   #   sops set hosts/mireo/secrets.yaml '["grafana"]["oidc-client-secret"]' '"CHANGEME"'

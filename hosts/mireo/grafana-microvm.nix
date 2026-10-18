@@ -614,8 +614,8 @@ in {
                 {
                   targets = ["10.8.0.176:9100"];
                   labels = {
-                    instance = "x270";
-                    host = "x270";
+                    instance = "p53";
+                    host = "p53";
                   };
                 }
               ];

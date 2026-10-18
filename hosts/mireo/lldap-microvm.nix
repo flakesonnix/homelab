@@ -29,6 +29,14 @@
       lastName = "";
       passwordFile = "/run/lldap/users/lucy";
     }
+    {
+      id = "test";
+      email = "test@home.arpa";
+      displayName = "Test User";
+      firstName = "Test";
+      lastName = "User";
+      passwordFile = "/run/lldap/users/test";
+    }
   ];
   # Declarative groups. `admins` maps to Grafana Admin via
   # auth.generic_oauth role_attribute_path; `users` is the default pool
@@ -41,6 +49,10 @@
     }
     {
       user = "lucy";
+      group = "users";
+    }
+    {
+      user = "test";
       group = "users";
     }
   ];

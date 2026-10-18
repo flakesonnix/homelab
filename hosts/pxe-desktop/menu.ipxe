@@ -4,7 +4,7 @@
 # liegen daneben in /data/pxe (gebaut via `nix build .#pxe-desktop-boot`).
 menu NixOS PXE-Boot (mireo)
 item --gap NixOS:
-item nixos-desktop NixOS mit GNOME-Desktop (Installer)
+item nixos-desktop NixOS mit Xfce-Desktop (Installer)
 item --gap Sonstiges:
 item netbootxyz netboot.xyz (Upstream-Menue)
 item shell iPXE-Shell
@@ -13,7 +13,13 @@ item exit Von Platte booten (Exit)
 choose --default nixos-desktop --timeout 8000 target && goto ${target}
 
 :nixos-desktop
-chain netboot.ipxe || goto failed
+# iPXE schafft die ~2-GB-initrd nicht (0x2a818006, contiguous-lowmem):
+# GRUB als Zwischenlader (legt initrd oberhalb 4 GB ab), je Plattform.
+iseq ${platform} efi && goto grub_efi || goto grub_bios
+:grub_efi
+chain tftp://10.8.0.1/grubx64.efi || goto failed
+:grub_bios
+chain tftp://10.8.0.1/grub.pxe || goto failed
 
 :netbootxyz
 chain http://boot.netboot.xyz/menu.ipxe || goto failed
