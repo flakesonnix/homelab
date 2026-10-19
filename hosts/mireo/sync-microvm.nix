@@ -17,14 +17,12 @@
           group = "syncthing";
         }
       ];
-      shares = [
-        {
-          tag = "sync-secrets";
-          source = "/run/secrets/sync";
-          mountPoint = "/run/secrets/sync";
-          readOnly = true;
-        }
-      ];
+      # NOTE: no sync-secrets share — the per-VM host secrets dir doesn't
+      # exist yet (no sops secrets). A virtiofs share with a missing
+      # source fails QEMU at start and breaks the whole switch (2026-10-04
+      # incident). Land host sops secrets first, then re-add the share in
+      # that commit (and drop "sync" from secretlessVMs in
+      # tests/default.nix).
       tmpfiles = [
         "d /data/syncthing 0750 syncthing syncthing - -"
       ];

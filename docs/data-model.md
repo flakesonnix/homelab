@@ -24,7 +24,7 @@ data/
 │   ├── system.nix          # Tagged system/user package registry
 │   └── home.nix            # Tagged home package registry
 ├── hosts/
-│   ├── x270/
+│   ├── p53/
 │   │   ├── settings.nix    # NixOS config merged into host
 │   │   ├── roles.nix       # [ "desktop" "dev" "llm" "gaming" ]
 │   │   ├── module-flags.nix
@@ -89,7 +89,7 @@ Roles are the top-level unit of intent. A host or home declares a list of role n
 ### Host role data
 
 ```
-data/hosts/x270/roles.nix   →  [ "desktop" "dev" "gaming" ]
+data/hosts/p53/roles.nix   →  [ "desktop" "dev" "gaming" ]
 
 data/home/lucy/roles.nix    →  [ "core" "desktop" "dev" ]
 ```
@@ -248,8 +248,8 @@ Files in `data/hosts/<host>/` are loaded by the framework's `loadHostDirectory`.
 
 **M1 fixes (7a05039):**
 - `hasVms` was `vmCatalog.hostsVms` (always missing, `false`) → now `attrNames vmCatalog` — `hasVms` now correctly true when mireo has 7 VMs, so `/vms` navigation appears.
-- `hostRoles` check was `dir.value ? roles.nix` (invalid Nix — `roles.nix` is not a valid identifier, so always false) → now `hasAttr "roles.nix" dir.value` — `x270` now correctly shows `roles [desktop dev gaming]`, `bundles [desktop dev]`, `presets [gaming-*]`.
-- `mireo` intentionally has no `roles.nix` (server profile, `roles: []`, `bundles: []`, `presets: []`), not a bug — declarative config comes from `settings.nix` directly; roles remain Nix-originated for `x270`/`home`.
+- `hostRoles` check was `dir.value ? roles.nix` (invalid Nix — `roles.nix` is not a valid identifier, so always false) → now `hasAttr "roles.nix" dir.value` — `p53` now correctly shows `roles [desktop dev gaming]`, `bundles [desktop dev]`, `presets [gaming-*]`.
+- `mireo` intentionally has no `roles.nix` (server profile, `roles: []`, `bundles: []`, `presets: []`), not a bug — declarative config comes from `settings.nix` directly; roles remain Nix-originated for `p53`/`home`.
 
 **M1 API (7a05039):**
 - Runtime: `GET /api/v1/hosts`, `/:host/health` (`healthy|degraded|critical|unknown`, `failedUnits`), `/:host/resources` (`/proc`), `/:host/network` (`ip -j`), `/:host/vms` (merged `configured` from manifest + `runtime` via `systemctl is-active microvm@<name>` validated), `/:host/systemd/failed` (`systemctl --failed`).

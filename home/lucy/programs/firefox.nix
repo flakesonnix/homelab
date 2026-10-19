@@ -30,8 +30,10 @@ in {
           "browser.urlbar.showSearchSuggestionsFirst" = false;
           "browser.urlbar.autoFill" = false;
 
-          # Hardware acceleration on NVIDIA 555+
-          "media.ffmpeg.vaapi.enabled" = true;
+          # Kein VAAPI-Backend auf dieser Kiste (NVIDIA proprietär ohne
+          # nvidia-vaapi-driver): true lässt den HW-Decoder scheitern und
+          # YouTube-Videos spielen nicht (Seite lädt, Video steht).
+          "media.ffmpeg.vaapi.enabled" = false;
 
           "privacy.donottrackheader.enabled" = true;
           "privacy.trackingprotection.enabled" = true;

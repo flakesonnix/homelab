@@ -8,7 +8,7 @@ type: guide
 
 [[40-Guides/Guides-MOC|← Guides]] · [[20-Modules/Gaming-Stack|Gaming stack]] · Source `docs/audio-latency.md`.
 
-## NixOS x270 (declarative, gaming role)
+## NixOS p53 (declarative, gaming role)
 
 Chain: `data/roles/gaming.nix` → `data/presets/gaming-performance.nix` → `modules/nixos/gaming/{common,audio,performance,sysctl}.nix`.
 
@@ -21,7 +21,7 @@ Chain: `data/roles/gaming.nix` → `data/presets/gaming-performance.nix` → `mo
 | tcp_low_latency | 1 |
 | net.core.{r,w}mem_max | 16777216 |
 
-Nothing to do manually — just check that `data/hosts/x270/roles.nix` contains `gaming`.
+Nothing to do manually — just check that `data/hosts/p53/roles.nix` contains `gaming`.
 
 ## Ubuntu 24.04 (manual)
 

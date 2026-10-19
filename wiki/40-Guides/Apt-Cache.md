@@ -6,6 +6,8 @@ type: guide
 
 # APT cache (10.8.0.8:3142)
 
+> **RETIRED 2026-10-05** — VM decommissioned, proxy gone. Source `docs/apt-cache.md` kept for reference.
+
 [[40-Guides/Guides-MOC|← Guides]] · [[10-Hosts/MicroVMs|MicroVMs]] · Source `docs/apt-cache.md`. The `aptcache` VM runs on [[10-Hosts/mireo|mireo]].
 
 ## One-liner

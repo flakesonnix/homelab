@@ -27,6 +27,7 @@ in {
     ./programs/fzf
     ./programs/firefox.nix
     ./programs/gnome-theme.nix
+    ./programs/gnome-shell.nix
     ./programs/thunderbird.nix
     ./programs/vesktop.nix
     ./programs/virt-manager.nix

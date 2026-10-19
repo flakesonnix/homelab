@@ -20,7 +20,7 @@ Shape: `meta{description,targets[host home],requires,conflicts}` + `host{moduleF
 | `gaming` | host | Applies `gaming-base/-performance/-steam` presets |
 | `llm` | host | Adds `llm` package tag |
 
-Hosts: `x270=[desktop dev gaming]`, `mireo=[]`, `home/lucy=[core desktop dev]`.
+Hosts: `p53=[desktop dev gaming]`, `mireo=[]`, `home/lucy=[core desktop dev]`.
 
 ## Bundles (`data/bundles/*.nix`)
 

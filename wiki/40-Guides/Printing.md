@@ -10,7 +10,7 @@ type: guide
 
 Epson ET-2860 + Lexmark (driverless IPP), VM `cups` on 10.8.0.6:631, advertised via Avahi `_ipp._tcp`.
 
-## NixOS (x270)
+## NixOS (p53)
 
 `profiles/base.nix` is enough — CUPS + Avahi discover the printer automatically. Just print.
 

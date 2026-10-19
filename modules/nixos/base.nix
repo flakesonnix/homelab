@@ -21,13 +21,8 @@ in {
         description = "Default locale";
       };
       sshKey = lib.mkOption {
-        type = lib.types.str;
-        description = "SSH public key for user authentication";
-      };
-      sshKeyComment = lib.mkOption {
-        type = lib.types.str;
-        default = "lucy@dotfiles";
-        description = "SSH key comment";
+        type = lib.types.listOf lib.types.str;
+        description = "SSH public keys for user authentication (one per line, with comment)";
       };
       initrdSshPort = lib.mkOption {
         type = lib.types.int;
@@ -76,9 +71,8 @@ in {
       onShutdown = "shutdown";
     };
 
-    # virt-manager GUI client (polkit rules included). Decoupled from the
-    # local daemon so remote-only use (qemu+ssh://mireo/system) keeps working
-    # while the local daemon stays disabled (x270 TPM workaround).
+    # virt-manager GUI client (polkit rules included). Local daemon on p53
+    # (TPM present) + remote mireo via qemu+ssh://10.8.0.1/system.
     programs.virt-manager.enable = lib.mkIf (!config.lucy.base.isServer) true;
 
     environment.systemPackages = with pkgs; [
@@ -98,13 +92,9 @@ in {
       allowedUDPPorts = lib.optionals (!config.lucy.base.isServer) [5555 5585];
     };
 
-    users.users.lucy.openssh.authorizedKeys.keys = [
-      "${config.lucy.base.sshKey} ${config.lucy.base.sshKeyComment}"
-    ];
+    users.users.lucy.openssh.authorizedKeys.keys = config.lucy.base.sshKey;
 
-    users.users.root.openssh.authorizedKeys.keys = [
-      "${config.lucy.base.sshKey} ${config.lucy.base.sshKeyComment}"
-    ];
+    users.users.root.openssh.authorizedKeys.keys = config.lucy.base.sshKey;
 
     boot.initrd.network.ssh = {
       enable = true;

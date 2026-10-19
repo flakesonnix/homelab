@@ -16,9 +16,8 @@ data/
 ├── bundles/core.nix desktop.nix dev.nix
 ├── presets/gaming-base.nix gaming-performance.nix gaming-steam.nix
 ├── packages/system.nix home.nix   # tagged registries
-├── hosts/x270/{settings,roles,module-flags,packages,power,services}.nix
+├── hosts/p53/{settings,roles,module-flags,packages,power,services}.nix
 ├── hosts/mireo/settings.nix       # server, no roles.nix (intentionally [])
-├── hosts/nyagate/{settings,packages}.nix
 └── home/lucy/{roles,bundles,settings}.nix
 ```
 
@@ -33,7 +32,7 @@ The framework `lib/framework` (`frameworkLib`, `applyHost`/`applyHome` in `hosts
 | File | Purpose |
 |------|---------|
 | `settings.nix` | NixOS config merged directly (hostname, boot, network…) |
-| `roles.nix` | `[desktop dev gaming]` (x270) / intentionally absent (mireo, nyagate → `[]`) |
+| `roles.nix` | `[desktop dev gaming]` (p53) / intentionally absent (mireo → `[]`) |
 | `module-flags.nix` | Extra flags beyond roles |
 | `packages.nix` / `services.nix` / `power.nix` | Extra packages/services/power |
 | `home/lucy/{roles,bundles,settings}.nix` | `[core desktop dev]` + extra bundles + overrides |

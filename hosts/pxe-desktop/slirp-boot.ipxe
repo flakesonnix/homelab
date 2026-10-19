@@ -1,0 +1,8 @@
+#!ipxe
+# Startskript für qemu-SLIRP-Tests (nicht fürs LAN-PXE).
+# Nutzung: Datei als `boot.ipxe` in ein lokales Verzeichnis legen und qemu mit
+#   -netdev user,id=net0,tftp=<dir>,bootfile=/boot.ipxe
+# starten. iPXE lädt das hier per TFTP vom SLIRP-Server und chainloadet dann
+# das echte Menü per HTTP (alle relativen URLs darin bleiben HTTP, der
+# 2,9-GB-initrd geht NICHT über TFTP).
+chain http://10.8.0.1/boot/menu.ipxe || shell

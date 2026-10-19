@@ -13,10 +13,10 @@ Secrets are managed with [sops-nix](https://github.com/Mic92/sops-nix) using [ag
 
 ```bash
 # Generate age key pair (stores private key in .sops/keys.txt)
-nix run .#setup-sops x270
+nix run .#setup-sops p53
 
 # Update .sops.yaml with the printed public key, then create the secrets file
-SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/x270/secrets.yaml
+SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/p53/secrets.yaml
 ```
 
 The script outputs the public key and the exact `.sops.yaml` snippet to add. Current `.sops.yaml` covers `hosts/.*/secrets.yaml`.
@@ -105,7 +105,7 @@ Password rotation: update the secret, then run `systemctl restart voip-render-tr
 ## Editing secrets
 
 ```bash
-SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/x270/secrets.yaml
+SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/p53/secrets.yaml
 ```
 
 SOPS opens the decrypted file in `$EDITOR`, re-encrypts on save.
@@ -124,77 +124,23 @@ Authorized keys match the root account's `authorized_keys` (i.e. `lucy.base.sshK
 
 ## Key rotation
 
-1. Generate new key: `nix run .#setup-sops x270` (will error if key exists — delete `.sops/keys.txt` first)
+1. Generate new key: `nix run .#setup-sops p53` (will error if key exists — delete `.sops/keys.txt` first)
 2. Update public key in `.sops.yaml`
-3. Re-encrypt all affected secrets files: `SOPS_AGE_KEY_FILE=<old-key> sops updatekeys hosts/x270/secrets.yaml`
+3. Re-encrypt all affected secrets files: `SOPS_AGE_KEY_FILE=<old-key> sops updatekeys hosts/p53/secrets.yaml`
 4. Deploy new private key to host, rebuild
 
-## WireGuard keys (mireo ↔ nyagate transit)
+## LAN-only services
 
-Transit network `10.66.0.0/30`: nyagate `.1` (public edge `db210.org`,
-`188.220.148.24`), mireo `.2`. Private keys live
-only in sops (`hosts/<host>/secrets.yaml`, encrypted); peer public keys and
-the nyagate endpoint are plain settings in `data/hosts/mireo/settings.nix`.
+These remain scoped to `br0`/`10.8.0.0/24`, with Avahi pinned to `br0`+`lo`:
 
-### First-time setup (mireo)
-
-Prerequisite: the age private key must already be at
-`/etc/sops/age/keys.txt` on mireo — `lucy.secrets.enable = true` makes
-activation fail without it. Deploy the key first (see above), then:
-
-```bash
-# 1. Generate the mireo WireGuard keypair and store the private key in sops.
-#    Run this yourself — the key never leaves your machine (0600 temp file,
-#    encrypted in place, shredded afterwards; only the public key is printed):
-./scripts/setup-wireguard-mireo.sh
-# Manual alternative: wg genkey | tee /tmp/mireo-wg-priv | wg pubkey,
-# then SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/mireo/secrets.yaml
-# (wireguard -> mireo-private-key), then shred -u /tmp/mireo-wg-priv.
-
-# 3. Peer fields (both already filled, 2026-09-14):
-#    - mireo peers[0].publicKey = <nyagate `wg pubkey`>, endpoint = 188.220.148.24:51820
-#    - nyagate peer publicKey = <mireo `wg pubkey`>, no endpoint (mireo dials out, keepalive 25s)
-#    Keep allowedIPs = ["10.66.0.1/32"] — never 0.0.0.0/0 here (would hijack
-#    the default route and break LAN/NFS/IPv6/microVMs).
-
-# 4. Deploy and restart the tunnel
-nix run .#deploy-mireo
-ssh root@10.8.0.1 'systemctl restart wireguard-wg0 && wg show wg0'
-```
-
-Expected `wg show wg0`: `latest handshake` within the last minute,
-`transfer` counters increasing (mireo sends `persistentKeepalive = 25`
-through the FritzBox NAT).
-
-### Published vs internal traffic
-
-Public (via nyagate DNAT → wg0, firewall `networking.firewall.interfaces.wg0`):
-
-- `80/tcp`, `443/tcp` — HTTP/HTTPS (reverse proxy on mireo)
-- `25565/tcp+udp` — Minecraft Java (`~/mcserver` auf mireo)
-- `19132/udp` — Geyser (Bedrock-Crossplay, selber Server)
-
-Internal-only, never via wg0 (bound to `br0`/`10.8.0.0/24`, firewall drops
-them on `wg0`, Avahi pinned to `br0`+`lo`):
-
-- NFS `/data` (export `10.8.0.0/24` only), DHCP, LAN DNS, dnsmasq-PXE/TFTP,
+- NFS `/data` (export `10.8.0.0/24` only), DHCP, LAN DNS, Pixiecore PXE/TFTP + boot HTTP `:8080`,
   Avahi/mDNS, Netdata `:19999` (bind `10.8.0.1`), nixfleet `:8443`, MicroVM
   internals.
 
-### Outbound via VPS (opt-in, default off)
+## Retired transit secrets
 
-mireo keeps its FritzBox default route. Routing selected home services out
-through the VPS public IPv4 requires explicit policy routing (separate table,
-`ip rule from <service-IP> lookup 100`, `default via 10.66.0.1 table 100`).
-Do not set `0.0.0.0/0` in `allowedIPs` — that would silently reroute all
-mireo/LAN/VM traffic and break NFS, IPv6, and internal DNS.
-
-### Rollback
-
-- Tunnel misbehaving: `ssh root@10.8.0.1 'systemctl stop wireguard-wg0'` —
-  LAN/NAT/dnsmasq/NFS are untouched (wg0 carries no LAN traffic).
-- Remove entirely: delete the `networking.wireguard.interfaces.wg0` block and
-  set `lucy.secrets.enable = false` in `data/hosts/mireo/settings.nix`, then
-  `nix run .#deploy-mireo`.
-- Rotate a compromised WG key: new `wg genkey`, update sops + peer's
-  `publicKey`, restart both ends. No age-key rotation needed.
+nyagate no longer exists. Its WireGuard transit, public forwarding and key
+setup helper have been removed. `hosts/nyagate/secrets.yaml` and the old
+WireGuard entry in `hosts/mireo/secrets.yaml` are retained encrypted, with
+no active secret declarations exposing the retired keys. mireo's
+other service secrets remain enabled. LAN routing and IPv6 use the FritzBox.

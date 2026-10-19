@@ -9,7 +9,11 @@
 *
 * Runs on the mireo HOST (not in the VM): no secret sharing into the
 * guest needed, the admin password stays in host sops (/run/secrets).
-* oneshot at boot + daily timer (Persistent) for convergence.
+* Timer-driven only (boot + daily, Persistent) for convergence: the
+* service is deliberately NOT wanted by multi-user.target, so a transient
+* API outage (e.g. kuma VM restarting mid-switch) can never fail a
+* nixos-rebuild/deploy and trigger a rollback. Sync right after a monitor
+* change: systemctl start uptime-kuma-sync (timer retries daily anyway).
 * Notifications are NOT managed (none exist; needs channel + secrets —
 * follow-up once a channel is chosen).
 *
@@ -27,11 +31,11 @@
 
   py = pkgs.python3.withPackages (ps: [ps.uptime-kuma-api]);
 
-  # Store-safe JSON (names/targets only, no secrets).
+  # Store-safe JSON (names/targets/groups/tags only, no secrets).
   desiredJson = pkgs.writeText "uptime-kuma-monitors.json" (builtins.toJSON
     (lib.mapAttrs (name: m: {
         inherit name;
-        inherit (m) type target interval maxRetries dnsServer dnsType;
+        inherit (m) type target interval maxRetries dnsServer dnsType group tags;
         port = m.port;
       })
       cfg.monitors));
@@ -56,6 +60,7 @@
       import argparse
       import json
       import sys
+      import urllib.request
 
       from uptime_kuma_api import Event, MonitorType, UptimeKumaApi
       from uptime_kuma_api.api import _check_arguments_monitor, _convert_monitor_input
@@ -73,6 +78,53 @@
           _check_arguments_monitor(data)
           with api.wait_for_event(Event.MONITOR_LIST):
               return api._call("add", data)
+
+
+      # lib 1.2.1 _build_status_page_data params (pinned: extra server keys
+      # must not reach it as **kwargs, and analyticsType isn't one of them).
+      _STATUS_PAGE_PARAMS = {
+          "slug", "id", "title", "description", "theme", "published",
+          "showTags", "domainNameList", "googleAnalyticsId", "customCSS",
+          "footerText", "showPoweredBy", "showCertificateExpiry", "icon",
+          "publicGroupList",
+      }
+
+
+      def save_status_page_v2(api, api_url, slug, **kwargs):
+          """save_status_page backport for kuma>=2.1: lib 1.2.1 crashes in
+          get_status_page (`incident` renamed to `incidents`, KeyError) and
+          omits analyticsType (v2 rejects the save with "Invalid analytics
+          type"). Mirrors the lib's save path with raw calls. Remove once
+          nixpkgs ships a v2-capable lib (upstream is unmaintained; the
+          maintained fork is uptime-kuma-api2)."""
+          r1 = api._call("getStatusPage", slug)
+          with urllib.request.urlopen(f"{api_url}/api/status-page/{slug}",
+                                       timeout=15) as resp:
+              r2 = json.load(resp)
+          config = r1["config"]
+          config.update(r2["config"])
+          status_page = {
+              **config,
+              "publicGroupList": r2["publicGroupList"],
+              "maintenanceList": r2.get("maintenanceList", []),
+          }
+          status_page.pop("incident", None)
+          status_page.pop("incidents", None)
+          status_page.pop("maintenanceList")
+          status_page.update(kwargs)
+          # slug travels as our own argument (don't rely on the server
+          # echoing it inside config).
+          status_page["slug"] = slug
+          params = {k: v for k, v in status_page.items()
+                    if k in _STATUS_PAGE_PARAMS}
+          _slug, config, icon, groups = api._build_status_page_data(**params)
+          # v2 requires analyticsType present (null = no analytics).
+          config["analyticsType"] = status_page.get("analyticsType")
+          r = api._call("saveStatusPage", (_slug, config, icon, groups))
+          # refresh cached list like the lib does (it misses save events)
+          cache = api._event_data.setdefault(Event.STATUS_PAGE_LIST, {})
+          cache[str(config["id"])] = api._call("getStatusPage", slug)["config"]
+          return r
 
       TYPES = {
           "http": MonitorType.HTTP,
@@ -203,6 +255,13 @@
                   log(f"in sync ({len(desired)} monitors)")
               elif args.dry_run:
                   log("dry-run: no writes performed")
+              # Tags are annotations, not contract: loud log on failure,
+              # never fail the sync (or the deploy) over them.
+              try:
+                  sync_monitor_tags(api, desired, live, existing,
+                                    args.dry_run)
+              except Exception as e:  # noqa: BLE001
+                  log(f"tags failed, monitors are in sync: {e}")
               with open(args.status_page, encoding="utf-8") as f:
                   page = json.load(f)
               if page.get("slug"):
@@ -213,7 +272,7 @@
                   # it the deploy): monitors are the contract, the page is
                   # presentation. Loud log, next run retries.
                   try:
-                      sync_status_page(api, page, live, args.dry_run)
+                      sync_status_page(api, args.api_url, page, live, desired, args.dry_run)
                   except Exception as e:  # noqa: BLE001
                       log(f"status page failed, monitors are in sync: {e}")
               return 0
@@ -221,19 +280,69 @@
               api.disconnect()
 
 
-      def sync_status_page(api, page, live, dry_run):
-          """Reconcile the single public status page (all Nix monitors in
-          one group). Other slugs are deleted (authoritative). Never uses
-          get_status_page: it crashes on incident parsing in lib 1.2.1, so
-          existence comes from the list and the save is unconditional
-          (idempotent) instead of drift-compared."""
+      # Display order of the status page categories = sites (groups not
+      # listed here sort in alphabetically after the known ones).
+      GROUP_ORDER = ["Homelab", "Internet", "Remote"]
+
+
+      def sync_monitor_tags(api, desired, live, existing, dry_run):
+          """Ensure monitor tag assignments: automatic `target` tag (so the
+          probed address is one click away in the UI) plus the Nix `tags`
+          map. Additive only — UI-added tags are never deleted. Failures
+          are loud but never fail the sync (annotations, not contract)."""
+          try:
+              server_tags = {t["name"]: t for t in api.get_tags()}
+          except Exception as e:  # noqa: BLE001
+              log(f"tags skipped (cannot list server tags): {e}")
+              return
+          for name, spec in desired.items():
+              if name not in live:
+                  continue
+              want = {"target": spec["target"]}
+              want.update(spec.get("tags", {}))
+              have = set()
+              for t in existing.get(name, {}).get("tags", []) or []:
+                  tid = t.get("tag_id", t.get("id"))
+                  if tid is not None:
+                      have.add((tid, t.get("value", "")))
+              for tag_name, value in want.items():
+                  if tag_name not in server_tags:
+                      if dry_run:
+                          log(f"tags dry-run: would create tag {tag_name}")
+                          continue
+                      log(f"+ create tag {tag_name}")
+                      server_tags[tag_name] = api.add_tag(
+                          name=tag_name, color="#5b8def")
+                  tid = server_tags[tag_name]["id"]
+                  if (tid, value) in have:
+                      continue
+                  if dry_run:
+                      log(f"tags dry-run: would tag {name} "
+                          f"{tag_name}={value}")
+                      continue
+                  log(f"+ tag {name} {tag_name}={value}")
+                  api.add_monitor_tag(tid, live[name], value)
+
+
+      def sync_status_page(api, api_url, page, live, desired, dry_run):
+          """Reconcile the single public status page (Nix monitors grouped
+          into categories). Other slugs are deleted (authoritative). Never
+          uses get_status_page: it crashes on incident parsing in lib
+          1.2.1, so existence comes from the list and the save is
+          unconditional (idempotent) instead of drift-compared."""
           slug = page["slug"]
-          member_ids = [live[name] for name in page["monitors"] if name in live]
-          missing = [name for name in page["monitors"] if name not in live]
-          for name in missing:
-              log(f"status page: monitor {name} unknown, skipped")
-          want_groups = [{"name": "Services", "weight": 1,
-                          "monitorList": [{"id": i} for i in member_ids]}]
+          grouped = {}
+          for name in page["monitors"]:
+              if name in live:
+                  grouped.setdefault(
+                      desired[name].get("group", "Homelab"), []).append(live[name])
+              else:
+                  log(f"status page: monitor {name} unknown, skipped")
+          ordered = sorted(grouped, key=lambda g: (
+              GROUP_ORDER.index(g) if g in GROUP_ORDER else len(GROUP_ORDER), g))
+          want_groups = [{"name": g, "weight": pos + 1,
+                          "monitorList": [{"id": mid} for mid in grouped[g]]}
+                         for pos, g in enumerate(ordered)]
           slugs = {p["slug"]: p for p in api.get_status_pages()}
           if slug not in slugs:
               log(f"+ create status page /status/{slug}")
@@ -243,8 +352,11 @@
           if dry_run:
               log(f"dry-run: status page /status/{slug} not saved")
               return
-          log(f"~ save status page /status/{slug} ({len(member_ids)} monitors)")
-          api.save_status_page(
+          total = sum(len(ids) for ids in grouped.values())
+          log(f"~ save status page /status/{slug} ({total} monitors, "
+              f"{len(ordered)} groups)")
+          save_status_page_v2(
+              api, api_url,
               slug, id=slugs[slug]["id"], title=page["title"],
               description=page["description"], published=True,
               publicGroupList=want_groups)
@@ -322,6 +434,20 @@ in {
             default = "A";
             description = "Record type for type=dns.";
           };
+          group = lib.mkOption {
+            type = lib.types.str;
+            default = "Homelab";
+            description = "Status page category (site) for this monitor.";
+          };
+          tags = lib.mkOption {
+            type = lib.types.attrsOf lib.types.str;
+            default = {};
+            description = ''
+              Extra monitor tags (name -> value), e.g. { role = "metrics"; }.
+              The target address is always tagged automatically. Tags are
+              only ever added, never deleted (UI-added tags survive).
+            '';
+          };
         };
       });
       default = {};
@@ -378,10 +504,24 @@ in {
 
     systemd.services.uptime-kuma-sync = {
       description = "Sync declarative Uptime Kuma monitors (authoritative)";
-      wantedBy = ["multi-user.target"];
+      # No wantedBy on purpose: starting at switch time races the kuma VM
+      # restart (2026-10-03 deploy failed + rolled back on a connect
+      # timeout). Convergence comes from the timer (boot + daily) and
+      # manual `systemctl start uptime-kuma-sync`.
       wants = ["network-online.target"];
       after = ["network-online.target" "microvm@uptime-kuma.service"];
-      serviceConfig.Type = "oneshot";
+      # Self-heal transient API login flakes (seen daily 00:00 runs +
+      # deploy-time race while the kuma VM boots): retry 3x, then give up
+      # until the next timer run (no infinite loop on permanent failure).
+      unitConfig = {
+        StartLimitIntervalSec = "30m";
+        StartLimitBurst = 3;
+      };
+      serviceConfig = {
+        Type = "oneshot";
+        Restart = "on-failure";
+        RestartSec = "2m";
+      };
       script = ''
         set -eu
         exec ${syncScript} \
@@ -394,9 +534,11 @@ in {
     };
 
     systemd.timers.uptime-kuma-sync = {
-      description = "Daily Uptime Kuma monitor convergence";
+      description = "Uptime Kuma monitor convergence (boot + daily)";
       wantedBy = ["timers.target"];
       timerConfig = {
+        # Boot-delayed so the kuma VM is up (no switch-time race).
+        OnBootSec = "10m";
         OnCalendar = "daily";
         Persistent = true;
       };

@@ -15,7 +15,10 @@
   host = {
     moduleFlags = {
       lucy.fonts.inter = true;
-      programs.niri.enable = true;
+      programs.niri.enable = false;
+      lucy.gnome.enable = true;
+      lucy.gnomeExtensions.enable = true;
+      lucy.plasma.enable = false;
       lucy.waybar.installFonts = true;
     };
 

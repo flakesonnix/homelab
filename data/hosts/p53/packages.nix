@@ -13,6 +13,7 @@
 in {
   basePackages = with pkgs; [
     alacritty
+    emacs-pgtk
     zathura
     fzf
     bat
@@ -32,7 +33,7 @@ in {
     cloc
   ];
 
-  systemPackages = [hyfetch-wrapped];
+  systemPackages = [hyfetch-wrapped pkgs.fastfetch];
 
   fontPackages = with pkgs; [
     hack-font

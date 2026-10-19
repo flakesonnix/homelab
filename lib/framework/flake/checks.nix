@@ -1,7 +1,7 @@
 {
   self,
   pkgs,
-  x270-config,
+  p53-config,
   ...
 }: let
   frameworkLib = ../.;
@@ -49,7 +49,7 @@ in {
           validation = dot.core.validation;
           host = validation.validateHost {
             inherit lib;
-            hostRoot = $src/data/hosts/x270;
+            hostRoot = $src/data/hosts/p53;
             roleRoot = $src/data/roles;
             presetRoot = $src/data/presets;
           };
@@ -432,6 +432,6 @@ in {
 
     # Force evaluation of full NixOS+HM config (no system build).
     # Discard string context so we don't pull huge build deps into this check.
-    x270-eval = pkgs.writeText "x270-eval" (builtins.unsafeDiscardStringContext (builtins.toString x270-config.config.system.build.toplevel));
+    p53-eval = pkgs.writeText "p53-eval" (builtins.unsafeDiscardStringContext (builtins.toString p53-config.config.system.build.toplevel));
   };
 }

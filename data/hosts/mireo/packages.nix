@@ -9,6 +9,10 @@
     socat
     tcpdump
 
+    # Music (MPD clients)
+    mpc
+    ncmpcpp
+
     # System analysis
     btop
     dmidecode

@@ -82,9 +82,33 @@
   sops.secrets."voip/eventphone" = {};
   sops.secrets."voip/eventphone-fax" = {};
 
+  # --- Minecraft server (Paper + Geyser, manual ~/mcserver dir) ---
+  # Only the SERVICE is declarative (modules/nixos/minecraft.nix): the unit
+  # runs `java -jar server.jar nogui` as lucy in /home/lucy/mcserver, world,
+  # plugins and configs stay manual files. Reachable on the trusted LAN
+  # without opening WAN ports. lucy manages the unit without root
+  # (polkit): systemctl start/stop/restart/status minecraft.
+  lucy.services.minecraft = {
+    enable = true;
+  };
+
+  # --- Mopidy music server (host ALSA -> USB mixer, no VM) ---
+  # Replaces the retired kodi music-box VM. Backends: local /data/Music,
+  # Jellyfin, streams/radio. Clients: M.A.L.P. (Android), mpc CLI, Iris
+  # web UI via Caddy (music.home.arpa). Spotify/SoundCloud/YouTube are
+  # deliberately NOT wired yet (all fragile, see docs, Oct 2026).
+  lucy.services.mopidy = {
+    enable = true;
+  };
+  # Jellyfin password for the mopidy backend user. Bootstrap: create user
+  # `mopidy` on Jellyfin (10.8.0.10), then replace the placeholder:
+  #   sops set hosts/mireo/secrets.yaml '["mopidy"]["jellyfin-password"]' '"<pw>"'
+  # Until then the jellyfin backend logs auth errors (others keep working).
+  sops.secrets."mopidy/jellyfin-password" = {};
+
   # --- Declarative Uptime Kuma monitors (authoritative API sync) ---
   # Targets verified live 2026-09-16 (only 2xx/3xx + reachable hosts).
-  # Skipped deliberately: x270 (roaming), notifications (no channel yet).
+  # Skipped deliberately: p53 (roaming), notifications (no channel yet).
   services.uptime-kuma-sync = {
     enable = true;
     apiUrl = "http://10.8.0.9:3001";
@@ -120,26 +144,17 @@
         type = "http";
         target = "http://10.8.0.9:3001/";
       };
-      uptime-vhost = {
+      # NOTE: targets the app port directly, not the vhost: a VM can never
+      # reach a Caddy vhost that resolves to its own IP (bridge hairpin
+      # bypasses the :80 redirect, SYN dies locally). Caddy itself is
+      # covered by every other vhost monitor.
+      uptime-kuma-app = {
         type = "http";
-        target = "http://uptime-kuma.home.arpa/";
+        target = "http://10.8.0.9:3001/";
       };
       grafana-vhost = {
         type = "http";
         target = "http://grafana.home.arpa/";
-      };
-      grafana-public = {
-        type = "http";
-        target = "https://grafana.db210.org/";
-      };
-      yammat-public = {
-        type = "http";
-        target = "https://yammat.db210.org/";
-      };
-      aptcache = {
-        type = "port";
-        target = "10.8.0.8";
-        port = 3142;
       };
       monero-orport = {
         type = "port";
@@ -148,7 +163,7 @@
       };
       minecraft = {
         type = "port";
-        target = "10.66.0.2";
+        target = "10.8.0.1";
         port = 25565;
       };
       nfs = {
@@ -181,13 +196,14 @@
         type = "ping";
         target = "192.168.178.1";
       };
+      ff-bb = {
+        type = "ping";
+        target = "10.8.0.193";
+      };
       internet = {
         type = "ping";
-        target = "1.1.1.1";
-      };
-      nyagate = {
-        type = "ping";
-        target = "188.220.148.24";
+        target = "9.9.9.9";
+        group = "Internet";
       };
       lan-dns = {
         type = "dns";
@@ -196,7 +212,8 @@
       uplink-dns = {
         type = "dns";
         target = "google.com";
-        dnsServer = "1.1.1.1";
+        dnsServer = "9.9.9.9";
+        group = "Internet";
       };
       lldap-ui = {
         type = "http";
@@ -216,6 +233,49 @@
         target = "10.8.0.12";
         port = 3890;
       };
+      adguard = {
+        type = "http";
+        target = "http://10.8.0.30:3000/";
+      };
+      adguard-dns-port = {
+        type = "port";
+        target = "10.8.0.30";
+        port = 53;
+      };
+      lan-dns-adguard = {
+        type = "dns";
+        target = "music.home.arpa";
+        dnsServer = "10.8.0.30";
+      };
+      dash = {
+        type = "http";
+        target = "http://10.8.0.32:8082/";
+      };
+      mpd = {
+        type = "port";
+        target = "10.8.0.1";
+        port = 6600;
+        group = "Services";
+      };
+      music = {
+        type = "http";
+        target = "http://music.home.arpa/";
+        group = "Services";
+      };
+      maps-osm = {
+        type = "port";
+        target = "10.8.0.27";
+        port = 80;
+      };
+      network-services-http = {
+        type = "port";
+        target = "10.8.0.3";
+        port = 80;
+      };
+      dns-host = {
+        type = "ping";
+        target = "10.8.0.30";
+      };
     };
   };
   sops.secrets."uptime-kuma/admin-password" = {};
@@ -226,6 +286,7 @@
   sops.secrets."lldap/admin-password" = {};
   # Per-user passwords for the declarative seed (lldap-microvm.nix).
   sops.secrets."lldap/users/lucy" = {};
+  sops.secrets."lldap/users/test" = {};
   # OIDC client secret for Grafana (created in the Pocket ID UI, step 3 of
   # hosts/mireo/pocket-id-microvm.nix bootstrap). Placeholder first:
   #   sops set hosts/mireo/secrets.yaml '["grafana"]["oidc-client-secret"]' '"CHANGEME"'
@@ -266,4 +327,12 @@
   sops.secrets."backup/nextcloud" = {};
   # Nextcloud admin
   sops.secrets."database/nextcloud-admin" = {};
+  # Attic binary cache token secret (artifacts VM, environmentFile).
+  sops.secrets."artifacts/attic-env" = {};
+  # Management VM API tokens (least privilege: per-VM dir, not shared).
+  # PLACEHOLDERS — mint real tokens in the LibreNMS/NetBox UIs, then:
+  #   sops set hosts/mireo/secrets.yaml '["management"]["librenms-api-key"]' '"<token>"'
+  #   sops set hosts/mireo/secrets.yaml '["management"]["netbox-api-token"]' '"<token>"'
+  sops.secrets."management/librenms-api-key" = {};
+  sops.secrets."management/netbox-api-token" = {};
 }

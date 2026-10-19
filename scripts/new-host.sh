@@ -8,7 +8,7 @@ set -euo pipefail
 
 usage() {
   echo "Usage: $0 host <name> | vm <name>"
-  echo "  host <name>  -> hosts/<name>/ (regular NixOS host, x270-style)"
+  echo "  host <name>  -> hosts/<name>/ (regular NixOS host, p53-style)"
   echo "  vm <name>    -> hosts/mireo/<name>-microvm.nix (microvm on mireo, 10.8.0.x)"
   exit 1
 }
@@ -83,16 +83,16 @@ EOF
       awk -v n="$name" '
         prev_close && $0 ~ /^  in$/ && !done {
           print "    " n "-config = mkHost {";
-          print "      specialArgs = x270SpecialArgs;";
+          print "      specialArgs = p53SpecialArgs;";
           print "      modules = [ ./hosts/" n " ];";
           print "    };";
           done=1
         }
         { prev_close = ($0 ~ /^    \};$/); print }
       ' flake.nix > /tmp/flake.nix.tmp && mv /tmp/flake.nix.tmp flake.nix
-      # Append nixosConfigurations.<name> after nyagate
+      # Add the host at the start of the configuration map.
       awk -v n="$name" '
-        $0 ~ /nyagate = nyagate-config;/ && !done2 {
+        $0 ~ /^[[:space:]]*nixosConfigurations = \{$/ && !done2 {
           print;
           print "            " n " = " n "-config;";
           done2=1;

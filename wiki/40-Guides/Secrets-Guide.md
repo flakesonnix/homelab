@@ -15,9 +15,9 @@ The private age key lives only on the target host at `/etc/sops/age/keys.txt`. T
 ## Setup
 
 ```bash
-nix run .#setup-sops x270
+nix run .#setup-sops p53
 # adopt the .sops.yaml snippet from the output
-SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/x270/secrets.yaml
+SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/p53/secrets.yaml
 
 sudo mkdir -p /etc/sops/age
 sudo cp .sops/keys.txt /etc/sops/age/keys.txt
@@ -53,9 +53,9 @@ asterisk:
 ## Editing / rotation
 
 ```bash
-SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/x270/secrets.yaml
+SOPS_AGE_KEY_FILE=.sops/keys.txt sops hosts/p53/secrets.yaml
 # Rotation: generate a new key (delete .sops/keys.txt first), update .sops.yaml,
-SOPS_AGE_KEY_FILE=<old-key> sops updatekeys hosts/x270/secrets.yaml
+SOPS_AGE_KEY_FILE=<old-key> sops updatekeys hosts/p53/secrets.yaml
 ```
 
 ## Initrd SSH (:2222, remote unlock)
@@ -66,15 +66,7 @@ sudo ssh-keygen -t ed25519 -f /etc/secrets/initrd/ssh_host_ed25519_key -N ""
 sudo chmod 600 /etc/secrets/initrd/ssh_host_ed25519_key
 ```
 
-## WireGuard mireo↔nyagate (10.66.0.0/30, public edge db210.org)
+## Retired transit secrets
 
-Private keys only in sops (`hosts/{mireo,nyagate}/secrets.yaml`), public keys + endpoints plain in settings.
-nyagate DNATs 80/443/25565/19132(udp) → `10.66.0.2` (mireo: Minecraft Java + Geyser aus `~/mcserver`), Caddy on mireo serves `yammat.db210.org` + `grafana.db210.org` with auto-TLS (needs A records `*.db210.org → 188.220.148.24`).
-
-```bash
-nix run .#deploy-nyagate   # wg0 .1 + NAT first
-nix run .#deploy-mireo     # wg0 .2 + Caddy public vhosts
-ssh root@10.8.0.1 'wg show wg0'; ssh root@db210.org 'wg show wg0'
-```
-
-`allowedIPs=["10.66.0.1/32"]` — never `0.0.0.0/0` (would hijack LAN/NFS/IPv6). Rollback: `systemctl stop wireguard-wg0`.
+The VPS transit is removed. Its encrypted keys remain unreferenced; see
+`docs/secrets.md`. mireo still needs sops for its unrelated service secrets.

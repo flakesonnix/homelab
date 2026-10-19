@@ -15,7 +15,7 @@ systemctl --failed
 journalctl -b -p err
 ```
 
-Known on x270: libvirt TPM without `/dev/tpmrm0` → `virtualisation.libvirtd.enable=mkForce false` (see [[10-Hosts/x270|x270]]). Same `243/CREDENTIALS` can hit mireo: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot (see [[10-Hosts/mireo#libvirt-virt-manager-remote-target-weg-a|mireo libvirt]]).
+Known on hosts without `/dev/tpmrm0`: libvirt 12.4 TPM → `243/CREDENTIALS` aborts `nixos-rebuild-ng` (strict, exit 4). p53 hat TPM (`/dev/tpmrm0` da), lokaler Daemon ist an. Fällt er trotzdem so: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot (see [[10-Hosts/p53|p53]]). Same `243/CREDENTIALS` can hit mireo the same way (see [[10-Hosts/mireo#libvirt-virt-manager-remote-target-weg-a|mireo libvirt]]).
 
 ## deploy-rs: NIX_PATH / nixos-config missing
 
@@ -56,7 +56,7 @@ tests pass) — it only changes which egress IP the Console proxy sees:
 - mireo WAN v6 is short-lived and flaps: `ssh lucy@10.8.0.1 'ip -6 addr show
   enp4s0'` shows ~2h lifetimes, `networkctl status enp4s0` shows repeated
   `DHCPv6 lease lost`. Each flap can poison a running session. With NAT66 off the
-  x270 has no v6 internet at all, so everything stays on stable IPv4 NAT — that is
+  p53 has no v6 internet at all, so everything stays on stable IPv4 NAT — that is
   the perceived "only breaks with IPv6 on" correlation.
 
 Fix (no deploy needed): start a FRESH session (`/new` or `/clear`), never
@@ -66,10 +66,6 @@ occasionally poison long agent sessions. Details [[10-Hosts/Network|Network]].
 
 Verified 2026-09-14, so you don't chase ghosts:
 
-- Tunnel mireo↔nyagate is HEALTHY (`wg show wg0`: handshake seconds old,
-  `ping 10.66.0.1` 0% loss). The `WireGuardPeer ... without PublicKey` journal
-  spam was stale deploy churn (3 switches that day: 12:33/14:20/14:31) — on-disk
-  `40-wg0.netdev` carries the key, zero warnings since. No fix needed.
 - Same churn explains the `DHCPv6 lease lost` flaps: every `switch-to-configuration`
   reconfigures networkd, the DHCPv6 client restarts, egress flaps, sessions poison.
   Avoid redeploying mireo mid-agent-session.

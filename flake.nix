@@ -80,6 +80,15 @@
       url = "github:oddlama/nix-topology";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # EWM (Emacs Wayland Manager) compositor + NixOS module, pinned 2026-10-14.
+    # Tarball input: lib.fileset.gitTracked evaluates store paths without
+    # filtering, so no git checkout is needed.
+    # Deliberately NOT following our nixpkgs (July 2026, libdisplay-info 0.2):
+    # EWM pins libdisplay-info 0.3, which only its own locked nixpkgs provides.
+    ewm = {
+      url = "https://codeberg.org/ezemtsov/ewm/archive/a26d17f885f86b3e3adde7315c9720283820286f.tar.gz";
+    };
   };
 
   # Custom flake outputs (intentional, used by external tools):
@@ -106,6 +115,7 @@
     yammat,
     deploy-rs,
     nix-topology,
+    ewm,
     ...
   }: let
     pkgsForPatch = import nixpkgs {system = "x86_64-linux";};
@@ -127,24 +137,20 @@
 
     frameworkLib = import ./lib/framework;
 
-    x270SpecialArgs = {
-      inherit wrappers stylix nix-flatpak nixos-hardware nixGaming frameworkLib;
-    };
-
-    serverSpecialArgs = {
-      inherit wrappers frameworkLib;
+    p53SpecialArgs = {
+      inherit wrappers stylix nix-flatpak nixos-hardware nixGaming frameworkLib ewm;
     };
 
     mireoSpecialArgs = {
       inherit wrappers yammat nixpkgs frameworkLib;
     };
 
-    x270-config = mkHost {
-      specialArgs = x270SpecialArgs;
+    p53-config = mkHost {
+      specialArgs = p53SpecialArgs;
       modules = [
         ./nix-settings.nix
         ./profiles/desktop.nix
-        ./hosts/x270
+        ./hosts/p53
         ./modules/nixos/audio-stream.nix
         ./modules/nixos/epg-refresh.nix # services.epg-refresh: täglicher Jellyfin-XMLTV-Guide
         ./modules/nixos/fonts.nix
@@ -156,6 +162,8 @@
         ./modules/nixos/nvidia.nix
         ./modules/nixos/nvidia-resume.nix
         ./modules/nixos/niri.nix
+        ./modules/nixos/ewm.nix
+        ewm.nixosModules.default
         ./modules/nixos/serial-getty.nix
         ./modules/nixos/sops.nix
         ./modules/nixos/waybar.nix
@@ -167,6 +175,10 @@
           boot.lanzaboote = {
             enable = true;
             pkiBundle = "/var/lib/sbctl";
+            # /boot ist nur 1 GB, ein initrd allein ~218 MB: höchstens 3
+            # Generationen behalten, sonst läuft die ESP wieder voll (ENOSPC
+            # bei Gen 240, Okt 2026).
+            configurationLimit = 3;
           };
         })
         ./modules/nixos/hm-base.nix
@@ -214,23 +226,14 @@
         ./modules/nixos/ntfy.nix
         ./modules/nixos/rustdesk.nix
         ./modules/nixos/osm.nix
+        ./modules/nixos/minecraft.nix # lucy.services.minecraft (~/mcserver wrapper)
+        ./modules/nixos/mopidy.nix # lucy.services.mopidy (music server, host ALSA)
         sops-nix.nixosModules.sops
         run0-sudo-shim.nixosModules.default
         ({lib, ...}: {
           lucy.nixfleet.api.package = lib.mkDefault nixfleetPkgs.api;
           lucy.nixfleet.agent.package = lib.mkDefault nixfleetPkgs.agent;
         })
-      ];
-    };
-    nyagate-config = mkHost {
-      specialArgs = serverSpecialArgs;
-      modules = [
-        ./nix-settings.nix
-        ./profiles/base.nix
-        ./hosts/nyagate
-        ./modules/nixos/sops.nix
-        sops-nix.nixosModules.sops
-        run0-sudo-shim.nixosModules.default
       ];
     };
   in
@@ -251,7 +254,7 @@
             builtins.removeAttrs
             (
               import ./lib/framework/flake/checks.nix {
-                inherit self pkgs x270-config;
+                inherit self pkgs p53-config;
               }
             ).checks ["webui-unit"];
           deployChecks = deploy-rs.lib.${system}.deployChecks self.deploy;
@@ -311,10 +314,9 @@
           # Curated, human-labeled command list used by the interactive
           # `menu` launcher. Single source of truth for what's discoverable.
           menuEntries = {
-            rebuild = "Rebuild local x270 via nh";
-            "deploy-x270" = "Deploy x270 via deploy-rs to localhost";
+            rebuild = "Rebuild local p53 via nh";
+            "deploy-p53" = "Deploy p53 via deploy-rs to localhost";
             "deploy-mireo" = "Deploy mireo via deploy-rs to 10.8.0.1";
-            "deploy-nyagate" = "Deploy nyagate via deploy-rs to db210.org";
             check = "Run nix flake check";
             "check-light" = "Fast eval-surface checks";
             "check-full" = "Full CI check builds";
@@ -336,6 +338,54 @@
           };
 
           nixfleetPkgs = import ./nixfleet/default.nix {inherit pkgs;};
+
+          # Optional custom installer; mireo's default PXE uses netboot.xyz.
+          # NixOS mit Xfce-Desktop als PXE-Netboot-Payload. iPXE kann die
+          # ~2-GB-initrd NICHT laden (0x2a818006, contiguous-lowmem-Limit),
+          # darum lädt GRUB als Zwischenlader (legt initrd oberhalb 4 GB ab):
+          # Firmware → iPXE-Menü → grub.pxe/grubx64.efi (per TFTP), dann
+          # Kernel+initrd per HTTP. Separates Paket (kein nixosConfiguration/
+          # topology-Eintrag), damit mireo-Deploys nicht bei jedem Switch
+          # das GB-große Installer-Closure bauen.
+          # Sync nach dem Bauen: Dateien aus ./result nach mireo:/data/pxe
+          # kopieren (Caddy serviert /boot/*; custom TFTP files need separate setup).
+          # Secure Boot: Images unsigniert → auf physischen Zielen aus.
+          pxeDesktop = nixpkgs.lib.nixosSystem {
+            system = "x86_64-linux";
+            modules = [./hosts/pxe-desktop];
+          };
+          # GRUB-Netboot-Menü (Prefix /boot/grub per TFTP, Kernel+initrd per
+          # HTTP). Kernel-Params wie netboot.ipxe + serielle Konsole (VGA
+          # bleibt primär). ASCII-only: Textmodus kann kein UTF-8.
+          pxeGrubCfg = pkgs.writeText "grub.cfg" ''
+            serial --unit=0 --speed=115200
+            terminal_input console serial
+            terminal_output console serial
+            set timeout=8
+            set default=0
+            menuentry "NixOS Xfce-Desktop (Installer)" {
+              linux (http,10.8.0.1)/boot/bzImage init=${pxeDesktop.config.system.build.toplevel}/init initrd=initrd ${pkgs.lib.concatStringsSep " " pxeDesktop.config.boot.kernelParams} console=tty0 console=ttyS0
+              initrd (http,10.8.0.1)/boot/initrd
+            }
+          '';
+          pxeDesktopBoot = pkgs.runCommand "pxe-desktop-boot" {} ''
+            mkdir -p $out/boot/grub
+            cp ${pxeDesktop.config.system.build.kernel}/${pxeDesktop.config.system.boot.loader.kernelFile} $out/bzImage
+            cp ${pxeDesktop.config.system.build.netbootRamdisk}/initrd $out/initrd
+            cp ${pxeDesktop.config.system.build.netbootIpxeScript}/netboot.ipxe $out/netboot.ipxe
+            cp ${./hosts/pxe-desktop/menu.ipxe} $out/menu.ipxe
+            # Startskript für lokale qemu-SLIRP-Tests (TFTP-bootfile, chainloadet
+            # das HTTP-Menü; siehe hosts/pxe-desktop/slirp-boot.ipxe).
+            cp ${./hosts/pxe-desktop/slirp-boot.ipxe} $out/slirp-boot.ipxe
+            # Firmware startet iPXE für das Menü; nur NixOS lädt GRUB nach.
+            cp ${pkgs.ipxe}/undionly.kpxe $out/undionly.kpxe
+            cp ${pkgs.ipxe}/snp.efi $out/snp.efi
+            cp ${pxeGrubCfg} $out/boot/grub/grub.cfg
+            ${pkgs.grub2}/bin/grub-mkimage -O i386-pc-pxe -o $out/grub.pxe -p /boot/grub \
+              pxe tftp http boot linux normal serial terminal reboot halt echo configfile search test true sleep
+            ${pkgs.grub2_efi}/bin/grub-mkimage -O x86_64-efi -o $out/grubx64.efi -p /boot/grub \
+              efinet tftp http boot linux normal serial terminal reboot halt echo configfile search test
+          '';
         in
           {
             formatter = pkgs.alejandra;
@@ -381,13 +431,14 @@
               nixfleet-web = nixfleetPkgs.web;
               nixfleet-manifest = pkgs.writeText "manifest.json" self.nixfleetArtifacts.manifestJson;
               nixfleet-ui = pkgs.writeText "ui.json" self.nixfleetArtifacts.uiJson;
+              pxe-desktop-boot = pxeDesktopBoot;
             };
 
             apps = {
               rebuild = {
                 type = "app";
                 program = "${rebuildApp}/bin/rebuild";
-                meta.description = "Rebuild the x270 host via nh";
+                meta.description = "Rebuild the p53 host via nh";
               };
               check = {
                 type = "app";
@@ -409,20 +460,15 @@
                 program = "${updateApp}/bin/update";
                 meta.description = "Update flake inputs";
               };
-              deploy-x270 = {
+              deploy-p53 = {
                 type = "app";
-                program = "${deployApp "x270"}/bin/deploy-x270";
-                meta.description = "Deploy x270 via deploy-rs to localhost";
+                program = "${deployApp "p53"}/bin/deploy-p53";
+                meta.description = "Deploy p53 via deploy-rs to localhost";
               };
               deploy-mireo = {
                 type = "app";
                 program = "${deployApp "mireo"}/bin/deploy-mireo";
                 meta.description = "Deploy mireo via deploy-rs to 10.8.0.1";
-              };
-              deploy-nyagate = {
-                type = "app";
-                program = "${deployApp "nyagate"}/bin/deploy-nyagate";
-                meta.description = "Deploy nyagate via deploy-rs to db210.org";
               };
               setup-sops = {
                 type = "app";
@@ -470,9 +516,8 @@
           };
 
           nixosConfigurations = {
-            x270 = x270-config;
+            p53 = p53-config;
             mireo = mireo-config;
-            nyagate = nyagate-config;
           };
 
           nixfleetArtifacts = import ./nixfleet/manifest.nix {
@@ -499,12 +544,12 @@
               nixosConfig.config.system.build.toplevel
               "${nixPathEnv} $PROFILE/bin/switch-to-configuration switch";
           in {
-            x270 = {
+            p53 = {
               hostname = "localhost";
               sshUser = "root";
               profiles.system = {
                 user = "root";
-                path = activateNixosWithNixPath self.nixosConfigurations.x270;
+                path = activateNixosWithNixPath self.nixosConfigurations.p53;
               };
             };
             mireo = {
@@ -516,19 +561,6 @@
               profiles.system = {
                 user = "root";
                 path = activateNixosWithNixPath self.nixosConfigurations.mireo;
-              };
-            };
-            nyagate = {
-              hostname = "db210.org";
-              sshUser = "root";
-              # Root SSH key is deployed on the target, so deploy directly
-              # as root (no passwordless sudo needed for lucy).
-              # Remote build stays on: the target fetches deps via its own
-              # substituters.
-              remoteBuild = true;
-              profiles.system = {
-                user = "root";
-                path = activateNixosWithNixPath self.nixosConfigurations.nyagate;
               };
             };
           };

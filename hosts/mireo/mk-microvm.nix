@@ -86,7 +86,7 @@ spec: {lib, ...}: let
   baseConfig = {
     imports = [
       (import ./microvm-base.nix {
-        inherit (s) ip;
+        inherit (s) ip name;
         interfaceId =
           if s.interfaceId == null
           then "vm-${s.name}"

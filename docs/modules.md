@@ -122,7 +122,7 @@ Generates `pjsip.conf` and `extensions.conf` from phone attrs. Built-in extensio
 
 ### `voip.nix` (Phase 2 — live PJSIP trunk rendering)
 
-Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options namespace: `services.voip.*`. Wired on `mireo` (next to `asterisk.nix`, both disabled); `x270`/`nyagate` untouched. Trunk layout follows Easybell's official Asterisk-22 guide (`easybell.de/hilfe "Asterisk Telefonanlagen"`, Sep 2026).
+Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options namespace: `services.voip.*`. Wired on `mireo` (next to `asterisk.nix`, both disabled); `p53` untouched. Trunk layout follows Easybell's official Asterisk-22 guide (`easybell.de/hilfe "Asterisk Telefonanlagen"`, Sep 2026).
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -168,10 +168,25 @@ Declarative Uptime Kuma monitors (GitOps API sync, host-side on `mireo`). Option
 | `monitors.<name>.maxRetries` | unsigned int | 1 | Retries before DOWN |
 | `monitors.<name>.dnsServer` | str | `"10.8.0.1"` | Resolver for `dns` (default tests our own dnsmasq) |
 | `monitors.<name>.dnsType` | str | `"A"` | Record type for `dns` |
+| `monitors.<name>.group` | str | `"Homelab"` | Status page category (site): `Homelab` / `Internet` / `Remote` (unknown names sort last) |
+| `monitors.<name>.tags` | attrs | `{}` | Extra monitor tags (`{ role = "metrics"; }`); target address always tagged; additive only, UI tags survive |
 | `statusPage.enable` | bool | false | Single public page (`/status/<slug>`, all Nix monitors, others deleted) |
 | `statusPage.slug` / `.title` / `.description` | str | `"homelab"` / `"Homelab Status"` / … | Page identity |
 
-Oneshot `uptime-kuma-sync.service` (after `microvm@uptime-kuma`) + daily `uptime-kuma-sync.timer` (Persistent). Dry-run preview without writes: `/etc/uptime-kuma-sync/preview`. Notifications are NOT managed (none exist; needs channel + secrets — follow-up).
+Timer-driven `uptime-kuma-sync.service` (oneshot, after `microvm@uptime-kuma`, deliberately NOT in `multi-user.target` so a Kuma outage can never fail a switch/rollback) + `uptime-kuma-sync.timer` (`OnBootSec=10m` + daily, Persistent). Monitors land in site categories on the status page (`Homelab` / `Internet` / `Remote`, per-monitor `group`, default `Homelab`) with `tags` (auto `target` address + custom map, additive only). Sync after monitor changes: `systemctl start uptime-kuma-sync`. Dry-run preview without writes: `/etc/uptime-kuma-sync/preview`. Notifications are NOT managed (none exist; needs channel + secrets — follow-up). Kuma ≥2.1 needs the in-script `save_status_page` backport (upstream lib unmaintained); covered by a runtime test in `tests/default.nix`.
+
+### `mopidy.nix`
+
+Mopidy music server on the mireo host (replaced the kodi music-box VM, Oct 2026): local `/data/Jellyfin/Music` + Jellyfin backend + streams/radio to the USB mixer (Behringer Xenyx 302USB) via direct ALSA. Clients: MPD protocol `:6600` (M.A.L.P., mpc) + Iris web UI behind Caddy (`music.home.arpa`).
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enable` | bool | false | Enable mopidy + ympd-less Iris stack |
+| `musicDirectory` | path | `/data/Jellyfin/Music` | Local library (Jellyfin media dir) |
+| `alsaDevice` | str | `"hw:CARD=CODEC,DEV=0"` | Stable ALSA name (verify with `aplay -L`) |
+| `jellyfinHost` / `jellyfinUser` | str | `10.8.0.10:8096` / `mopidy` | Jellyfin backend (password via sops `mopidy/jellyfin-password`) |
+
+Extension set: `mopidy-mpd`, `mopidy-local`, `mopidy-jellyfin`, `mopidy-somafm`, `mopidy-iris`. Spotify/SoundCloud/YouTube deliberately NOT wired (all fragile as of Oct 2026; Deezer has no viable extension).
 
 ---
 
@@ -215,7 +230,7 @@ Options namespace: `lucy.serialGetty.*`
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `disabled` | list of str | `[]` | Serial TTYs whose systemd getty units get disabled (e.g. x270 disables ttyS0-3) |
+| `disabled` | list of str | `[]` | Serial TTYs whose systemd getty units get disabled (e.g. p53 disables ttyS0-3) |
 
 ---
 
@@ -278,7 +293,7 @@ When `enable`:
 - `systemd.services.nixfleet-api` (if `api.package` set): `ExecStart = ${api.package}/bin/nixfleet-api --manifest ${artifactsDir}/manifest.json --ui ${artifactsDir}/ui.json [--web ${webDir}]`, `DynamicUser`, `StateDirectory=nixfleet`, `wantedBy multi-user, after network.target`
 - `systemd.services.nixfleet-agent` (if `agent.package` set): `ExecStart = ${agent.package}/bin/nixfleet-agent`, `DynamicUser`, `after network-online.target`, stays alive with 30s heartbeat (`runtime.CollectSystem`)
 
-Enabled on `mireo` via `data/hosts/mireo/settings.nix` (`enable = true; role = "api"; api.port = 8443; artifactsDir = ../../../nixfleet/artifacts`) + `flake.nix` `nixfleetPkgs.*` defaults. `x270` not enabled.
+Enabled on `mireo` via `data/hosts/mireo/settings.nix` (`enable = true; role = "api"; api.port = 8443; artifactsDir = ../../../nixfleet/artifacts`) + `flake.nix` `nixfleetPkgs.*` defaults. `p53` not enabled.
 
 **M1 API (DONE, 7a05039, Sep 2026)**: `GET /api/v1/hosts`, `/:host/health` (`healthy|degraded|critical|unknown`, `failedUnits`), `/:host/resources` (`/proc` → cpu/ram/swap/load/disk/procs), `/:host/network` (`ip -j addr/link` → interfaces/addrs/state), `/:host/vms` (merged `configured` from manifest + `runtime` via `systemctl is-active microvm@<name>` validated → state/mem/vcpu/ip/ports), `/:host/systemd/failed` (`systemctl --failed` → unit list). Typed Go structs (`nixfleet/api/manifest`, `nixfleet/api/runtime`), `404` for unknown host/vm, `503` when agent not local (mireo observability only — no WS yet).
 
@@ -298,7 +313,7 @@ Options namespace: `hq.deskflow.*`
 |--------|------|---------|-------------|
 | `enable` | bool | false | Enable deskflow keyboard/mouse sharing |
 | `role` | enum (server/client) | `"client"` | server shares KBM; client is remote-controlled |
-| `serverAddress` | str | `"x270"` | Server host for client mode |
+| `serverAddress` | str | `"p53"` | Server host for client mode |
 | `screenLayout` | attrs of submodules | `{}` | Server screen links (left/right/up/down) |
 
 Generates `settings.ini` + (server) `server.conf`, runs `deskflow-core` as a systemd service under user `lucy`.

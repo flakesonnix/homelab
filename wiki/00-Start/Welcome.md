@@ -23,7 +23,7 @@ This vault is Obsidian-first documentation for this repo (`flake.nix`, `hosts/`,
 - `[[Wikilinks]]` for internal navigation, **no** Markdown links internally.
 - Tags: `#host` `#module` `#guide` `#network` `#nixfleet` `#nixos` `#secret` `#todo`
 - Frontmatter always: `aliases`, `tags`, `type`
-- Code paths in `` `backticks` ``, e.g. `data/hosts/x270/settings.nix`, `flake.nix:193`
+- Code paths in `` `backticks` ``, e.g. `data/hosts/p53/settings.nix`, `flake.nix:193`
 - Status box at the top of host pages: role, IP, deploy command.
 
 ## Where is the vault?

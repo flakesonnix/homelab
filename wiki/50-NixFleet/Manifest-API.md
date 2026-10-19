@@ -12,7 +12,7 @@ type: reference
 
 `flake.nix` → `nixfleetArtifacts=import ./nixfleet/manifest.nix {lib,pkgs,configurations=without live,deployNodes}` → `packages.nixfleet-manifest/ui` (`writeText`) → committed to `nixfleet/artifacts/` (CI on master only) → `nixfleet-api --manifest … --ui … [--web …]` serves them.
 
-Fixes in 7a05039: `hasVms` via `attrNames vmCatalog` (was always false), `hostRoles` via `hasAttr "roles.nix"` (was invalid `? roles.nix`) → x270 now shows `[desktop dev gaming]`, `/vms` nav appears. mireo `roles:[]` is intentional (server, configured directly in settings.nix).
+Fixes in 7a05039: `hasVms` via `attrNames vmCatalog` (was always false), `hostRoles` via `hasAttr "roles.nix"` (was invalid `? roles.nix`) → p53 now shows `[desktop dev gaming]`, `/vms` nav appears. mireo `roles:[]` is intentional (server, configured directly in settings.nix).
 
 ## manifest.json (v1)
 

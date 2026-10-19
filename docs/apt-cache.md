@@ -1,5 +1,7 @@
 # APT Cache Proxy (mireo 10.8.0.8:3142)
 
+> **RETIRED 2026-10-05** — the `aptcache` VM was decommissioned (apt-cacher-ng config incompatible). Remove any `Acquire::http::Proxy` lines pointing here; clients fetch directly.
+
 ## One-liner
 
 ```bash

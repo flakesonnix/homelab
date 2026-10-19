@@ -50,6 +50,13 @@
           dataDir = "/data/registry";
           port = 5000;
         };
+        # Add pci-setup script to satisfy ConditionPathExists in microvm-pci-devices@.service
+        systemd.services."pci-setup-artifacts" = {
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = "/bin/true";
+          };
+        };
       };
     })
   ];

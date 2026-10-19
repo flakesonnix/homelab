@@ -19,12 +19,12 @@
   # For now, define a minimal host inventory derived from known hosts.
   # This will be expanded to load from data/hosts and hosts/mireo.
   hosts = {
-    x270 = {
-      id = "x270";
-      title = "X270";
-      description = "Primary desktop / gaming laptop — ThinkPad X270";
-      hardware.info = "Lenovo ThinkPad X270 · i7-7600U";
-      roles = import ../../data/hosts/x270/roles.nix;
+    p53 = {
+      id = "p53";
+      title = "P53";
+      description = "Primary desktop / gaming laptop — ThinkPad P53";
+      hardware.info = "Lenovo ThinkPad P53 · i7-9750H";
+      roles = import ../../data/hosts/p53/roles.nix;
       services = ["niri" "waybar" "pipewire"];
       microvms = [];
       modules = ["base" "niri" "gaming"];
@@ -38,7 +38,7 @@
       # mireo has no roles.nix (server profile)
       roles = [];
       services = ["dnsmasq" "nixfleet" "nfs" "avahi" "podman"];
-      microvms = ["grafana" "network-services" "monerod" "yammat" "cups" "sshkeys" "aptcache"];
+      microvms = ["grafana" "network-services" "monerod" "yammat" "cups" "sshkeys"];
       modules = ["base" "microvm" "cups" "dnsmasq" "nat"];
       network = {
         ipv4 = "10.8.0.1/24";
@@ -97,14 +97,6 @@
       vcpu = 1;
       services = ["caddy"];
       description = "SSH keys web";
-    };
-    aptcache = {
-      host = "mireo";
-      ip = "10.8.0.8";
-      mem = 512;
-      vcpu = 1;
-      services = ["apt-cacher-ng"];
-      description = "APT cache";
     };
   };
 
