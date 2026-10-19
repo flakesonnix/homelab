@@ -21,7 +21,6 @@ type: moc
 - [[10-Hosts/Hosts-MOC|Hosts overview]] — map of all machines
 - [[10-Hosts/p53|p53]] — ThinkPad P53, desktop/gaming (dynamic IP via DHCP)
 - [[10-Hosts/mireo|mireo]] — server/router + 7 microVMs (10.8.0.1)
-- [[10-Hosts/nyagate|nyagate]] — remote server QEMU (db210.org)
 - [[10-Hosts/MicroVMs|MicroVMs]] — grafana … dash in detail (26 VMs)
 - [[10-Hosts/Network|Network]] — 10.8.0.0/24, br0, NAT, IPv6, Tailscale
 
@@ -39,7 +38,7 @@ type: moc
 
 - [[40-Guides/Guides-MOC|Guides overview]]
 - [[40-Guides/Deploy-Rebuild|Deploy & rebuild]] — nh, deploy-rs, troubleshooting
-- [[40-Guides/Secrets-Guide|Secrets (sops/age)]] — setup, rotation, WireGuard
+- [[40-Guides/Secrets-Guide|Secrets (sops/age)]] — setup, rotation
 - [[40-Guides/New-Host-VM|New host / new VM]] — `scripts/new-host.sh`
 - [[40-Guides/Printing|Printing]] — CUPS VM 10.8.0.6
 - [[40-Guides/Audio-Latency|Audio latency]] — PipeWire/gaming tuning

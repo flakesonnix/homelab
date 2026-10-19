@@ -17,7 +17,7 @@
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFrxXlvevZfbBd5Ey07hahyXQYrDjk/0I7mrERillcHZ helianthus@nixos"
   ];
 
-  # --- sops-nix secrets (WireGuard private key, future service secrets) ---
+  # --- sops-nix service secrets ---
   # Prerequisite: age key deployed at /etc/sops/age/keys.txt BEFORE first
   # activation with this enabled, or activation fails. See docs/secrets.md.
   # Rollback: set enable = false and redeploy.
@@ -25,8 +25,6 @@
     enable = true;
     sopsFile = ../../../hosts/mireo/secrets.yaml;
   };
-
-  sops.secrets."wireguard/mireo-private-key" = {};
 
   networking.hostName = "mireo";
   networking.networkmanager.enable = lib.mkForce false;
@@ -142,7 +140,7 @@
   # Deshalb wird LAN-HTTP an LAN-Ziele transparent auf Caddy (:80)
   # umgebogen; der Host-Header bleibt erhalten, Caddy routet per Name.
   # Scope: nur br0-Eingang, nur Ziele in 10.8.0.0/24 (Internet-Traffic
-  # und wg0 unberührt). Ausnahme 10.8.0.7 (sshkeys serviert :80 nativ).
+  # unberührt). Ausnahme 10.8.0.7 (sshkeys serviert :80 nativ).
   # Ping/SSH/DNS-Verhalten ändert sich nicht (nur TCP/80).
   # Diagnose 2026-09-16: Regel feuerte NIE — p53/VMs sind L2-benachbart
   # (gleiche Bridge), bridged Traffic umgeht `ip`-nftables ohne
@@ -250,11 +248,6 @@
       domain = lanDomain;
       expand-hosts = true;
       local = "/${lanDomain}/";
-      # KEINE auth-zone/auth-server (Diagnose 2026-10-10, live bisectet):
-      # dnsmasq 2.93 bindet TFTP auf der auth-server-IPv4 dann NICHT mehr
-      # (10.8.0.1:69 fehlt, DNS/DHCP unberührt) — PXE wäre tot. Die
-      # SOA/NS-Apex-Kosmetik ist den funktionierenden PXE-Boot nicht wert;
-      # Namen kommen weiter aus host-record/DHCP/CNAME.
       # Service aliases (CNAME; target must be known to dnsmasq, so it
       # follows automatically if the target IP ever moves).
       cname = [
@@ -314,43 +307,7 @@
         # so monitoring/DNS stay stable. Named ff-bb — its own hostname is
         # "mireo", which collides with ours (seen 2026-10-04 in leases).
         ++ ["44:d4:37:8b:d8:69,10.8.0.193,ff-bb"];
-      # --- PXE boot (dnsmasq-nativ, GRUB lädt NixOS Xfce + netboot.xyz-Fallback) ---
-      # Klassische PXE-ROMs laden iPXE per TFTP (BIOS: undionly.kpxe,
-      # UEFI: snp.efi). iPXE-Clients (Option 175) laden das HTTP-Menü:
-      # NixOS chainloadet dort GRUB je Plattform, netboot.xyz bleibt als
-      # Fallback erreichbar. Nur GRUB lädt Kernel+große initrd per HTTP;
-      # iPXE lädt die initrd nie selbst (contiguous-lowmem-Limit).
-      # Normale Clients kriegen keinen Dateinamen (ungetaggte dhcp-boot
-      # fehlt absichtlich).
-      # Payload bauen + syncen (kein Build bei jedem mireo-Switch!):
-      #   nix build .#pxe-desktop-boot   (→ ./result: bzImage/initrd/grub*/ *.ipxe)
-      #   scp result/* root@10.8.0.1:/data/pxe/   (+ boot/grub rekursiv)
-      # Quelle: hosts/pxe-desktop/ (netboot-base + Xfce, ohne ISO-Kette).
-      # Ablauf: Firmware → iPXE-Menü → GRUB → bzImage + initrd (HTTP).
-      # Secure Boot: grub.pxe/grubx64.efi unsigniert → auf physischen Zielen aus.
-      # WICHTIG: tag:ipxe-Regel MUSS als letzte stehen — dnsmasq nimmt bei
-      # mehreren passenden dhcp-boot-Zeilen die letzte (iPXE-Clients matchen
-      # zugleich client-arch 0 UND Option 175; Diagnose 2026-09-14: mit
-      # ipxe-Regel zuerst luden sie endlos undionly.kpxe neu).
-      dhcp-match = [
-        "set:bios,option:client-arch,0"
-        "set:efi-bc,option:client-arch,7"
-        "set:efi64,option:client-arch,9"
-        "set:ipxe,175"
-      ];
-      dhcp-boot = [
-        "tag:bios,undionly.kpxe,,10.8.0.1"
-        "tag:efi-bc,snp.efi,,10.8.0.1"
-        "tag:efi64,snp.efi,,10.8.0.1"
-        "tag:ipxe,http://10.8.0.1/boot/menu.ipxe"
-      ];
-      enable-tftp = true;
-      # Mutable Ablage (aus `nix build .#pxe-desktop-boot` gesynct: ipxe- +
-      # grub-Binaries, boot/grub/grub.cfg); Caddy serviert /boot/* daraus per
-      # HTTP (s.u.). Tmpfiles-Regel unten legt das Verzeichnis an.
-      tftp-root = "/data/pxe";
-      # Missing optional /data must not take DHCP/DNS down with TFTP.
-      tftp-no-fail = true;
+      # Pixiecore handles ProxyDHCP/TFTP; dnsmasq only assigns leases.
       # Everyone else gets dynamic addresses via DHCPv4/DHCPv6. dnsmasq
       # serves DNS names for its leases automatically, so clients stay
       # reachable as <hostname>.home.arpa.
@@ -371,6 +328,35 @@
     };
   };
 
+  services.pixiecore = let
+    netbootVersion = "3.0.3";
+  in {
+    enable = true;
+    # quick xyz hardcodes a BIOS-only .lkrn; a script works with UEFI too.
+    mode = "boot";
+    kernel = toString (pkgs.writeText "pixiecore-netboot.xyz.ipxe" ''
+      #!ipxe
+      # Keep iPXE's version separate from the pinned netboot.xyz menu release.
+      set ipxe_version ''${version}
+      set version ${netbootVersion}
+      # iPXE 2.0 inherits DHCPv6/RDNSS after clear. This root override has
+      # zero complete IPv6 DNS addresses, so it keeps the DHCPv4 DNS list.
+      set dns6:hex 00
+      chain --autofree https://boot.netboot.xyz/${netbootVersion}/menu.ipxe || chain --autofree http://boot.netboot.xyz/${netbootVersion}/menu.ipxe
+    '');
+    dhcpNoBind = true;
+    listen = "10.8.0.1";
+    # Caddy owns port 80. br0 is already trusted; do not expose WAN.
+    port = 8080;
+    statusPort = 8080;
+    openFirewall = false;
+  };
+  systemd.services.pixiecore = {
+    after = ["network-online.target" "sys-devices-virtual-net-br0.device"];
+    wants = ["network-online.target"];
+    bindsTo = ["sys-devices-virtual-net-br0.device"];
+  };
+
   # AdGuard normally maps VM names directly to their guest IPs. Keep the
   # HTTPS service name on Caddy's host in this resolver as well.
   microvm.vms.dns.config.networking.hosts = {
@@ -384,12 +370,8 @@
   # One entrypoint: http://<name>.home.arpa (DNS from dnsmasq above).
   # The http:// prefix disables Caddy's automatic HTTPS — no public CA
   # issues certs for .home.arpa (RFC 8375). Sync below uses internal TLS
-  # and explicit source filtering: the public edge also reaches Caddy.
+  # and explicit LAN source filtering.
   # Direct ports (CUPS :631 IPP, …) keep working untouched.
-  # Public edge (via nyagate DNAT 80/443 → wg0, firewall interfaces.wg0):
-  # bare domains below get automatic TLS from Caddy. Prerequisite: A
-  # records *.db210.org → 188.220.148.24 at the registrar, otherwise
-  # Caddy keeps retrying ACME in the background (service stays up).
   services.caddy = let
     webUIs = {
       grafana = "10.8.0.2:3000";
@@ -418,11 +400,8 @@
     statusRedir = {
       "http://status.home.arpa" = "redir http://uptime-kuma.home.arpa/status/homelab 302";
     };
-    publicWebUIs = {
-      "yammat.db210.org" = "10.8.0.5:3000";
-      "grafana.db210.org" = "10.8.0.2:3000";
-    };
-    # PXE-Netboot-Payload (NixOS Xfce, siehe dnsmasq oben): statische
+    # Optional custom NixOS Xfce payload, not used by default netboot.xyz.
+    # Statische
     # Dateien aus /data/pxe unter http://10.8.0.1/boot/* (IP-Literal, damit
     # iPXE kein DNS braucht). Alle anderen Pfade auf der IP bleiben 404
     # wie ohne diesen VHost (Caddy-Default für unbekannte Sites).
@@ -443,11 +422,6 @@
           extraConfig = "reverse_proxy ${target}";
         })
       webUIs
-      // lib.mapAttrs' (name: target:
-        lib.nameValuePair name {
-          extraConfig = "reverse_proxy ${target}";
-        })
-      publicWebUIs
       // lib.mapAttrs' (name: cfg: lib.nameValuePair name {extraConfig = cfg;}) statusRedir
       // lib.mapAttrs' (name: cfg: lib.nameValuePair name {extraConfig = cfg;}) pxeBoot
       // {
@@ -475,14 +449,14 @@
     "Z /data 0755 lucy users - -"
     # PXE-Netboot-Ablage (aus `nix build .#pxe-desktop-boot`: bzImage/initrd,
     # grub.pxe/grubx64.efi/boot-grub-cfg/*.ipxe, per scp hierher syncen;
-    # Caddy serviert /boot/*, dnsmasq-TFTP-root ist das Verzeichnis selbst).
+    # Caddy serviert /boot/*; unabhaengig von Pixiecores netboot.xyz-Start).
     "d /data/pxe 0755 root root - -"
   ];
 
   services.avahi = {
     enable = true;
     nssmdns4 = true;
-    # mDNS stays LAN-only: never advertise/respond via wg0 (public edge).
+    # mDNS stays LAN-only: never advertise/respond via the WAN.
     allowInterfaces = ["br0" "lo"];
     publish = {
       enable = true;
@@ -521,49 +495,6 @@
       ActivationPolicy = "manual";
       Unmanaged = true;
     };
-  };
-
-  # --- WireGuard transit to public edge (nyagate VPS, db210.org) ---
-  # Transit network 10.66.0.0/30: nyagate .1, mireo .2. This carries ONLY
-  # explicitly published inbound traffic (DNAT'd on nyagate, SNAT'd back so
-  # return path stays symmetric via the tunnel — no 0.0.0.0/0 AllowedIPs here,
-  # which would hijack the default route and break LAN/NFS/IPv6/microVMs).
-  # LAN-only services (NFS /data, dnsmasq DHCP/DNS, Avahi) stay bound to
-  # br0 / 10.8.0.0/24 and are NOT reachable via wg0 (firewall below allows
-  # only the published ports; Avahi is pinned to br0+lo).
-  # Private key via `sops hosts/mireo/secrets.yaml`, peer key in
-  # `hosts/nyagate/secrets.yaml`. After deploy: `wg show wg0` (both ends).
-  # v6 läuft NATIV via FritzBox (ULA+NAT66, PD-GUA falls delegiert) —
-  # wg0 trägt nur 10.66.0.1/32-Transit (kein 2000::/3 mehr, HE entfernt
-  # 2026-10-10). Public-Inbound (80/443/25565) kommt weiter per DNAT über
-  # den Tunnel (v4).
-  networking.wireguard.interfaces.wg0 = {
-    ips = ["10.66.0.2/30"];
-    listenPort = 51820;
-    # sops-nix renders this secret to /run/secrets/<name> at activation
-    # (never in the Nix store). `...` args above have no `config` here —
-    # settings.nix is data merged by the framework, so use the static path.
-    privateKeyFile = "/run/secrets/wireguard/mireo-private-key";
-    peers = [
-      {
-        name = "nyagate";
-        publicKey = "pKir9k3Af8ng24vW/vzoRkewoaMHdWysqxNX9xQbU0o=";
-        endpoint = "188.220.148.24:51820";
-        allowedIPs = ["10.66.0.1/32"];
-        persistentKeepalive = 25;
-      }
-    ];
-  };
-
-  # WireGuard handshake responses (mireo initiates out, but keep the port open
-  # so the tunnel survives keepalive gaps / nyagate-initiated handshakes).
-  networking.firewall.allowedUDPPorts = [51820];
-
-  # Published services ONLY — must mirror nyagate's forwardPorts. Everything
-  # else arriving via wg0 is dropped by default-deny.
-  networking.firewall.interfaces.wg0 = {
-    allowedTCPPorts = [80 443 25565];
-    allowedUDPPorts = [25565 19132];
   };
 
   boot.loader.systemd-boot.enable = true;

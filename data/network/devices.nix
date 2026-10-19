@@ -10,7 +10,7 @@ in {
       role = "router";
       manufacturer = "Mini-PC";
       model = "4-port NIC";
-      interfaces = ["br0" "enp4s0" "enp9s0" "enp3s0f0" "enp3s0f1" "wg0"];
+      interfaces = ["br0" "enp4s0" "enp9s0" "enp3s0f0" "enp3s0f1"];
       addresses = ["10.8.0.1"];
       tags = ["infrastructure" "router" "gateway"];
       snmpCommunity = null;

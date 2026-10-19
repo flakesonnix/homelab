@@ -21,7 +21,6 @@ sudo nixos-rebuild switch --flake .#p53
 ```bash
 nix run .#deploy-p53    # localhost, root
 nix run .#deploy-mireo   # 10.8.0.1, root
-nix run .#deploy-nyagate # db210.org, lucy → root
 just deploy-all
 deploy .#mireo           # directly via deploy-rs
 ```

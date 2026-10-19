@@ -393,14 +393,18 @@
   checkOllama = let
     cfg = ollamaCfg.services.ollama;
     unit = ollamaCfg.systemd.services.ollama;
+    cudaPackages = self.nixosConfigurations.p53.pkgs.cudaPackages;
   in
     forceB cfg.enable "ollama: enabled on p53"
-    && forceB (cfg.package.outPath == self.nixosConfigurations.p53.pkgs.ollama-cuda.outPath) "ollama: CUDA package selected"
+    && forceB (lib.elem cudaPackages.cuda_nvcc cfg.package.nativeBuildInputs && lib.hasInfix "-DOLLAMA_LLAMA_BACKENDS=cuda_v${lib.versions.major cudaPackages.cuda_cudart.version}" cfg.package.preBuild) "ollama: CUDA runner selected"
+    && forceB (lib.hasSuffix "-cuda-merged-${lib.versions.major cudaPackages.cuda_cudart.version}" cfg.package.CUDA_PATH) "ollama: merged CUDA toolkit path retains its version"
+    && forceB (lib.hasPrefix ''export CUDAToolkit_ROOT="$CUDA_PATH"'' cfg.package.preBuild) "ollama: nested CMake uses a single CUDA toolkit root after setup hooks"
+    && forceB (lib.hasInfix "-DCMAKE_CUDA_ARCHITECTURES='75'" cfg.package.preBuild) "ollama: CUDA targets the p53 Quadro T1000"
     && forceB (lib.elem cfg.package ollamaCfg.environment.systemPackages) "ollama: CLI installed"
     && forceB (lib.elem "multi-user.target" unit.wantedBy && unit.serviceConfig.ExecStart == "${lib.getExe cfg.package} serve") "ollama: server starts at boot"
     && forceB (unit.environment.OLLAMA_HOST == "127.0.0.1:11434" && !cfg.openFirewall) "ollama: API remains local"
     && forceB (cfg.loadModels == [] && !cfg.syncModels) "ollama: no implicit model downloads or deletions"
-    && forceB (!self.nixosConfigurations.mireo.config.services.ollama.enable && !self.nixosConfigurations.nyagate.config.services.ollama.enable) "ollama: servers unchanged";
+    && forceB (!self.nixosConfigurations.mireo.config.services.ollama.enable) "ollama: mireo unchanged";
 
   mireoCfg = self.nixosConfigurations.mireo.config;
   mireoDataUnits = ["nfs-server" "nfs-mountd" "asterisk" "fax-poller" "mopidy" "mopidy-scan" "microvm@jellyfin" "microvm-virtiofsd@jellyfin"];
@@ -411,25 +415,27 @@
   in
     forceB (!fs.neededForBoot && lib.all (option: lib.elem option fs.options) ["nofail" "x-systemd.device-timeout=10s" "x-systemd.mount-timeout=30s"]) "mireo: data disk optional with bounded mount waits"
     && forceB (lib.hasInfix "insecure,mountpoint)" mireoCfg.services.nfs.server.exports) "mireo: NFS never exports the root filesystem fallback"
-    && forceB (mireoCfg.services.dnsmasq.settings.tftp-no-fail == [true]) "mireo: missing PXE storage cannot stop DHCP/DNS"
+    && forceB (!(mireoCfg.services.dnsmasq.settings ? enable-tftp) && mireoCfg.services.pixiecore.enable && lib.hasPrefix "/nix/store/" mireoCfg.services.pixiecore.kernel) "mireo: PXE is independent of mutable data storage"
     && forceB (lib.any (cmd: lib.hasInfix "--boot --exclude-prefix=/dev --exclude-prefix=/data" cmd) tmpfiles.systemd-tmpfiles-setup.serviceConfig.ExecStart) "mireo: boot tmpfiles excludes data"
     && forceB (lib.hasInfix "--exclude-prefix=/data" tmpfiles.systemd-tmpfiles-resetup.serviceConfig.ExecStart) "mireo: activation tmpfiles excludes data"
-    && forceB (lib.elem "data.mount" setup.bindsTo && setup.unitConfig.ConditionPathIsMountPoint == "/data" && lib.hasInfix "--prefix=/data" setup.serviceConfig.ExecStart && setup.restartTriggers != []) "mireo: data directories initialized only on mounted disk"
+    && forceB (setup.bindsTo == [] && setup.unitConfig.StopPropagatedFrom == ["data.mount"] && !(setup.unitConfig ? RequiresMountsFor) && lib.elem "data.mount" setup.after && setup.unitConfig.ConditionPathIsMountPoint == "/data" && lib.hasInfix "--prefix=/data" setup.serviceConfig.ExecStart && setup.restartTriggers != []) "mireo: data setup skips missing storage and stops on unmount"
     && lib.all (name: let
       unit = mireoCfg.systemd.services.${name};
     in
-      forceB (lib.elem "data.mount" unit.bindsTo
+      forceB (unit.bindsTo
+        == []
+        && unit.unitConfig.StopPropagatedFrom == ["data.mount"]
+        && !(unit.unitConfig ? RequiresMountsFor)
         && lib.elem "data.mount" unit.after
         && lib.elem "mireo-data-setup.service" unit.requires
         && lib.elem "mireo-data-setup.service" unit.after
-        && unit.unitConfig.RequiresMountsFor == "/data"
-        && unit.unitConfig.ConditionPathIsMountPoint == "/data") "mireo: ${name} requires mounted, initialized data")
+        && unit.unitConfig.ConditionPathIsMountPoint == "/data") "mireo: ${name} skips missing storage and requires initialized data")
     mireoDataUnits
     && lib.all (name: let
       unit = mireoCfg.systemd.services.${name};
     in
       forceB (!lib.elem "data.mount" unit.bindsTo && !lib.elem "mireo-data-setup.service" unit.requires) "mireo: ${name} remains independent of data")
-    ["sshd" "dnsmasq" "systemd-networkd" "caddy" "microvm@dns" "microvm@fxsync"];
+    ["sshd" "dnsmasq" "pixiecore" "systemd-networkd" "caddy" "microvm@dns" "microvm@fxsync"];
 
   swayfxCfg = self.nixosConfigurations.p53.config;
   swayfxHome = swayfxCfg.home-manager.users.lucy;
@@ -462,7 +468,7 @@
     && forceB (swayfxCfg.security.pam.services ? swaylock) "swayfx: lock authentication configured"
     && forceB (swayfxHome.services.swayidle.systemdTargets == ["sway-session.target"]) "swayfx: idle locking is Sway-only"
     && forceB (swayfxHome.systemd.user.services.sway-polkit.Install.WantedBy == ["sway-session.target"]) "swayfx: polkit agent is Sway-only"
-    && forceB (!self.nixosConfigurations.mireo.config.programs.sway.enable && !self.nixosConfigurations.nyagate.config.programs.sway.enable) "swayfx: servers unchanged"
+    && forceB (!self.nixosConfigurations.mireo.config.programs.sway.enable) "swayfx: mireo unchanged"
     && forceB (swayfxCfg.programs.obs-studio.enable && swayfxCfg.programs.obs-studio.enableVirtualCamera) "obs: studio + virtual camera enabled for streaming"
     && forceB (lib.any (p: lib.getName p == "obs-pipewire-audio-capture") swayfxCfg.programs.obs-studio.plugins) "obs: pipewire audio capture plugin present";
 
@@ -796,7 +802,7 @@
     && forceB (mopidyEnabled.services.mopidy.settings.local.media_dir == "/data/Jellyfin/Music") "mopidy: music on /data"
     && forceB (builtins.elem "audio" mopidyEnabled.users.users.mopidy.extraGroups) "mopidy: audio group for USB interface"
     && forceB (lib.hasInfix "snd-usb-audio" (builtins.toString mopidyEnabled.boot.kernelModules)) "mopidy: USB audio module loaded"
-    && forceB (builtins.elem 6600 mopidyEnabled.networking.firewall.interfaces.wg0.allowedTCPPorts) "mopidy: MPD port open on VPN"
+    && forceB (!(mopidyEnabled.networking.firewall.interfaces ? wg0)) "mopidy: no retired transit firewall"
     && forceB (!(mopidyDisabled.systemd.services ? mopidy)) "mopidy: no service when disabled";
 
   # ---- epg-refresh unit tests (must never block switch/rollback) ----
@@ -1008,10 +1014,35 @@ in {
   dotfiles-tests = dotfilesTests;
   topology-unit = topologyUnit;
   builders-unit = buildersUnit;
-  mireo-optional-data-vm = import ./mireo-optional-data.nix {inherit pkgs;};
+  mireo-optional-data-vm = import ./mireo-optional-data.nix {
+    inherit pkgs;
+    pixiecore = mireoCfg.services.pixiecore;
+  };
   desktop-regressions = import ./desktop-regressions.nix {inherit pkgs lib self;};
   fxsync-proxy = import ./fxsync-proxy.nix {inherit pkgs lib self;};
   ssh-activation = import ./ssh-activation.nix {inherit pkgs lib self;};
+  netboot-xyz = let
+    cfg = mireoCfg.services.pixiecore;
+    dnsmasq = mireoCfg.services.dnsmasq;
+    unit = mireoCfg.systemd.services.pixiecore;
+  in
+    assert cfg.enable && cfg.mode == "boot" && cfg.dhcpNoBind;
+    assert cfg.listen == "10.8.0.1" && cfg.port == 8080 && cfg.statusPort == 8080 && !cfg.openFirewall;
+    assert dnsmasq.enable && dnsmasq.settings.interface == ["br0"];
+    assert lib.all (key: !(builtins.hasAttr key dnsmasq.settings)) ["dhcp-boot" "dhcp-match" "enable-tftp" "tftp-root" "pxe-service"];
+    assert lib.elem "br0" mireoCfg.networking.firewall.trustedInterfaces;
+    assert !lib.elem cfg.port mireoCfg.networking.firewall.allowedTCPPorts;
+    assert lib.all (port: !lib.elem port mireoCfg.networking.firewall.allowedUDPPorts) [69 4011];
+    assert lib.elem "network-online.target" unit.after && lib.elem "sys-devices-virtual-net-br0.device" unit.bindsTo;
+    assert lib.hasInfix "--dhcp-no-bind" unit.serviceConfig.ExecStart;
+      pkgs.runCommand "netboot-xyz-check" {} ''
+        grep -Fx '#!ipxe' ${lib.escapeShellArg cfg.kernel}
+        grep -Fx 'set ipxe_version ''${version}' ${lib.escapeShellArg cfg.kernel}
+        grep -Fx 'set version 3.0.3' ${lib.escapeShellArg cfg.kernel}
+        grep -Fx 'set dns6:hex 00' ${lib.escapeShellArg cfg.kernel}
+        grep -Fx 'chain --autofree https://boot.netboot.xyz/3.0.3/menu.ipxe || chain --autofree http://boot.netboot.xyz/3.0.3/menu.ipxe' ${lib.escapeShellArg cfg.kernel}
+        touch "$out"
+      '';
   swayfx-session = assert checkSwayfx;
     pkgs.runCommand "swayfx-session-check" {} ''
       touch "$out"

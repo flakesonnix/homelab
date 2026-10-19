@@ -21,15 +21,10 @@ deploy:
 deploy-mireo:
     nix run .#deploy-mireo
 
-# Deploy nyagate to db210.org via deploy-rs (ssh as lucy, sudo to root)
-deploy-nyagate:
-    nix run .#deploy-nyagate
-
 # Deploy all hosts via deploy-rs
 deploy-all:
     nix run .#deploy-p53
     nix run .#deploy-mireo
-    nix run .#deploy-nyagate
 
 # Fast eval-surface checks (formatter, devShell, app paths)
 check-light:
@@ -80,7 +75,7 @@ docs-build:
 docs-serve:
     nix run .#nixfleet -- docs serve
 
-# Build NixOS GNOME netboot payload for PXE (→ ./result/, sync to mireo:/data/pxe)
+# Build optional custom NixOS Xfce payload; default PXE uses netboot.xyz directly
 pxe-boot:
     nix build .#pxe-desktop-boot
 

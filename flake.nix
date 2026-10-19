@@ -141,10 +141,6 @@
       inherit wrappers stylix nix-flatpak nixos-hardware nixGaming frameworkLib ewm;
     };
 
-    serverSpecialArgs = {
-      inherit wrappers frameworkLib;
-    };
-
     mireoSpecialArgs = {
       inherit wrappers yammat nixpkgs frameworkLib;
     };
@@ -240,17 +236,6 @@
         })
       ];
     };
-    nyagate-config = mkHost {
-      specialArgs = serverSpecialArgs;
-      modules = [
-        ./nix-settings.nix
-        ./profiles/base.nix
-        ./hosts/nyagate
-        ./modules/nixos/sops.nix
-        sops-nix.nixosModules.sops
-        run0-sudo-shim.nixosModules.default
-      ];
-    };
   in
     flake-parts.lib.mkFlake {inherit inputs;} (
       {
@@ -332,7 +317,6 @@
             rebuild = "Rebuild local p53 via nh";
             "deploy-p53" = "Deploy p53 via deploy-rs to localhost";
             "deploy-mireo" = "Deploy mireo via deploy-rs to 10.8.0.1";
-            "deploy-nyagate" = "Deploy nyagate via deploy-rs to db210.org";
             check = "Run nix flake check";
             "check-light" = "Fast eval-surface checks";
             "check-full" = "Full CI check builds";
@@ -355,6 +339,7 @@
 
           nixfleetPkgs = import ./nixfleet/default.nix {inherit pkgs;};
 
+          # Optional custom installer; mireo's default PXE uses netboot.xyz.
           # NixOS mit Xfce-Desktop als PXE-Netboot-Payload. iPXE kann die
           # ~2-GB-initrd NICHT laden (0x2a818006, contiguous-lowmem-Limit),
           # darum lädt GRUB als Zwischenlader (legt initrd oberhalb 4 GB ab):
@@ -363,7 +348,7 @@
           # topology-Eintrag), damit mireo-Deploys nicht bei jedem Switch
           # das GB-große Installer-Closure bauen.
           # Sync nach dem Bauen: Dateien aus ./result nach mireo:/data/pxe
-          # kopieren (Caddy serviert /boot/*, dnsmasq-TFTP-root ist /data/pxe).
+          # kopieren (Caddy serviert /boot/*; custom TFTP files need separate setup).
           # Secure Boot: Images unsigniert → auf physischen Zielen aus.
           pxeDesktop = nixpkgs.lib.nixosSystem {
             system = "x86_64-linux";
@@ -485,11 +470,6 @@
                 program = "${deployApp "mireo"}/bin/deploy-mireo";
                 meta.description = "Deploy mireo via deploy-rs to 10.8.0.1";
               };
-              deploy-nyagate = {
-                type = "app";
-                program = "${deployApp "nyagate"}/bin/deploy-nyagate";
-                meta.description = "Deploy nyagate via deploy-rs to db210.org";
-              };
               setup-sops = {
                 type = "app";
                 program = "${setupSopsApp}/bin/setup-sops";
@@ -538,7 +518,6 @@
           nixosConfigurations = {
             p53 = p53-config;
             mireo = mireo-config;
-            nyagate = nyagate-config;
           };
 
           nixfleetArtifacts = import ./nixfleet/manifest.nix {
@@ -582,19 +561,6 @@
               profiles.system = {
                 user = "root";
                 path = activateNixosWithNixPath self.nixosConfigurations.mireo;
-              };
-            };
-            nyagate = {
-              hostname = "db210.org";
-              sshUser = "root";
-              # Root SSH key is deployed on the target, so deploy directly
-              # as root (no passwordless sudo needed for lucy).
-              # Remote build stays on: the target fetches deps via its own
-              # substituters.
-              remoteBuild = true;
-              profiles.system = {
-                user = "root";
-                path = activateNixosWithNixPath self.nixosConfigurations.nyagate;
               };
             };
           };

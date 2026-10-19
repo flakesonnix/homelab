@@ -9,7 +9,6 @@ It started as some dotfiles and somehow turned into a small framework for managi
 * ❄️ NixOS + Home Manager
 * 🖥️ `p53` — my desktop/laptop (ThinkPad P53)
 * 🏠 `mireo` — my home server/router with 10 microVMs
-* ☁️ `nyagate` — remote VPS, public edge (WireGuard transit to mireo)
 * 📦 roles, bundles and presets for composing hosts
 * 🔐 sops-nix / age for secrets
 * 🌐 networking, NFS, PXE, microVMs (via microvm.nix)
@@ -31,10 +30,6 @@ My little home server/router.
 
 It handles networking and hosts a bunch of services and microVMs.
 
-### nyagate
-
-Remote VPS (db210.org). Holds the public IPv4 and forwards 80/443/25565 through a WireGuard transit network to mireo.
-
 ## Structure
 
 ```text
@@ -54,8 +49,7 @@ modules/
 
 hosts/
 ├── p53/
-├── mireo/
-└── nyagate/
+└── mireo/
 
 home/
 └── lucy/

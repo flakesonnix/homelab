@@ -38,13 +38,6 @@ in
   assert lib.elem "fxsync.home.arpa" host.microvm.vms.dns.config.config.networking.hosts."fd00:cafe:1::1";
   assert host.microvm.vms.dns.config.config.networking.hosts."10.8.0.31" == [];
   assert host.microvm.vms.dns.config.config.networking.hosts."fd00:cafe:1::31" == [];
-  assert host.services.dnsmasq.settings.dhcp-boot
-  == [
-    "tag:bios,undionly.kpxe,,10.8.0.1"
-    "tag:efi-bc,snp.efi,,10.8.0.1"
-    "tag:efi64,snp.efi,,10.8.0.1"
-    "tag:ipxe,http://10.8.0.1/boot/menu.ipxe"
-  ];
     pkgs.testers.runNixOSTest {
       name = "fxsync-proxy";
 

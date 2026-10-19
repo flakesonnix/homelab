@@ -22,7 +22,7 @@ deploy: nix run .#deploy-mireo
 
 - NAT for 10.8.0.0/24 + natives IPv6 via FritzBox (WAN-SLAAC + NAT66 fürs ULA-LAN, PD angefragt/auto bei Delegation), systemd-networkd (HE-Tunnel über VPS entfernt 2026-10-10)
 - dnsmasq: DHCPv4 (+ static reservations from `vm-ips.nix` for all services)/stateful DHCPv6 (explicit ULA range)/DNS/RA+SLAAC (constructor:br0) (`bindsTo sys-devices-virtual-net-br0.device` fix)
-- PXE boot via dnsmasq+TFTP (BIOS `grub.pxe`, UEFI `grubx64.efi`) + Caddy `/boot` aus `/data/pxe`: GRUB lädt NixOS Xfce (Kernel+initrd per HTTP; Quelle `hosts/pxe-desktop/`, Bau via `just pxe-boot`, alles nach `/data/pxe` syncen) + netboot.xyz-Fallback übers iPXE-Menü; iVentoy removed Sep 2026
+- PXE via Pixiecore: ProxyDHCP/TFTP auf `10.8.0.1`, Boot-HTTP auf `:8080`; dnsmasq bleibt für DHCP/DNS zuständig, Caddy auf `:80` unverändert. BIOS/UEFI laden iPXE und das festgelegte netboot.xyz-Menü `3.0.3`, ohne Bootloader-Austausch durch das Rolling-Menü. Das Startskript nutzt IPv4-DNS statt des fehlerhaften UEFI-IPv6-Pfads, HTTPS mit HTTP-Fallback. Kein `/data` oder eigener Installer-Build nötig; DNS/Internet erforderlich, Secure Boot aus. `just pxe-boot` bleibt für den optionalen eigenen NixOS-Installer.
 - NFS export of `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, node_exporter :9100 (netdata dropped 2026-09-16)
 - Mopidy music server (host ALSA → Behringer USB mixer): `/data/Jellyfin/Music` + Jellyfin backend, MPD `:6600`, Iris via `music.home.arpa` (replaced kodi VM Oct 2026)
 - libvirtd for virt-manager remote (Weg A): `qemu+ssh://root@10.8.0.1/system`, `allowedBridges=["br0"]`

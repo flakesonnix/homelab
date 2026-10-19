@@ -66,10 +66,6 @@ occasionally poison long agent sessions. Details [[10-Hosts/Network|Network]].
 
 Verified 2026-09-14, so you don't chase ghosts:
 
-- Tunnel mireo↔nyagate is HEALTHY (`wg show wg0`: handshake seconds old,
-  `ping 10.66.0.1` 0% loss). The `WireGuardPeer ... without PublicKey` journal
-  spam was stale deploy churn (3 switches that day: 12:33/14:20/14:31) — on-disk
-  `40-wg0.netdev` carries the key, zero warnings since. No fix needed.
 - Same churn explains the `DHCPv6 lease lost` flaps: every `switch-to-configuration`
   reconfigures networkd, the DHCPv6 client restarts, egress flaps, sessions poison.
   Avoid redeploying mireo mid-agent-session.

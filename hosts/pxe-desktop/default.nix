@@ -18,8 +18,8 @@
 #
 # Bauen:  nix build .#pxe-desktop-boot   (→ ./result mit bzImage/initrd/*.ipxe)
 # Sync:   Dateien nach mireo:/data/pxe kopieren (Caddy serviert /boot/*,
-#         dnsmasq chainloadet http://10.8.0.1/boot/menu.ipxe). Siehe
-#         data/hosts/mireo/settings.nix (dnsmasq + Caddy).
+#         optional per iPXE chain http://10.8.0.1/boot/menu.ipxe starten).
+#         Pixiecore startet standardmaessig netboot.xyz, nicht dieses Image.
 {
   lib,
   pkgs,

@@ -138,8 +138,8 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 ### Features
 - NAT gateway for 10.8.0.0/24 + native IPv6 via FritzBox (WAN-SLAAC + NAT66 fürs ULA-LAN; PD angefragt — landet ein Präfix, gehts nativ raus. HE-Tunnel über VPS entfernt 2026-10-10)
 - systemd-networkd (no NetworkManager)
-- dnsmasq on host: DHCPv4 (+NTP option 42 → ntp VM .11), stateful DHCPv6 (explicit ULA range), DNS, IPv6 RA/SLAAC (constructor:br0) for LAN (br0), `home.arpa` kept strictly local (no auth-zone: that kills TFTP on the NS IPv4, diagnosed 2026-10-10)
-- PXE boot via dnsmasq+TFTP (BIOS: `undionly.kpxe`, UEFI: `snp.efi`) into the iPXE menu at `http://10.8.0.1/boot/menu.ipxe`: NixOS chainloads GRUB (`grub.pxe`/`grubx64.efi`), which loads the Xfce kernel and large initrd over HTTP; netboot.xyz remains available in the iPXE menu. Payload via `nix build .#pxe-desktop-boot` / `just pxe-boot` (source `hosts/pxe-desktop/`, no ISO chain) nach mireo `/data/pxe` syncen (inkl. `boot/grub/`)
+- dnsmasq on host: DHCPv4 (+NTP option 42 → ntp VM .11), stateful DHCPv6 (explicit ULA range), DNS, IPv6 RA/SLAAC (constructor:br0) for LAN (br0), `home.arpa` kept strictly local.
+- PXE boot via Pixiecore ProxyDHCP/TFTP on `10.8.0.1`, alongside dnsmasq's unchanged DHCP/DNS. Boot HTTP uses `:8080`, leaving Caddy on `:80`. BIOS and UEFI receive iPXE plus a store-backed bootstrap pinned to the netboot.xyz `3.0.3` menu, avoiding the rolling menu's bootloader replacement. The bootstrap uses IPv4 DNS (UEFI's IPv6 path is unreliable), with HTTPS preferred and HTTP fallback for loaders without HTTPS. No `/data`, payload sync or custom installer build required. Clients need DNS/Internet access and Secure Boot disabled. `pxe-desktop-boot` remains an optional custom installer, not the default boot path.
 - NFS export of `/data` to `10.8.0.0/24`
 - `/data` is optional at boot, with a 10-second missing-device timeout. NFS, Jellyfin, Mopidy and Asterisk/fax require the mounted disk; SSH, DHCP/DNS and unrelated VMs remain available. Directory setup never writes a fallback tree on the root filesystem. After reconnecting the disk, mount `/data` and explicitly start its consumers.
 - Avahi mDNS advertising NFS share (`_nfs._tcp`) for Nautilus autodiscovery
@@ -149,7 +149,7 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 - AdGuard Home (dns VM) as filtering-only DNS frontend (blocklists); dnsmasq on the host stays authoritative for DHCP + LAN DNS (advertises `.30` first, `.1` fallback)
 - 18 microVMs running on br0 (single `mk-microvm.nix` spec pattern, stable per-VM SSH host keys; 8 weitere Stub-VMs sind in `hosts/mireo/default.nix` auskommentiert — IPs/DNS in `vm-ips.nix` bleiben reserviert):
   - **grafana** (10.8.0.2): Prometheus scraping router + all hosts, Grafana with mireo-router dashboard
-  - **network-services** (10.8.0.3): reserved stub (no services; DHCP/DNS/PXE live on the host dnsmasq)
+  - **network-services** (10.8.0.3): reserved stub (no services; host dnsmasq provides DHCP/DNS, Pixiecore provides PXE)
   - **monerod** (10.8.0.4): Pruned Monero node + Tor relay (nickname `mireoMoneroRelay`)
   - **yammat** (10.8.0.5): YAMMAT event management (C3D2 matemat, port 3000)
   - **cups** (10.8.0.6): CUPS print server (IPP, Avahi, Epson ET-2860 + Lexmark)
@@ -215,7 +215,7 @@ TCP/5000 is not a client endpoint: the guest firewall admits only mireo
 None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` intentionally absent, manifest `roles: []`)
 
 ### Config files
-- `data/hosts/mireo/settings.nix` — hostname, network, NAT, dnsmasq (+local PXE/NixOS-Xfce via Caddy `/boot`), NFS, Avahi, Netdata, **nixfleet M1** (`lucy.nixfleet.*`, firewall 8443)
+- `data/hosts/mireo/settings.nix` — hostname, network, NAT, dnsmasq, Pixiecore/netboot.xyz, NFS, Avahi, Netdata, **nixfleet M1** (`lucy.nixfleet.*`, firewall 8443)
 - `hosts/mireo/optional-data.nix` — bounded mount waits, mount-bound data services and guarded tmpfiles initialization
 - `hosts/mireo/host.nix` — framework applyHost
 - `hosts/mireo/vm-ips.nix` — static IP map shared by VM specs, DNS and proxy; handed out via dnsmasq `dhcp-host` reservations (guests use DHCPv4, ULA stays static)
@@ -265,29 +265,4 @@ Port 9001/tcp (Tor ORPort) forwarded from WAN to monerod VM.
 ```bash
 nix run .#deploy-mireo   # SSH to mireo via deploy-rs (10.8.0.1 on LAN, 192.168.178.25 from FritzBox LAN)
 deploy .#mireo           # same, via deploy-rs directly
-```
-
-
-## nyagate
-
-**Role:** Remote server (QEMU VM, external hosting)
-**Host:** db210.org
-**IP:** 188.220.148.24/32 (eth0, gateway 10.0.0.1)
-
-### Features
-- Minimal server profile (`lucy.base.isServer = true`, no desktop/home-manager)
-- Static IPv4 + GRUB on /dev/vda (BIOS, QEMU guest profile)
-- OpenSSH, user `lucy` (wheel/sudo) + shared repo SSH key (also authorizes root, key-only)
-- stateVersion 26.11 (matches initial install)
-
-### Config files
-- `data/hosts/nyagate/settings.nix` — hostname, static network, GRUB, SSH, topology
-- `data/hosts/nyagate/packages.nix` — server CLI tools (mirrors mireo)
-- `hosts/nyagate/host.nix` — framework applyHost
-- `hosts/nyagate/hardware-configuration.nix` — imported from on-host `nixos-generate-config`
-
-### Deploy
-```bash
-nix run .#deploy-nyagate  # SSH to db210.org as lucy, sudo to root via deploy-rs
-deploy .#nyagate          # same, via deploy-rs directly
 ```

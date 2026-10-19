@@ -16,7 +16,7 @@ Custom outputs (the warning is expected and fine): `deploy`, `topology`, `nixfle
 
 ## Configurations
 
-`p53-config` (desktop + 14 modules + lanzaboote + HM), `mireo-config` (base + microvm host + cups + nixfleet + sops), `nyagate-config` (base + sops).
+`p53-config` (desktop + 14 modules + lanzaboote + HM), `mireo-config` (base + microvm host + cups + nixfleet + sops).
 
 perSystem: `formatter=alejandra`, devShell (alejandra/statix/nix-tree/go/nodejs_22/just/fzf), `topology.modules=[topology.nix]`, packages (`full-ci-checks`, `topology-fixed`, `nixfleet-api/agent/cli/web/manifest/ui`), apps (`rebuild/check/light/full/update/deploy-*/setup-sops/nixfleet/manifest/menu`).
 

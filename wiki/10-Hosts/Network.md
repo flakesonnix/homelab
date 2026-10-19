@@ -32,7 +32,7 @@ All VM IPs are **dnsmasq DHCP reservations** (`dhcp-host` from `hosts/mireo/vm-i
 - IPv6: FritzBox (6660 Cable) gibt mireo WAN per SLAAC (Präfix wechselt bei Reconnects); DHCPv6 (IA_NA+PD) bleibt unbeantwortet (kein Lease) — Hausaufgabe FritzBox-UI: DHCPv6-Server + Präfix-Delegation an (braucht ISP-Präfix kürzer als /64). Landet PD, bekommt br0 automatisch ein GUA-/64 (networkd) und dnsmasq kündigt es per RA an (`constructor:br0`), ohne Deploy. Bis dahin: ULA-only LAN + NAT66.
 - dnsmasq host records = VM names, `bindsTo sys-devices-virtual-net-br0.device` fix; fixed IPs via `dhcp-host` reservations (not on-guest statics)
 - NFS `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, Nautilus autodiscovery
-- PXE boot via dnsmasq+TFTP (BIOS `grub.pxe`, UEFI `grubx64.efi`) + Caddy `/boot` aus `/data/pxe`: GRUB lädt NixOS Xfce (Kernel+initrd per HTTP, initrd hoch abgelegt — iPXE-Limit 0x2a818006 umgangen). iPXE-Clients kriegen das HTTP-Menü (NixOS lädt GRUB nach, Fallback netboot.xyz). Payload: `nix build .#pxe-desktop-boot` (`just pxe-boot`, Quelle `hosts/pxe-desktop/`), alles aus `result/` (inkl. `boot/grub/`) nach mireo `/data/pxe` syncen. iVentoy removed Sep 2026. Secure Boot: Images unsigniert → aus.
+- PXE via Pixiecore (ProxyDHCP/TFTP, Boot-HTTP `10.8.0.1:8080`) neben dnsmasq DHCP/DNS. BIOS/UEFI starten das festgelegte netboot.xyz-Menü `3.0.3` über ein lokales iPXE-Skript (IPv4-DNS, HTTPS mit HTTP-Fallback). Kein `/data`, Caddy, GRUB oder Payload-Sync im normalen Bootpfad. DNS/Internet erforderlich, Secure Boot aus. `pxe-desktop-boot` bleibt ein optionaler eigener Installer.
 - Printing: IPP + Avahi `_ipp._tcp` (10.8.0.6)
 - Reverse proxy: Caddy on mireo `:80` → `http://<name>.home.arpa` per web UI (grafana, prometheus, yammat, cups, sshkeys, uptime-kuma, jellyfin, lldap, pocket-id, dash, adguard, music) + `status.home.arpa` redir — details [[10-Hosts/mireo|mireo]]
 - Tailscale on p53, Deskflow keyboard/mouse sharing
@@ -47,6 +47,8 @@ ss -tulpn
 
 Topology extras: `topology.nix` (NFS, YAMMAT, CUPS, sshkeys, monerod manual entries, mireo=router).
 
-## Transit / WireGuard (sops)
+## External connectivity
 
-Network `10.66.0.0/30` mireo .2 ↔ nyagate .1 (`db210.org`, public edge: DNAT 80/443/25565 → tunnel, v4) — private keys only in sops, details [[40-Guides/Secrets-Guide|Secrets guide]]. v6 läuft NICHT mehr über den Tunnel (HE entfernt 2026-10-10): LAN-v6 geht nativ via FritzBox (NAT66/PD), nyagates eigener v6-Uplink bleibt dessen HE-Tunnel.
+LAN routing and IPv6 use the FritzBox (NAT66/PD). The retired VPS transit
+and its public forwarding are no longer configured; LAN services remain
+available without a tunnel.

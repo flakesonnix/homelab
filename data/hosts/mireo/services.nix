@@ -85,9 +85,8 @@
   # --- Minecraft server (Paper + Geyser, manual ~/mcserver dir) ---
   # Only the SERVICE is declarative (modules/nixos/minecraft.nix): the unit
   # runs `java -jar server.jar nogui` as lucy in /home/lucy/mcserver, world,
-  # plugins and configs stay manual files. Public via nyagate DNAT
-  # 25565/tcp+udp + 19132/udp -> wg0 (no host firewall change: wg0 rules +
-  # trusted br0 already cover it). lucy manages the unit without root
+  # plugins and configs stay manual files. Reachable on the trusted LAN
+  # without opening WAN ports. lucy manages the unit without root
   # (polkit): systemctl start/stop/restart/status minecraft.
   lucy.services.minecraft = {
     enable = true;
@@ -157,16 +156,6 @@
         type = "http";
         target = "http://grafana.home.arpa/";
       };
-      grafana-public = {
-        type = "http";
-        target = "https://grafana.db210.org/";
-        group = "Internet";
-      };
-      yammat-public = {
-        type = "http";
-        target = "https://yammat.db210.org/";
-        group = "Internet";
-      };
       monero-orport = {
         type = "port";
         target = "10.8.0.4";
@@ -174,7 +163,7 @@
       };
       minecraft = {
         type = "port";
-        target = "10.66.0.2";
+        target = "10.8.0.1";
         port = 25565;
       };
       nfs = {
@@ -215,11 +204,6 @@
         type = "ping";
         target = "9.9.9.9";
         group = "Internet";
-      };
-      nyagate = {
-        type = "ping";
-        target = "188.220.148.24";
-        group = "Remote";
       };
       lan-dns = {
         type = "dns";

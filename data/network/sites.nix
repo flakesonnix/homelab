@@ -18,12 +18,5 @@ in {
       prefix = 24;
       dns = false;
     };
-    vpn = {
-      name = "vpn";
-      vlan = 0;
-      gateway = "10.66.0.1";
-      prefix = 30;
-      dns = false;
-    };
   };
 }

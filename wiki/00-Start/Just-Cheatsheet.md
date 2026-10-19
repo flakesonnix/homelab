@@ -14,8 +14,7 @@ type: guide
 | `just rebuild` | `nix run .#rebuild` → `nh os switch` (local p53) |
 | `just deploy` / `just deploy-p53` | deploy-rs → localhost |
 | `just deploy-mireo` | deploy-rs → 10.8.0.1 |
-| `just deploy-nyagate` | deploy-rs → db210.org |
-| `just deploy-all` | all three |
+| `just deploy-all` | p53 and mireo |
 | `just check-light` | eval surface |
 | `just check` | `nix run .#check` (full) |
 | `just check-full` | builds only |

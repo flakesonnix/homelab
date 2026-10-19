@@ -9,7 +9,7 @@ type: reference
 [[Home|← Home]]
 
 ```
-flake.nix            # 16 inputs, 4 configs (p53/mireo/nyagate/live) + 3 deploy nodes
+flake.nix            # active configs (p53/mireo) + 2 deploy nodes
 profiles/base.nix desktop.nix
 hosts/<host>/default.nix host.nix hardware.nix
 modules/nixos/*.nix (24) + gaming/ (6)

@@ -122,7 +122,7 @@ Generates `pjsip.conf` and `extensions.conf` from phone attrs. Built-in extensio
 
 ### `voip.nix` (Phase 2 — live PJSIP trunk rendering)
 
-Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options namespace: `services.voip.*`. Wired on `mireo` (next to `asterisk.nix`, both disabled); `p53`/`nyagate` untouched. Trunk layout follows Easybell's official Asterisk-22 guide (`easybell.de/hilfe "Asterisk Telefonanlagen"`, Sep 2026).
+Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options namespace: `services.voip.*`. Wired on `mireo` (next to `asterisk.nix`, both disabled); `p53` untouched. Trunk layout follows Easybell's official Asterisk-22 guide (`easybell.de/hilfe "Asterisk Telefonanlagen"`, Sep 2026).
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|

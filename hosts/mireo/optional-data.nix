@@ -12,10 +12,10 @@
     ["nfs-server" "nfs-mountd" "asterisk" "fax-poller" "mopidy" "mopidy-scan"]
     ++ lib.concatMap (name: ["microvm@${name}" "microvm-virtiofsd@${name}"]) dataVMs;
   mountGuard = {
-    bindsTo = ["data.mount"];
     after = ["data.mount"];
     unitConfig = {
-      RequiresMountsFor = "/data";
+      # Hard mount dependencies fail before conditions can skip a missing disk.
+      StopPropagatedFrom = ["data.mount"];
       ConditionPathIsMountPoint = "/data";
     };
   };

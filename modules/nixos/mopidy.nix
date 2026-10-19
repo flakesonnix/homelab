@@ -3,7 +3,7 @@
 # Backends: local files (/data/Music), Jellyfin server, streams/radio.
 # Plays to the USB audio interface (Behringer Xenyx 302USB = TI PCM2902,
 # USB 08bb:2902) via direct ALSA (GStreamer alsasink) — no VM, no
-# PipeWire, no GPU. Control: MPD protocol :6600 (LAN/VPN; M.A.L.P.,
+# PipeWire, no GPU. Control: MPD protocol :6600 (LAN; M.A.L.P.,
 # mpc/ncmpcpp) + Iris web client behind Caddy (music.home.arpa).
 {
   lib,
@@ -58,8 +58,5 @@ in {
         password = ${config.sops.placeholder."mopidy/jellyfin-password"}
       '';
     };
-
-    # MPD protocol on VPN; br0 (LAN) is trusted anyway. No Internet.
-    networking.firewall.interfaces.wg0.allowedTCPPorts = [6600];
   };
 }

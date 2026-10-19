@@ -90,9 +90,9 @@ EOF
         }
         { prev_close = ($0 ~ /^    \};$/); print }
       ' flake.nix > /tmp/flake.nix.tmp && mv /tmp/flake.nix.tmp flake.nix
-      # Append nixosConfigurations.<name> after nyagate
+      # Add the host at the start of the configuration map.
       awk -v n="$name" '
-        $0 ~ /nyagate = nyagate-config;/ && !done2 {
+        $0 ~ /^[[:space:]]*nixosConfigurations = \{$/ && !done2 {
           print;
           print "            " n " = " n "-config;";
           done2=1;

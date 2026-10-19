@@ -1,4 +1,8 @@
-{pkgs, ...}: let
+{
+  pkgs,
+  pixiecore,
+  ...
+}: let
   consumers = [
     "nfs-server"
     "nfs-mountd"
@@ -53,12 +57,13 @@ in
             no-resolv = true;
             host-record = "mireo.test,192.168.1.1";
             dhcp-range = "192.168.1.100,192.168.1.200,255.255.255.0,1h";
-            enable-tftp = true;
-            tftp-root = "/data/pxe";
-            tftp-no-fail = true;
           };
         };
-        environment.systemPackages = [pkgs.dig];
+        services.pixiecore = {
+          inherit (pixiecore) enable mode kernel dhcpNoBind port statusPort openFirewall;
+          listen = "192.168.1.1";
+        };
+        environment.systemPackages = [pkgs.dig pkgs.curl pkgs.atftp];
 
         systemd.tmpfiles.rules = [
           "d /data/pxe 0755 root root - -"
@@ -89,6 +94,10 @@ in
               serviceConfig.ExecStart = "${pkgs.coreutils}/bin/sleep infinity";
             };
           };
+
+        specialisation.data-activation.configuration.systemd.services = lib.genAttrs (["mireo-data-setup"] ++ consumers) (_: {
+          restartTriggers = ["optional-data-activation-test"];
+        });
       };
     };
 
@@ -104,7 +113,9 @@ in
 
       def assert_consumers_stopped():
           for name in ["mireo-data-setup"] + consumers:
-              machine.fail(f"systemctl is-active --quiet {name}.service")
+              machine.wait_until_succeeds(
+                  f'test "$(systemctl show -p ActiveState --value {name}.service)" = inactive'
+              )
 
       start_all()
       with subtest("missing disk does not prevent boot or network services"):
@@ -122,6 +133,48 @@ in
       with subtest("activation tmpfiles also leaves the underlying root untouched"):
           machine.succeed("systemctl start systemd-tmpfiles-resetup.service")
           assert_root_data_empty()
+
+      with subtest("Pixiecore serves BIOS/UEFI loaders and netboot.xyz without data storage"):
+          machine.wait_for_unit("pixiecore.service")
+          for arch in [0, 1]:
+              machine.succeed(
+                  f"curl --fail --retry 10 --retry-connrefused --retry-delay 1 "
+                  f"'http://192.168.1.1:${toString pixiecore.port}/_/ipxe?mac=52:54:00:12:34:56&arch={arch}' "
+                  "| grep -F 'boot kernel'"
+              )
+          machine.succeed(
+              "curl -fsS 'http://192.168.1.1:${toString pixiecore.port}/_/file?name=kernel&type=kernel&mac=52:54:00:12:34:56' "
+              "-o /tmp/pixiecore-bootstrap.ipxe"
+          )
+          machine.succeed("cmp /tmp/pixiecore-bootstrap.ipxe '${pixiecore.kernel}'")
+          for firmware in [0, 2]:
+              machine.succeed(
+                  f"atftp --get --local-file /tmp/pixiecore-{firmware} "
+                  f"--remote-file 52:54:00:12:34:56/{firmware} 192.168.1.1 "
+                  f"&& test -s /tmp/pixiecore-{firmware}"
+              )
+          machine.fail("cmp -s /tmp/pixiecore-0 /tmp/pixiecore-2")
+          machine.succeed("systemctl is-active --quiet dnsmasq.service")
+          assert_root_data_empty()
+
+      with subtest("explicit starts skip missing storage without dependency failures"):
+          for _ in range(2):
+              machine.succeed(f"systemctl start mireo-data-setup.service {units}")
+              assert_consumers_stopped()
+              for name in ["mireo-data-setup"] + consumers:
+                  machine.succeed(
+                      f'test "$(systemctl show -p ConditionResult --value {name}.service)" = no'
+                  )
+          assert_root_data_empty()
+
+      with subtest("configuration activation succeeds without the optional disk"):
+          machine.succeed(
+              "/run/current-system/specialisation/data-activation/bin/switch-to-configuration test"
+          )
+          assert_consumers_stopped()
+          assert_root_data_empty()
+          for name in ["dnsmasq", "pixiecore", "sshd", "microvm@unrelated"]:
+              machine.succeed(f"systemctl is-active --quiet {name}.service")
 
       with subtest("mounting data initializes it before any consumer writes"):
           # Replace only the missing disk in this fixture, retaining the real guards.
@@ -146,7 +199,18 @@ in
           assert_root_data_empty()
           machine.succeed("systemctl restart systemd-tmpfiles-resetup.service")
           assert_root_data_empty()
-          for name in ["dnsmasq", "sshd", "microvm@unrelated"]:
+          for name in ["dnsmasq", "pixiecore", "sshd", "microvm@unrelated"]:
               machine.succeed(f"systemctl is-active --quiet {name}.service")
+
+      with subtest("external unmount also stops consumers without pulling data back in"):
+          machine.succeed("systemctl start data.mount")
+          machine.succeed(f"systemctl start {units}")
+          for name in consumers:
+              machine.wait_for_unit(name + ".service")
+          machine.succeed("umount /data")
+          assert_consumers_stopped()
+          machine.succeed(f"systemctl start mireo-data-setup.service {units}")
+          assert_consumers_stopped()
+          assert_root_data_empty()
     '';
   }
