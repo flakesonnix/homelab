@@ -552,6 +552,10 @@ def run(package, keymap="default", bar=None, tray=None):
             if rpc_server:
                 assert rpc_server.cleared.wait(3), "compositor exit did not clear Discord presence"
                 assert not rpc_server.errors, rpc_server.errors
+                assert all(activity["assets"] == {
+                    "large_image": "https://codeberg.org/avatars/dc21c9ec8f16c95100d96692df5f00c1f19e5a1ab2248bacacf122ba23635f28",
+                    "large_text": "dwl-scroll",
+                } for activity in rpc_server.activities if activity), "Discord presence lost its dwl logo"
             # Restart with the same isolated runtime directory.
             compositor = subprocess.Popen(
                 compositor_args,
@@ -572,7 +576,7 @@ def run(package, keymap="default", bar=None, tray=None):
                   "Unicode launch, cancellation, output resize/disable and session-lock safety")
             print("PASS: menu application icons: themed PNG, absolute SVG and missing-icon fallback pixels")
             if rpc_server:
-                print("PASS: built-in Discord RPC: local handshake, focused app, lock clearing, unlock reconnect and shutdown clearing")
+                print("PASS: built-in Discord RPC: local handshake, dwl logo, focused app, lock clearing, unlock reconnect and shutdown clearing")
         except Exception:
             print(status_file.read_text()[-4000:], file=sys.stderr)
             print(error_file.read_text(), file=sys.stderr)

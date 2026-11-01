@@ -159,6 +159,14 @@ discordrpcactivity(const char *state)
 		json_builder_add_string_value(builder, "Wayland compositor: dwl-scroll");
 		json_builder_set_member_name(builder, "state");
 		json_builder_add_string_value(builder, state);
+		json_builder_set_member_name(builder, "assets");
+		json_builder_begin_object(builder);
+		json_builder_set_member_name(builder, "large_image");
+		/* Discord fetches the upstream logo; dwl itself only uses local IPC. */
+		json_builder_add_string_value(builder, "https://codeberg.org/avatars/dc21c9ec8f16c95100d96692df5f00c1f19e5a1ab2248bacacf122ba23635f28");
+		json_builder_set_member_name(builder, "large_text");
+		json_builder_add_string_value(builder, "dwl-scroll");
+		json_builder_end_object(builder);
 		json_builder_set_member_name(builder, "timestamps");
 		json_builder_begin_object(builder);
 		json_builder_set_member_name(builder, "start");

@@ -313,9 +313,11 @@ lucy.dwlScroll.settings.discordRpc = {
 };
 ```
 
-Presence contains `Wayland compositor: dwl-scroll`, elapsed session time, and
-optionally the focused application's desktop-entry name or app ID. **Window
-titles, documents, search queries and account tokens are never read.** Set
+Presence contains the upstream dwl logo (with a `dwl-scroll` hover label),
+`Wayland compositor: dwl-scroll`, elapsed session time, and optionally the
+focused application's desktop-entry name or app ID. Discord fetches the logo
+from dwl's public Codeberg avatar; the compositor still only uses local IPC.
+**Window titles, documents, search queries and account tokens are never read.** Set
 `showApp = false` to keep app information private, or `enable = false` to stop
 the integration. Raw headers may define `DISCORD_RPC_ENABLED`,
 `DISCORD_RPC_CLIENT_ID` and `DISCORD_RPC_SHOW_APP`; absent macros stay disabled.
@@ -330,9 +332,10 @@ to the current user's private `XDG_RUNTIME_DIR`, including normal desktop,
 Flatpak and Snap Discord paths, rather than shared `/tmp` sockets.
 
 Discord must be running locally and its Activity Privacy settings must allow
-activity sharing. The application name/icon are controlled by the Discord
-Developer Portal application. Rebuild and start a new dwl session to activate
-this compiled feature. No live account activity is published during the tests:
+activity sharing. The application name and application-list icon are controlled
+by the Discord Developer Portal application, separately from the presence logo.
+Rebuild and start a new dwl session to activate this compiled feature.
+No live account activity is published during the tests:
 they use private mock IPC servers, including the real headless compositor's
 focus/lock/unlock/exit lifecycle and native ASan/UBSan protocol tests.
 

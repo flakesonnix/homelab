@@ -93,9 +93,13 @@ expectactivity(int fd, const char *state)
 	assert(json_object_get_int_member(args, "pid") == getpid());
 	if (state) {
 		JsonObject *activity = json_object_get_object_member(args, "activity");
+		JsonObject *assets = json_object_get_object_member(activity, "assets");
 		JsonObject *timestamps = json_object_get_object_member(activity, "timestamps");
 		assert(!strcmp(json_object_get_string_member(activity, "state"), state));
 		assert(!strcmp(json_object_get_string_member(activity, "details"), "Wayland compositor: dwl-scroll"));
+		assert(!strcmp(json_object_get_string_member(assets, "large_image"),
+				"https://codeberg.org/avatars/dc21c9ec8f16c95100d96692df5f00c1f19e5a1ab2248bacacf122ba23635f28"));
+		assert(!strcmp(json_object_get_string_member(assets, "large_text"), "dwl-scroll"));
 		assert(json_object_get_int_member(timestamps, "start") == discord_rpc.started);
 	} else {
 		assert(JSON_NODE_HOLDS_NULL(json_object_get_member(args, "activity")));
@@ -246,6 +250,6 @@ main(void)
 	g_free(desktop);
 	g_free(applications);
 	g_free(root);
-	puts("PASS: Discord RPC handshake, activity/privacy, rate limiting, ping, lock/shutdown clearing, malformed frames, reconnect and backpressure");
+	puts("PASS: Discord RPC handshake, logo assets, activity/privacy, rate limiting, ping, lock/shutdown clearing, malformed frames, reconnect and backpressure");
 	return 0;
 }
