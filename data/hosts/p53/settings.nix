@@ -19,6 +19,23 @@
   networking.hostName = "p53";
   networking.networkmanager.enable = true;
 
+  # Match the supported Niri shortcuts, but use Super instead of Alt in dwl.
+  lucy.dwlScroll.settings =
+    lib.recursiveUpdate
+    (import ../../../pkgs/dwl-scroll/niri-keybinds.nix {inherit pkgs;})
+    {
+      discordRpc = {
+        enable = true;
+        clientId = "1566412441414410262";
+        showApp = true;
+      };
+    };
+
+  # Runtime-only personal image; swaybg exits when dwl closes its Wayland socket.
+  lucy.dwlScroll.startupCommands = ''
+    ${lib.getExe pkgs.swaybg} --mode fill --image /home/lucy/Pictures/wallpaper.webp &
+  '';
+
   programs.sway = {
     package = pkgs.swayfx;
     wrapperFeatures.gtk = true;

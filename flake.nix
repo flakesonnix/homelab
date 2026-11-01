@@ -262,11 +262,26 @@
             inherit pkgs microvm self;
             inherit (pkgs) lib;
           };
+          dwlScroll = pkgs.callPackage ./pkgs/dwl-scroll {};
+          dwlScrollChecks = {
+            dwl-scroll = dwlScroll;
+            dwl-scroll-no-xwayland = dwlScroll.override {enableXWayland = false;};
+            dwl-scroll-module = import ./tests/dwl-scroll.nix {inherit pkgs self;};
+            dwl-scroll-headless = import ./tests/dwl-scroll-headless.nix {
+              inherit pkgs;
+              package = dwlScroll;
+            };
+            dwl-scroll-settings = import ./tests/dwl-scroll-settings.nix {
+              inherit pkgs;
+              inherit (pkgs) lib;
+            };
+          };
           fullCiChecks = dotfilesLib.ciScripts.mkCiCheckBundle {
             checks =
               frameworkChecks
               // deployChecks
-              // dotfilesChecks;
+              // dotfilesChecks
+              // dwlScrollChecks;
           };
           rebuildApp = pkgs.writeShellApplication {
             name = "rebuild";
@@ -431,6 +446,7 @@
               nixfleet-web = nixfleetPkgs.web;
               nixfleet-manifest = pkgs.writeText "manifest.json" self.nixfleetArtifacts.manifestJson;
               nixfleet-ui = pkgs.writeText "ui.json" self.nixfleetArtifacts.uiJson;
+              dwl-scroll = dwlScroll;
               pxe-desktop-boot = pxeDesktopBoot;
             };
 
@@ -501,6 +517,7 @@
           // {
             checks =
               dotfilesChecks
+              // dwlScrollChecks
               // {
                 nixfleet-tests = nixfleetPkgs.tests;
               };
@@ -511,6 +528,7 @@
           lib = import ./lib/framework;
 
           nixosModules = {
+            dwl-scroll = import ./modules/nixos/dwl-scroll.nix;
             nixos = import ./modules/nixos/default.nix;
             home = import ./modules/home/default.nix;
           };

@@ -585,10 +585,10 @@ in {
           '';
         };
 
-        services.journald.extraConfig = ''
-          ForwardToConsole=yes
-          MaxLevelConsole=debug
-        '';
+        services.journald.settings.Journal = {
+          ForwardToConsole = true;
+          MaxLevelConsole = "debug";
+        };
 
         environment.etc."grafana-dashboards/mireo-router.json".text = dashboard;
 

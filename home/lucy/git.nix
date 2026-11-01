@@ -13,7 +13,7 @@
       declarations = {
         background_color = colors.base00;
         foreground = colors.base05;
-        font = ''"JetBrainsMono Nerd Font" 12'';
+        font = ''"Iosevka" 12'';
       };
     }
     {

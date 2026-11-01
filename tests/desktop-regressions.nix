@@ -4,6 +4,7 @@
   self,
 }: let
   cfg = self.nixosConfigurations.p53.config;
+  homeCfg = cfg.home-manager.users.lucy;
   idle = cfg.systemd.user.services.ewm-idle;
   locker = cfg.systemd.user.services.ewm-lock;
   systemctl = "${cfg.systemd.package}/bin/systemctl";
@@ -61,6 +62,21 @@
     locker.script);
   upstreamService = builtins.readFile "${self.inputs.ewm}/resources/ewm.service";
 in
+  assert lib.assertMsg (
+    lib.all (family: builtins.head cfg.fonts.fontconfig.defaultFonts.${family} == "Iosevka") ["serif" "sansSerif" "monospace"]
+    && lib.elem "Symbols Nerd Font Mono" cfg.fonts.fontconfig.defaultFonts.monospace
+    && lib.elem "Noto Color Emoji" cfg.fonts.fontconfig.defaultFonts.emoji
+    && lib.any (p: p.drvPath == pkgs.iosevka.drvPath) cfg.fonts.packages
+    && lib.all (family: homeCfg.stylix.fonts.${family}.name == "Iosevka") ["serif" "sansSerif" "monospace"]
+    && homeCfg.gtk.font.name == "Iosevka"
+    && homeCfg.programs.alacritty.settings.font.normal.family == "Iosevka"
+    && homeCfg.programs.alacritty.settings.font.bold.family == "Iosevka"
+    && homeCfg.programs.fuzzel.settings.main.font == "Iosevka:size=13"
+    && homeCfg.wayland.windowManager.sway.config.fonts.names == ["Iosevka"]
+    && homeCfg.services.mako.settings.font == "Iosevka 12"
+    && homeCfg.dconf.settings."org/gnome/desktop/interface".font-name == "Iosevka 11"
+    && homeCfg.dconf.settings."org/gnome/desktop/interface".monospace-font-name == "Iosevka 11"
+  ) "Iosevka must be the desktop/app default, with icon and emoji fallbacks retained";
   assert checkPlasma false;
   assert checkPlasma true;
   assert lib.assertMsg (

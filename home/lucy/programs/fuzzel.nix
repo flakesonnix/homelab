@@ -14,7 +14,7 @@ in {
         main = {
           terminal = "alacritty";
           layer = "overlay";
-          font = "Inter:size=13";
+          font = "Iosevka:size=13";
           icon-theme = "Papirus-Dark";
           width = 52;
           lines = 9;
@@ -45,6 +45,6 @@ in {
       };
     };
 
-    home.packages = [pkgs.inter];
+    home.packages = [pkgs.iosevka];
   };
 }

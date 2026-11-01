@@ -5,6 +5,7 @@
 }: {
   imports = [
     ./base.nix
+    ./dwl-scroll.nix
     ./packages.nix
     ./lucy-services.nix
     ./postgres.nix

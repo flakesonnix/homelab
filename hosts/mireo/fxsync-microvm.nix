@@ -63,6 +63,7 @@
         };
         services.firefox-syncserver = {
           enable = true;
+          database.type = "mysql";
           # Upstream default binds localhost — Caddy (host) proxies to
           # the LAN IP; the guest firewall permits port 5000 only from mireo.
           # Upstream breakage (nixpkgs 624af66, syncstorage-rs 0.21.1):

@@ -16,8 +16,9 @@ in {
     gtk = {
       enable = true;
       font = {
-        name = lib.mkForce "Inter 11";
-        package = lib.mkForce pkgs.inter;
+        name = lib.mkForce "Iosevka";
+        size = lib.mkForce 11;
+        package = lib.mkForce pkgs.iosevka;
       };
       iconTheme = {
         name = lib.mkForce "Papirus-Dark";
@@ -36,9 +37,9 @@ in {
         color-scheme = lib.mkForce "prefer-dark";
         gtk-theme = lib.mkForce "Adwaita-dark";
         icon-theme = lib.mkForce "Papirus-Dark";
-        font-name = lib.mkForce "Inter 11";
-        document-font-name = lib.mkForce "Inter 11";
-        monospace-font-name = lib.mkForce "GeistMono Nerd Font Mono 11";
+        font-name = lib.mkForce "Iosevka 11";
+        document-font-name = lib.mkForce "Iosevka 11";
+        monospace-font-name = lib.mkForce "Iosevka 11";
         accent-color = lib.mkForce "pink";
         cursor-size = lib.mkForce 24;
       };
@@ -55,6 +56,7 @@ in {
       };
 
       "org/gnome/desktop/wm/preferences" = {
+        titlebar-font = "Iosevka Bold 11";
         button-layout = "appmenu:minimize,maximize,close";
         action-double-click-titlebar = "toggle-maximize";
         action-middle-click-titlebar = "lower";

@@ -12,7 +12,7 @@
     {
       selector = "*";
       declarations = {
-        font_family = ''"Inter", sans-serif'';
+        font_family = ''"Iosevka", "Symbols Nerd Font Mono", sans-serif'';
         font_size = "14px";
         color = colors.base05;
       };

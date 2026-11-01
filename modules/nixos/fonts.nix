@@ -11,12 +11,7 @@
   };
 
   config = lib.mkIf config.lucy.fonts.inter {
+    # Installation remains optional; desktop defaults live in profiles/desktop.nix.
     fonts.packages = [pkgs.inter];
-
-    # Ensure Inter is actually selected by fontconfig in non-GTK apps too.
-    fonts.fontconfig.defaultFonts = {
-      sansSerif = ["Inter"];
-      serif = ["Inter"];
-    };
   };
 }

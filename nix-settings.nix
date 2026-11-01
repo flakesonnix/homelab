@@ -41,27 +41,6 @@ _: {
           });
       });
 
-      # niri 26.04: libdisplay-info-sys 0.3.0 probes the C library with
-      # `version = ">= 0.1.0, < 0.4.0"`, but this nixpkgs pin only ships
-      # 0.4.0 — so niri gets a private 0.3.0 (hash matches upstream
-      # libdisplay-info_0_3). Scoped to niri; the global libdisplay-info
-      # stays at 0.4.0. Drop once the flake input provides
-      # libdisplay-info_0_3 (then use `niri.override { inherit
-      # libdisplay-info_0_3; }` or nothing — upstream niri already
-      # defaults to _0_3 there).
-      niri = prev.niri.override {
-        libdisplay-info = prev.libdisplay-info.overrideAttrs (finalAttrs: {
-          version = "0.3.0";
-          src = final.fetchFromGitLab {
-            domain = "gitlab.freedesktop.org";
-            owner = "emersion";
-            repo = "libdisplay-info";
-            rev = finalAttrs.version;
-            sha256 = "sha256-nXf2KGovNKvcchlHlzKBkAOeySMJXgxMpbi5z9gLrdc=";
-          };
-        });
-      };
-
       qemu_full = prev.qemu_full.override {
         cephSupport = false;
       };

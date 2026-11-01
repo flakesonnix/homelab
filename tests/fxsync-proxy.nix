@@ -28,6 +28,12 @@
 in
   assert !(vhosts ? "http://fxsync.home.arpa");
   assert guest.services.firefox-syncserver.singleNode.url == "https://fxsync.home.arpa";
+  assert guest.services.firefox-syncserver.database.type == "mysql";
+  assert guest.services.firefox-syncserver.database.createLocally;
+  assert guest.services.mysql.enable && !guest.services.postgresql.enable;
+  assert guest.services.mysql.dataDir == "/var/lib/firefox-syncserver/mysql";
+  assert lib.elem "mysql.service" guest.systemd.services.firefox-syncserver.requires;
+  assert lib.all (feature: lib.elem feature guest.services.firefox-syncserver.package.buildFeatures) ["mysql" "tokenserver-db/mysql"];
   assert guest.networking.firewall.backend == "iptables";
   assert guest.networking.firewall.allowedTCPPorts == [22];
   assert guest.networking.firewall.trustedInterfaces == ["lo"];

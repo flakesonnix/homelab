@@ -12,7 +12,7 @@ in {
       extraConfig = ''
         set default-zoom fit-width
         set adjust-open best-fit
-        set font "JetBrainsMono Nerd Font 12"
+        set font "Iosevka 12"
         set recolor false
         set scroll-page-aware true
         set selection-clipboard clipboard

@@ -6,6 +6,20 @@ All custom modules live in `modules/`. They are not auto-imported; hosts and pro
 
 ## NixOS Modules (`modules/nixos/`)
 
+### `dwl-scroll.nix`
+
+`lucy.dwlScroll.enable` adds an opt-in upstream dwl 0.9 scrolling session.
+Disabled by default; preserves other compositors and the default session.
+`package` supports a custom compiled C header; `extraSessionCommands` and
+`startupCommands` configure session-local environment/startup helpers.
+The session starts dwlb with Iosevka and feeds it dwl's status pipe (no IPC patch).
+Session-scoped helpers provide battery/network/CPU/RAM/temperature icons,
+an aligned top-right tray/clock overlay (date on hover), and nm-applet controls.
+Super+D opens the compositor's built-in, themed Wayland application launcher.
+`settings.discordRpc` optionally publishes Discord Rich Presence over local IPC;
+focused-app sharing is opt-in, window titles stay private, and locking clears it.
+See [dwl-scroll](dwl-scroll.md) for architecture, configuration, keys and tests.
+
 ### `base.nix`
 
 Options namespace: `lucy.base.*`
@@ -210,6 +224,13 @@ Sink appears as `Remote Audio (<host>)` on sender.
 
 Installs font packages declared via `lucy.fonts.*` module flags (e.g. `lucy.fonts.inter = true`).
 
+`profiles/desktop.nix` installs **Iosevka** and selects it for serif, sans-serif
+and monospace defaults. Nerd Font symbols and Noto Color Emoji remain fallback
+fonts. The Inter flag only installs that optional font; it no longer overrides
+desktop defaults. Stylix and the explicit app configs use Iosevka for GTK/GNOME,
+terminals/editors, launchers, notifications, lockscreens, media text and bars
+(including dwlb). Existing document or website fonts are not forcibly replaced.
+
 ---
 
 ### `gnome.nix` / `gnome-extensions.nix`
@@ -402,6 +423,9 @@ Notable behaviors:
 ### `home/stylix.nix`
 
 When `stylix.enable` is true: sets polarity dark, enables most stylix targets (waybar, GTK, bat, btop, fzf, firefox), disables alacritty/mako/rofi/zathura targets (those have custom configs). Removes legacy Kvantum symlink on activation.
+
+Serif, sans-serif and monospace families all use Iosevka; this also supplies the
+font to targets that do not have a per-app override.
 
 ---
 

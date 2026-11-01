@@ -217,6 +217,7 @@ in
     services.mako = {
       enable = true;
       settings = {
+        font = "Iosevka 12";
         background-color = "${cyberdeckScheme.palette.base00}ee";
         text-color = cyberdeckScheme.palette.base05;
         border-color = cyberdeckScheme.palette.base0E;

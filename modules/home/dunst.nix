@@ -30,7 +30,7 @@ in {
       show_age_threshold = 60
       force_display_urgency = 0
       idle_threshold = 120
-      font = Inter 12
+      font = Iosevka 12
       line_height = 0
       separator_height = 1
       padding = 16

@@ -18,9 +18,9 @@
       geometry=50%:50%
       osd-level=1
       osd-duration=2000
-      osd-font=Inter
+      osd-font=Iosevka
       osd-font-size=16
-      sub-font=Inter
+      sub-font=Iosevka
       sub-font-size=16
       sub-color=#FFFFFF
       sub-shadow-color=#000000

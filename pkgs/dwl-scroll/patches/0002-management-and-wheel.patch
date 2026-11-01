@@ -1,0 +1,207 @@
+--- a/dwl.c
++++ b/dwl.c
+@@ -392,6 +392,15 @@
+ static void scrollfocuscolumn(const Arg *arg);
+ static void scrollfocuswindow(const Arg *arg);
+ static void scrollpan(const Arg *arg);
++static void scrollmovecolumn(const Arg *arg);
++static void scrollmovewindow(const Arg *arg);
++static void scrolltransfer(const Arg *arg);
++static void scrollsplit(const Arg *arg);
++static void scrollmerge(const Arg *arg);
++static void scrollsetinsert(const Arg *arg);
++static void scrollwidth(const Arg *arg);
++static void scrollpreset(const Arg *arg);
++static void scrollmaximize(const Arg *arg);
+ 
+ /* variables */
+ static pid_t child_pid = -1;
+@@ -694,6 +703,13 @@
+ 		adir = event->delta > 0 ? AxisRight : AxisLeft;
+ 	keyboard = wlr_seat_get_keyboard(seat);
+ 	mods = keyboard ? wlr_keyboard_get_modifiers(keyboard) : 0;
++	if (!locked && scrollactive(selmon) && scroll_wheel_mod
++			&& CLEANMASK(mods) == scroll_wheel_mod) {
++		/* Consume the complete axis sequence, including zero-delta stops. */
++		selmon->scrolloffset[scrollslot(selmon)] += event->delta * scroll_wheel_scale;
++		arrange(selmon);
++		return;
++	}
+ 	for (a = axes; a < END(axes); a++) {
+ 		if (CLEANMASK(mods) == CLEANMASK(a->mod) && adir == a->dir && a->func) {
+ 			a->func(&a->arg);
+--- a/config.def.h
++++ b/config.def.h
+@@ -36,6 +36,9 @@
+ static const int scroll_center = 0; /* 0: minimal reveal, 1: center on focus */
+ static const int scroll_insert = 1; /* -1: new left, 0: current, 1: new right */
+ static const int scroll_step = 160; /* pixels per keyboard pan */
++static const float scroll_widths[] = {0.33f, 0.5f, 0.67f, 1.0f};
++static const uint32_t scroll_wheel_mod = WLR_MODIFIER_ALT; /* 0 disables */
++static const double scroll_wheel_scale = 2.0;
+ 
+ static const Layout layouts[] = {
+ 	/* symbol     arrange function */
+@@ -129,6 +132,18 @@
+ static const char *menucmd[] = { "wmenu-run", NULL };
+ 
+ static const Key keys[] = {
++	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Left, scrollmovecolumn, {.i = -1} },
++	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Right, scrollmovecolumn, {.i = 1} },
++	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Up, scrollmovewindow, {.i = -1} },
++	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Down, scrollmovewindow, {.i = 1} },
++	{ MODKEY|WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT, XKB_KEY_Left, scrolltransfer, {.i = -1} },
++	{ MODKEY|WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT, XKB_KEY_Right, scrolltransfer, {.i = 1} },
++	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_Return, scrollsplit, {.i = 1} },
++	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_m, scrollmerge, {.i = 1} },
++	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_i, scrollsetinsert, {.i = 2} },
++	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_bracketleft, scrollwidth, {.f = -0.05f} },
++	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_bracketright, scrollwidth, {.f = 0.05f} },
++	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_r, scrollpreset, {0} },
+ 	{ MODKEY, XKB_KEY_Left, scrollfocuscolumn, {.i = -1} },
+ 	{ MODKEY, XKB_KEY_Right, scrollfocuscolumn, {.i = 1} },
+ 	{ MODKEY, XKB_KEY_Up, scrollfocuswindow, {.i = -1} },
+--- a/scroll.c
++++ b/scroll.c
+@@ -245,3 +245,141 @@
+ 	selmon->scrolloffset[scrollslot(selmon)] += arg->i * scroll_step;
+ 	arrange(selmon);
+ }
++
++static void
++scrollrefresh(void)
++{
++	/* Explicit management actions also reveal an unchanged focused client. */
++	selmon->scrollfocus = NULL;
++	arrange(selmon);
++}
++
++static void
++scrollmovecolumn(const Arg *arg)
++{
++	Client *c = scrollselected();
++	Column *near;
++	if (!c || !(near = scrolladjacent(c->column, arg->i)))
++		return;
++	wl_list_remove(&c->column->link);
++	wl_list_insert(arg->i < 0 ? near->link.prev : &near->link, &c->column->link);
++	scrollrefresh();
++}
++
++static void
++scrollmovewindow(const Arg *arg)
++{
++	Client *c = scrollselected(), *near;
++	if (!c || !(near = scrollvertical(c, arg->i)))
++		return;
++	wl_list_remove(&c->column_link);
++	wl_list_insert(arg->i < 0 ? near->column_link.prev : &near->column_link,
++			&c->column_link);
++	scrollrefresh();
++}
++
++static void
++scrolltransfer(const Arg *arg)
++{
++	Client *c = scrollselected();
++	Column *near;
++	if (!c || !(near = scrolladjacent(c->column, arg->i)))
++		return;
++	scrolldetach(c);
++	c->column = near;
++	wl_list_insert(near->clients.prev, &c->column_link);
++	scrollrefresh();
++}
++
++static void
++scrollsplit(const Arg *arg)
++{
++	Client *c = scrollselected();
++	Column *col;
++	if (!c)
++		return;
++	if (wl_list_length(&c->column->clients) == 1)
++		return;
++	col = scrollnew(selmon, c->column, arg->i);
++	col->fraction = c->column->fraction;
++	col->restore_fraction = c->column->restore_fraction;
++	scrolldetach(c);
++	c->column = col;
++	wl_list_insert(&col->clients, &c->column_link);
++	scrollrefresh();
++}
++
++static void
++scrollmerge(const Arg *arg)
++{
++	Client *c = scrollselected(), *member, *tmp;
++	Column *source, *target;
++	if (!c || !(target = scrolladjacent(c->column, arg->i)))
++		return;
++	source = c->column;
++	/* Leave hidden-tag, floating and fullscreen slots untouched. Defer
++	 * freeing source until iteration finishes, including its last member. */
++	wl_list_for_each_safe(member, tmp, &source->clients, column_link) {
++		if (!scrollvisible(member, selmon))
++			continue;
++		wl_list_remove(&member->column_link);
++		member->column = target;
++		wl_list_insert(target->clients.prev, &member->column_link);
++	}
++	if (wl_list_empty(&source->clients)) {
++		wl_list_remove(&source->link);
++		free(source);
++	}
++	scrollrefresh();
++}
++
++static void
++scrollsetinsert(const Arg *arg)
++{
++	if (scrollactive(selmon))
++		selmon->scrollinsert = arg->i == 2 ? !selmon->scrollinsert : MAX(-1, MIN(1, arg->i));
++}
++
++static void
++scrollwidth(const Arg *arg)
++{
++	Client *c = scrollselected();
++	if (!c)
++		return;
++	c->column->fraction = MAX(0.1f, MIN(1.0f, c->column->fraction + arg->f));
++	c->column->restore_fraction = 0.0f;
++	scrollrefresh();
++}
++
++static void
++scrollpreset(const Arg *arg)
++{
++	Client *c = scrollselected();
++	size_t i;
++	(void)arg;
++	if (!c)
++		return;
++	for (i = 0; i < LENGTH(scroll_widths); i++)
++		if (scroll_widths[i] > c->column->fraction + 0.001f)
++			break;
++	c->column->fraction = scroll_widths[i % LENGTH(scroll_widths)];
++	c->column->restore_fraction = 0.0f;
++	scrollrefresh();
++}
++
++static void
++scrollmaximize(const Arg *arg)
++{
++	Client *c = scrollselected();
++	(void)arg;
++	if (!c)
++		return;
++	if (c->column->restore_fraction > 0.0f) {
++		c->column->fraction = c->column->restore_fraction;
++		c->column->restore_fraction = 0.0f;
++	} else {
++		c->column->restore_fraction = c->column->fraction;
++		c->column->fraction = 1.0f;
++	}
++	scrollrefresh();
++}

@@ -242,6 +242,7 @@
         vim.g.mapleader = " "
         vim.g.maplocalleader = " "
         vim.opt.signcolumn = "yes"
+        vim.opt.guifont = "Iosevka:h13"
         vim.opt.updatetime = 250
         vim.opt.clipboard = "unnamedplus"
         vim.opt.undofile = true

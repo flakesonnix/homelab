@@ -22,7 +22,7 @@
 
   waybarStyle = renderCss [
     (waybarFramework.rule "*" {
-      font_family = ["Inter" "Hack Nerd Font" "sans-serif"];
+      font_family = ["Iosevka" "Symbols Nerd Font Mono" "sans-serif"];
       font_size = "14px";
       min_height = "0";
     })

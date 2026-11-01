@@ -27,11 +27,11 @@ in {
 
       font = {
         normal = {
-          family = "GeistMono Nerd Font Mono";
+          family = "Iosevka";
           style = "Regular";
         };
         bold = {
-          family = "GeistMono Nerd Font Mono";
+          family = "Iosevka";
           style = "Bold";
         };
         size = 13.0;

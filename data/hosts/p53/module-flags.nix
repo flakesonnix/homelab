@@ -9,6 +9,10 @@
   # EWM (Emacs Wayland Manager) as an additional GDM session.
   lucy.ewm.enable = true;
 
+  # Upstream dwl with a scrolling column layout as an additional GDM session.
+  # Opt-in: does not change the default session. See docs/dwl-scroll.md.
+  lucy.dwlScroll.enable = true;
+
   # Sunshine Game-Streaming (Moonlight), Firewall + Autostart an.
   lucy.sunshine.enable = true;
 

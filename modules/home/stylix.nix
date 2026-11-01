@@ -8,6 +8,20 @@
     home.pointerCursor.package = lib.mkDefault (pkgs.callPackage ../../home/lucy/cursors/default.nix {});
     stylix = {
       polarity = lib.mkDefault "dark";
+      fonts = {
+        serif = {
+          name = "Iosevka";
+          package = pkgs.iosevka;
+        };
+        sansSerif = {
+          name = "Iosevka";
+          package = pkgs.iosevka;
+        };
+        monospace = {
+          name = "Iosevka";
+          package = pkgs.iosevka;
+        };
+      };
       targets = {
         waybar.enable = true;
         alacritty.enable = false;

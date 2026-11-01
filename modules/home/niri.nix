@@ -40,7 +40,7 @@
     then ''spawn-at-startup "sh" "-lc" ${builtins.toJSON command.script}''
     else throw "Unsupported startup command kind";
   renderWindowRule = rule: renderSection "window-rule" rule.lines;
-  lockCommand = "sh -c '${lib.getExe' pkgs.swaylock-effects "swaylock"} --screenshots --clock --indicator --indicator-radius 110 --indicator-thickness 10 --effect-blur 7x5 --effect-vignette 0.25:0.6 --fade-in 0.2 --font Inter --font-size 24 --timestr %H:%M --datestr %a,\ %d\ %b --text-color ${hexAlpha colors.base07 "ff"} --text-clear-color ${hexAlpha colors.base07 "ff"} --text-ver-color ${hexAlpha colors.base0A "ff"} --text-wrong-color ${hexAlpha colors.base08 "ff"} --inside-color ${hexAlpha colors.base00 "96"} --inside-clear-color ${hexAlpha colors.base01 "d6"} --inside-ver-color ${hexAlpha colors.base02 "d6"} --inside-wrong-color ${hexAlpha colors.base01 "d6"} --ring-color ${hexAlpha colors.base0E "e0"} --ring-clear-color ${hexAlpha colors.base0C "d0"} --ring-ver-color ${hexAlpha colors.base0A "d0"} --ring-wrong-color ${hexAlpha colors.base08 "d0"} --line-color 00000000 --separator-color 00000000 --key-hl-color ${hexAlpha colors.base0E "ff"} --bs-hl-color ${hexAlpha colors.base0C "ff"} --show-failed-attempts --daemonize'";
+  lockCommand = "sh -c '${lib.getExe' pkgs.swaylock-effects "swaylock"} --screenshots --clock --indicator --indicator-radius 110 --indicator-thickness 10 --effect-blur 7x5 --effect-vignette 0.25:0.6 --fade-in 0.2 --font Iosevka --font-size 24 --timestr %H:%M --datestr %a,\ %d\ %b --text-color ${hexAlpha colors.base07 "ff"} --text-clear-color ${hexAlpha colors.base07 "ff"} --text-ver-color ${hexAlpha colors.base0A "ff"} --text-wrong-color ${hexAlpha colors.base08 "ff"} --inside-color ${hexAlpha colors.base00 "96"} --inside-clear-color ${hexAlpha colors.base01 "d6"} --inside-ver-color ${hexAlpha colors.base02 "d6"} --inside-wrong-color ${hexAlpha colors.base01 "d6"} --ring-color ${hexAlpha colors.base0E "e0"} --ring-clear-color ${hexAlpha colors.base0C "d0"} --ring-ver-color ${hexAlpha colors.base0A "d0"} --ring-wrong-color ${hexAlpha colors.base08 "d0"} --line-color 00000000 --separator-color 00000000 --key-hl-color ${hexAlpha colors.base0E "ff"} --bs-hl-color ${hexAlpha colors.base0C "ff"} --show-failed-attempts --daemonize'";
   startupCommands = renderLines (map renderStartup (
     [
       (niriFramework.startupSpawn ["${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"])
@@ -297,7 +297,7 @@ in {
       settings = lib.mkForce {
         anchor = "top-right";
         sort = "-time";
-        font = "Inter 12";
+        font = "Iosevka 12";
         width = 360;
         height = 160;
         margin = "18,18,0";
@@ -345,7 +345,7 @@ in {
       * {
         background-image: none;
         box-shadow: none;
-        font-family: "Inter", sans-serif;
+        font-family: "Iosevka", "Symbols Nerd Font Mono", sans-serif;
       }
 
       window {
