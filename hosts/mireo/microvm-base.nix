@@ -5,20 +5,48 @@
 {
   ip,
   interfaceId,
-  extraDns ? [],
+  extraDns ? [ ],
   name,
-}: {lib, ...}: let
-  keys = import ../../ssh-public-keys.nix {inherit lib;};
-  hexDigit = d: builtins.elemAt ["0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "a" "b" "c" "d" "e" "f"] d;
-  mac = let
-    lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
-  in "02:00:00:10:08:${hexDigit (builtins.div lastOctet 16)}${hexDigit (lib.mod lastOctet 16)}";
-in {
+}:
+{ lib, ... }:
+let
+  keys = import ../../ssh-public-keys.nix { inherit lib; };
+  hexDigit =
+    d:
+    builtins.elemAt [
+      "0"
+      "1"
+      "2"
+      "3"
+      "4"
+      "5"
+      "6"
+      "7"
+      "8"
+      "9"
+      "a"
+      "b"
+      "c"
+      "d"
+      "e"
+      "f"
+    ] d;
+  mac =
+    let
+      lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
+    in
+    "02:00:00:10:08:${hexDigit (builtins.div lastOctet 16)}${hexDigit (lib.mod lastOctet 16)}";
+in
+{
+  imports = [ ../../modules/nixos/lucy-ca.nix ];
+
   system.stateVersion = "25.11";
 
   # keys file holds one key per line (all owner keys); split into list
   # entries (tolerates trailing newline).
-  users.users.root.openssh.authorizedKeys.keys = builtins.filter (k: k != "") (lib.splitString "\n" keys.lucy.servers);
+  users.users.root.openssh.authorizedKeys.keys = builtins.filter (k: k != "") (
+    lib.splitString "\n" keys.lucy.servers
+  );
   services.openssh = {
     enable = true;
     settings.PermitRootLogin = "yes";
@@ -69,9 +97,13 @@ in {
     # Static ULA mirrors the IPv4 last octet (10.8.0.N -> fd00:cafe:1::N),
     # same single source as the MAC above. On-link LAN needs no v6 route;
     # DNS serves the matching AAAA (dnsmasq host-record on the host).
-    address = ["fd00:cafe:1::${lib.last (lib.splitString "." ip)}/64"];
+    address = [ "fd00:cafe:1::${lib.last (lib.splitString "." ip)}/64" ];
     networkConfig = {
-      DNS = ["10.8.0.30" "10.8.0.1"] ++ extraDns;
+      DNS = [
+        "10.8.0.30"
+        "10.8.0.1"
+      ]
+      ++ extraDns;
       DHCP = "ipv4";
       IPv6AcceptRA = false;
     };

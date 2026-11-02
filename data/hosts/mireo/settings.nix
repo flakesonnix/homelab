@@ -2,7 +2,8 @@
   lib,
   pkgs,
   ...
-}: {
+}:
+{
   lucy.base.enable = true;
   lucy.base.isServer = true;
   # All owner keys: 5× github.com/flakesonnix.keys + p53-local omen key
@@ -49,14 +50,17 @@
   # DHCPv4/DNS on br0 are unaffected either way.
   systemd.network.networks."10-wan" = {
     matchConfig.Name = "enp4s0";
-    address = ["192.168.178.25/24"];
+    address = [ "192.168.178.25/24" ];
     routes = [
       {
         Gateway = "192.168.178.1";
       }
     ];
     networkConfig = {
-      DNS = ["9.9.9.9" "1.1.1.1"];
+      DNS = [
+        "9.9.9.9"
+        "1.1.1.1"
+      ];
       IPv6AcceptRA = true;
       DHCP = "ipv6";
       DHCPPrefixDelegation = true;
@@ -87,7 +91,10 @@
     # FritzBox delegiert (s. WAN-Kommentar); dnsmasq kündigt dann beide
     # Präfixe per RA an (constructor:br0). HE routed LAN entfernt
     # 2026-10-10 (VPS-unabhängiges v6 via NAT66, s.u.).
-    address = ["10.8.0.1/24" "fd00:cafe:1::1/64"];
+    address = [
+      "10.8.0.1/24"
+      "fd00:cafe:1::1/64"
+    ];
     networkConfig = {
       ConfigureWithoutCarrier = true;
       IPv6AcceptRA = false;
@@ -107,7 +114,7 @@
   networking.nat = {
     enable = true;
     externalInterface = "enp4s0";
-    internalInterfaces = ["br0"];
+    internalInterfaces = [ "br0" ];
   };
 
   # --- NAT66 outbound (primärer v6-Egress, VPS-unabhängig) ---
@@ -129,9 +136,9 @@
     '';
   };
 
-  networking.firewall.trustedInterfaces = ["br0"];
+  networking.firewall.trustedInterfaces = [ "br0" ];
   # 19999 removed with netdata (dropped 2026-09-16); 9090 untouched.
-  networking.firewall.interfaces.br0.allowedTCPPorts = [9090];
+  networking.firewall.interfaces.br0.allowedTCPPorts = [ 9090 ];
 
   # --- Transparent LAN :80 → Caddy (nftables REDIRECT) ---
   # Diagnose 2026-09-15: *.home.arpa löst DIREKT auf die VM-IPs auf
@@ -148,7 +155,7 @@
   # br_netfilter unten lädt es + schaltet den L3-Pfad an; FORWARD-Policy
   # ist accept, daher bleibt LAN-Verkehr unbehelligt (nur conntrack mehr).
   # Ohne das Modul landeten Browser (v4+v6) direkt auf VM-:80 im Drop.
-  boot.kernelModules = ["br_netfilter"];
+  boot.kernelModules = [ "br_netfilter" ];
   boot.kernel.sysctl = {
     "net.bridge.bridge-nf-call-iptables" = 1;
     "net.bridge.bridge-nf-call-ip6tables" = 1;
@@ -195,8 +202,8 @@
     enable = true;
     onBoot = "ignore";
     onShutdown = "shutdown";
-    allowedBridges = ["br0"];
-    qemu.vhostUserPackages = with pkgs; [virtiofsd];
+    allowedBridges = [ "br0" ];
+    qemu.vhostUserPackages = with pkgs; [ virtiofsd ];
   };
 
   # lucy darf libvirt ohne Polkit-Agent verwalten (headless Server).
@@ -219,151 +226,193 @@
   # NOTE (2026-10-04): dnsmasq stays authoritative for LAN DHCP+DNS.
   # AdGuard Home (dns VM, 10.8.0.30) is only a filtering frontend
   # (blocklists) — DHCP advertises it first, host second as fallback.
-  services.dnsmasq = let
-    lanDomain = "home.arpa";
-    staticHosts =
-      (import ../../../hosts/mireo/vm-ips.nix)
-      // {
+  services.dnsmasq =
+    let
+      lanDomain = "home.arpa";
+      staticHosts = (import ../../../hosts/mireo/vm-ips.nix) // {
         mireo = "10.8.0.1";
         # TLS terminates on the host, not on the Sync guest (.31).
         fxsync = "10.8.0.1";
       };
-  in {
-    enable = true;
-    settings = {
-      interface = "br0";
-      bind-interfaces = true;
-      # /etc/hosts NICHT servieren (Diagnose 2026-09-14): NixOS trägt dort
-      # 127.0.0.2 <hostname> ein, dnsmasq hätte `mireo` sonst doppelt
-      # beantwortet (10.8.0.1 + 127.0.0.2) und `ping mireo` landet auf
-      # localhost. Alle statischen Namen kommen aus host-record unten.
-      no-hosts = true;
-      domain-needed = true;
-      bogus-priv = true;
-      # Local DNS domain (RFC 8375): <hostname>.home.arpa resolves for
-      # DHCP leases (automatic), static host-records (FQDN first name
-      # below) and short names (expand-hosts). local= keeps the whole
-      # domain strictly local — never forwarded upstream. DHCP clients
-      # also receive home.arpa as search domain automatically.
-      domain = lanDomain;
-      expand-hosts = true;
-      local = "/${lanDomain}/";
-      # Service aliases (CNAME; target must be known to dnsmasq, so it
-      # follows automatically if the target IP ever moves).
-      cname = [
-        "prometheus.home.arpa,grafana.home.arpa"
-        "media.home.arpa,jellyfin.home.arpa"
-        "adguard.home.arpa,dns.home.arpa"
-      ];
-      # NOTE (dropped 2026-09-16): UCS/AD is gone (libvirt domain ucs5.0
-      # retired, no replacement). The AD SRV records lived here; if a new
-      # directory ever returns, re-add them scoped to its name.
-      dhcp-authoritative = true;
-      enable-ra = true;
-      dhcp-range = [
-        "10.8.0.100,10.8.0.199,255.255.255.0,24h"
-        # RA/SLAAC for every prefix on br0 (ULA + FritzBox-PD-GUA, falls
-        # die FritzBox je delegiert — landet automatisch, kein Deploy).
-        # NOTE: dnsmasq has NO `ra-stateful` flag (it fails with
-        # "bad dhcp-range"): a bare `::,constructor:…` range is
-        # stateless-only; stateful needs an explicit address range below
-        # (dnsmasq then sets the RA managed bit automatically).
-        "::,constructor:br0,ra-stateless,64,24h"
-        # Stateful DHCPv6 on the static ULA (works independent of PD).
-        # (HE routed LAN entfernt 2026-10-10, VPS-unabhängiges v6.)
-        "fd00:cafe:1::100,fd00:cafe:1::1ff,64,24h"
-      ];
-      dhcp-option = [
-        "option:router,10.8.0.1"
-        # AdGuard (filtering frontend) first, host second: clients get
-        # adblock via .30 and keep resolving (unfiltered) if the dns VM
-        # is ever down. glibc falls through on timeout/refused.
-        "option:dns-server,10.8.0.30,10.8.0.1"
-        # NTP server (chrony VM, hosts/mireo/ntp-microvm.nix, UDP 123).
-        "option:ntp-server,10.8.0.11"
-        # Same explicitly for DHCPv6 + RA (RDNSS/DNSSL): without this,
-        # clients only learn the link-local address via RA default, which
-        # some stubs can't use (missing %iface scope). ULA is static.
-        "option6:dns-server,[fd00:cafe:1::1]"
-        "option6:domain-search,home.arpa"
-      ];
-      # Static IPs via DHCP reservations (not on-guest statics): every
-      # homelab service keeps its vm-ips.nix address, but dnsmasq hands it
-      # out, so IPs stay centrally managed in one file. Guest MACs are
-      # deterministic (02:00:00:10:08:XX from the last octet — same formula
-      # as hosts/mireo/microvm-base.nix). Format MAC,IP,name: dnsmasq pins
-      # the IP AND serves the DNS name for the lease (short + home.arpa via
-      # expand-hosts above; host-record below keeps AAAA + pre-lease A).
-      # Reservations live outside the dynamic pool (10.8.0.100-.199), so no
-      # collisions. (UCS reservation dropped with UCS itself, 2026-09-16.)
-      dhcp-host =
-        lib.mapAttrsToList (
-          name: ip: let
-            lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
-            hex = n: builtins.elemAt ["0" "1" "2" "3" "4" "5" "6" "7" "8" "9" "a" "b" "c" "d" "e" "f"] n;
-          in "02:00:00:10:08:${hex (builtins.div lastOctet 16)}${hex (lib.mod lastOctet 16)},${ip},${name}"
-        ) (import ../../../hosts/mireo/vm-ips.nix)
-        # Freifunk box (real hardware, not a microVM): pins its current .193
-        # so monitoring/DNS stay stable. Named ff-bb — its own hostname is
-        # "mireo", which collides with ours (seen 2026-10-04 in leases).
-        ++ ["44:d4:37:8b:d8:69,10.8.0.193,ff-bb"];
-      # Pixiecore handles ProxyDHCP/TFTP; dnsmasq only assigns leases.
-      # Everyone else gets dynamic addresses via DHCPv4/DHCPv6. dnsmasq
-      # serves DNS names for its leases automatically, so clients stay
-      # reachable as <hostname>.home.arpa.
-      host-record =
-        lib.mapAttrsToList (name: ip: let
-          # ULA mirrors the IPv4 last octet, same as microvm-base.nix
-          # assigns on the guest (10.8.0.N -> fd00:cafe:1::N).
-          lastOctet = lib.last (lib.splitString "." ip);
-        in "${name}.${lanDomain},${name},${ip},fd00:cafe:1::${lastOctet}")
-        staticHosts
-        # Freifunk box as ff-bb (v4 only — no known ULA; see dhcp-host).
-        ++ ["ff-bb.${lanDomain},ff-bb,10.8.0.193"]
-        # Status page vanity name (points at the uptime-kuma VM; the
-        # transparent :80 redirect + Caddy redir below route it to
-        # /status/homelab — same pattern as the other webUIs).
-        ++ ["status.${lanDomain},status,10.8.0.9,fd00:cafe:1::9"];
-      server = ["9.9.9.9" "1.1.1.1" "2620:fe::9" "2606:4700:4700::1111"];
+    in
+    {
+      enable = true;
+      settings = {
+        interface = "br0";
+        bind-interfaces = true;
+        # /etc/hosts NICHT servieren (Diagnose 2026-09-14): NixOS trägt dort
+        # 127.0.0.2 <hostname> ein, dnsmasq hätte `mireo` sonst doppelt
+        # beantwortet (10.8.0.1 + 127.0.0.2) und `ping mireo` landet auf
+        # localhost. Alle statischen Namen kommen aus host-record unten.
+        no-hosts = true;
+        domain-needed = true;
+        bogus-priv = true;
+        # Local DNS domain (RFC 8375): <hostname>.home.arpa resolves for
+        # DHCP leases (automatic), static host-records (FQDN first name
+        # below) and short names (expand-hosts). local= keeps the whole
+        # domain strictly local — never forwarded upstream. DHCP clients
+        # also receive home.arpa as search domain automatically.
+        domain = lanDomain;
+        expand-hosts = true;
+        local = "/${lanDomain}/";
+        # Service aliases (CNAME; target must be known to dnsmasq, so it
+        # follows automatically if the target IP ever moves).
+        cname = [
+          "prometheus.home.arpa,grafana.home.arpa"
+          "media.home.arpa,jellyfin.home.arpa"
+          "adguard.home.arpa,dns.home.arpa"
+        ];
+        # NOTE (dropped 2026-09-16): UCS/AD is gone (libvirt domain ucs5.0
+        # retired, no replacement). The AD SRV records lived here; if a new
+        # directory ever returns, re-add them scoped to its name.
+        dhcp-authoritative = true;
+        enable-ra = true;
+        dhcp-range = [
+          "10.8.0.100,10.8.0.199,255.255.255.0,24h"
+          # RA/SLAAC for every prefix on br0 (ULA + FritzBox-PD-GUA, falls
+          # die FritzBox je delegiert — landet automatisch, kein Deploy).
+          # NOTE: dnsmasq has NO `ra-stateful` flag (it fails with
+          # "bad dhcp-range"): a bare `::,constructor:…` range is
+          # stateless-only; stateful needs an explicit address range below
+          # (dnsmasq then sets the RA managed bit automatically).
+          "::,constructor:br0,ra-stateless,64,24h"
+          # Stateful DHCPv6 on the static ULA (works independent of PD).
+          # (HE routed LAN entfernt 2026-10-10, VPS-unabhängiges v6.)
+          "fd00:cafe:1::100,fd00:cafe:1::1ff,64,24h"
+        ];
+        dhcp-option = [
+          "option:router,10.8.0.1"
+          # AdGuard (filtering frontend) first, host second: clients get
+          # adblock via .30 and keep resolving (unfiltered) if the dns VM
+          # is ever down. glibc falls through on timeout/refused.
+          "option:dns-server,10.8.0.30,10.8.0.1"
+          # NTP server (chrony VM, hosts/mireo/ntp-microvm.nix, UDP 123).
+          "option:ntp-server,10.8.0.11"
+          # Same explicitly for DHCPv6 + RA (RDNSS/DNSSL): without this,
+          # clients only learn the link-local address via RA default, which
+          # some stubs can't use (missing %iface scope). ULA is static.
+          "option6:dns-server,[fd00:cafe:1::1]"
+          "option6:domain-search,home.arpa"
+        ];
+        # Static IPs via DHCP reservations (not on-guest statics): every
+        # homelab service keeps its vm-ips.nix address, but dnsmasq hands it
+        # out, so IPs stay centrally managed in one file. Guest MACs are
+        # deterministic (02:00:00:10:08:XX from the last octet — same formula
+        # as hosts/mireo/microvm-base.nix). Format MAC,IP,name: dnsmasq pins
+        # the IP AND serves the DNS name for the lease (short + home.arpa via
+        # expand-hosts above; host-record below keeps AAAA + pre-lease A).
+        # Reservations live outside the dynamic pool (10.8.0.100-.199), so no
+        # collisions. (UCS reservation dropped with UCS itself, 2026-09-16.)
+        dhcp-host =
+          lib.mapAttrsToList (
+            name: ip:
+            let
+              lastOctet = lib.toInt (lib.last (lib.splitString "." ip));
+              hex =
+                n:
+                builtins.elemAt [
+                  "0"
+                  "1"
+                  "2"
+                  "3"
+                  "4"
+                  "5"
+                  "6"
+                  "7"
+                  "8"
+                  "9"
+                  "a"
+                  "b"
+                  "c"
+                  "d"
+                  "e"
+                  "f"
+                ] n;
+            in
+            "02:00:00:10:08:${hex (builtins.div lastOctet 16)}${hex (lib.mod lastOctet 16)},${ip},${name}"
+          ) (import ../../../hosts/mireo/vm-ips.nix)
+          # Freifunk box (real hardware, not a microVM): pins its current .193
+          # so monitoring/DNS stay stable. Named ff-bb — its own hostname is
+          # "mireo", which collides with ours (seen 2026-10-04 in leases).
+          ++ [ "44:d4:37:8b:d8:69,10.8.0.193,ff-bb" ];
+        # Pixiecore handles ProxyDHCP/TFTP; dnsmasq only assigns leases.
+        # Everyone else gets dynamic addresses via DHCPv4/DHCPv6. dnsmasq
+        # serves DNS names for its leases automatically, so clients stay
+        # reachable as <hostname>.home.arpa.
+        host-record =
+          lib.mapAttrsToList (
+            name: ip:
+            let
+              # ULA mirrors the IPv4 last octet, same as microvm-base.nix
+              # assigns on the guest (10.8.0.N -> fd00:cafe:1::N).
+              lastOctet = lib.last (lib.splitString "." ip);
+            in
+            "${name}.${lanDomain},${name},${ip},fd00:cafe:1::${lastOctet}"
+          ) staticHosts
+          # Freifunk box as ff-bb (v4 only — no known ULA; see dhcp-host).
+          ++ [ "ff-bb.${lanDomain},ff-bb,10.8.0.193" ]
+          # Status page vanity name (points at the uptime-kuma VM; the
+          # transparent :80 redirect + Caddy redir below route it to
+          # /status/homelab — same pattern as the other webUIs).
+          ++ [ "status.${lanDomain},status,10.8.0.9,fd00:cafe:1::9" ];
+        server = [
+          "9.9.9.9"
+          "1.1.1.1"
+          "2620:fe::9"
+          "2606:4700:4700::1111"
+        ];
+      };
     };
-  };
 
-  services.pixiecore = let
-    netbootVersion = "3.0.3";
-  in {
-    enable = true;
-    # quick xyz hardcodes a BIOS-only .lkrn; a script works with UEFI too.
-    mode = "boot";
-    kernel = toString (pkgs.writeText "pixiecore-netboot.xyz.ipxe" ''
-      #!ipxe
-      # Keep iPXE's version separate from the pinned netboot.xyz menu release.
-      set ipxe_version ''${version}
-      set version ${netbootVersion}
-      # iPXE 2.0 inherits DHCPv6/RDNSS after clear. This root override has
-      # zero complete IPv6 DNS addresses, so it keeps the DHCPv4 DNS list.
-      set dns6:hex 00
-      chain --autofree https://boot.netboot.xyz/${netbootVersion}/menu.ipxe || chain --autofree http://boot.netboot.xyz/${netbootVersion}/menu.ipxe
-    '');
-    dhcpNoBind = true;
-    listen = "10.8.0.1";
-    # Caddy owns port 80. br0 is already trusted; do not expose WAN.
-    port = 8080;
-    statusPort = 8080;
-    openFirewall = false;
-  };
+  services.pixiecore =
+    let
+      netbootVersion = "3.0.3";
+    in
+    {
+      enable = true;
+      # quick xyz hardcodes a BIOS-only .lkrn; a script works with UEFI too.
+      mode = "boot";
+      kernel = toString (
+        pkgs.writeText "pixiecore-netboot.xyz.ipxe" ''
+          #!ipxe
+          # Keep iPXE's version separate from the pinned netboot.xyz menu release.
+          set ipxe_version ''${version}
+          set version ${netbootVersion}
+          # iPXE 2.0 inherits DHCPv6/RDNSS after clear. This root override has
+          # zero complete IPv6 DNS addresses, so it keeps the DHCPv4 DNS list.
+          set dns6:hex 00
+          chain --autofree https://boot.netboot.xyz/${netbootVersion}/menu.ipxe || chain --autofree http://boot.netboot.xyz/${netbootVersion}/menu.ipxe
+        ''
+      );
+      dhcpNoBind = true;
+      listen = "10.8.0.1";
+      # Caddy owns port 80. br0 is already trusted; do not expose WAN.
+      port = 8080;
+      statusPort = 8080;
+      openFirewall = false;
+    };
   systemd.services.pixiecore = {
-    after = ["network-online.target" "sys-devices-virtual-net-br0.device"];
-    wants = ["network-online.target"];
-    bindsTo = ["sys-devices-virtual-net-br0.device"];
+    after = [
+      "network-online.target"
+      "sys-devices-virtual-net-br0.device"
+    ];
+    wants = [ "network-online.target" ];
+    bindsTo = [ "sys-devices-virtual-net-br0.device" ];
   };
 
   # AdGuard normally maps VM names directly to their guest IPs. Keep the
   # HTTPS service name on Caddy's host in this resolver as well.
   microvm.vms.dns.config.networking.hosts = {
-    "10.8.0.31" = lib.mkForce [];
-    "fd00:cafe:1::31" = lib.mkForce [];
-    "10.8.0.1" = ["fxsync.home.arpa" "fxsync"];
-    "fd00:cafe:1::1" = ["fxsync.home.arpa" "fxsync"];
+    "10.8.0.31" = lib.mkForce [ ];
+    "fd00:cafe:1::31" = lib.mkForce [ ];
+    "10.8.0.1" = [
+      "fxsync.home.arpa"
+      "fxsync"
+    ];
+    "fd00:cafe:1::1" = [
+      "fxsync.home.arpa"
+      "fxsync"
+    ];
   };
 
   # --- Caddy: name-based reverse proxy on port 80 for all LAN web UIs ---
@@ -372,77 +421,83 @@
   # issues certs for .home.arpa (RFC 8375). Sync below uses internal TLS
   # and explicit LAN source filtering.
   # Direct ports (CUPS :631 IPP, …) keep working untouched.
-  services.caddy = let
-    webUIs = {
-      grafana = "10.8.0.2:3000";
-      prometheus = "10.8.0.2:9090";
-      yammat = "10.8.0.5:3000";
-      cups = "10.8.0.6:631";
-      sshkeys = "10.8.0.7:80";
-      # IP from vm-ips.nix (single source) instead of a literal like above.
-      uptime-kuma = "${(import ../../../hosts/mireo/vm-ips.nix).uptime-kuma}:3001";
-      jellyfin = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
-      lldap = "${(import ../../../hosts/mireo/vm-ips.nix).lldap}:17170";
-      pocket-id = "${(import ../../../hosts/mireo/vm-ips.nix).pocket-id}:1411";
-      # Alias vhost (same target as jellyfin; DNS CNAME above).
-      media = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
-      # Kodi music box web UI (Chorus) + JSON-RPC over HTTP.
-      # Mopidy web client (Iris on localhost, LAN-only via Caddy).
-      music = "127.0.0.1:6680";
-      # Homelab dashboard (Homepage).
-      dash = "${(import ../../../hosts/mireo/vm-ips.nix).dash}:8082";
-      # AdGuard Home (filtering + stats UI; DHCP/DNS authoritative: dnsmasq).
-      adguard = "${(import ../../../hosts/mireo/vm-ips.nix).dns}:3000";
-    };
-    # Vanity URL for the declarative status page (302 to the real path so
-    # the page's relative /api calls keep working — a rewrite would break
-    # them). DNS: status.home.arpa host-record above.
-    statusRedir = {
-      "http://status.home.arpa" = "redir http://uptime-kuma.home.arpa/status/homelab 302";
-    };
-    # Optional custom NixOS Xfce payload, not used by default netboot.xyz.
-    # Statische
-    # Dateien aus /data/pxe unter http://10.8.0.1/boot/* (IP-Literal, damit
-    # iPXE kein DNS braucht). Alle anderen Pfade auf der IP bleiben 404
-    # wie ohne diesen VHost (Caddy-Default für unbekannte Sites).
-    pxeBoot = {
-      "http://10.8.0.1" = ''
-        handle /boot/* {
-          uri strip_prefix /boot
-          root * /data/pxe
-          file_server
-        }
-      '';
-    };
-  in {
-    enable = true;
-    virtualHosts =
-      lib.mapAttrs' (name: target:
-        lib.nameValuePair "http://${name}.home.arpa" {
-          extraConfig = "reverse_proxy ${target}";
-        })
-      webUIs
-      // lib.mapAttrs' (name: cfg: lib.nameValuePair name {extraConfig = cfg;}) statusRedir
-      // lib.mapAttrs' (name: cfg: lib.nameValuePair name {extraConfig = cfg;}) pxeBoot
-      // {
-        "https://fxsync.home.arpa".extraConfig = ''
-          tls internal
-          # Check the socket peer, never a caller-supplied forwarded address.
-          @lan remote_ip 127.0.0.1 ::1 10.8.0.0/24 fd00:cafe:1::/64
-          handle @lan {
-            reverse_proxy ${(import ../../../hosts/mireo/vm-ips.nix).fxsync}:5000
-          }
-          handle {
-            respond 403
+  services.caddy =
+    let
+      webUIs = {
+        grafana = "10.8.0.2:3000";
+        prometheus = "10.8.0.2:9090";
+        yammat = "10.8.0.5:3000";
+        cups = "10.8.0.6:631";
+        sshkeys = "10.8.0.7:80";
+        # IP from vm-ips.nix (single source) instead of a literal like above.
+        uptime-kuma = "${(import ../../../hosts/mireo/vm-ips.nix).uptime-kuma}:3001";
+        jellyfin = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
+        lldap = "${(import ../../../hosts/mireo/vm-ips.nix).lldap}:17170";
+        pocket-id = "${(import ../../../hosts/mireo/vm-ips.nix).pocket-id}:1411";
+        # Alias vhost (same target as jellyfin; DNS CNAME above).
+        media = "${(import ../../../hosts/mireo/vm-ips.nix).jellyfin}:8096";
+        # Kodi music box web UI (Chorus) + JSON-RPC over HTTP.
+        # Mopidy web client (Iris on localhost, LAN-only via Caddy).
+        music = "127.0.0.1:6680";
+        # Homelab dashboard (Homepage).
+        dash = "${(import ../../../hosts/mireo/vm-ips.nix).dash}:8082";
+        # AdGuard Home (filtering + stats UI; DHCP/DNS authoritative: dnsmasq).
+        adguard = "${(import ../../../hosts/mireo/vm-ips.nix).dns}:3000";
+      };
+      # Vanity URL for the declarative status page (302 to the real path so
+      # the page's relative /api calls keep working — a rewrite would break
+      # them). DNS: status.home.arpa host-record above.
+      statusRedir = {
+        "http://status.home.arpa" = "redir http://uptime-kuma.home.arpa/status/homelab 302";
+      };
+      # Optional custom NixOS Xfce payload, not used by default netboot.xyz.
+      # Statische
+      # Dateien aus /data/pxe unter http://10.8.0.1/boot/* (IP-Literal, damit
+      # iPXE kein DNS braucht). Alle anderen Pfade auf der IP bleiben 404
+      # wie ohne diesen VHost (Caddy-Default für unbekannte Sites).
+      pxeBoot = {
+        "http://10.8.0.1" = ''
+          handle /boot/* {
+            uri strip_prefix /boot
+            root * /data/pxe
+            file_server
           }
         '';
       };
-  };
+    in
+    {
+      enable = true;
+      virtualHosts =
+        lib.mapAttrs' (
+          name: target:
+          lib.nameValuePair "http://${name}.home.arpa" {
+            extraConfig = "reverse_proxy ${target}";
+          }
+        ) webUIs
+        // lib.mapAttrs' (name: cfg: lib.nameValuePair name { extraConfig = cfg; }) statusRedir
+        // lib.mapAttrs' (name: cfg: lib.nameValuePair name { extraConfig = cfg; }) pxeBoot
+        // {
+          "https://fxsync.home.arpa".extraConfig = ''
+            tls internal
+            # Check the socket peer, never a caller-supplied forwarded address.
+            @lan remote_ip 127.0.0.1 ::1 10.8.0.0/24 fd00:cafe:1::/64
+            handle @lan {
+              reverse_proxy ${(import ../../../hosts/mireo/vm-ips.nix).fxsync}:5000
+            }
+            handle {
+              respond 403
+            }
+          '';
+        };
+    };
 
   fileSystems."/data" = {
     device = "/dev/disk/by-uuid/ee576a43-066a-4e85-901d-2f03d618bea8";
     fsType = "ext4";
-    options = ["defaults" "nofail"];
+    options = [
+      "defaults"
+      "nofail"
+    ];
   };
 
   systemd.tmpfiles.rules = [
@@ -457,10 +512,16 @@
     enable = true;
     nssmdns4 = true;
     # mDNS stays LAN-only: never advertise/respond via the WAN.
-    allowInterfaces = ["br0" "lo"];
-    publish = {
-      enable = true;
-      userServices = true;
+    settings = {
+      server.allow-interfaces = [
+        "br0"
+        "lo"
+      ];
+      publish = {
+        disable-publishing = false;
+        disable-user-service-publishing = false;
+        publish-addresses = true;
+      };
     };
     extraServiceFiles.nfs = ''
       <?xml version="1.0" standalone='no'?>
@@ -515,14 +576,18 @@
       # flake source is garbage-collected (direct flake-source references
       # like ../../../nixfleet/artifacts are build-time only and break at
       # runtime once `nix store gc` removes the source).
-      artifactsDir = pkgs.runCommand "nixfleet-artifacts" {} ''
+      artifactsDir = pkgs.runCommand "nixfleet-artifacts" { } ''
         mkdir -p $out
         cp ${../../../nixfleet/artifacts/manifest.json} $out/manifest.json
         cp ${../../../nixfleet/artifacts/ui.json} $out/ui.json
       '';
     };
     agent = {
-      plugins = ["systemd" "journal" "metrics"];
+      plugins = [
+        "systemd"
+        "journal"
+        "metrics"
+      ];
     };
   };
 }

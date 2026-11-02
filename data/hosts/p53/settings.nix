@@ -2,7 +2,8 @@
   lib,
   pkgs,
   ...
-}: {
+}:
+{
   lucy.base.enable = true;
   # All owner keys: 5× github.com/flakesonnix.keys + p53-local omen key
   # + helianthus deploy key. Same set on every host with SSH.
@@ -21,15 +22,14 @@
 
   # Match the supported Niri shortcuts, but use Super instead of Alt in dwl.
   lucy.dwlScroll.settings =
-    lib.recursiveUpdate
-    (import ../../../pkgs/dwl-scroll/niri-keybinds.nix {inherit pkgs;})
-    {
-      discordRpc = {
-        enable = true;
-        clientId = "1566412441414410262";
-        showApp = true;
+    lib.recursiveUpdate (import ../../../pkgs/dwl-scroll/niri-keybinds.nix { inherit pkgs; })
+      {
+        discordRpc = {
+          enable = true;
+          clientId = "1566412441414410262";
+          showApp = true;
+        };
       };
-    };
 
   # Runtime-only personal image; swaybg exits when dwl closes its Wayland socket.
   lucy.dwlScroll.startupCommands = ''
@@ -84,7 +84,7 @@
     hardware.info = "Lenovo ThinkPad P53 · i7-9750H";
   };
 
-  hq.deskflow.enable = true;
+  hq.deskflow.enable = false;
 
   # Lokale VMs auf p53: libvirtd an (TPM vorhanden: /dev/tpmrm0).
   # Alter Workaround (libvirt 12.4 Tss2_Tcti_Device_Init 243/CREDENTIALS bei
@@ -134,49 +134,51 @@
   # NOTE: both heredocs below are QUOTED, so the outer build shell expands
   # nothing; only explicit ${...} is Nix interpolation. The @out@ token is
   # replaced with the store path afterwards for the same reason.
-  services.printing.drivers = let
-    smbWin2k = pkgs.runCommand "cups-backend-smbwin2k" {} ''
-      mkdir -p $out/lib/cups/backend $out/etc/cups
-      cat > $out/etc/cups/smb-win2k.conf <<'EOF'
-      [global]
-      client min protocol = NT1
-      client max protocol = NT1
-      EOF
-      cat > $out/lib/cups/backend/smbwin2k <<'SCRIPT_EOF'
-      #!${pkgs.runtimeShell}
-      # CUPS backend protocol args: job-id user title copies options [file].
-      set -eu
-      export LC_ALL=C
-      SMB_USER="Administrator"
-      PASSFILE="/run/secrets/samba/lexmark-password"
-      if [ ! -r "$PASSFILE" ]; then
-        echo "smbwin2k: credential file $PASSFILE unreadable" >&2
-        exit 1
-      fi
-      SMB_PASS="$(cat "$PASSFILE")"
-      urlencode() {
-        _ue_out=""
-        _ue_i=0
-        _ue_len="''${#1}"
-        while [ "$_ue_i" -lt "$_ue_len" ]; do
-          _ue_c="''${1:$_ue_i:1}"
-          case "$_ue_c" in
-            [a-zA-Z0-9.~_-]) _ue_out="$_ue_out$_ue_c" ;;
-            *) printf -v _ue_h '%%%02X' "'$_ue_c"; _ue_out="$_ue_out$_ue_h" ;;
-          esac
-          _ue_i=$((_ue_i + 1))
-        done
-        printf '%s' "$_ue_out"
-      }
-      export SMB_CONF_PATH="@out@/etc/cups/smb-win2k.conf"
-      export DEVICE_URI="smb://$(urlencode "$SMB_USER"):$(urlencode "$SMB_PASS")@win2klexmark/LexmarkM"
-      unset SMB_PASS
-      exec "${pkgs.samba}/bin/smbspool" "$@"
-      SCRIPT_EOF
-      substituteInPlace $out/lib/cups/backend/smbwin2k --replace-fail '@out@' "$out"
-      chmod 755 $out/lib/cups/backend/smbwin2k
-    '';
-  in [smbWin2k];
+  services.printing.drivers =
+    let
+      smbWin2k = pkgs.runCommand "cups-backend-smbwin2k" { } ''
+        mkdir -p $out/lib/cups/backend $out/etc/cups
+        cat > $out/etc/cups/smb-win2k.conf <<'EOF'
+        [global]
+        client min protocol = NT1
+        client max protocol = NT1
+        EOF
+        cat > $out/lib/cups/backend/smbwin2k <<'SCRIPT_EOF'
+        #!${pkgs.runtimeShell}
+        # CUPS backend protocol args: job-id user title copies options [file].
+        set -eu
+        export LC_ALL=C
+        SMB_USER="Administrator"
+        PASSFILE="/run/secrets/samba/lexmark-password"
+        if [ ! -r "$PASSFILE" ]; then
+          echo "smbwin2k: credential file $PASSFILE unreadable" >&2
+          exit 1
+        fi
+        SMB_PASS="$(cat "$PASSFILE")"
+        urlencode() {
+          _ue_out=""
+          _ue_i=0
+          _ue_len="''${#1}"
+          while [ "$_ue_i" -lt "$_ue_len" ]; do
+            _ue_c="''${1:$_ue_i:1}"
+            case "$_ue_c" in
+              [a-zA-Z0-9.~_-]) _ue_out="$_ue_out$_ue_c" ;;
+              *) printf -v _ue_h '%%%02X' "'$_ue_c"; _ue_out="$_ue_out$_ue_h" ;;
+            esac
+            _ue_i=$((_ue_i + 1))
+          done
+          printf '%s' "$_ue_out"
+        }
+        export SMB_CONF_PATH="@out@/etc/cups/smb-win2k.conf"
+        export DEVICE_URI="smb://$(urlencode "$SMB_USER"):$(urlencode "$SMB_PASS")@win2klexmark/LexmarkM"
+        unset SMB_PASS
+        exec "${pkgs.samba}/bin/smbspool" "$@"
+        SCRIPT_EOF
+        substituteInPlace $out/lib/cups/backend/smbwin2k --replace-fail '@out@' "$out"
+        chmod 755 $out/lib/cups/backend/smbwin2k
+      '';
+    in
+    [ smbWin2k ];
 
   # Raw queue: bytes pass through to the Windows driver untouched, exactly
   # the path already tested with smbclient. No PPD/driver package needed.

@@ -69,6 +69,19 @@ static const char *termcmd[] = { "@terminal@", NULL };
 static const char *menucmd[] = { "@launcher@", NULL };
 static const char *lockcmd[] = { "@locker@", NULL };
 
+/* Media key command arrays (executed via sh -c for notify-send + action) */
+static const char *vol_down_cmd[] = { "sh", "-c", "notify-send 'Volume Down' -t 1000 && wpctl set-volume \"${DEFAULT_AUDIO_SINK}\" 0.1- -l 1.0", NULL };
+static const char *vol_up_cmd[] = { "sh", "-c", "notify-send 'Volume Up' -t 1000 && wpctl set-volume \"${DEFAULT_AUDIO_SINK}\" 0.1+ -l 1.0", NULL };
+static const char *vol_mute_cmd[] = { "sh", "-c", "notify-send 'Volume Mute' -t 1000 && wpctl set-mute \"${DEFAULT_AUDIO_SINK}\" toggle", NULL };
+static const char *mic_mute_cmd[] = { "sh", "-c", "notify-send 'Mic Mute' -t 1000 && wpctl set-mute \"${DEFAULT_AUDIO_SOURCE}\" toggle", NULL };
+static const char *media_play_cmd[] = { "sh", "-c", "notify-send 'Play/Pause' -t 1000 && playerctl play-pause", NULL };
+static const char *media_next_cmd[] = { "sh", "-c", "notify-send 'Next Track' -t 1000 && playerctl next", NULL };
+static const char *media_prev_cmd[] = { "sh", "-c", "notify-send 'Previous Track' -t 1000 && playerctl previous", NULL };
+static const char *media_stop_cmd[] = { "sh", "-c", "notify-send 'Stop' -t 1000 && playerctl stop", NULL };
+static const char *bright_up_cmd[] = { "sh", "-c", "notify-send 'Brightness Up' -t 1000 && brightnessctl --class=backlight set '+10%'", NULL };
+static const char *bright_down_cmd[] = { "sh", "-c", "notify-send 'Brightness Down' -t 1000 && brightnessctl --class=backlight set '10%-'", NULL };
+static const char *screenshot_cmd[] = { "sh", "-c", "notify-send 'Screenshot' -t 1000 && grim -g $(slurp) \"$HOME/Pictures/Screenshots/Screenshot from $(date '+%Y-%m-%d %H-%M-%S-%N').png\"", NULL };
+
 static const Key keys[] = {
 	{ MODKEY, XKB_KEY_h, scrollfocuscolumn, {.i = -1} },
 	{ MODKEY, XKB_KEY_l, scrollfocuscolumn, {.i = 1} },
@@ -92,6 +105,28 @@ static const Key keys[] = {
 	{ MODKEY, XKB_KEY_bracketright, scrollwidth, {.f = 0.05f} },
 	{ MODKEY, XKB_KEY_r, scrollpreset, {0} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Return, scrollsplit, {.i = 1} },
+	{ MODKEY, XKB_KEY_d, showlauncher, {0} },
+	{ MODKEY, XKB_KEY_q, killclient, {0} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_space, togglefloating, {0} },
+	{ MODKEY, XKB_KEY_f, togglefullscreen, {0} },
+	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_Escape, spawn, {.v = lockcmd} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_e, quit, {0} },
+	{ MODKEY, XKB_KEY_s, setlayout, {.v = &layouts[0]} },
+	{ MODKEY, XKB_KEY_t, setlayout, {.v = &layouts[1]} },
+	{ MODKEY, XKB_KEY_v, setlayout, {.v = &layouts[2]} },
+	{ MODKEY, XKB_KEY_m, setlayout, {.v = &layouts[3]} },
+	/* Media keys - show notification and perform action */
+	{ 0, XKB_KEY_XF86AudioLowerVolume, spawn, {.v = vol_down_cmd} },
+	{ 0, XKB_KEY_XF86AudioRaiseVolume, spawn, {.v = vol_up_cmd} },
+	{ 0, XKB_KEY_XF86AudioMute, spawn, {.v = vol_mute_cmd} },
+	{ 0, XKB_KEY_XF86AudioMicMute, spawn, {.v = mic_mute_cmd} },
+	{ 0, XKB_KEY_XF86AudioPlay, spawn, {.v = media_play_cmd} },
+	{ 0, XKB_KEY_XF86AudioNext, spawn, {.v = media_next_cmd} },
+	{ 0, XKB_KEY_XF86AudioPrev, spawn, {.v = media_prev_cmd} },
+	{ 0, XKB_KEY_XF86AudioStop, spawn, {.v = media_stop_cmd} },
+	{ 0, XKB_KEY_XF86MonBrightnessUp, spawn, {.v = bright_up_cmd} },
+	{ 0, XKB_KEY_XF86MonBrightnessDown, spawn, {.v = bright_down_cmd} },
+	{ 0, XKB_KEY_Print, spawn, {.v = screenshot_cmd} },
 	{ MODKEY, XKB_KEY_d, showlauncher, {0} },
 	{ MODKEY, XKB_KEY_q, killclient, {0} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_space, togglefloating, {0} },

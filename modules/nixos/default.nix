@@ -2,9 +2,11 @@
   lib,
   config,
   ...
-}: {
+}:
+{
   imports = [
     ./base.nix
+    ./lucy-ca.nix
     ./dwl-scroll.nix
     ./packages.nix
     ./lucy-services.nix

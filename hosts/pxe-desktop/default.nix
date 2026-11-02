@@ -25,8 +25,10 @@
   pkgs,
   modulesPath,
   ...
-}: {
+}:
+{
   imports = [
+    ../../modules/nixos/lucy-ca.nix
     # Netboot-Fundament (netboot.nix + base/installation-device-Profile +
     # enableAllHardware): liefert system.build.{kernel,netbootRamdisk,...}.
     # Firmware bleibt AN (WLAN auf echter HW), dafür Docs/Locales runter.
@@ -35,6 +37,7 @@
 
   networking.hostName = "pxe-desktop";
   system.stateVersion = "25.11";
+  programs.firefox.enable = true;
 
   # --- Fette, für einen Installer sinnlose Desktop-Defaults abdrehen ---
   # services.graphical-desktop schaltet bei xserver.enable mit ein:
@@ -45,13 +48,16 @@
   services.speechd.enable = lib.mkForce false;
   services.pipewire.enable = lib.mkForce false;
   fonts.enableDefaultPackages = lib.mkForce false;
-  fonts.packages = with pkgs; [dejavu_fonts];
+  fonts.packages = with pkgs; [ dejavu_fonts ];
   services.tumbler.enable = lib.mkForce false;
 
   # --- Schlank-Diät (iPXE-Limit, s. Kopf) ---
   documentation.enable = lib.mkForce false;
   # Nur de+en statt aller Locales (calamares-Modul will "all").
-  i18n.supportedLocales = lib.mkForce ["de_DE.UTF-8/UTF-8" "en_US.UTF-8/UTF-8"];
+  i18n.supportedLocales = lib.mkForce [
+    "de_DE.UTF-8/UTF-8"
+    "en_US.UTF-8/UTF-8"
+  ];
 
   # --- Grafischer Installer (Xfce + LightDM-Autologin + Calamares) ---
   services.xserver.enable = true;
@@ -65,7 +71,7 @@
   # Netzwerkmanagement per Applet (WLAN im Installer), nixos darf schalten.
   networking.networkmanager.enable = true;
   programs.nm-applet.enable = true;
-  users.users.nixos.extraGroups = ["networkmanager"];
+  users.users.nixos.extraGroups = [ "networkmanager" ];
   # USB-Sticks/Datenträger im Dateimanager einhängen.
   services.gvfs.enable = true;
 
@@ -101,14 +107,13 @@
   environment.defaultPackages = with pkgs; [
     gparted
     nano
-    firefox
   ];
 
   # Keine Absturz-Dumps und kein vollaufendes Journal auf den TmpFS-Laufwerken
   # des Live-Systems (ENOSPC-Schutz, Diagnose 2026-10-10).
   systemd.coredump.enable = false;
-  services.journald.extraConfig = ''
-    SystemMaxUse=100M
-    RuntimeMaxUse=100M
-  '';
+  services.journald.settings.Journal = {
+    SystemMaxUse = "100M";
+    RuntimeMaxUse = "100M";
+  };
 }
