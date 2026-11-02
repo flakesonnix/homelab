@@ -1,6 +1,9 @@
 # Modules
 
-All custom modules live in `modules/`. They are not auto-imported; hosts and profiles explicitly list the ones they need in `flake.nix`.
+All custom modules live in `modules/`. `profiles/base.nix` imports the shared
+`modules/nixos/default.nix` set; `flake.nix` and host configurations add optional
+modules explicitly. Home Manager uses its own aggregator (listed below).
+Importing an option-bearing module does not enable its feature.
 
 ---
 
@@ -13,8 +16,8 @@ Disabled by default; preserves other compositors and the default session.
 `package` supports a custom compiled C header; `extraSessionCommands` and
 `startupCommands` configure session-local environment/startup helpers.
 The session starts dwlb with Iosevka and feeds it dwl's status pipe (no IPC patch).
-Session-scoped helpers provide battery/network/CPU/RAM/temperature icons,
-an aligned top-right tray/clock overlay (date on hover), and nm-applet controls.
+Session-scoped helpers provide battery/CPU/RAM/temperature icons,
+an aligned top-right tray/clock overlay (date on hover), and nm-applet network controls.
 Super+D opens the compositor's built-in, themed Wayland application launcher.
 `settings.discordRpc` optionally publishes Discord Rich Presence over local IPC;
 focused-app sharing is opt-in, window titles stay private, and locking clears it.
@@ -46,9 +49,16 @@ Options namespace: `lucy.nvidia.*`
 |--------|------|---------|-------------|
 | `enable` | bool | false | Enable NVIDIA config |
 | `modesetting` | bool | true | Kernel modesetting |
+| `legacy580` | bool | false | Use the 580 branch for Maxwell/Pascal/Volta GPUs |
 | `prime` | bool | false | Enable PRIME offload (fine-grained power management) |
+| `intelBusId` / `nvidiaBusId` | str or null | null | Both PCI IDs are needed to configure PRIME offload |
 
-When enabled: `hardware.graphics` with 32-bit, production driver package, `NVreg_PreserveVideoMemoryAllocations=1`, `mem_sleep_default=s2idle`, logind suspend/lid handling, and a `nvidia-loader` oneshot systemd service that lazy-loads kernel modules after `graphical.target` (skips if built modules don't match running kernel — safe across `nixos-rebuild switch` without reboot).
+When enabled: `hardware.graphics` with 32-bit, proprietary production driver
+(or `legacy_580` when selected), Nouveau blacklisting, NVIDIA initrd modules,
+`NVreg_PreserveVideoMemoryAllocations=1`, `mem_sleep_default=s2idle`, logind
+suspend/lid handling, and a `nvidia-loader` oneshot after `graphical.target`.
+The loader skips mismatched running/built kernels. PRIME with both bus IDs adds
+`nvidia-offload`. p53 selects legacy 580 for its Quadro M1000M.
 
 ---
 
@@ -136,7 +146,7 @@ Generates `pjsip.conf` and `extensions.conf` from phone attrs. Built-in extensio
 
 ### `voip.nix` (Phase 2 — live PJSIP trunk rendering)
 
-Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options namespace: `services.voip.*`. Wired on `mireo` (next to `asterisk.nix`, both disabled); `p53` untouched. Trunk layout follows Easybell's official Asterisk-22 guide (`easybell.de/hilfe "Asterisk Telefonanlagen"`, Sep 2026).
+Generic VoIP/SIP client abstraction on top of the Asterisk PJSIP stack. Options namespace: `services.voip.*`. Enabled on `mireo` alongside `asterisk.nix`, with Eventphone voice/fax clients in `data/hosts/mireo/services.nix`; the Easybell client remains commented out. `p53` does not host the PBX. Trunk layout follows Easybell's official Asterisk-22 guide (`easybell.de/hilfe "Asterisk Telefonanlagen"`, Sep 2026).
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -237,6 +247,31 @@ terminals/editors, launchers, notifications, lockscreens, media text and bars
 
 GNOME shell configuration. `lucy.gnome.enable` flag. Extensions manager for GNOME shell extensions. Includes `gvfs` + Avahi client (`nssmdns4`) for Nautilus NFS autodiscovery via mDNS.
 
+GNOME/GDM is enabled on p53. SwayFX is configured through upstream
+`programs.sway` plus Home Manager settings, not a separate custom NixOS module.
+
+### `ewm.nix`
+
+`lucy.ewm.enable` adds the Emacs Wayland Manager session from the pinned `ewm`
+input. Its compositor and Emacs packages use that input's own nixpkgs. The
+session-scoped `ewm-idle`/`ewm-lock` services lock after five minutes, before
+suspend and on `Super+L`; the locker waits for Wayland lock acknowledgement.
+Enabled on p53; bring your own Emacs init. See [host notes](hosts.md#ewm-alongside-gnome-and-swayfx).
+
+### `plasma.nix`
+
+`lucy.plasma.enable` enables Plasma 6; `displayManager` selects `greetd`
+(default) or `sddm`. Selecting SDDM disables GDM/greetd and chooses the installed
+`niri` session when enabled, otherwise `plasma`. Disabled on p53.
+
+### `sunshine.nix`
+
+`lucy.sunshine.enable` enables the Sunshine host for Moonlight.
+`openFirewall`, `capSysAdmin` (DRM/KMS capture) and `autoStart` default to true.
+Settings/applications remain unmanaged so pairing and configuration stay editable
+in `https://localhost:47984`. The module preserves Avahi discovery using
+`services.avahi.settings.publish`. Enabled on p53.
+
 ---
 
 ### `hm-base.nix`
@@ -296,8 +331,8 @@ Options namespace: `lucy.nixfleet.*`
 | `role` | enum `api`/`agent`/`cli` | required when `enable` | Declarative role — used by `nixfleet/manifest.nix` to compute `apiHost` and `plugins`; **service creation is now package-gated, not role-gated** (M1 fix): any host with `enable` + `api.package` runs `nixfleet-api`, any with `enable` + `agent.package` runs `nixfleet-agent`, so `mireo` as `role = "api"` can also run the agent |
 | `api.package` | `nullOr package` | `null` (set via `flake.nix` `lib.mkDefault nixfleetPkgs.api`) | `nixfleet-api` binary |
 | `api.port` | port | `8443` | API listen port (mireo firewall `br0` now allows `8443`) |
-| `api.artifactsDir` | path | required | Directory with `manifest.json` + `ui.json` (mireo: `../../../nixfleet/artifacts`, i.e. committed `nixfleet/artifacts`) |
-| `api.webDir` | `nullOr path` | `null` | Built `nixfleet-web` SPA dir served at `/` with SPA fallback to `index.html` (mireo: via `flake.nix` `nixfleetPkgs.web` when built; currently `null` in `settings.nix` to avoid `deepSeq` stack overflow — frontend is built as `nixfleet-web` package but not yet wired as `webDir` derivation) |
+| `api.artifactsDir` | path or package | required | Directory with `manifest.json` + `ui.json`; mireo copies committed artifacts into a `nixfleet-artifacts` derivation so they survive source GC |
+| `api.webDir` | `nullOr path` | `null` | Built `nixfleet-web` SPA dir served at `/` with SPA fallback to `index.html`; currently unset on mireo, frontend built separately as `nixfleet-web` |
 | `api.proxy` | `attrsOf {target: str, subPath: bool}` | `{}` | Reverse-proxy routes at `/apps/<name>` |
 | `agent.package` | `nullOr package` | `null` (`nixfleetPkgs.agent`) | `nixfleet-agent` binary |
 | `agent.endpoint` | str | `"wss://nixfleet.lan:8443/api/v1/ws"` | API WS endpoint (future) |
@@ -314,11 +349,11 @@ When `enable`:
 - `systemd.services.nixfleet-api` (if `api.package` set): `ExecStart = ${api.package}/bin/nixfleet-api --manifest ${artifactsDir}/manifest.json --ui ${artifactsDir}/ui.json [--web ${webDir}]`, `DynamicUser`, `StateDirectory=nixfleet`, `wantedBy multi-user, after network.target`
 - `systemd.services.nixfleet-agent` (if `agent.package` set): `ExecStart = ${agent.package}/bin/nixfleet-agent`, `DynamicUser`, `after network-online.target`, stays alive with 30s heartbeat (`runtime.CollectSystem`)
 
-Enabled on `mireo` via `data/hosts/mireo/settings.nix` (`enable = true; role = "api"; api.port = 8443; artifactsDir = ../../../nixfleet/artifacts`) + `flake.nix` `nixfleetPkgs.*` defaults. `p53` not enabled.
+Enabled on `mireo` via `data/hosts/mireo/settings.nix` (`enable = true; role = "api"; api.port = 8443;` store-backed `artifactsDir`) + `flake.nix` `nixfleetPkgs.*` defaults. `p53` not enabled.
 
 **M1 API (DONE, 7a05039, Sep 2026)**: `GET /api/v1/hosts`, `/:host/health` (`healthy|degraded|critical|unknown`, `failedUnits`), `/:host/resources` (`/proc` → cpu/ram/swap/load/disk/procs), `/:host/network` (`ip -j addr/link` → interfaces/addrs/state), `/:host/vms` (merged `configured` from manifest + `runtime` via `systemctl is-active microvm@<name>` validated → state/mem/vcpu/ip/ports), `/:host/systemd/failed` (`systemctl --failed` → unit list). Typed Go structs (`nixfleet/api/manifest`, `nixfleet/api/runtime`), `404` for unknown host/vm, `503` when agent not local (mireo observability only — no WS yet).
 
-**Frontend (M1)**: `HostOverview` (health + failed units), `VMTable` (7 VMs: grafana…aptcache, columns: Name|IP|State|vCPU|RAM|Health|Ports), `SystemdFailed` table on dashboard. Pages: `/vms` (list + state), `/network` (interfaces table). Dark dense monospace styling. See `nixfleet/api/runtime` and `nixfleet/docs/architecture.md`.
+**Frontend (M1)**: `HostOverview` (health + failed units), `VMTable` (VMs from the committed manifest, columns: Name|IP|State|vCPU|RAM|Health|Ports), `SystemdFailed` table on dashboard. Pages: `/vms` (list + state), `/network` (interfaces table). Dark dense monospace styling. Regenerate artifacts after VM changes; mireo currently configures 18 VMs. See `nixfleet/api/runtime` and `nixfleet/docs/architecture.md`.
 
 ### `topology.nix`
 
@@ -350,7 +385,10 @@ Options namespace: `lucy.waydroid.*`
 | `enable` | bool | false | Enable Waydroid Android container |
 | `gapps` | bool | true | Initialize with Google Apps (GAPPS) image |
 
-When enabled: enables `virtualisation.waydroid`, installs `waydroid` package. A oneshot systemd service (`waydroid-gapps-init`) runs `waydroid init -s GAPPS` on first boot if system.img is absent.
+When enabled: enables `virtualisation.waydroid` with `pkgs.waydroid-nftables`,
+avoiding a dependency on legacy `ip_tables` kernel modules. A oneshot service
+(`waydroid-gapps-init`) runs the selected package's `waydroid init -s GAPPS`
+on first boot if `system.img` is absent.
 
 ---
 
@@ -368,6 +406,11 @@ Options namespace: `lucy.waybar.*`
 ## Home Manager Modules (`modules/home/`)
 
 Auto-imported via `modules/home/default.nix` which pulls in: `niri.nix`, `opencode.nix`, `ssh.nix`, `stylix.nix`, `waybar.nix`.
+
+Niri and Waybar remain available but are disabled in the current desktop bundle,
+as are Eww, Dunst and Rofi. p53 enables Home Manager's SwayFX/Fuzzel/Mako
+configuration separately for its Sway session. GNOME uses its own shell and
+notifications; dwl-scroll uses its session-scoped bar/launcher helpers.
 
 ---
 

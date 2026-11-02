@@ -7,8 +7,8 @@ It started as some dotfiles and somehow turned into a small framework for managi
 ## What's in here?
 
 * ❄️ NixOS + Home Manager
-* 🖥️ `p53` — my desktop/laptop (ThinkPad P53)
-* 🏠 `mireo` — my home server/router with 10 microVMs
+* 🖥️ `p53` — my desktop/laptop (hostname retained, currently a ThinkPad P50)
+* 🏠 `mireo` — my home server/router with 18 configured microVMs; eight more specs are disabled
 * 📦 roles, bundles and presets for composing hosts
 * 🔐 sops-nix / age for secrets
 * 🌐 networking, NFS, PXE, microVMs (via microvm.nix)
@@ -20,15 +20,38 @@ The framework stuff lives mostly under `lib/` and `data/`.
 
 ### p53
 
-ThinkPad P53.
+The `p53` configuration currently runs on a ThinkPad P50 with Intel graphics and a Quadro M1000M using the legacy 580 NVIDIA driver for PRIME offload.
 
-Desktop setup, Niri, gaming stuff, Wayland things and the usual amount of configuration required to make Linux do what I want.
+GNOME/GDM with SwayFX, EWM and [dwl-scroll](docs/dwl-scroll.md) sessions, Iosevka fonts, gaming and Sunshine streaming. Niri and Plasma modules remain available but are disabled. GDM remembers the selected session; the configuration does not force a default.
 
 ### mireo
 
 My little home server/router.
 
-It handles networking and hosts a bunch of services and microVMs.
+It handles DHCP/DNS, IPv4 NAT, IPv6 via the FritzBox, NFS, Pixiecore/netboot.xyz PXE and a bunch of services and microVMs. `/data` is optional at boot, so a missing data disk does not take down the router. Firefox Sync uses LAN-only HTTPS; the shared `lucy-ca` package/module distributes its public trust anchor.
+
+## Common commands
+
+Run from the repository root. Rebuild and deploy commands activate configurations; checks do not.
+
+```sh
+nix develop                 # tools, including just, alejandra and statix
+just check-light            # evaluate formatter/devShell/app outputs
+just check-full             # build the aggregate CI checks
+just rebuild                # switch the local p53 configuration via nh
+just deploy-mireo           # deploy-rs over SSH; builds on mireo
+just pxe-boot               # build optional custom Xfce installer, not default PXE
+```
+
+## Documentation
+
+* [Hosts, networking and Firefox Sync enrollment](docs/hosts.md)
+* [NixOS and Home Manager modules](docs/modules.md)
+* [dwl-scroll configuration, shortcuts and verification](docs/dwl-scroll.md)
+* [Roles, bundles, presets and package registries](docs/data-model.md)
+* [Secrets](docs/secrets.md), [printing](docs/printing.md), [gaming](docs/gaming-p53.md) and [NFS clients](docs/nfs-ubuntu-client.md)
+* [Obsidian wiki](wiki/README.md) — navigation and operational summaries
+* [Experimental NixBSD bootstrap](nixbsd/README.md) — isolated subflake, not a Linux deploy target
 
 ## Structure
 
@@ -49,13 +72,19 @@ modules/
 
 hosts/
 ├── p53/
-└── mireo/
+├── mireo/
+└── pxe-desktop/             # optional installer package
 
 home/
 └── lucy/
 
 nixfleet/
 └── ...
+
+pkgs/                       # dwl-scroll, lucy-ca
+docs/                       # detailed guides
+wiki/                       # Obsidian vault
+nixbsd/                     # independent experimental flake
 ```
 
 The idea is that hosts mostly describe **what they are**, rather than containing a giant pile of unrelated NixOS options.

@@ -47,8 +47,8 @@ CI: 6 jobs — see [[60-Reference/Flake-CI-Topology|Flake · CI · topology]].
 
 | Host | What | IP / deploy |
 |------|-----|-------------|
-| [[10-Hosts/p53|p53]] | ThinkPad P53 i7-9750H, Niri, gaming | dynamic (DHCP) / `deploy-p53` |
-| [[10-Hosts/mireo|mireo]] | Router/server + 7 VMs | 10.8.0.1 / `deploy-mireo` |
+| [[10-Hosts/p53|p53]] | Currently ThinkPad P50, GNOME/SwayFX/EWM/dwl-scroll, gaming | dynamic (DHCP) / `deploy-p53` |
+| [[10-Hosts/mireo|mireo]] | Router/server + 18 configured VMs (eight more specs disabled) | 10.8.0.1 / `deploy-mireo` |
 
 Network map: [[10-Hosts/Network|Network]].
 

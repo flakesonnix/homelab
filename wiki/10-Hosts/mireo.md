@@ -24,6 +24,7 @@ deploy: nix run .#deploy-mireo
 - dnsmasq: DHCPv4 (+ static reservations from `vm-ips.nix` for all services)/stateful DHCPv6 (explicit ULA range)/DNS/RA+SLAAC (constructor:br0) (`bindsTo sys-devices-virtual-net-br0.device` fix)
 - PXE via Pixiecore: ProxyDHCP/TFTP auf `10.8.0.1`, Boot-HTTP auf `:8080`; dnsmasq bleibt für DHCP/DNS zuständig, Caddy auf `:80` unverändert. BIOS/UEFI laden iPXE und das festgelegte netboot.xyz-Menü `3.0.3`, ohne Bootloader-Austausch durch das Rolling-Menü. Das Startskript nutzt IPv4-DNS statt des fehlerhaften UEFI-IPv6-Pfads, HTTPS mit HTTP-Fallback. Kein `/data` oder eigener Installer-Build nötig; DNS/Internet erforderlich, Secure Boot aus. `just pxe-boot` bleibt für den optionalen eigenen NixOS-Installer.
 - NFS export of `/data` → 10.8.0.0/24, Avahi `_nfs._tcp`, node_exporter :9100 (netdata dropped 2026-09-16)
+- `/data` is optional at boot (10-second missing-device timeout). NFS, Jellyfin, Mopidy and Asterisk/fax require the disk; SSH/DHCP/DNS and unrelated VMs do not. After reconnecting, mount `/data` and explicitly start its consumers. See `hosts/mireo/optional-data.nix`.
 - Mopidy music server (host ALSA → Behringer USB mixer): `/data/Jellyfin/Music` + Jellyfin backend, MPD `:6600`, Iris via `music.home.arpa` (replaced kodi VM Oct 2026)
 - libvirtd for virt-manager remote (Weg A): `qemu+ssh://root@10.8.0.1/system`, `allowedBridges=["br0"]`
 - CLI tools: tcpdump, mtr, nmap, iperf3, ethtool, socat, btop, jq, lsof, sysstat, smartmontools
@@ -31,11 +32,11 @@ deploy: nix run .#deploy-mireo
 
 ## NixFleet M1 (Sep 2026)
 
-`lucy.nixfleet.enable=true; role="api"` in `data/hosts/mireo/settings.nix` — API on 8443 (`DynamicUser`, `StateDirectory=nixfleet`) + agent (`systemd`+`journal`+`metrics`). Firewall on br0 allows 8443. `artifactsDir=../../../nixfleet/artifacts`, `webDir` via `nixfleetPkgs.web` (currently null to avoid deepSeq overflow, only built as a package).
+`lucy.nixfleet.enable=true; role="api"` in `data/hosts/mireo/settings.nix` — API on 8443 (`DynamicUser`, `StateDirectory=nixfleet`) + agent (`systemd`+`journal`+`metrics`). Firewall on br0 allows 8443. `artifactsDir` is a store-backed derivation copying the committed JSON files, so source GC does not remove runtime inputs. `webDir` is unset; `nixfleet-web` is built separately as a package.
 
 ## Reverse proxy (Caddy :80)
 
-One entrypoint for all web UIs: `http://<name>.home.arpa` (DNS from dnsmasq, no HTTPS — no public CA for `.home.arpa`, LAN-only via firewall).
+Most web UIs use `http://<name>.home.arpa` (DNS from dnsmasq, LAN-only via firewall). Firefox Sync is the exception: `https://fxsync.home.arpa` uses Caddy's internal CA and a LAN source allowlist, not public ACME.
 
 | URL | Target |
 |-----|--------|
@@ -47,11 +48,28 @@ One entrypoint for all web UIs: `http://<name>.home.arpa` (DNS from dnsmasq, no 
 | uptime-kuma.home.arpa | 10.8.0.9:3001 |
 | jellyfin.home.arpa | 10.8.0.10:8096 |
 | lldap.home.arpa | 10.8.0.12:17170 |
+| pocket-id.home.arpa | 10.8.0.13:1411 |
+| dash.home.arpa | 10.8.0.32:8082 |
+| adguard.home.arpa | 10.8.0.30:3000 |
+| music.home.arpa | 127.0.0.1:6680 (Mopidy/Iris) |
+| https://fxsync.home.arpa | 10.8.0.31:5000 (backend accepts only mireo) |
 | media.home.arpa | alias → jellyfin (CNAME + VHost) |
 | status.home.arpa | 302 → uptime-kuma.home.arpa/status/homelab |
 | netdata.home.arpa | dropped 2026-09-16 (see Grafana/Prometheus) |
 
 Source: `webUIs` map in `data/hosts/mireo/settings.nix` → `services.caddy.virtualHosts`.
+
+## Firefox Sync / public CA
+
+The managed `lucy` Firefox profile selects `https://fxsync.home.arpa/1.0/sync/1.5`;
+Mozilla still handles the account. Disconnect any existing Sync account while
+retaining local data before switching endpoints. Rebuild the client, restart
+Firefox and verify CA trust before signing in. This does not migrate cloud data.
+
+`lucy-ca` installs the public root in OS trust and Firefox's certificate policy
+on NixOS hosts, microVMs and the custom PXE installer. Other clients can export it
+with `nix build .#lucy-ca`; never distribute Caddy's private key or disable TLS
+verification. Full desktop/Android instructions: `docs/hosts.md#firefox-sync-enrollment`.
 
 ## libvirt (virt-manager remote target, Weg A)
 
@@ -61,8 +79,9 @@ Source: `webUIs` map in `data/hosts/mireo/settings.nix` → `services.caddy.virt
 
 - `data/hosts/mireo/settings.nix` — network, NAT, dnsmasq, NFS, Avahi, nixfleet
 - `hosts/mireo/host.nix` — applyHost
-- `hosts/mireo/*-microvm.nix` (7) + `microvm-base.nix` + `vm-ips.nix` (shared static IP map, handed out via dnsmasq `dhcp-host` reservations)
-- QEMU tap→br0 (`flake.nix:193`)
+- `hosts/mireo/default.nix` + `flake.nix` select 18 enabled microVM specs; eight disabled specs keep reserved addresses
+- `hosts/mireo/*-microvm.nix` + `microvm-base.nix` + `vm-ips.nix` (shared IP map, handed out via dnsmasq `dhcp-host` reservations)
+- QEMU tap→br0 via `systemd.network.networks."24-lan-microvm"`
 
 ## VMs at a glance
 

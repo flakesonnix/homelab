@@ -15,7 +15,7 @@ Shape: `meta{description,targets[host home],requires,conflicts}` + `host{moduleF
 | Role | Targets | Effect |
 |-------|---------|--------|
 | `core` | home | Activates `core` bundle |
-| `desktop` | host+home | niri/fonts/waybar fonts + `desktop` bundle |
+| `desktop` | host+home | GNOME/extensions + font flags, Niri/Plasma disabled; `desktop` bundle |
 | `dev` | host+home | dev/net/monitoring tags + `dev` bundle |
 | `gaming` | host | Applies `gaming-base/-performance/-steam` presets |
 | `llm` | host | Adds `llm` package tag |
@@ -29,8 +29,12 @@ Home Manager slices with `programs.*`, `settings.stylix`, `packageToggles` (from
 | Bundle | Contains |
 |--------|---------|
 | `core` | bash, git, nvim, htop/btop, bat, fzf, ssh, opencode, nh; comma, manix, nix-output-monitor |
-| `desktop` | alacritty, dunst, eww, firefox, fuzzel, gnomeTheme, niri, rofi, starship, thunderbird, vesktop, zathura; stylix; TeamSpeak flatpak; geist-mono, nautilus |
+| `desktop` | alacritty, firefox, gnomeTheme, gnomeShell, starship, thunderbird, vesktop, virtManager, zathura; stylix; TeamSpeak flatpak; geist-mono, nautilus |
 | `dev` | android-studio |
+
+The bundle disables Dunst/Eww/Fuzzel/Niri/Rofi/Waybar. Host-aware home settings
+enable Fuzzel/Mako separately for SwayFX. Iosevka is the configured UI/app font;
+the installed `geist-mono` package no longer selects the default font.
 
 ## Presets (`data/presets/*.nix`)
 

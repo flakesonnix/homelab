@@ -1,14 +1,14 @@
 # dwl-scroll
 
 An opt-in scrolling layout for upstream dwl, not a replacement compositor.
-Compatibility baseline: dwl **0.9**, wlroots **0.20.2**, nixpkgs
-`02c087f3fe673c9e317f206a627cb6b910336dbe` (the root input's `nixpkgs_2`
-lock node, not EWM's separate nixpkgs). The source and dependency hashes
-come from the existing `flake.lock`; no additional flake input or overlay.
+Compatibility baseline: dwl **0.9**, with wlroots and dependencies inherited
+from the root `nixpkgs` input in `flake.lock` (currently the `nixpkgs_2` node,
+not EWM's separate nixpkgs). The package asserts the dwl version; rebase and
+rerun its checks when updating that baseline. No additional flake input or overlay.
 
-## Architecture (implementation contract)
+## Architecture
 
-Before implementing the layout, these are the chosen ownership rules:
+The layout uses these ownership rules:
 
 - `Monitor.columns` owns a persistent ordered list of `Column` allocations.
   Each column owns a separate list of clients and its own width fraction.
@@ -50,10 +50,6 @@ nix build .#checks.x86_64-linux.dwl-scroll-module
 nix build .#checks.x86_64-linux.dwl-scroll-headless
 nix build .#checks.x86_64-linux.dwl-scroll-settings
 ```
-
-The new files are staged (`git add` only; nothing committed) because Nix
-flakes cannot evaluate untracked files. Your uncommitted work and this
-repository's index of prior changes stay otherwise untouched.
 
 The common NixOS module aggregator imports the module; p53 enables the
 session in `data/hosts/p53/module-flags.nix`:
@@ -203,7 +199,7 @@ This overrides the standalone package's older bindings listed below.
 | Ctrl+Print or Super+Ctrl+Shift+S | Screenshot all outputs |
 | Super+Shift+P | Toggle display power (press again to restore) |
 | Super+Shift+E or Super+Ctrl+Delete | Exit compositor |
-| Audio/media/brightness keys | Same wpctl, playerctl and brightnessctl commands as Niri |
+| Audio/media/brightness keys | wpctl (10% volume steps), playerctl and brightnessctl (10% steps) |
 
 Screenshots are saved to `~/Pictures/Screenshots/`. Command bindings use
 absolute Nix store paths. dwl does not run these media bindings while locked;
@@ -488,7 +484,11 @@ not exercise physical DRM outputs, real pointer/touchpad devices, GPU drivers,
 or a display-manager login. Xwayland support is compiled, but the test clients
 are native Wayland applications.
 
-### Verification record (2026-10-31)
+### Historical verification record (2026-10-31)
+
+These results describe the original layout implementation and subsequent
+follow-ups, not a verification of every later lockfile/configuration change.
+The initial layout had two patches; the current package applies four.
 
 - **Passed:** clean zero-fuzz application of both patches; default package
   build and the no-Xwayland variant; compiler logs contain no C warnings.

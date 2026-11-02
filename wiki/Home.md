@@ -6,7 +6,7 @@ type: moc
 
 # 🐾 dotfiles Knowledge Base
 
-> NixOS homelab — lucy's NixOS config. As of Sep 2026.
+> NixOS homelab — lucy's NixOS config. Updated Nov 2026.
 > Vault root. Branch out into everything from here.
 
 ## 🗺️ Map
@@ -19,16 +19,16 @@ type: moc
 ## 🖥️ Hosts
 
 - [[10-Hosts/Hosts-MOC|Hosts overview]] — map of all machines
-- [[10-Hosts/p53|p53]] — ThinkPad P53, desktop/gaming (dynamic IP via DHCP)
-- [[10-Hosts/mireo|mireo]] — server/router + 7 microVMs (10.8.0.1)
-- [[10-Hosts/MicroVMs|MicroVMs]] — grafana … dash in detail (26 VMs)
+- [[10-Hosts/p53|p53]] — retained hostname, currently ThinkPad P50, desktop/gaming (DHCP)
+- [[10-Hosts/mireo|mireo]] — server/router + 18 configured microVMs (10.8.0.1)
+- [[10-Hosts/MicroVMs|MicroVMs]] — 18 enabled specs, eight disabled/reserved specs
 - [[10-Hosts/Network|Network]] — 10.8.0.0/24, br0, NAT, IPv6, Tailscale
 
 ## 🧩 Modules & data model
 
-- [[20-Modules/Modules-MOC|Modules overview]] — 24 NixOS + 6 home modules
+- [[20-Modules/Modules-MOC|Modules overview]] — NixOS + Home Manager modules
 - [[20-Modules/NixOS-Modules|NixOS modules table]] — all options at a glance
-- [[20-Modules/Home-Modules|Home modules]] — niri, waybar, stylix, ssh, opencode, dunst, editor + GeistMono fonts
+- [[20-Modules/Home-Modules|Home modules]] — retained compositor modules, Stylix, SSH, coding tools, editor + Iosevka fonts
 - [[20-Modules/Editor|Editor (Neovim IDE)]] — LSP/DAP/tests/sessions/tasks
 - [[20-Modules/Gaming-Stack|Gaming stack]] — presets + 6 submodules
 - [[30-Data-Model/Data-Model|Data model]] — `data/` as single source of truth

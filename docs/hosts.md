@@ -43,25 +43,29 @@ Internet (IPv4 + IPv6 via FritzBox)
     └── (DHCP)      p53 (dynamic, see below)
 ```
 
-mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (WAN). IPv6 nativ via FritzBox (WAN-SLAAC, LAN per ULA+NAT66; PD angefragt — bei Delegation kündigt dnsmasq das GUA per RA/SLAAC via constructor:br0 automatisch an); dnsmasq assigns addresses via DHCPv6 (stateful ULA range). LAN clients (p53 etc.) get fully dynamic addresses; the microVMs and mireo itself have static IPs + DNS records (teils als dhcp-host-Reservierungen).
+mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (WAN). IPv6 nativ via FritzBox (WAN-SLAAC, LAN per ULA+NAT66; PD angefragt — bei Delegation kündigt dnsmasq das GUA per RA/SLAAC via constructor:br0 automatisch an); dnsmasq assigns addresses via DHCPv6 (stateful ULA range). LAN clients (p53 etc.) get dynamic addresses; microVM IPv4 addresses are fixed by DHCP reservations from `vm-ips.nix`, while their ULA addresses and mireo's LAN addresses are static.
 
 ---
 
 ## p53
 
 **Role:** Primary desktop / gaming laptop  
-**Hardware:** Lenovo ThinkPad P53, i7-9750H  
+**Hardware:** Currently Lenovo ThinkPad P50, i7-6700HQ, Intel graphics + Quadro M1000M; `p53` is the retained hostname. The P50 and X270 hardware profiles are both imported for disk moves.
+
 **IP:** dynamic via DHCP (dnsmasq on mireo; reachable by hostname)
 
 ### Features
-- GNOME with GDM, plus an optional SwayFX session (Swaybar, Fuzzel, Mako)
-- Stylix theming (cyberdeck/dark palette)
+- GNOME with GDM, plus SwayFX (Swaybar, Fuzzel, Mako), EWM and dwl-scroll sessions; Niri and Plasma are disabled
+- No forced default session; GDM remembers the last selection
+- Stylix theming (cyberdeck/dark palette), Iosevka desktop/app fonts
+- Intel display rendering with NVIDIA legacy 580 PRIME offload (`nvidia-offload`); Quadro M1000M is Maxwell and needs the legacy branch
 - Secure Boot via lanzaboote
 - Suspend-then-hibernate (lid close, 30 min timer on battery)
 - Smartcard reader (pcscd + ccid), fingerprint reader (fprintd + PAM/GDM)
 - Gaming: Steam, GameMode, Gamescope (capSysNice), MangoHud, performance governor
-- Asterisk SIP PBX
 - Audio streaming → remote tunnel sink
+- Sunshine streaming for Moonlight; OBS Studio with PipeWire audio capture and a v4l2loopback virtual camera
+- Managed Firefox profile uses mireo's HTTPS Sync endpoint and the packaged public CA (see [enrollment](#firefox-sync-enrollment))
 - Tailscale, Bluetooth
 - Waydroid (Android container, initialised with GAPPS image via oneshot service)
 
@@ -69,21 +73,23 @@ mireo bridges microvms onto br0 via tap interfaces. NAT masquerade on `enp4s0` (
 `desktop`, `dev`, `gaming`
 
 ### Config files
-- `data/hosts/p53/settings.nix` — hostname, hosts, Bluetooth, Niri users, boot params
+- `data/hosts/p53/settings.nix` — networking, Bluetooth, Sway GPU selection, dwl keymap/wallpaper/Discord presence, OBS and printer integration
 - `data/hosts/p53/module-flags.nix` — NixOS feature toggles (smartcard, fonts, waydroid, etc.)
 - `data/hosts/p53/roles.nix` — role list
 - `hosts/p53/host.nix` — framework applyHost call
-- `hosts/p53/hardware-configuration.nix` — nixos-hardware-generated
+- `hosts/p53/default.nix` — hardware profiles, local wheel PolicyKit rule and v4l2loopback build override
+- `hosts/p53/hardware-configuration.nix` — generated hardware/filesystem configuration
 
 ### Special modules loaded
-`asterisk`, `audio-stream`, `deskflow`, `fonts`, `gaming`, `gnome`, `gnome-extensions`, `niri`, `serial-getty`, `sops`, `waybar`, `waydroid`, `lanzaboote`
+The shared module set supplies `dwl-scroll` and `lucy-ca`. `flake.nix` also loads `audio-stream`, `fonts`, `gaming`, `gnome`, `gnome-extensions`, `plasma`, `sunshine`, `nvidia`, `nvidia-resume`, `niri`, `ewm`, `serial-getty`, `sops`, `waybar`, `hm-base`, `deskflow`, `waydroid`, `nixfleet` and Lanzaboote integration. Importing a module does not enable it: Niri, Plasma, Deskflow and NixFleet are disabled on p53. The Asterisk/VoIP stack lives on mireo.
 
 ### SwayFX alongside GNOME
 
 After rebuilding, log out, select your user in GDM, and choose **Sway** from the
 session menu before logging in. This session runs SwayFX; GNOME remains available.
-SwayFX uses the Intel GPU without changing GNOME's or NVIDIA offload's settings.
-Outputs wired exclusively to NVIDIA need separate testing.
+SwayFX prefers the Intel GPU and also adds the NVIDIA DRM device when present,
+so NVIDIA-wired outputs can be discovered. This session-local selection does not
+change GNOME or PRIME offload. Physical output/hotplug behavior needs separate testing.
 
 - `Super` as modifier with the Niri bind layout (Sway workspaces `1`–`9` on `Super+1`…`Super+9`)
 - `Super+Enter`: Alacritty; `Super+D`: Fuzzel; `Super+W`: close
@@ -106,6 +112,21 @@ Outputs wired exclusively to NVIDIA need separate testing.
 - Must run from its GDM session (no nested mode); GPU selection is automatic.
 - `wl-clipboard` and `brightnessctl` are installed system-wide for clipboard and media keys; PipeWire screen sharing stays enabled.
 - `Super+L`, five minutes idle, and suspend use the same session-scoped locker; suspend waits for the compositor to acknowledge the lock.
+
+### dwl-scroll alongside the other sessions
+
+Choose **dwl-scroll** in GDM for upstream dwl 0.9 with persistent scrolling
+columns, dwlb status metrics, a tray/clock overlay and a built-in application
+launcher. p53's Niri-style preset uses **Super**, while SwayFX and the retained
+Niri configuration use **Alt**. See [the full keymap and settings](dwl-scroll.md#configuration-and-keys).
+
+- `Super+Enter`: Alacritty; `Super+D`: built-in launcher; `Super+W`: close
+- `Super+F`: maximize/restore column width; `Super+Shift+F`: fullscreen
+- `Super+Ctrl+Escape`: manual lock; this session has **no configured idle locker**
+- Wallpaper: runtime-only `/home/lucy/Pictures/wallpaper.webp`, not a store asset
+- Discord Rich Presence is enabled on p53, including focused-app sharing; window
+  titles stay private and locking clears presence. Disable `showApp` or the
+  integration in `lucy.dwlScroll.settings.discordRpc` if unwanted.
 
 ### Local virtualisation (virt-manager)
 
@@ -144,10 +165,10 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 - `/data` is optional at boot, with a 10-second missing-device timeout. NFS, Jellyfin, Mopidy and Asterisk/fax require the mounted disk; SSH, DHCP/DNS and unrelated VMs remain available. Directory setup never writes a fallback tree on the root filesystem. After reconnecting the disk, mount `/data` and explicitly start its consumers.
 - Avahi mDNS advertising NFS share (`_nfs._tcp`) for Nautilus autodiscovery
 - Metrics via Grafana/Prometheus + uptime-kuma alerting + nixfleet agent (netdata dropped 2026-09-16)
-- Caddy reverse proxy on `:80` — every web UI as `http://<name>.home.arpa` (grafana, prometheus, yammat, cups, sshkeys, uptime-kuma, jellyfin, lldap, pocket-id, dash, adguard, music) + `http://status.home.arpa` (302 → Uptime Kuma status page)
+- Caddy reverse proxy on `:80` — web UIs as `http://<name>.home.arpa` (grafana, prometheus, yammat, cups, sshkeys, uptime-kuma, jellyfin, lldap, pocket-id, dash, adguard, music) + `http://status.home.arpa` (302 → Uptime Kuma status page). Firefox Sync is the exception: `https://fxsync.home.arpa` uses Caddy's internal CA and a LAN source allowlist.
 - Mopidy music server on the host (no VM): `/data/Jellyfin/Music` + Jellyfin backend to the USB mixer (Behringer Xenyx 302USB) via ALSA; clients M.A.L.P./mpc + Iris web UI via `music.home.arpa`
 - AdGuard Home (dns VM) as filtering-only DNS frontend (blocklists); dnsmasq on the host stays authoritative for DHCP + LAN DNS (advertises `.30` first, `.1` fallback)
-- 18 microVMs running on br0 (single `mk-microvm.nix` spec pattern, stable per-VM SSH host keys; 8 weitere Stub-VMs sind in `hosts/mireo/default.nix` auskommentiert — IPs/DNS in `vm-ips.nix` bleiben reserviert):
+- 18 microVMs configured on br0 (single `mk-microvm.nix` spec pattern, stable per-VM SSH host keys; actual running state is reported by systemd/NixFleet). Eight more stub specs are commented out in `hosts/mireo/default.nix`; their IPs/DNS remain reserved in `vm-ips.nix`:
   - **grafana** (10.8.0.2): Prometheus scraping router + all hosts, Grafana with mireo-router dashboard
   - **network-services** (10.8.0.3): reserved stub (no services; host dnsmasq provides DHCP/DNS, Pixiecore provides PXE)
   - **monerod** (10.8.0.4): Pruned Monero node + Tor relay (nickname `mireoMoneroRelay`)
@@ -170,7 +191,7 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
   - (retired: **aptcache** 10.8.0.8 decommissioned 2026-10-05, **kodi** music-box replaced by Mopidy)
 - No desktop (`lucy.base.isServer = true`)
 - node_exporter running on 10.8.0.1:9100 for self-monitoring
-- libvirtd daemon for virt-manager remote (Weg A): p53 connects via `qemu+ssh://root@10.8.0.1/system`, new libvirt guests bridge to `br0` (`allowedBridges`), static IP outside DHCP range + entry in `hosts/mireo/vm-ips.nix`. The 18 active microVMs (microvm.nix) do NOT show in virt-manager. Recovery on `243/CREDENTIALS`: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
+- libvirtd daemon for virt-manager remote (Weg A): p53 connects via `qemu+ssh://root@10.8.0.1/system`, new libvirt guests bridge to `br0` (`allowedBridges`), static IP outside DHCP range + entry in `hosts/mireo/vm-ips.nix`. The 18 configured microVMs (microvm.nix) do NOT show in virt-manager. Recovery on `243/CREDENTIALS`: `rm /var/lib/libvirt/secrets/secrets-encryption-key` + reboot.
 - CLI tools: tcpdump, mtr, nmap, iperf3, ethtool, socat, btop, htop, ncdu, jq, lsof, sysstat, smartmontools
 
 ### Firefox Sync enrollment
@@ -206,16 +227,17 @@ TCP/5000 is not a client endpoint: the guest firewall admits only mireo
 
 ### NixFleet (M1 — mireo runtime control plane)
 - `lucy.nixfleet.enable = true; role = "api"` in `data/hosts/mireo/settings.nix` — both `nixfleet-api` (8443, `DynamicUser`, `StateDirectory=nixfleet`) and `nixfleet-agent` (`systemd`+`journal`+`metrics`) run on mireo; module no longer gates on `role`, so `api` host also runs agent.
-- `api.artifactsDir = ../../../nixfleet/artifacts` (committed `manifest.json`/`ui.json`), `api.webDir` via `flake.nix` `nixfleetPkgs.web` when built; firewall `br0` now allows `8443`.
+- `api.artifactsDir` is a store-backed `nixfleet-artifacts` derivation containing the committed `manifest.json`/`ui.json`, so runtime files survive garbage collection of the flake source. `api.webDir` is currently `null`; the frontend is available separately as `nixfleet-web`. Firewall `br0` allows `8443`.
 - **M1 API (DONE, 7a05039, Sep 2026)**: `GET /api/v1/hosts`, `/:host/health` (`healthy|degraded|critical|unknown`, `failedUnits`), `/:host/resources` (`/proc`), `/:host/network` (`ip -j`), `/:host/vms` (merged `configured` from manifest + `runtime` via `systemctl is-active microvm@<name>` validated), `/:host/systemd/failed` — typed Go structs, `404` for unknown host/vm, `503` for non-local host (M1 collects only where API runs).
-- **Frontend**: `HostOverview` + `VMTable` + `SystemdFailed` on dashboard; `/vms` lists 10 VMs (grafana…ntp) with `Name|IP|State|vCPU|RAM|Health|Ports`, network table shows `br0` + VM taps. Dark dense monospace styling.
+- **Frontend**: `HostOverview` + `VMTable` + `SystemdFailed` on dashboard; `/vms` lists the VMs in the committed manifest with `Name|IP|State|vCPU|RAM|Health|Ports`, network table shows `br0` + VM taps. Regenerate artifacts after changing VM imports; the current configuration contains 18 VMs. Dark dense monospace styling.
 - No WebSocket/auth/SQLite yet — observability first. M1-full will add agent WS protocol + full multi-host support.
 
 ### Roles
 None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` intentionally absent, manifest `roles: []`)
 
 ### Config files
-- `data/hosts/mireo/settings.nix` — hostname, network, NAT, dnsmasq, Pixiecore/netboot.xyz, NFS, Avahi, Netdata, **nixfleet M1** (`lucy.nixfleet.*`, firewall 8443)
+- `data/hosts/mireo/settings.nix` — hostname, network, NAT, dnsmasq, Pixiecore/netboot.xyz, NFS, Avahi, Caddy and **nixfleet M1** (`lucy.nixfleet.*`, firewall 8443)
+- `data/hosts/mireo/services.nix` — Asterisk/VoIP/fax, Minecraft, Mopidy and monitor declarations
 - `hosts/mireo/optional-data.nix` — bounded mount waits, mount-bound data services and guarded tmpfiles initialization
 - `hosts/mireo/host.nix` — framework applyHost
 - `hosts/mireo/vm-ips.nix` — static IP map shared by VM specs, DNS and proxy; handed out via dnsmasq `dhcp-host` reservations (guests use DHCPv4, ULA stays static)
@@ -229,6 +251,11 @@ None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` inte
 - `hosts/mireo/microvm-base.nix` — shared microvm base config (virtiofs shares, stable per-VM SSH host keys)
 
 ### Microvm resource allocation
+
+This table includes the eight **disabled** specs (`cloud`, `management`,
+`devops`, `media`, `documents`, `sync`, `postgres`, `identity`) for reference;
+their resources are not allocated by the current configuration.
+
 | VM | IP | Memory | vCPUs | Storage |
 |----|-----|--------|-------|---------|
 | grafana | 10.8.0.2 | 768 MB | 2 | 1 GB grafana + 1 GB prometheus |
@@ -238,7 +265,7 @@ None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` inte
 | cups | 10.8.0.6 | 512 MB | 1 | 256 MB cups config |
 | sshkeys | 10.8.0.7 | 256 MB | 1 | — |
 | uptime-kuma | 10.8.0.9 | 512 MB | 1 | 1 GB state (SQLite) |
-| jellyfin | 10.8.0.10 | 2304 MB | 2 | 8 GB state + 4 GB transcode cache |
+| jellyfin | 10.8.0.10 | 2304 MB | 2 | 16 GB state + 4 GB transcode cache |
 | ntp | 10.8.0.11 | 256 MB | 1 | — (stateless, drift re-learns) |
 | lldap | 10.8.0.12 | 512 MB | 1 | 512 MB state |
 | pocket-id | 10.8.0.13 | 512 MB | 1 | 512 MB state |
@@ -251,7 +278,7 @@ None (server profile, framework data in `data/hosts/mireo/` — `roles.nix` inte
 | communication | 10.8.0.23 | 2304 MB | 2 | 4 GB matrix + 1 GB ntfy |
 | remote | 10.8.0.25 | 512 MB | 1 | 512 MB state |
 | sync | 10.8.0.26 | 512 MB | 1 | 2 GB state |
-| maps | 10.8.0.27 | 8192 MB | 4 | OSM planet + tiles images |
+| maps | 10.8.0.27 | 8192 MB | 8 | 32 GB OSM planet + 8 GB tiles |
 | postgres | 10.8.0.28 | 2304 MB | 4 | 8 GB data |
 | identity | 10.8.0.29 | 1024 MB | 2 | 2 GB ldap + 2 GB keycloak |
 | dns | 10.8.0.30 | 384 MB | 1 | 512 MB AdGuard data |

@@ -134,8 +134,13 @@ Authorized keys match the root account's `authorized_keys` (i.e. `lucy.base.sshK
 These remain scoped to `br0`/`10.8.0.0/24`, with Avahi pinned to `br0`+`lo`:
 
 - NFS `/data` (export `10.8.0.0/24` only), DHCP, LAN DNS, Pixiecore PXE/TFTP + boot HTTP `:8080`,
-  Avahi/mDNS, Netdata `:19999` (bind `10.8.0.1`), nixfleet `:8443`, MicroVM
-  internals.
+  Avahi/mDNS, nixfleet `:8443` and MicroVM internals. Netdata has been removed;
+  monitoring uses Prometheus/Grafana and node_exporter.
+- Firefox Sync: `https://fxsync.home.arpa` uses Caddy internal TLS and a source
+  allowlist; the backend's TCP/5000 accepts only mireo. The `lucy-ca` package
+  contains only the public root certificate, never Caddy's private key. See
+  [Sync enrollment](hosts.md#firefox-sync-enrollment) and the
+  [module reference](modules.md) before adding a client.
 
 ## Retired transit secrets
 

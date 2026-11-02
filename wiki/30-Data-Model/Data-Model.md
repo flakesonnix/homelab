@@ -17,11 +17,11 @@ data/
 ├── presets/gaming-base.nix gaming-performance.nix gaming-steam.nix
 ├── packages/system.nix home.nix   # tagged registries
 ├── hosts/p53/{settings,roles,module-flags,packages,power,services}.nix
-├── hosts/mireo/settings.nix       # server, no roles.nix (intentionally [])
+├── hosts/mireo/{settings,packages,services}.nix  # no roles.nix (intentionally [])
 └── home/lucy/{roles,bundles,settings}.nix
 ```
 
-The framework `lib/framework` (`frameworkLib`, `applyHost`/`applyHome` in `hosts/*/host.nix:17`, `home/lucy/default.nix:40`) + types in `lib/types.nix` resolves everything at eval time.
+The framework `lib/framework` (`frameworkLib`, `applyHost`/`applyHome` in `hosts/*/host.nix`, `home/lucy/default.nix`) + types in `lib/types.nix` resolves everything at eval time.
 
 ## Flow
 
