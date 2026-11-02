@@ -3,7 +3,8 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   configuredUsers = lib.unique config.niri.users;
 
   tuigreetCmd = lib.concatStringsSep " " [
@@ -20,28 +21,29 @@
     "--power-reboot 'systemctl reboot'"
     "--cmd ${lib.getExe' config.programs.niri.package "niri-session"}"
   ];
-in {
+in
+{
   options.niri.users = lib.mkOption {
     type = lib.types.listOf lib.types.str;
-    default = [];
-    example = ["lucy"];
+    default = [ ];
+    example = [ "lucy" ];
     description = "Home Manager users that should receive Niri host integration.";
   };
 
   config = lib.mkMerge [
     {
-      assertions = [];
+      assertions = [ ];
     }
 
-    (lib.mkIf (configuredUsers != []) {
+    (lib.mkIf (configuredUsers != [ ]) {
       programs.niri.enable = lib.mkDefault true;
     })
 
     (lib.mkIf config.programs.niri.enable {
-      environment.systemPackages = [pkgs.xwayland-satellite];
+      environment.systemPackages = [ pkgs.xwayland-satellite ];
 
       systemd.user.services.xdg-desktop-portal-gnome = {
-        partOf = ["graphical-session.target"];
+        partOf = [ "graphical-session.target" ];
         serviceConfig = {
           Restart = "on-failure";
           RestartSec = 1;

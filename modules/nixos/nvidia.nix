@@ -3,7 +3,8 @@
   config,
   pkgs,
   ...
-}: {
+}:
+{
   options = {
     lucy.nvidia = {
       enable = lib.mkEnableOption "NVIDIA GPU configuration";
@@ -39,9 +40,13 @@
 
   config = lib.mkIf config.lucy.nvidia.enable {
     services.xserver.videoDrivers =
-      if config.lucy.nvidia.prime
-      then ["modesetting" "nvidia"]
-      else ["nvidia"];
+      if config.lucy.nvidia.prime then
+        [
+          "modesetting"
+          "nvidia"
+        ]
+      else
+        [ "nvidia" ];
     hardware.graphics = {
       enable = true;
       enable32Bit = true;
@@ -53,20 +58,33 @@
       modesetting.enable = config.lucy.nvidia.modesetting;
       nvidiaSettings = true;
       package =
-        if config.lucy.nvidia.legacy580
-        then config.boot.kernelPackages.nvidiaPackages.legacy_580
-        else config.boot.kernelPackages.nvidiaPackages.production;
-      prime = lib.mkIf (config.lucy.nvidia.prime && config.lucy.nvidia.intelBusId != null && config.lucy.nvidia.nvidiaBusId != null) {
-        inherit (config.lucy.nvidia) intelBusId nvidiaBusId;
-        offload = {
-          enable = true;
-          enableOffloadCmd = true;
-        };
-      };
+        if config.lucy.nvidia.legacy580 then
+          config.boot.kernelPackages.nvidiaPackages.legacy_580
+        else
+          config.boot.kernelPackages.nvidiaPackages.production;
+      prime =
+        lib.mkIf
+          (
+            config.lucy.nvidia.prime
+            && config.lucy.nvidia.intelBusId != null
+            && config.lucy.nvidia.nvidiaBusId != null
+          )
+          {
+            inherit (config.lucy.nvidia) intelBusId nvidiaBusId;
+            offload = {
+              enable = true;
+              enableOffloadCmd = true;
+            };
+          };
     };
 
-    boot.blacklistedKernelModules = ["nouveau"];
-    boot.initrd.kernelModules = ["nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm"];
+    boot.blacklistedKernelModules = [ "nouveau" ];
+    boot.initrd.kernelModules = [
+      "nvidia"
+      "nvidia_modeset"
+      "nvidia_uvm"
+      "nvidia_drm"
+    ];
 
     boot.kernelParams = [
       "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
@@ -88,17 +106,19 @@
       };
     };
 
-    systemd.services.nvidia-loader = let
-      scripts = import ../../lib/system-scripts.nix pkgs;
-    in {
-      description = "Lazy-load NVIDIA kernel modules";
-      wantedBy = ["graphical.target"];
-      after = ["graphical.target"];
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        ExecStart = "${scripts.mkNvidiaLoader}/bin/nvidia-loader";
+    systemd.services.nvidia-loader =
+      let
+        scripts = import ../../lib/system-scripts.nix pkgs;
+      in
+      {
+        description = "Lazy-load NVIDIA kernel modules";
+        wantedBy = [ "graphical.target" ];
+        after = [ "graphical.target" ];
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+          ExecStart = "${scripts.mkNvidiaLoader}/bin/nvidia-loader";
+        };
       };
-    };
   };
 }

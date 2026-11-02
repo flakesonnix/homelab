@@ -1,8 +1,10 @@
 # Group definitions for the homelab LDAP directory.
 # These groups map to Keycloak roles for SSO.
-{lib}: let
+{ lib }:
+let
   inherit (lib) types mkOption;
-in {
+in
+{
   # Keycloak role mappings: each LDAP group maps to a Keycloak role.
   roleMappings = {
     admins = "admin";

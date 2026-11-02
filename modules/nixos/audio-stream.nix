@@ -2,9 +2,11 @@
   lib,
   config,
   ...
-}: let
+}:
+let
   cfg = config.hq.audio;
-in {
+in
+{
   options.hq.audio = {
     streamTo = lib.mkOption {
       type = lib.types.str;

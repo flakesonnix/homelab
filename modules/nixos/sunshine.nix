@@ -2,9 +2,11 @@
   lib,
   config,
   ...
-}: let
+}:
+let
   cfg = config.lucy.sunshine;
-in {
+in
+{
   options.lucy.sunshine = {
     enable = lib.mkEnableOption "Sunshine game-stream host (Moonlight)";
 
@@ -35,6 +37,20 @@ in {
     services.sunshine = {
       enable = true;
       inherit (cfg) openFirewall capSysAdmin autoStart;
+    };
+
+    services.avahi = {
+      # The pinned upstream Sunshine module still sets deprecated defaults.
+      # Clear those aliases, preserving the same discovery configuration.
+      publish = {
+        enable = null;
+        userServices = null;
+      };
+      settings.publish = {
+        disable-publishing = lib.mkDefault false;
+        disable-user-service-publishing = lib.mkDefault false;
+        publish-addresses = lib.mkDefault true;
+      };
     };
   };
 }

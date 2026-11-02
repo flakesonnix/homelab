@@ -15,7 +15,8 @@
   lib,
   pkgs,
   ...
-}: let
+}:
+let
   # Declarative users. email/displayName/firstName are LLDAP-visible;
   # passwordFile is staged from host sops (see lldap-secrets-setup).
   # New person: append entry + add sops key lldap/users/<id> on a machine
@@ -29,11 +30,22 @@
       lastName = "";
       passwordFile = "/run/lldap/users/lucy";
     }
+    {
+      id = "test";
+      email = "test@home.arpa";
+      displayName = "Test User";
+      firstName = "Test";
+      lastName = "User";
+      passwordFile = "/run/lldap/users/test";
+    }
   ];
   # Declarative groups. `admins` maps to Grafana Admin via
   # auth.generic_oauth role_attribute_path; `users` is the default pool
   # for future members (SSO login works for any synced user, role Viewer).
-  seedGroups = ["admins" "users"];
+  seedGroups = [
+    "admins"
+    "users"
+  ];
   seedMemberships = [
     {
       user = "lucy";
@@ -43,18 +55,29 @@
       user = "lucy";
       group = "users";
     }
+    {
+      user = "test";
+      group = "users";
+    }
   ];
   seedJson = pkgs.writeText "lldap-seed-users.json" (builtins.toJSON seedUsers);
   seedGroupsJson = pkgs.writeText "lldap-seed-groups.json" (builtins.toJSON seedGroups);
-  seedMembershipsJson = pkgs.writeText "lldap-seed-memberships.json" (builtins.toJSON seedMemberships);
-in {
+  seedMembershipsJson = pkgs.writeText "lldap-seed-memberships.json" (
+    builtins.toJSON seedMemberships
+  );
+in
+{
   imports = [
     (import ./mk-microvm.nix {
       name = "lldap";
       ip = (import ./vm-ips.nix).lldap;
       mem = 512;
       vcpu = 1;
-      tcpPorts = [22 3890 17170];
+      tcpPorts = [
+        22
+        3890
+        17170
+      ];
       volumes = [
         {
           image = "lldap-data.img";
@@ -77,7 +100,7 @@ in {
           isSystemUser = true;
           group = "lldap";
         };
-        users.groups.lldap = {};
+        users.groups.lldap = { };
         systemd.services.lldap.serviceConfig = {
           DynamicUser = lib.mkForce false;
           User = "lldap";
@@ -88,9 +111,9 @@ in {
         # cat work — quirk class avoided entirely by staging before start.
         systemd.services.lldap-secrets-setup = {
           description = "Stage LLDAP secrets from virtiofs share into tmpfs";
-          before = ["lldap.service"];
-          requiredBy = ["lldap.service"];
-          wantedBy = ["multi-user.target"];
+          before = [ "lldap.service" ];
+          requiredBy = [ "lldap.service" ];
+          wantedBy = [ "multi-user.target" ];
           serviceConfig = {
             Type = "oneshot";
             RemainAfterExit = true;
@@ -123,15 +146,21 @@ in {
         # watching it) — loud ERROR log instead, fixed forward.
         systemd.services.lldap-seed = {
           description = "Seed declarative LLDAP users (idempotent)";
-          after = ["lldap.service" "lldap-secrets-setup.service"];
-          requires = ["lldap.service"];
-          wantedBy = ["multi-user.target"];
+          after = [
+            "lldap.service"
+            "lldap-secrets-setup.service"
+          ];
+          requires = [ "lldap.service" ];
+          wantedBy = [ "multi-user.target" ];
           serviceConfig = {
             Type = "oneshot";
             User = "lldap";
             Group = "lldap";
           };
-          path = with pkgs; [curl jq];
+          path = with pkgs; [
+            curl
+            jq
+          ];
           script = ''
             set -u
             say() { echo "lldap-seed: $1"; }

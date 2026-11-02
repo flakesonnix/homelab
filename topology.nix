@@ -1,4 +1,4 @@
-{lib, ...}: {
+{ lib, ... }: {
   # --- Internet gateway ---
   nodes.internet = {
     name = "Internet";
@@ -39,15 +39,6 @@
     services.sshkeys = {
       name = "SSH Public Keys";
       info = "10.8.0.7:80";
-    };
-  };
-
-  # --- APT cache VM ---
-  nodes.aptcache = {
-    deviceType = "nixos";
-    services.aptcache = {
-      name = "apt-cacher-ng";
-      info = "10.8.0.8:3142";
     };
   };
 

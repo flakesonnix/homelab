@@ -1,30 +1,31 @@
 /*
-* Asterisk Local SIP PBX Module
-*
-* A higher-level, opinionated interface for running a local internal phone
-* network using Asterisk with PJSIP (the modern SIP stack).
-*
-* IMPORTANT: Asterisk does NOT auto-restart on `nixos-rebuild switch` by default.
-* It performs a live reload of its configuration instead. After running
-* `nixos-rebuild switch`, you MUST run one of:
-*
-*   sudo asterisk -rx 'core reload'   # Live reload (preserves calls)
-*   sudo systemctl restart asterisk    # Full restart (drops active calls)
-*
-* This module generates configuration files for:
-*   - pjsip.conf   (SIP transport, endpoints, auth, AORs)
-*   - extensions.conf (dial plan)
-*
-* SECURITY WARNING: Passwords are stored in plaintext in Asterisk config files.
-* For production use, integrate with a secrets manager (e.g. agenix, sops-nix)
-* to inject passwords at runtime rather than storing them in the Nix store.
+  * Asterisk Local SIP PBX Module
+  *
+  * A higher-level, opinionated interface for running a local internal phone
+  * network using Asterisk with PJSIP (the modern SIP stack).
+  *
+  * IMPORTANT: Asterisk does NOT auto-restart on `nixos-rebuild switch` by default.
+  * It performs a live reload of its configuration instead. After running
+  * `nixos-rebuild switch`, you MUST run one of:
+  *
+  *   sudo asterisk -rx 'core reload'   # Live reload (preserves calls)
+  *   sudo systemctl restart asterisk    # Full restart (drops active calls)
+  *
+  * This module generates configuration files for:
+  *   - pjsip.conf   (SIP transport, endpoints, auth, AORs)
+  *   - extensions.conf (dial plan)
+  *
+  * SECURITY WARNING: Passwords are stored in plaintext in Asterisk config files.
+  * For production use, integrate with a secrets manager (e.g. agenix, sops-nix)
+  * to inject passwords at runtime rather than storing them in the Nix store.
 */
 {
   config,
   lib,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.services.asteriskLocal;
 
   # NOTE: the [directories] section is REQUIRED. Without it Asterisk
@@ -33,39 +34,43 @@
   # "Configuration directory: /nix/store/…-asterisk-…/etc/asterisk",
   # zero PJSIP objects, nothing on :5060). Mirrors upstream defaults
   # (plus extraConfig) so replacing asterisk.conf stays safe.
-  asteriskConf = let
-    apkg = config.services.asterisk.package;
-  in ''
-    [directories]
-    astetcdir => /etc/asterisk
-    astmoddir => ${apkg}/lib/asterisk/modules
-    astvarlibdir => /var/lib/asterisk
-    astdbdir => /var/lib/asterisk
-    astkeydir => /var/lib/asterisk
-    astdatadir => /var/lib/asterisk
-    astagidir => /var/lib/asterisk/agi-bin
-    astspooldir => /var/spool/asterisk
-    astrundir => /run/asterisk
-    astlogdir => /var/log/asterisk
-    astsbindir => ${apkg}/sbin
-    ${config.services.asterisk.extraConfig}
-    [modules]
-    autoload = no
-    ; Load only what we need for basic SIP functionality
-    preload => res_pjsip.so
-    preload => res_pjsip_session.so
-    preload => app_dial.so
-    preload => app_playback.so
-    preload => func_callerid.so
-  '';
+  asteriskConf =
+    let
+      apkg = config.services.asterisk.package;
+    in
+    ''
+      [directories]
+      astetcdir => /etc/asterisk
+      astmoddir => ${apkg}/lib/asterisk/modules
+      astvarlibdir => /var/lib/asterisk
+      astdbdir => /var/lib/asterisk
+      astkeydir => /var/lib/asterisk
+      astdatadir => /var/lib/asterisk
+      astagidir => /var/lib/asterisk/agi-bin
+      astspooldir => /var/spool/asterisk
+      astrundir => /run/asterisk
+      astlogdir => /var/log/asterisk
+      astsbindir => ${apkg}/sbin
+      ${config.services.asterisk.extraConfig}
+      [modules]
+      autoload = no
+      ; Load only what we need for basic SIP functionality
+      preload => res_pjsip.so
+      preload => res_pjsip_session.so
+      preload => app_dial.so
+      preload => app_playback.so
+      preload => func_callerid.so
+    '';
 
-  phonePasswordValue = name: phone:
-    if phone.passwordSecret != null
-    then
-      if cfg.secrets.enable
-      then config.sops.placeholder.${phone.passwordSecret}
-      else throw "asteriskLocal: phone '${name}' sets passwordSecret but services.asteriskLocal.secrets.enable is false"
-    else phone.password;
+  phonePasswordValue =
+    name: phone:
+    if phone.passwordSecret != null then
+      if cfg.secrets.enable then
+        config.sops.placeholder.${phone.passwordSecret}
+      else
+        throw "asteriskLocal: phone '${name}' sets passwordSecret but services.asteriskLocal.secrets.enable is false"
+    else
+      phone.password;
 
   phoneSecretNames = lib.unique (
     lib.filter (s: s != null) (lib.mapAttrsToList (_name: phone: phone.passwordSecret) cfg.phones)
@@ -73,12 +78,14 @@
 
   # tmpfiles dir rule with NFS-aware ownership: on /data/* (root-squash)
   # mkdir+chmod only, no chown (would be denied); files land as anonuid.
-  faxDirRule = path: "d ${path} 0755 ${lib.optionalString (!(lib.hasPrefix "/data/" path)) "asterisk asterisk "}- -";
+  faxDirRule =
+    path:
+    "d ${path} 0755 ${lib.optionalString (!(lib.hasPrefix "/data/" path)) "asterisk asterisk "}- -";
 
   /*
-  * T.38 UDPTL transport config (only written when fax is enabled).
-  * Defaults: UDPTL 4000-4999 with FEC. Outbound-initiated like RTP, so
-  * no firewall holes needed (openFirewall untouched by fax).
+    * T.38 UDPTL transport config (only written when fax is enabled).
+    * Defaults: UDPTL 4000-4999 with FEC. Outbound-initiated like RTP, so
+    * no firewall holes needed (openFirewall untouched by fax).
   */
   udptlConf = ''
     ; ===============================================================
@@ -93,9 +100,9 @@
   '';
 
   /*
-  * Inbound fax receive context. Reached via voip faxDids (Goto) or by
-  * dialing s directly. Writes TIFF + PDF + metadata, never touches
-  * voice contexts. FAXDIR is interpolated from fax.inboxDir (non-secret).
+    * Inbound fax receive context. Reached via voip faxDids (Goto) or by
+    * dialing s directly. Writes TIFF + PDF + metadata, never touches
+    * voice contexts. FAXDIR is interpolated from fax.inboxDir (non-secret).
   */
   faxInContext = ''
     ; ----------------------------------------------------------------
@@ -111,16 +118,16 @@
   '';
 
   /*
-  * Generate pjsip.conf content
-  *
-  * PJSIP uses a three-stanza pattern for each phone endpoint:
-  *   1. endpoint  - Defines the SIP endpoint (phone) with references to auth and aor
-  *   2. auth      - Contains the authentication credentials (username + password)
-  *   3. aor       - Address of Record - controls registration settings like max_contacts
-  *
-  * The template syntax (!) allows stanzas to inherit from a base template.
-  * For example, [endpoint_internal](!) creates a template that other stanzas
-  * can inherit from by specifying (endpoint_internal) after their own bracket name.
+    * Generate pjsip.conf content
+    *
+    * PJSIP uses a three-stanza pattern for each phone endpoint:
+    *   1. endpoint  - Defines the SIP endpoint (phone) with references to auth and aor
+    *   2. auth      - Contains the authentication credentials (username + password)
+    *   3. aor       - Address of Record - controls registration settings like max_contacts
+    *
+    * The template syntax (!) allows stanzas to inherit from a base template.
+    * For example, [endpoint_internal](!) creates a template that other stanzas
+    * can inherit from by specifying (endpoint_internal) after their own bracket name.
   */
   pjsipConf = ''
     ; ===============================================================
@@ -205,43 +212,49 @@
   '';
 
   /*
-  * Generate all stanzas for a single phone
-  * Each phone gets: endpoint, auth, and aor stanzas
+    * Generate all stanzas for a single phone
+    * Each phone gets: endpoint, auth, and aor stanzas
   */
-  generatePhoneStanzas = name: phone: let
-    # Build the endpoint stanza - inherits from endpoint_internal template
-    endpoint = ''
-      [${name}](endpoint_internal)
-      auth = ${name}
-      aors = ${name}
-    '';
+  generatePhoneStanzas =
+    name: phone:
+    let
+      # Build the endpoint stanza - inherits from endpoint_internal template
+      endpoint = ''
+        [${name}](endpoint_internal)
+        auth = ${name}
+        aors = ${name}
+      '';
 
-    # Build the auth stanza - inherits from auth_userpass template
-    # Contains the SIP password (plaintext - see security warning above)
-    auth = ''
-      [${name}](auth_userpass)
-      password = ${phonePasswordValue name phone}
-      username = ${name}
-    '';
+      # Build the auth stanza - inherits from auth_userpass template
+      # Contains the SIP password (plaintext - see security warning above)
+      auth = ''
+        [${name}](auth_userpass)
+        password = ${phonePasswordValue name phone}
+        username = ${name}
+      '';
 
-    # Build the AOR stanza - inherits from aor_dynamic template
-    # Controls registration behavior (max_contacts limits simultaneous devices)
-    aor = ''
-      [${name}](aor_dynamic)
-      max_contacts = ${toString phone.maxContacts}
-    '';
-  in
-    lib.concatStringsSep "\n" [endpoint auth aor];
+      # Build the AOR stanza - inherits from aor_dynamic template
+      # Controls registration behavior (max_contacts limits simultaneous devices)
+      aor = ''
+        [${name}](aor_dynamic)
+        max_contacts = ${toString phone.maxContacts}
+      '';
+    in
+    lib.concatStringsSep "\n" [
+      endpoint
+      auth
+      aor
+    ];
 
   /*
-  * Generate extensions.conf content
-  *
-  * The dial plan maps extension numbers to actions.
-  * Each extension line follows the format:
-  *   exten => NUMBER,PRIORITY,ACTION
-  *
-  * The 'n' priority means "next" - continues to the next priority number.
-  * 'same => n,...' is shorthand for repeating the same extension number.
+    * Generate extensions.conf content
+    *
+    * The dial plan maps extension numbers to actions.
+    * Each extension line follows the format:
+    *   exten => NUMBER,PRIORITY,ACTION
+    *
+    * The 'n' priority means "next" - continues to the next priority number.
+    * 'same => n,...' is shorthand for repeating the same extension number.
   */
   extensionsConf = ''
     ; ===============================================================
@@ -327,57 +340,67 @@
   '';
 
   /*
-  * Generate a single extension dial entry
-  * Format: exten => NUMBER,PRIORITY,Dial(PJSIP/name,timeout)
+    * Generate a single extension dial entry
+    * Format: exten => NUMBER,PRIORITY,Dial(PJSIP/name,timeout)
   */
-  generateExtension = name: phone: "exten => ${phone.extension},1,Dial(PJSIP/${name},${toString phone.dialTimeout})";
+  generateExtension =
+    name: phone: "exten => ${phone.extension},1,Dial(PJSIP/${name},${toString phone.dialTimeout})";
 
-  /*
-  * Validate configuration and emit warnings/errors
-  */
+  # * Validate configuration and emit warnings/errors
   configAssertions = [
     # Check for duplicate extension numbers
     {
-      assertion = let
-        extensions-list = lib.mapAttrsToList (_name: phone: phone.extension) cfg.phones;
-        unique-extensions = lib.unique extensions-list;
-      in
+      assertion =
+        let
+          extensions-list = lib.mapAttrsToList (_name: phone: phone.extension) cfg.phones;
+          unique-extensions = lib.unique extensions-list;
+        in
         lib.length extensions-list == lib.length unique-extensions;
       message = "asteriskLocal: duplicate extension numbers detected. Each phone must have a unique extension.";
     }
   ];
 
   /*
-  * Emit security warnings for weak credentials
-  * This uses lib.warn to alert operators about potential security issues
-  * without blocking the configuration from building.
+    * Emit security warnings for weak credentials
+    * This uses lib.warn to alert operators about potential security issues
+    * without blocking the configuration from building.
   */
-  credentialWarnings = let
-    phones-list =
-      lib.mapAttrsToList (name: phone: {
+  credentialWarnings =
+    let
+      phones-list = lib.mapAttrsToList (name: phone: {
         inherit name;
         inherit (phone) password;
-      })
-      cfg.phones;
-    weak-creds = lib.filter (p: p.password != null && p.name == p.password) phones-list;
-  in
-    lib.concatStringsSep "\n" (lib.map (p: "asteriskLocal: phone '${p.name}' has password equal to account name - this is a weak credential") weak-creds);
-in {
+      }) cfg.phones;
+      weak-creds = lib.filter (p: p.password != null && p.name == p.password) phones-list;
+    in
+    lib.concatStringsSep "\n" (
+      lib.map (
+        p: "asteriskLocal: phone '${p.name}' has password equal to account name - this is a weak credential"
+      ) weak-creds
+    );
+in
+{
   options.services.asteriskLocal = {
-    enable = lib.mkEnableOption (lib.mdDoc ''
-      local Asterisk SIP PBX server using PJSIP.
+    enable = lib.mkEnableOption (
+      lib.mdDoc ''
+        local Asterisk SIP PBX server using PJSIP.
 
-      This module creates a simple internal phone network where SIP clients
-      (softphones, IP phones) can register with Asterisk using extension
-      numbers and make calls to each other.
+        This module creates a simple internal phone network where SIP clients
+        (softphones, IP phones) can register with Asterisk using extension
+        numbers and make calls to each other.
 
-      After enabling, you must reload Asterisk configuration:
-        sudo asterisk -rx 'core reload'
-    '');
+        After enabling, you must reload Asterisk configuration:
+          sudo asterisk -rx 'core reload'
+      ''
+    );
 
     transport = {
       protocol = lib.mkOption {
-        type = lib.types.enum ["udp" "tcp" "tls"];
+        type = lib.types.enum [
+          "udp"
+          "tcp"
+          "tls"
+        ];
         default = "udp";
         description = lib.mdDoc ''
           SIP transport protocol.
@@ -402,59 +425,61 @@ in {
     };
 
     phones = lib.mkOption {
-      type = lib.types.attrsOf (lib.types.submodule {
-        options = {
-          extension = lib.mkOption {
-            type = lib.types.str;
-            description = lib.mdDoc ''
-              Dial plan extension number, e.g. "1001".
-              Must be unique across all phones.
-            '';
+      type = lib.types.attrsOf (
+        lib.types.submodule {
+          options = {
+            extension = lib.mkOption {
+              type = lib.types.str;
+              description = lib.mdDoc ''
+                Dial plan extension number, e.g. "1001".
+                Must be unique across all phones.
+              '';
+            };
+
+            password = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = lib.mdDoc ''
+                SIP account password (plaintext).
+
+                SECURITY WARNING: This password will be stored in plaintext
+                in /etc/asterisk/pjsip.conf in the Nix store. For production
+                use, integrate with a secrets manager (agenix, sops-nix) to
+                inject passwords at runtime.
+              '';
+            };
+
+            passwordSecret = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = lib.mdDoc ''
+                sops-nix secret key containing SIP account password.
+
+                Requires `services.asteriskLocal.secrets.enable = true;`.
+              '';
+            };
+
+            dialTimeout = lib.mkOption {
+              type = lib.types.int;
+              default = 20;
+              description = lib.mdDoc ''
+                Seconds to ring before giving up and returning busy signal.
+              '';
+            };
+
+            maxContacts = lib.mkOption {
+              type = lib.types.int;
+              default = 1;
+              description = lib.mdDoc ''
+                Maximum number of simultaneous registrations allowed for this
+                AOR (Address of Record). Set higher if you have multiple
+                devices (e.g. desk phone + softphone) sharing one extension.
+              '';
+            };
           };
-
-          password = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            description = lib.mdDoc ''
-              SIP account password (plaintext).
-
-              SECURITY WARNING: This password will be stored in plaintext
-              in /etc/asterisk/pjsip.conf in the Nix store. For production
-              use, integrate with a secrets manager (agenix, sops-nix) to
-              inject passwords at runtime.
-            '';
-          };
-
-          passwordSecret = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            description = lib.mdDoc ''
-              sops-nix secret key containing SIP account password.
-
-              Requires `services.asteriskLocal.secrets.enable = true;`.
-            '';
-          };
-
-          dialTimeout = lib.mkOption {
-            type = lib.types.int;
-            default = 20;
-            description = lib.mdDoc ''
-              Seconds to ring before giving up and returning busy signal.
-            '';
-          };
-
-          maxContacts = lib.mkOption {
-            type = lib.types.int;
-            default = 1;
-            description = lib.mdDoc ''
-              Maximum number of simultaneous registrations allowed for this
-              AOR (Address of Record). Set higher if you have multiple
-              devices (e.g. desk phone + softphone) sharing one extension.
-            '';
-          };
-        };
-      });
-      default = {};
+        }
+      );
+      default = { };
       description = lib.mdDoc ''
         Attribute set of phones keyed by account name.
 
@@ -473,7 +498,9 @@ in {
     };
 
     secrets = {
-      enable = lib.mkEnableOption (lib.mdDoc "Render Asterisk config via sops-nix templates (keeps passwords out of Nix store).");
+      enable = lib.mkEnableOption (
+        lib.mdDoc "Render Asterisk config via sops-nix templates (keeps passwords out of Nix store)."
+      );
 
       owner = lib.mkOption {
         type = lib.types.str;
@@ -533,12 +560,14 @@ in {
     };
 
     fax = {
-      enable = lib.mkEnableOption (lib.mdDoc ''
-        inbound fax receive (res_fax via spandsp overlay package + T.38
-        udptl.conf + [fax-in] dialplan context). Reached via voip faxDids
-        (Goto) or direct fax-in s-extension. Needs an Easybell DID routed
-        here; without faxDids the context stays unreachable but harmless.
-      '');
+      enable = lib.mkEnableOption (
+        lib.mdDoc ''
+          inbound fax receive (res_fax via spandsp overlay package + T.38
+          udptl.conf + [fax-in] dialplan context). Reached via voip faxDids
+          (Goto) or direct fax-in s-extension. Needs an Easybell DID routed
+          here; without faxDids the context stays unreachable but harmless.
+        ''
+      );
 
       inboxDir = lib.mkOption {
         # String, not path: an absolute path literal would make pure
@@ -555,12 +584,14 @@ in {
     };
 
     faxSend = {
-      enable = lib.mkEnableOption (lib.mdDoc ''
-        outbound fax poller: PDFs dropped as <number>__<name>.pdf into
-        outboxDir are converted (ghostscript G3) and queued as Asterisk
-        call files (SendFAX, 2 retries). Originals move to queued/ with
-        the TIFF; delivery status via `fax show stats` + logs.
-      '');
+      enable = lib.mkEnableOption (
+        lib.mdDoc ''
+          outbound fax poller: PDFs dropped as <number>__<name>.pdf into
+          outboxDir are converted (ghostscript G3) and queued as Asterisk
+          call files (SendFAX, 2 retries). Originals move to queued/ with
+          the TIFF; delivery status via `fax show stats` + logs.
+        ''
+      );
 
       outboxDir = lib.mkOption {
         # String, not path (see inboxDir).
@@ -599,71 +630,73 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    assertions =
-      configAssertions
-      ++ [
-        {
-          assertion =
-            lib.all (
-              phone:
-                if cfg.secrets.enable
-                then phone.password == null && phone.passwordSecret != null
-                else phone.password != null && phone.passwordSecret == null
-            )
-            (builtins.attrValues cfg.phones);
-          message = "asteriskLocal: each phone must set exactly one of password or passwordSecret (and passwordSecret requires services.asteriskLocal.secrets.enable).";
-        }
-        {
-          assertion = !cfg.secrets.enable || config.sops.defaultSopsFile != null;
-          message = "asteriskLocal.secrets.enable=true but sops.defaultSopsFile is null. Enable lucy.secrets (or set sops.defaultSopsFile) so sops-nix can render templates.";
-        }
-        # Warn about weak credentials (plaintext only)
-        {
-          assertion = credentialWarnings == "";
-          message = "asteriskLocal: ${credentialWarnings}";
-        }
-        {
-          assertion = !cfg.fax.enable || (cfg.fax.inboxDir != null && lib.hasPrefix "/" cfg.fax.inboxDir);
-          message = ''services.asteriskLocal.fax.enable needs fax.inboxDir as an absolute runtime path (e.g. "/data/fax/inbox").'';
-        }
-        {
-          assertion = !cfg.faxSend.enable || (cfg.faxSend.outboxDir != null && lib.hasPrefix "/" cfg.faxSend.outboxDir);
-          message = ''services.asteriskLocal.faxSend.enable needs faxSend.outboxDir as an absolute runtime path (e.g. "/data/fax/outbox").'';
-        }
-        {
-          assertion = !cfg.faxSend.enable || (cfg.faxSend.queuedDir != null && lib.hasPrefix "/" cfg.faxSend.queuedDir);
-          message = ''services.asteriskLocal.faxSend.enable needs faxSend.queuedDir as an absolute runtime path (e.g. "/data/fax/queued").'';
-        }
-      ];
+    assertions = configAssertions ++ [
+      {
+        assertion = lib.all (
+          phone:
+          if cfg.secrets.enable then
+            phone.password == null && phone.passwordSecret != null
+          else
+            phone.password != null && phone.passwordSecret == null
+        ) (builtins.attrValues cfg.phones);
+        message = "asteriskLocal: each phone must set exactly one of password or passwordSecret (and passwordSecret requires services.asteriskLocal.secrets.enable).";
+      }
+      {
+        assertion = !cfg.secrets.enable || config.sops.defaultSopsFile != null;
+        message = "asteriskLocal.secrets.enable=true but sops.defaultSopsFile is null. Enable lucy.secrets (or set sops.defaultSopsFile) so sops-nix can render templates.";
+      }
+      # Warn about weak credentials (plaintext only)
+      {
+        assertion = credentialWarnings == "";
+        message = "asteriskLocal: ${credentialWarnings}";
+      }
+      {
+        assertion = !cfg.fax.enable || (cfg.fax.inboxDir != null && lib.hasPrefix "/" cfg.fax.inboxDir);
+        message = ''services.asteriskLocal.fax.enable needs fax.inboxDir as an absolute runtime path (e.g. "/data/fax/inbox").'';
+      }
+      {
+        assertion =
+          !cfg.faxSend.enable || (cfg.faxSend.outboxDir != null && lib.hasPrefix "/" cfg.faxSend.outboxDir);
+        message = ''services.asteriskLocal.faxSend.enable needs faxSend.outboxDir as an absolute runtime path (e.g. "/data/fax/outbox").'';
+      }
+      {
+        assertion =
+          !cfg.faxSend.enable || (cfg.faxSend.queuedDir != null && lib.hasPrefix "/" cfg.faxSend.queuedDir);
+        message = ''services.asteriskLocal.faxSend.enable needs faxSend.queuedDir as an absolute runtime path (e.g. "/data/fax/queued").'';
+      }
+    ];
 
     services.asterisk.enable = true;
 
     # Fax needs res_fax + spandsp (nixpkgs asterisk ships neither — proven
     # by build: overrideAttrs alone yields res_fax.so/res_fax_spandsp.so).
     # mkDefault so hosts can still pin their own asterisk package.
-    services.asterisk.package = lib.mkIf (cfg.fax.enable || cfg.faxSend.enable) (lib.mkDefault (pkgs.asterisk.overrideAttrs (old: {
-      buildInputs = old.buildInputs ++ [pkgs.spandsp];
-    })));
+    services.asterisk.package = lib.mkIf (cfg.fax.enable || cfg.faxSend.enable) (
+      lib.mkDefault (
+        pkgs.asterisk.overrideAttrs (old: {
+          buildInputs = old.buildInputs ++ [ pkgs.spandsp ];
+        })
+      )
+    );
 
     services.asterisk.confFiles =
       (
-        if cfg.secrets.enable
-        then {
-          "asterisk.conf" = asteriskConf;
-        }
-        else {
-          "pjsip.conf" = pjsipConf;
-          "extensions.conf" = extensionsConf;
-          "asterisk.conf" = asteriskConf;
-        }
+        if cfg.secrets.enable then
+          {
+            "asterisk.conf" = asteriskConf;
+          }
+        else
+          {
+            "pjsip.conf" = pjsipConf;
+            "extensions.conf" = extensionsConf;
+            "asterisk.conf" = asteriskConf;
+          }
       )
       // lib.optionalAttrs (cfg.fax.enable || cfg.faxSend.enable) {
         "udptl.conf" = udptlConf;
       };
 
-    sops.secrets = lib.mkIf cfg.secrets.enable (
-      lib.genAttrs phoneSecretNames (_name: {})
-    );
+    sops.secrets = lib.mkIf cfg.secrets.enable (lib.genAttrs phoneSecretNames (_name: { }));
 
     sops.templates = lib.mkIf cfg.secrets.enable {
       "asterisk-pjsip.conf" = {
@@ -684,7 +717,9 @@ in {
     # branch works: there our confFiles entries subtract the defaults).
     environment.etc = lib.mkIf cfg.secrets.enable {
       "asterisk/pjsip.conf".source = lib.mkForce config.sops.templates."asterisk-pjsip.conf".path;
-      "asterisk/extensions.conf".source = lib.mkForce config.sops.templates."asterisk-extensions.conf".path;
+      "asterisk/extensions.conf".source =
+        lib.mkForce
+          config.sops.templates."asterisk-extensions.conf".path;
     };
 
     # Placeholder fragments for the services.voip #includes above.
@@ -692,16 +727,15 @@ in {
     # rewrites both before asterisk starts. The asterisk user exists here
     # (upstream module creates it in this same mkIf branch).
     # Fax spool dirs via faxDirRule (see let block: NFS-safe, no chown).
-    systemd.tmpfiles.rules =
-      [
-        "f /run/asterisk/voip-trunks.conf 0640 asterisk asterisk - voip PJSIP trunks (services.voip)"
-        "f /run/asterisk/voip-extensions.conf 0640 asterisk asterisk - voip dialplan (services.voip)"
-      ]
-      ++ lib.optional cfg.fax.enable (faxDirRule cfg.fax.inboxDir)
-      ++ lib.optionals cfg.faxSend.enable [
-        (faxDirRule cfg.faxSend.outboxDir)
-        (faxDirRule cfg.faxSend.queuedDir)
-      ];
+    systemd.tmpfiles.rules = [
+      "f /run/asterisk/voip-trunks.conf 0640 asterisk asterisk - voip PJSIP trunks (services.voip)"
+      "f /run/asterisk/voip-extensions.conf 0640 asterisk asterisk - voip dialplan (services.voip)"
+    ]
+    ++ lib.optional cfg.fax.enable (faxDirRule cfg.fax.inboxDir)
+    ++ lib.optionals cfg.faxSend.enable [
+      (faxDirRule cfg.faxSend.outboxDir)
+      (faxDirRule cfg.faxSend.queuedDir)
+    ];
 
     # Outbound fax poller: <number>__<name>.pdf drop -> G3 TIFF ->
     # Asterisk call file. Runs as asterisk (spool is asterisk-owned).
@@ -750,12 +784,20 @@ in {
           echo "fax-poller: queued fax to $num ($base)"
         done
       '';
-      path = with pkgs; [ghostscript libtiff coreutils gawk gnugrep gnused findutils];
+      path = with pkgs; [
+        ghostscript
+        libtiff
+        coreutils
+        gawk
+        gnugrep
+        gnused
+        findutils
+      ];
     };
 
     systemd.timers.fax-poller = lib.mkIf cfg.faxSend.enable {
       description = "Poll outbound fax outbox";
-      wantedBy = ["timers.target"];
+      wantedBy = [ "timers.target" ];
       timerConfig = {
         OnBootSec = "1min";
         OnUnitActiveSec = "2min";
@@ -764,7 +806,7 @@ in {
 
     # Firewall configuration
     networking.firewall = lib.mkIf cfg.openFirewall {
-      allowedUDPPorts = [5060];
+      allowedUDPPorts = [ 5060 ];
       allowedUDPPortRanges = [
         {
           from = 10000;

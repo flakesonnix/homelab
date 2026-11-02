@@ -1,0 +1,62 @@
+--- a/Makefile
++++ b/Makefile
+@@ -12,12 +12,12 @@
+ 	-Wfloat-conversion
+ 
+ # CFLAGS / LDFLAGS
+-PKGS      = wayland-server xkbcommon libinput pangocairo gio-unix-2.0 libdrm libsfdo-icon libsfdo-basedir gdk-pixbuf-2.0 librsvg-2.0 $(XLIBS)
++PKGS      = wayland-server xkbcommon libinput pangocairo gio-unix-2.0 libdrm libsfdo-icon libsfdo-basedir gdk-pixbuf-2.0 librsvg-2.0 json-glib-1.0 $(XLIBS)
+ DWLCFLAGS = `$(PKG_CONFIG) --cflags $(PKGS)` $(WLR_INCS) $(DWLCPPFLAGS) $(DWLDEVCFLAGS) $(CFLAGS)
+ LDLIBS    = `$(PKG_CONFIG) --libs $(PKGS)` $(WLR_LIBS) -lm $(LIBS)
+ 
+ all: dwl
+-dwl: dwl.c scroll.c launcher.c launcher-model.c launcher-icons.c client.h config.h ime.h util.h config.mk cursor-shape-v1-protocol.h \
++dwl: dwl.c scroll.c launcher.c launcher-model.c launcher-icons.c discord-rpc.c client.h config.h ime.h util.h config.mk cursor-shape-v1-protocol.h \
+ 	ext-image-copy-capture-v1-protocol.h \
+ 	pointer-constraints-unstable-v1-protocol.h wlr-layer-shell-unstable-v1-protocol.h \
+ 	wlr-output-power-management-unstable-v1-protocol.h xdg-shell-protocol.h
+@@ -56,7 +56,7 @@
+ dist: clean
+ 	mkdir -p dwl-$(VERSION)
+ 	cp -R LICENSE* Makefile CHANGELOG.md README.md client.h config.def.h \
+-		config.mk protocols dwl.1 dwl.c scroll.c launcher.c launcher-model.c launcher-icons.c ime.h util.h dwl.desktop \
++		config.mk protocols dwl.1 dwl.c scroll.c launcher.c launcher-model.c launcher-icons.c discord-rpc.c ime.h util.h dwl.desktop \
+ 		dwl-$(VERSION)
+ 	tar -caf dwl-$(VERSION).tar.gz dwl-$(VERSION)
+ 	rm -rf dwl-$(VERSION)
+--- a/dwl.c
++++ b/dwl.c
+@@ -517,6 +517,7 @@
+ 
+ #include "scroll.c"
+ #include "launcher.c"
++#include "discord-rpc.c"
+ 
+ /* function implementations */
+ void
+@@ -859,6 +860,7 @@
+ void
+ cleanup(void)
+ {
++	discordrpcfinish();
+ 	launcherclose(0);
+ 	cleanuplisteners();
+ #ifdef XWAYLAND
+@@ -1956,6 +1958,7 @@
+ 	lock->scene = wlr_scene_tree_create(layers[LyrBlock]);
+ 	cur_lock = lock->lock = session_lock;
+ 	locked = 1;
++	discordrpcpause();
+ 
+ 	LISTEN(&session_lock->events.new_surface, &lock->new_surface, createlocksurface);
+ 	LISTEN(&session_lock->events.destroy, &lock->destroy, destroysessionlock);
+@@ -2567,8 +2570,9 @@
+ 	/* Run the Wayland event loop. This does not return until you exit the
+ 	 * compositor. Starting the backend rigged up all of the necessary event
+ 	 * loop configuration to listen to libinput events, DRM events, generate
+ 	 * frame events at the refresh rate, and so on. */
++	discordrpcsetup();
+ 	wl_display_run(dpy);
+ }
+ 
+ void

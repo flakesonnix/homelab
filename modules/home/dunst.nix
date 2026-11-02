@@ -3,13 +3,15 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   colors = config.lib.stylix.colors.withHashtag;
-in {
+in
+{
   options.programs.dunst.enable = lib.mkEnableOption "Dunst notification daemon";
 
   config = lib.mkIf (config.programs.dunst.enable && !(config.programs.niri.enable or false)) {
-    home.packages = [pkgs.dunst];
+    home.packages = [ pkgs.dunst ];
 
     xdg.configFile."dunst/dunstrc".text = ''
       [global]
@@ -30,7 +32,7 @@ in {
       show_age_threshold = 60
       force_display_urgency = 0
       idle_threshold = 120
-      font = Inter 12
+      font = Iosevka 12
       line_height = 0
       separator_height = 1
       padding = 16
@@ -86,8 +88,8 @@ in {
     systemd.user.services.dunst = {
       Unit = {
         Description = "Dunst notification daemon";
-        After = ["graphical-session.target"];
-        PartOf = ["graphical-session.target"];
+        After = [ "graphical-session.target" ];
+        PartOf = [ "graphical-session.target" ];
       };
       Service = {
         Type = "dbus";
@@ -96,7 +98,7 @@ in {
         Restart = "on-failure";
       };
       Install = {
-        WantedBy = ["graphical-session.target"];
+        WantedBy = [ "graphical-session.target" ];
       };
     };
   };

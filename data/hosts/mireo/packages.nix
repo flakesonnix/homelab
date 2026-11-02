@@ -1,4 +1,4 @@
-{pkgs, ...}: {
+{ pkgs, ... }: {
   systemPackages = with pkgs; [
     # Network diagnostics
     ethtool
@@ -8,6 +8,10 @@
     nmap
     socat
     tcpdump
+
+    # Music (MPD clients)
+    mpc
+    ncmpcpp
 
     # System analysis
     btop

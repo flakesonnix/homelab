@@ -4,71 +4,114 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   projectLib = frameworkLib;
   theme = projectLib.theme.fromStylix config;
-  inherit (theme) colors gradient hexAlpha rgba;
+  inherit (theme)
+    colors
+    gradient
+    hexAlpha
+    rgba
+    ;
   inherit (projectLib) symbols;
-  keys = projectLib.framework.keys {inherit symbols;};
-  actions = projectLib.framework.actions {inherit symbols;};
+  keys = projectLib.framework.keys { inherit symbols; };
+  actions = projectLib.framework.actions { inherit symbols; };
   niriFramework = projectLib.framework.niri;
   renderCommand = projectLib.render.command.render;
   renderBind = projectLib.render.kdl.renderBind renderCommand;
-  inherit (projectLib.render.kdl) renderCommandBlock renderLeaf renderLines renderPropsBlock renderSection;
+  inherit (projectLib.render.kdl)
+    renderCommandBlock
+    renderLeaf
+    renderLines
+    renderPropsBlock
+    renderSection
+    ;
 
-  mkBuiltinBind = key: actionName:
-    renderBind (niriFramework.bind key (actions.builtin actionName));
-  mkBindWithAttrs = key: attrs: action:
+  mkBuiltinBind = key: actionName: renderBind (niriFramework.bind key (actions.builtin actionName));
+  mkBindWithAttrs =
+    key: attrs: action:
     renderBind (niriFramework.bindWith key attrs action);
-  mkScrollBind = key: actionName:
-    mkBindWithAttrs key {cooldown-ms = 150;} (actions.builtin actionName);
-  mkWorkspaceBind = n:
-    map renderBind (niriFramework.workspaceBindTriplet {
-      focusKey = keys.alt (keys.workspace n);
-      moveColumnKey = keys.altCtrl (keys.workspace n);
-      moveWindowKey = keys.altShift (keys.workspace n);
-      workspace = n;
-      inherit actions symbols;
-    });
+  mkScrollBind =
+    key: actionName: mkBindWithAttrs key { cooldown-ms = 150; } (actions.builtin actionName);
+  mkWorkspaceBind =
+    n:
+    map renderBind (
+      niriFramework.workspaceBindTriplet {
+        focusKey = keys.alt (keys.workspace n);
+        moveColumnKey = keys.altCtrl (keys.workspace n);
+        moveWindowKey = keys.altShift (keys.workspace n);
+        workspace = n;
+        inherit actions symbols;
+      }
+    );
   mkWlogoutEntry = label: action: text: keybind: {
-    inherit label action text keybind;
+    inherit
+      label
+      action
+      text
+      keybind
+      ;
   };
-  renderStartup = command:
-    if command.kind == "spawn"
-    then renderCommandBlock "spawn-at-startup" command.argv
-    else if command.kind == "spawn-sh"
-    then ''spawn-at-startup "sh" "-lc" ${builtins.toJSON command.script}''
-    else throw "Unsupported startup command kind";
+  renderStartup =
+    command:
+    if command.kind == "spawn" then
+      renderCommandBlock "spawn-at-startup" command.argv
+    else if command.kind == "spawn-sh" then
+      ''spawn-at-startup "sh" "-lc" ${builtins.toJSON command.script}''
+    else
+      throw "Unsupported startup command kind";
   renderWindowRule = rule: renderSection "window-rule" rule.lines;
-  lockCommand = "sh -c '${lib.getExe' pkgs.swaylock-effects "swaylock"} --screenshots --clock --indicator --indicator-radius 110 --indicator-thickness 10 --effect-blur 7x5 --effect-vignette 0.25:0.6 --fade-in 0.2 --font Inter --font-size 24 --timestr %H:%M --datestr %a,\ %d\ %b --text-color ${hexAlpha colors.base07 "ff"} --text-clear-color ${hexAlpha colors.base07 "ff"} --text-ver-color ${hexAlpha colors.base0A "ff"} --text-wrong-color ${hexAlpha colors.base08 "ff"} --inside-color ${hexAlpha colors.base00 "96"} --inside-clear-color ${hexAlpha colors.base01 "d6"} --inside-ver-color ${hexAlpha colors.base02 "d6"} --inside-wrong-color ${hexAlpha colors.base01 "d6"} --ring-color ${hexAlpha colors.base0E "e0"} --ring-clear-color ${hexAlpha colors.base0C "d0"} --ring-ver-color ${hexAlpha colors.base0A "d0"} --ring-wrong-color ${hexAlpha colors.base08 "d0"} --line-color 00000000 --separator-color 00000000 --key-hl-color ${hexAlpha colors.base0E "ff"} --bs-hl-color ${hexAlpha colors.base0C "ff"} --show-failed-attempts --daemonize'";
-  startupCommands = renderLines (map renderStartup (
-    [
-      (niriFramework.startupSpawn ["${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"])
-      (niriFramework.startupSpawn [(lib.getExe pkgs.xwayland-satellite)])
-    ]
-    ++ lib.optionals (config.home.sessionVariables ? WALLPAPER) [
-      (niriFramework.startupSpawn [(lib.getExe pkgs.swaybg) "-m" "fill" "-i" config.home.sessionVariables.WALLPAPER])
-    ]
-    ++ lib.optionals config.programs.waybar.enable [
-      (niriFramework.startupSpawn [(lib.getExe pkgs.waybar)])
-    ]
-    ++ lib.optionals (config.programs.eww.enable or false) [
-      (niriFramework.startupSpawn [(lib.getExe pkgs.eww) "daemon"])
-      (niriFramework.startupSpawn [(lib.getExe pkgs.eww) "open" "topbar"])
-      (niriFramework.startupSpawn [(lib.getExe pkgs.eww) "open" "sidebar"])
-    ]
-  ));
+  lockCommand = "sh -c '${lib.getExe' pkgs.swaylock-effects "swaylock"} --screenshots --clock --indicator --indicator-radius 110 --indicator-thickness 10 --effect-blur 7x5 --effect-vignette 0.25:0.6 --fade-in 0.2 --font Iosevka --font-size 24 --timestr %H:%M --datestr %a,\ %d\ %b --text-color ${hexAlpha colors.base07 "ff"} --text-clear-color ${hexAlpha colors.base07 "ff"} --text-ver-color ${hexAlpha colors.base0A "ff"} --text-wrong-color ${hexAlpha colors.base08 "ff"} --inside-color ${hexAlpha colors.base00 "96"} --inside-clear-color ${hexAlpha colors.base01 "d6"} --inside-ver-color ${hexAlpha colors.base02 "d6"} --inside-wrong-color ${hexAlpha colors.base01 "d6"} --ring-color ${hexAlpha colors.base0E "e0"} --ring-clear-color ${hexAlpha colors.base0C "d0"} --ring-ver-color ${hexAlpha colors.base0A "d0"} --ring-wrong-color ${hexAlpha colors.base08 "d0"} --line-color 00000000 --separator-color 00000000 --key-hl-color ${hexAlpha colors.base0E "ff"} --bs-hl-color ${hexAlpha colors.base0C "ff"} --show-failed-attempts --daemonize'";
+  startupCommands = renderLines (
+    map renderStartup (
+      [
+        (niriFramework.startupSpawn [ "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1" ])
+        (niriFramework.startupSpawn [ (lib.getExe pkgs.xwayland-satellite) ])
+      ]
+      ++ lib.optionals (config.home.sessionVariables ? WALLPAPER) [
+        (niriFramework.startupSpawn [
+          (lib.getExe pkgs.swaybg)
+          "-m"
+          "fill"
+          "-i"
+          config.home.sessionVariables.WALLPAPER
+        ])
+      ]
+      ++ lib.optionals config.programs.waybar.enable [
+        (niriFramework.startupSpawn [ (lib.getExe pkgs.waybar) ])
+      ]
+      ++ lib.optionals (config.programs.eww.enable or false) [
+        (niriFramework.startupSpawn [
+          (lib.getExe pkgs.eww)
+          "daemon"
+        ])
+        (niriFramework.startupSpawn [
+          (lib.getExe pkgs.eww)
+          "open"
+          "topbar"
+        ])
+        (niriFramework.startupSpawn [
+          (lib.getExe pkgs.eww)
+          "open"
+          "sidebar"
+        ])
+      ]
+    )
+  );
 
-  windowRules = renderLines (map renderWindowRule [
-    (niriFramework.windowRule [
-      ''match app-id=r#"firefox$"# title="^Picture-in-Picture$"''
-      "open-floating true"
-    ])
-    (niriFramework.windowRule [
-      "geometry-corner-radius 16"
-      "clip-to-geometry true"
-    ])
-  ]);
+  windowRules = renderLines (
+    map renderWindowRule [
+      (niriFramework.windowRule [
+        ''match app-id=r#"firefox$"# title="^Picture-in-Picture$"''
+        "open-floating true"
+      ])
+      (niriFramework.windowRule [
+        "geometry-corner-radius 16"
+        "clip-to-geometry true"
+      ])
+    ]
+  );
 
   inputSection = renderSection "input" [
     (renderPropsBlock "keyboard" [
@@ -108,10 +151,18 @@
   staticBinds = ''
     ${mkBuiltinBind (keys.altShift symbols.keys.slash) "show-hotkey-overlay"}
 
-    ${mkBindWithAttrs (keys.alt symbols.keys.enter) {hotkey-overlay-title = "Open a Terminal: alacritty";} (actions.spawn ["${lib.getExe pkgs.alacritty}"])}
-    ${mkBindWithAttrs (keys.alt "D") {hotkey-overlay-title = "Run an Application: fuzzel";} (actions.spawn ["${lib.getExe pkgs.fuzzel}"])}
-    ${mkBindWithAttrs (keys.altCtrl symbols.keys.escape) {hotkey-overlay-title = "Lock the Screen: swaylock";} (actions.shell lockCommand)}
-    ${mkBindWithAttrs (keys.altShift "A") {hotkey-overlay-title = "Audio Output: pwvucontrol";} (actions.spawn ["${lib.getExe pkgs.pwvucontrol}"])}
+    ${mkBindWithAttrs (keys.alt symbols.keys.enter) {
+      hotkey-overlay-title = "Open a Terminal: alacritty";
+    } (actions.spawn [ "${lib.getExe pkgs.alacritty}" ])}
+    ${mkBindWithAttrs (keys.alt "D") { hotkey-overlay-title = "Run an Application: fuzzel"; } (
+      actions.spawn [ "${lib.getExe pkgs.fuzzel}" ]
+    )}
+    ${mkBindWithAttrs (keys.altCtrl symbols.keys.escape) {
+      hotkey-overlay-title = "Lock the Screen: swaylock";
+    } (actions.shell lockCommand)}
+    ${mkBindWithAttrs (keys.altShift "A") { hotkey-overlay-title = "Audio Output: pwvucontrol"; } (
+      actions.spawn [ "${lib.getExe pkgs.pwvucontrol}" ]
+    )}
 
     XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1+ -l 1.0"; }
     XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.1-"; }
@@ -126,8 +177,8 @@
     XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "+10%"; }
     XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "--class=backlight" "set" "10%-"; }
 
-    ${mkBindWithAttrs (keys.alt "O") {repeat = false;} actions.named.toggleOverview}
-    ${mkBindWithAttrs (keys.alt "W") {repeat = false;} actions.named.closeWindow}
+    ${mkBindWithAttrs (keys.alt "O") { repeat = false; } actions.named.toggleOverview}
+    ${mkBindWithAttrs (keys.alt "W") { repeat = false; } actions.named.closeWindow}
 
     Alt+Left  { focus-column-left; }
     Alt+Down  { focus-window-down; }
@@ -252,9 +303,10 @@
     inputSection
     layoutSection
     startupCommands
-    ''prefer-no-csd''
+    "prefer-no-csd"
     ''screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"''
-    ''      animations {
+    ''
+      animations {
             workspace-switch {
               spring damping-ratio=0.72 stiffness=800 epsilon=0.0001
             }
@@ -282,11 +334,16 @@
     windowRules
     ''
       binds {
-        ${lib.concatStringsSep "\n" [staticBinds workspaceBinds trailingBinds]}
+        ${lib.concatStringsSep "\n" [
+          staticBinds
+          workspaceBinds
+          trailingBinds
+        ]}
       }
     ''
   ];
-in {
+in
+{
   options.programs.niri.enable = lib.mkEnableOption "Niri compositor config";
 
   config = lib.mkIf config.programs.niri.enable {
@@ -297,7 +354,7 @@ in {
       settings = lib.mkForce {
         anchor = "top-right";
         sort = "-time";
-        font = "Inter 12";
+        font = "Iosevka 12";
         width = 360;
         height = 160;
         margin = "18,18,0";
@@ -334,22 +391,30 @@ in {
         default-timeout=0
       '';
     };
-    xdg.configFile."wlogout/layout".source = pkgs.writeText "layout" (builtins.toJSON [
-      (mkWlogoutEntry "lock" lockCommand "Lock" "l")
-      (mkWlogoutEntry "logout" "loginctl kill-user $USER" "Logout" "e")
-      (mkWlogoutEntry "suspend" "systemctl suspend" "Sleep" "u")
-      (mkWlogoutEntry "reboot" "systemctl reboot" "Restart" "r")
-      (mkWlogoutEntry "shutdown" "systemctl poweroff" "Shutdown" "s")
-    ]);
+    xdg.configFile."wlogout/layout".source = pkgs.writeText "layout" (
+      builtins.toJSON [
+        (mkWlogoutEntry "lock" lockCommand "Lock" "l")
+        (mkWlogoutEntry "logout" "loginctl kill-user $USER" "Logout" "e")
+        (mkWlogoutEntry "suspend" "systemctl suspend" "Sleep" "u")
+        (mkWlogoutEntry "reboot" "systemctl reboot" "Restart" "r")
+        (mkWlogoutEntry "shutdown" "systemctl poweroff" "Shutdown" "s")
+      ]
+    );
     xdg.configFile."wlogout/style.css".source = pkgs.writeText "style.css" ''
       * {
         background-image: none;
         box-shadow: none;
-        font-family: "Inter", sans-serif;
+        font-family: "Iosevka", "Symbols Nerd Font Mono", sans-serif;
       }
 
       window {
-        background: ${gradient "145deg" [(rgba colors.base00 "f0") (rgba colors.base01 "e8") (rgba colors.base02 "de")]};
+        background: ${
+          gradient "145deg" [
+            (rgba colors.base00 "f0")
+            (rgba colors.base01 "e8")
+            (rgba colors.base02 "de")
+          ]
+        };
         border: 1px solid ${rgba colors.base0E "54"};
         border-radius: 24px;
         box-shadow: 0 24px 64px ${rgba colors.base00 "b8"};
@@ -357,7 +422,12 @@ in {
 
       button {
         color: ${colors.base05};
-        background: ${gradient "135deg" [(rgba colors.base01 "c8") (rgba colors.base02 "b8")]};
+        background: ${
+          gradient "135deg" [
+            (rgba colors.base01 "c8")
+            (rgba colors.base02 "b8")
+          ]
+        };
         border: 1px solid ${rgba colors.base0E "52"};
         border-radius: 20px;
         margin: 12px;
@@ -370,7 +440,13 @@ in {
       }
 
       button:hover {
-        background: ${gradient "135deg" [(rgba colors.base0E "88") (rgba colors.base0D "74") (rgba colors.base0C "50")]};
+        background: ${
+          gradient "135deg" [
+            (rgba colors.base0E "88")
+            (rgba colors.base0D "74")
+            (rgba colors.base0C "50")
+          ]
+        };
         color: ${colors.base07};
         border-color: ${rgba colors.base0E "b8"};
       }

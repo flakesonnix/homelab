@@ -18,7 +18,7 @@ type: reference
 | Manifest | `nixfleet/artifacts/manifest.json` — pure-Nix host/VM catalog | [[50-NixFleet/Manifest-API|Manifest & API]] |
 | ui.json | Navigation/widgets/RBAC generated from Nix | [[50-NixFleet/Manifest-API|Manifest & API]] |
 | deploy-rs | Deployment (`flake.deploy.nodes`) with custom activate + NIX_PATH stub | [[40-Guides/Deploy-Rebuild|Deploy]] |
-| lanzaboote | Secure Boot (`/var/lib/sbctl`) | [[10-Hosts/x270|x270]] |
+| lanzaboote | Secure Boot (`/var/lib/sbctl`) | [[10-Hosts/p53|p53]] |
 | sops-nix / age | Secrets (`/etc/sops/age/keys.txt`, `.sops.yaml`) | [[40-Guides/Secrets-Guide|Secrets]] |
 | br0 | Bridge mireo LAN 10.8.0.1/24 + fd00:cafe:1::1/64 | [[10-Hosts/Network|Network]] |
 | microvm.nix | QEMU tap→br0 VMs (`flake.nix:193`) | [[10-Hosts/MicroVMs|MicroVMs]] |

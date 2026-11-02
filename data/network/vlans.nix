@@ -1,7 +1,9 @@
 # VLAN definitions for the homelab network.
-{lib}: let
+{ lib }:
+let
   inherit (lib) types mkOption;
-in {
+in
+{
   vlans = {
     management = {
       id = 10;

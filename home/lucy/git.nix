@@ -4,7 +4,8 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   colors = config.lib.stylix.colors.withHashtag;
   css = frameworkLib.render.css;
   rules = [
@@ -13,7 +14,7 @@
       declarations = {
         background_color = colors.base00;
         foreground = colors.base05;
-        font = ''"JetBrainsMono Nerd Font" 12'';
+        font = ''"Iosevka" 12'';
       };
     }
     {
@@ -40,7 +41,8 @@
       };
     }
   ];
-in {
+in
+{
   config = lib.mkIf config.programs.git.enable {
     programs.git = {
       settings = {

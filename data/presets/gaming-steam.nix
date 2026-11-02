@@ -1,7 +1,7 @@
 {
   meta = {
     description = "Enable Steam, GameMode, Gamescope, and MangoHud";
-    targets = ["host"];
+    targets = [ "host" ];
   };
 
   moduleFlags = {

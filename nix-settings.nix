@@ -1,7 +1,10 @@
 _: {
   nix = {
     settings = {
-      experimental-features = ["nix-command" "flakes"];
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
       auto-optimise-store = true;
       trusted-public-keys = [
         "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
@@ -29,17 +32,19 @@ _: {
 
   nixpkgs.overlays = [
     (final: prev: {
-      libdisplay-info = prev.libdisplay-info.overrideAttrs (finalAttrs: {
-        version = "0.3.0";
-        src = final.fetchFromGitLab {
-          domain = "gitlab.freedesktop.org";
-          owner = "emersion";
-          repo = "libdisplay-info";
-          rev = finalAttrs.version;
-          sha256 = "sha256-nXf2KGovNKvcchlHlzKBkAOeySMJXgxMpbi5z9gLrdc=";
-        };
+      # 0.8.3 stalls Electron screen sharing on PipeWire buffer starvation.
+      # The upstream retry fix is included in 0.8.4; keep later versions intact.
+      xdg-desktop-portal-wlr = prev.xdg-desktop-portal-wlr.overrideAttrs (old: {
+        patches =
+          (old.patches or [ ])
+          ++ prev.lib.optional (old.version == "0.8.3") (
+            final.fetchpatch {
+              name = "xdg-desktop-portal-wlr-buffer-starvation.patch";
+              url = "https://github.com/emersion/xdg-desktop-portal-wlr/commit/8309000572212af2cd2705955d04c79db475a29a.patch";
+              hash = "sha256-X0wlT5zgI6f6OPWRZjab4Yp/41Q2BqrJSxW0vYlCH4o=";
+            }
+          );
       });
-      niri = prev.niri.override {inherit (final) libdisplay-info;};
 
       qemu_full = prev.qemu_full.override {
         cephSupport = false;

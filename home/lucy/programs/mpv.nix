@@ -3,9 +3,10 @@
   lib,
   pkgs,
   ...
-}: {
+}:
+{
   config = lib.mkIf config.programs.mpv.enable {
-    home.packages = [pkgs.mpv];
+    home.packages = [ pkgs.mpv ];
 
     xdg.configFile."mpv/mpv.conf".text = ''
       profile=gpu-hq
@@ -18,9 +19,9 @@
       geometry=50%:50%
       osd-level=1
       osd-duration=2000
-      osd-font=Inter
+      osd-font=Iosevka
       osd-font-size=16
-      sub-font=Inter
+      sub-font=Iosevka
       sub-font-size=16
       sub-color=#FFFFFF
       sub-shadow-color=#000000

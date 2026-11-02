@@ -1,20 +1,23 @@
-pkgs: let
+pkgs:
+let
   inherit (pkgs) lib;
-  inherit (import ./types.nix {inherit lib;}) checked packageRegistryType;
-  servicesLib = import ./services.nix {inherit lib pkgs;};
-  identityLib = import ./identity.nix {inherit lib pkgs;};
-  networkLib = import ./network.nix {inherit lib pkgs;};
-  storageLib = import ./storage.nix {inherit lib pkgs;};
-  reconciliationLib = import ./reconciliation.nix {inherit lib pkgs;};
-in {
+  inherit (import ./types.nix { inherit lib; }) checked packageRegistryType;
+  servicesLib = import ./services.nix { inherit lib pkgs; };
+  identityLib = import ./identity.nix { inherit lib pkgs; };
+  networkLib = import ./network.nix { inherit lib pkgs; };
+  storageLib = import ./storage.nix { inherit lib pkgs; };
+  reconciliationLib = import ./reconciliation.nix { inherit lib pkgs; };
+in
+{
   # ── Package registry helper ──────────────────────────
   # Imports data/packages/<type>.nix and validates it against the typed
   # registry schema; unknown fields or bad types abort evaluation.
-  mkPackageRegistry = type: checked packageRegistryType (import (./. + "/../data/packages/${type}.nix") {inherit pkgs;});
+  mkPackageRegistry =
+    type:
+    checked packageRegistryType (import (./. + "/../data/packages/${type}.nix") { inherit pkgs; });
 
   # ── Service helpers ──────────────────────────────────
-  inherit
-    (servicesLib)
+  inherit (servicesLib)
     mkPostgresDatabase
     mkPostgresDatabases
     mkServiceUser
@@ -27,8 +30,7 @@ in {
     ;
 
   # ── Identity helpers ─────────────────────────────────
-  inherit
-    (identityLib)
+  inherit (identityLib)
     mkLDAPService
     mkKeycloakService
     mkKeycloakRealm
@@ -37,8 +39,7 @@ in {
     ;
 
   # ── Network helpers ──────────────────────────────────
-  inherit
-    (networkLib)
+  inherit (networkLib)
     mkDNSRecord
     mkDNSZone
     mkAdGuardHome
@@ -50,8 +51,7 @@ in {
     ;
 
   # ── Storage helpers ──────────────────────────────────
-  inherit
-    (storageLib)
+  inherit (storageLib)
     mkStorageVolume
     mkStorageShare
     mkDataDirectoryHost
@@ -63,8 +63,7 @@ in {
     ;
 
   # ── Reconciliation helpers ───────────────────────────
-  inherit
-    (reconciliationLib)
+  inherit (reconciliationLib)
     mkReconciler
     mkSafeReconciler
     mkDeclarativeService
@@ -81,14 +80,15 @@ in {
   secretKeys = import ./secret-keys.nix pkgs;
 
   # ── Sops setup keygen ────────────────────────────────
-  mkSetupSops = name:
+  mkSetupSops =
+    name:
     pkgs.writeShellApplication {
       inherit name;
-      runtimeInputs = [pkgs.age];
+      runtimeInputs = [ pkgs.age ];
       text = ''
         KEY_DIR=".sops"
         KEY_FILE="$KEY_DIR/keys.txt"
-        HOST_NAME="''${1:-x270}"
+        HOST_NAME="''${1:-p53}"
         if [ -f "$KEY_FILE" ]; then
           echo "Key already exists at $KEY_FILE"
           echo "Delete it and re-run to generate a new one."

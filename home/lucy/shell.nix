@@ -4,7 +4,8 @@
   lib,
   frameworkLib,
   ...
-}: let
+}:
+let
   bashPrompt = ''
     __lucy_git_branch() {
       local branch
@@ -30,26 +31,31 @@
 
     PROMPT_COMMAND=__lucy_prompt
   '';
-in {
+in
+{
   config = lib.mkIf config.programs.bash.enable {
     programs.bash = {
       enableCompletion = true;
-      historyControl = ["ignoreboth" "erasedups"];
+      historyControl = [
+        "ignoreboth"
+        "erasedups"
+      ];
       historyFileSize = 50000;
       historySize = 10000;
       shellAliases = {
-        neofetch = "hyfetch";
+        # neofetch ist upstream entfernt; hyfetch liefert neowofetch als Nachfolger mit.
+        neofetch = "neowofetch";
         ls = "ls --color=auto -F";
         ll = "ls -lah";
         la = "ls -A";
         grep = "grep --color=auto";
-        rebuild = "sudo nixos-rebuild switch --flake ~/Documents/dotfiles#x270";
+        rebuild = "sudo nixos-rebuild switch --flake ~/Documents/dotfiles#p53";
         uds = "df -h";
         umc = "free -m";
         specs = "hyfetch";
         nix-clean = "nix-collect-garbage -d";
         nix-update = "nix flake update";
-        nix-rebuild = "sudo nixos-rebuild switch --flake .#x270";
+        nix-rebuild = "sudo nixos-rebuild switch --flake .#p53";
       };
       initExtra = ''
         shopt -s autocd checkwinsize cmdhist globstar histappend
@@ -66,9 +72,7 @@ in {
       EDITOR = lib.mkForce "${pkgs.neovim}/bin/nvim";
       VISUAL = lib.mkForce "${pkgs.neovim}/bin/nvim";
       TERMINAL = lib.mkForce (
-        if config.programs.alacritty.enable
-        then "${pkgs.alacritty}/bin/alacritty"
-        else "kgx"
+        if config.programs.alacritty.enable then "${pkgs.alacritty}/bin/alacritty" else "kgx"
       );
     };
   };

@@ -2,9 +2,12 @@
   lib,
   config,
   ...
-}: {
+}:
+{
   imports = [
     ./base.nix
+    ./lucy-ca.nix
+    ./dwl-scroll.nix
     ./packages.nix
     ./lucy-services.nix
     ./postgres.nix
@@ -25,7 +28,8 @@
     ./matrix.nix
     ./ntfy.nix
     ./rustdesk.nix
-    ./kodi-box.nix
+    ./minecraft.nix
+    ./mopidy.nix
     ./osm.nix
   ];
 }

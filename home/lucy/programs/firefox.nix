@@ -1,17 +1,27 @@
 {
   config,
   lib,
+  pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   theme = frameworkLib.theme.fromStylix config;
   inherit (theme) colors gradient;
-in {
+  ca = pkgs.callPackage ../../../pkgs/lucy-ca { };
+in
+{
   config = lib.mkIf config.programs.firefox.enable {
     programs.firefox = {
+      # Public trust anchor only; the private CA key stays on mireo.
+      # The shared NixOS module also sets the higher-priority system policy.
+      policies.Certificates.Install = [ "${ca}/${ca.certificateFile}" ];
       profiles.${config.home.username} = {
         isDefault = true;
         settings = {
+          # Mozilla still handles the account; mireo stores encrypted Sync data.
+          # Disconnect an existing Sync account before changing its endpoint.
+          "identity.sync.tokenserver.uri" = "https://fxsync.home.arpa/1.0/sync/1.5";
           "browser.compactmode.show" = true;
           "browser.newtabpage.enabled" = false;
           "browser.startup.homepage" = "about:blank";
@@ -30,8 +40,10 @@ in {
           "browser.urlbar.showSearchSuggestionsFirst" = false;
           "browser.urlbar.autoFill" = false;
 
-          # Hardware acceleration on NVIDIA 555+
-          "media.ffmpeg.vaapi.enabled" = true;
+          # Kein VAAPI-Backend auf dieser Kiste (NVIDIA proprietär ohne
+          # nvidia-vaapi-driver): true lässt den HW-Decoder scheitern und
+          # YouTube-Videos spielen nicht (Seite lädt, Video steht).
+          "media.ffmpeg.vaapi.enabled" = false;
 
           "privacy.donottrackheader.enabled" = true;
           "privacy.trackingprotection.enabled" = true;
@@ -75,7 +87,13 @@ in {
           }
 
           .tabbrowser-tab[selected="true"] .tab-background {
-            background: ${gradient "90deg" [colors.base0E colors.base0D colors.base0C]} !important;
+            background: ${
+              gradient "90deg" [
+                colors.base0E
+                colors.base0D
+                colors.base0C
+              ]
+            } !important;
             box-shadow: 0 0 16px ${colors.base0E}66 !important;
           }
 
@@ -106,6 +124,6 @@ in {
       };
     };
 
-    stylix.targets.firefox.profileNames = [config.home.username];
+    stylix.targets.firefox.profileNames = [ config.home.username ];
   };
 }

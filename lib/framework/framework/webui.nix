@@ -1,160 +1,163 @@
 {
-  exportChrome = root: let
-    nav = [
-      {
-        section = "System";
-        page = "overview";
-        expert = false;
-        icon = "◉";
-        label = "Overview";
-      }
-      {
-        section = "Configuration";
-        page = "host";
-        expert = false;
-        icon = "⌘";
-        label = "Host Roles";
-      }
-      {
-        section = "Configuration";
-        page = "home";
-        expert = false;
-        icon = "⌂";
-        label = "User Profile";
-      }
-      {
-        section = "Configuration";
-        page = "packages";
-        expert = true;
-        icon = "◆";
-        label = "Packages";
-      }
-      {
-        section = "Configuration";
-        page = "flags";
-        expert = true;
-        icon = "⚑";
-        label = "Module Flags";
-      }
-      {
-        section = "Configuration";
-        page = "preview";
-        expert = true;
-        icon = "◇";
-        label = "Preview";
-      }
-      {
-        section = "Operations";
-        page = "actions";
-        expert = false;
-        icon = "▶";
-        label = "Rebuild & Check";
-      }
-    ];
-
-    pages = [
-      {
-        name = "overview";
-        title = "Overview";
-        description = "System state and active configuration";
-      }
-      {
-        name = "host";
-        title = "Host Roles";
-        description = "Define what this machine does";
-      }
-      {
-        name = "home";
-        title = "User Profile";
-        description = "Apps and tools for your user";
-      }
-      {
-        name = "packages";
-        title = "Packages";
-        description = "System tags and user packages";
-      }
-      {
-        name = "flags";
-        title = "Module Flags";
-        description = "Raw NixOS module toggles";
-      }
-      {
-        name = "preview";
-        title = "Preview";
-        description = "Resolved roles, presets, and bundles before rebuild";
-      }
-      {
-        name = "actions";
-        title = "Rebuild & Check";
-        description = "Apply changes and validate";
-      }
-    ];
-
-    actions = [
-      {
-        title = "rebuild";
-        tag = "nh os switch";
-        description = "Evaluate, build, and activate.";
-        endpoint = "/rebuild";
-        target = "#rebuild-output";
-        buttonClass = "btn btn-accent";
-        buttonLabel = "▶ Rebuild";
-      }
-      {
-        title = "framework validate";
-        tag = "framework rules";
-        description = "Role metadata, requires/conflicts, package refs, and module flag rules.";
-        endpoint = "/validate/framework";
-        target = "#framework-validation-output";
-        buttonClass = "btn";
-        buttonLabel = "⋄ Framework";
-      }
-      {
-        title = "validate";
-        tag = "nix flake check";
-        description = "Evaluation, formatting, and pre-commit checks.";
-        endpoint = "/validate";
-        target = "#validate-output";
-        buttonClass = "btn";
-        buttonLabel = "◇ Check";
-      }
-    ];
-
-    renderNav = item:
-      builtins.concatStringsSep "\t" [
-        "nav"
-        item.section
-        item.page
-        (
-          if item.expert
-          then "true"
-          else "false"
-        )
-        item.icon
-        item.label
+  exportChrome =
+    root:
+    let
+      nav = [
+        {
+          section = "System";
+          page = "overview";
+          expert = false;
+          icon = "◉";
+          label = "Overview";
+        }
+        {
+          section = "Configuration";
+          page = "host";
+          expert = false;
+          icon = "⌘";
+          label = "Host Roles";
+        }
+        {
+          section = "Configuration";
+          page = "home";
+          expert = false;
+          icon = "⌂";
+          label = "User Profile";
+        }
+        {
+          section = "Configuration";
+          page = "packages";
+          expert = true;
+          icon = "◆";
+          label = "Packages";
+        }
+        {
+          section = "Configuration";
+          page = "flags";
+          expert = true;
+          icon = "⚑";
+          label = "Module Flags";
+        }
+        {
+          section = "Configuration";
+          page = "preview";
+          expert = true;
+          icon = "◇";
+          label = "Preview";
+        }
+        {
+          section = "Operations";
+          page = "actions";
+          expert = false;
+          icon = "▶";
+          label = "Rebuild & Check";
+        }
       ];
 
-    renderPage = item:
-      builtins.concatStringsSep "\t" [
-        "page"
-        item.name
-        item.title
-        item.description
+      pages = [
+        {
+          name = "overview";
+          title = "Overview";
+          description = "System state and active configuration";
+        }
+        {
+          name = "host";
+          title = "Host Roles";
+          description = "Define what this machine does";
+        }
+        {
+          name = "home";
+          title = "User Profile";
+          description = "Apps and tools for your user";
+        }
+        {
+          name = "packages";
+          title = "Packages";
+          description = "System tags and user packages";
+        }
+        {
+          name = "flags";
+          title = "Module Flags";
+          description = "Raw NixOS module toggles";
+        }
+        {
+          name = "preview";
+          title = "Preview";
+          description = "Resolved roles, presets, and bundles before rebuild";
+        }
+        {
+          name = "actions";
+          title = "Rebuild & Check";
+          description = "Apply changes and validate";
+        }
       ];
 
-    renderAction = item:
-      builtins.concatStringsSep "\t" [
-        "action"
-        item.title
-        item.tag
-        item.description
-        item.endpoint
-        item.target
-        item.buttonClass
-        item.buttonLabel
+      actions = [
+        {
+          title = "rebuild";
+          tag = "nh os switch";
+          description = "Evaluate, build, and activate.";
+          endpoint = "/rebuild";
+          target = "#rebuild-output";
+          buttonClass = "btn btn-accent";
+          buttonLabel = "▶ Rebuild";
+        }
+        {
+          title = "framework validate";
+          tag = "framework rules";
+          description = "Role metadata, requires/conflicts, package refs, and module flag rules.";
+          endpoint = "/validate/framework";
+          target = "#framework-validation-output";
+          buttonClass = "btn";
+          buttonLabel = "⋄ Framework";
+        }
+        {
+          title = "validate";
+          tag = "nix flake check";
+          description = "Evaluation, formatting, and pre-commit checks.";
+          endpoint = "/validate";
+          target = "#validate-output";
+          buttonClass = "btn";
+          buttonLabel = "◇ Check";
+        }
       ];
-  in
-    builtins.concatStringsSep "\n" ((map renderNav nav) ++ (map renderPage pages) ++ (map renderAction actions));
+
+      renderNav =
+        item:
+        builtins.concatStringsSep "\t" [
+          "nav"
+          item.section
+          item.page
+          (if item.expert then "true" else "false")
+          item.icon
+          item.label
+        ];
+
+      renderPage =
+        item:
+        builtins.concatStringsSep "\t" [
+          "page"
+          item.name
+          item.title
+          item.description
+        ];
+
+      renderAction =
+        item:
+        builtins.concatStringsSep "\t" [
+          "action"
+          item.title
+          item.tag
+          item.description
+          item.endpoint
+          item.target
+          item.buttonClass
+          item.buttonLabel
+        ];
+    in
+    builtins.concatStringsSep "\n" (
+      (map renderNav nav) ++ (map renderPage pages) ++ (map renderAction actions)
+    );
 
   exportStyle = _root: ''
     :root{--bg-deep:#0d0d12;--bg-main:#111118;--bg-surface:#16161f;--bg-elevated:#1c1c27;--bg-hover:#22222f;--border:#2a2a3a;--border-bright:#3a3a4f;--accent:#00d4ff;--accent-dim:#0099bb;--accent-glow:rgba(0,212,255,.08);--red:#e94560;--green:#00b894;--amber:#f0a500;--text:#e8e8f0;--text-dim:#8888a0;--text-muted:#55556a;--mono:'JetBrains Mono','Fira Code',monospace;--sans:'Inter',-apple-system,sans-serif;--sidebar-w:220px}

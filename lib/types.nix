@@ -1,18 +1,21 @@
 # Own data types and helpers shared across the configuration (data model,
 # VMs, services).
-{lib}: let
+{ lib }:
+let
   inherit (lib) mkOption types;
-in rec {
+in
+rec {
   # IPv4 address, e.g. "10.8.0.5".
   ipv4 = types.strMatching "^([0-9]{1,3}\\.){3}[0-9]{1,3}$";
 
   # Evaluates a raw attrset through a submodule option type: defaults are
   # applied, unknown or ill-typed fields abort evaluation.
-  checked = specType: spec:
+  checked =
+    specType: spec:
     (lib.evalModules {
       modules = [
         {
-          options.spec = mkOption {type = specType;};
+          options.spec = mkOption { type = specType; };
           config.spec = spec;
         }
       ];
@@ -21,23 +24,31 @@ in rec {
   # A tagged package registry entry (data/packages/*.nix).
   packageEntry = types.submodule {
     options = {
-      description = mkOption {type = types.str;};
-      targets = mkOption {type = types.listOf (types.enum ["user" "system" "home"]);};
+      description = mkOption { type = types.str; };
+      targets = mkOption {
+        type = types.listOf (
+          types.enum [
+            "user"
+            "system"
+            "home"
+          ]
+        );
+      };
       packages.user = mkOption {
         type = types.listOf types.package;
-        default = [];
+        default = [ ];
       };
       packages.system = mkOption {
         type = types.listOf types.package;
-        default = [];
+        default = [ ];
       };
       packages.home = mkOption {
         type = types.listOf types.package;
-        default = [];
+        default = [ ];
       };
       tags = mkOption {
         type = types.listOf types.str;
-        default = [];
+        default = [ ];
       };
     };
   };
@@ -48,16 +59,16 @@ in rec {
   # A database specification for mkPostgresDatabase.
   dbSpec = types.submodule {
     options = {
-      name = mkOption {type = types.nonEmptyStr;};
-      owner = mkOption {type = types.nonEmptyStr;};
-      passwordSecret = mkOption {type = types.nonEmptyStr;};
+      name = mkOption { type = types.nonEmptyStr; };
+      owner = mkOption { type = types.nonEmptyStr; };
+      passwordSecret = mkOption { type = types.nonEmptyStr; };
       port = mkOption {
         type = types.port;
         default = 5432;
       };
       ensureTables = mkOption {
         type = types.listOf types.str;
-        default = [];
+        default = [ ];
       };
       replication = mkOption {
         type = types.bool;
@@ -73,20 +84,20 @@ in rec {
   # A PostgreSQL database result (after mkPostgresDatabase expansion).
   dbResult = types.submodule {
     options = {
-      name = mkOption {type = types.nonEmptyStr;};
-      owner = mkOption {type = types.nonEmptyStr;};
-      passwordSecret = mkOption {type = types.nonEmptyStr;};
-      port = mkOption {type = types.port;};
-      ensureTables = mkOption {type = types.listOf types.str;};
-      backup = mkOption {type = types.bool;};
+      name = mkOption { type = types.nonEmptyStr; };
+      owner = mkOption { type = types.nonEmptyStr; };
+      passwordSecret = mkOption { type = types.nonEmptyStr; };
+      port = mkOption { type = types.port; };
+      ensureTables = mkOption { type = types.listOf types.str; };
+      backup = mkOption { type = types.bool; };
     };
   };
 
   # A reverse-proxy target specification for mkReverseProxy.
   reverseProxySpec = types.submodule {
     options = {
-      host = mkOption {type = types.nonEmptyStr;};
-      upstream = mkOption {type = types.str;};
+      host = mkOption { type = types.nonEmptyStr; };
+      upstream = mkOption { type = types.str; };
       port = mkOption {
         type = types.port;
         default = 443;
@@ -109,35 +120,35 @@ in rec {
   # A reconciler specification for mkReconciler.
   reconcilerSpec = types.submodule {
     options = {
-      name = mkOption {type = types.nonEmptyStr;};
+      name = mkOption { type = types.nonEmptyStr; };
       description = mkOption {
         type = types.str;
         default = "";
       };
       after = mkOption {
         type = types.listOf types.str;
-        default = [];
+        default = [ ];
       };
-      script = mkOption {type = types.lines;};
+      script = mkOption { type = types.lines; };
       requires = mkOption {
         type = types.listOf types.str;
-        default = [];
+        default = [ ];
       };
       wantedBy = mkOption {
         type = types.listOf types.str;
-        default = ["multi-user.target"];
+        default = [ "multi-user.target" ];
       };
       serviceConfig = mkOption {
         type = types.attrs;
-        default = {};
+        default = { };
       };
       environment = mkOption {
         type = types.attrs;
-        default = {};
+        default = { };
       };
       path = mkOption {
         type = types.listOf types.package;
-        default = [];
+        default = [ ];
       };
     };
   };
@@ -145,13 +156,17 @@ in rec {
   # An OIDC client specification for mkOIDCClient.
   oidcClientSpec = types.submodule {
     options = {
-      name = mkOption {type = types.nonEmptyStr;};
-      clientId = mkOption {type = types.nonEmptyStr;};
-      clientSecretSecret = mkOption {type = types.nonEmptyStr;};
-      redirectUri = mkOption {type = types.str;};
+      name = mkOption { type = types.nonEmptyStr; };
+      clientId = mkOption { type = types.nonEmptyStr; };
+      clientSecretSecret = mkOption { type = types.nonEmptyStr; };
+      redirectUri = mkOption { type = types.str; };
       scopes = mkOption {
         type = types.listOf types.str;
-        default = ["openid" "email" "profile"];
+        default = [
+          "openid"
+          "email"
+          "profile"
+        ];
       };
       issuer = mkOption {
         type = types.str;
@@ -163,10 +178,14 @@ in rec {
   # A firewall rule specification for mkFirewallRule.
   firewallRuleSpec = types.submodule {
     options = {
-      name = mkOption {type = types.nonEmptyStr;};
-      ports = mkOption {type = types.listOf types.port;};
+      name = mkOption { type = types.nonEmptyStr; };
+      ports = mkOption { type = types.listOf types.port; };
       protocol = mkOption {
-        type = types.enum ["tcp" "udp" "both"];
+        type = types.enum [
+          "tcp"
+          "udp"
+          "both"
+        ];
         default = "tcp";
       };
       public = mkOption {
@@ -183,9 +202,9 @@ in rec {
   # A storage directory specification for mkDataDirectory.
   dataDirectorySpec = types.submodule {
     options = {
-      path = mkOption {type = types.path;};
-      owner = mkOption {type = types.nonEmptyStr;};
-      group = mkOption {type = types.nonEmptyStr;};
+      path = mkOption { type = types.path; };
+      owner = mkOption { type = types.nonEmptyStr; };
+      group = mkOption { type = types.nonEmptyStr; };
       mode = mkOption {
         type = types.strMatching "^[0-7]{3,4}$";
         default = "0750";
@@ -200,11 +219,11 @@ in rec {
   # A service definition for the declarative service model.
   serviceDefSpec = types.submodule {
     options = {
-      name = mkOption {type = types.nonEmptyStr;};
-      ip = mkOption {type = ipv4;};
+      name = mkOption { type = types.nonEmptyStr; };
+      ip = mkOption { type = ipv4; };
       ports = mkOption {
         type = types.listOf types.port;
-        default = [];
+        default = [ ];
       };
       public = mkOption {
         type = types.bool;
@@ -216,19 +235,19 @@ in rec {
       };
       dependencies = mkOption {
         type = types.listOf types.str;
-        default = [];
+        default = [ ];
       };
       dataDirs = mkOption {
         type = types.listOf dataDirectorySpec;
-        default = [];
+        default = [ ];
       };
       databases = mkOption {
         type = types.listOf dbSpec;
-        default = [];
+        default = [ ];
       };
       sopsSecrets = mkOption {
         type = types.listOf types.str;
-        default = [];
+        default = [ ];
       };
       reverseProxy = mkOption {
         type = types.nullOr reverseProxySpec;
@@ -240,9 +259,9 @@ in rec {
   # A network site specification.
   siteSpec = types.submodule {
     options = {
-      name = mkOption {type = types.nonEmptyStr;};
-      vlan = mkOption {type = types.ints.positive;};
-      gateway = mkOption {type = ipv4;};
+      name = mkOption { type = types.nonEmptyStr; };
+      vlan = mkOption { type = types.ints.positive; };
+      gateway = mkOption { type = ipv4; };
       prefix = mkOption {
         type = types.ints.positive;
         default = 24;
@@ -257,22 +276,22 @@ in rec {
   # A network device specification for NetBox/LibreNMS.
   deviceSpec = types.submodule {
     options = {
-      name = mkOption {type = types.nonEmptyStr;};
-      site = mkOption {type = types.nonEmptyStr;};
-      role = mkOption {type = types.nonEmptyStr;};
-      manufacturer = mkOption {type = types.nonEmptyStr;};
-      model = mkOption {type = types.nonEmptyStr;};
+      name = mkOption { type = types.nonEmptyStr; };
+      site = mkOption { type = types.nonEmptyStr; };
+      role = mkOption { type = types.nonEmptyStr; };
+      manufacturer = mkOption { type = types.nonEmptyStr; };
+      model = mkOption { type = types.nonEmptyStr; };
       interfaces = mkOption {
         type = types.listOf types.str;
-        default = [];
+        default = [ ];
       };
       addresses = mkOption {
         type = types.listOf ipv4;
-        default = [];
+        default = [ ];
       };
       tags = mkOption {
         type = types.listOf types.str;
-        default = [];
+        default = [ ];
       };
       snmpCommunity = mkOption {
         type = types.nullOr types.str;

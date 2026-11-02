@@ -3,25 +3,29 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.lucy.services.woodpecker;
-in {
+in
+{
   config = lib.mkIf cfg.enable {
-    networking.firewall.allowedTCPPorts = [80];
+    networking.firewall.allowedTCPPorts = [ 80 ];
     networking.firewall.interfaces."vm-devops" = {
-      allowedTCPPorts = [80];
+      allowedTCPPorts = [ 80 ];
     };
     systemd.services.woodpecker = {
       description = "Woodpecker CI server";
-      wantedBy = ["multi-user.target"];
-      after = ["postgresql.service"];
-      serviceConfig = {Type = "simple";};
+      wantedBy = [ "multi-user.target" ];
+      after = [ "postgresql.service" ];
+      serviceConfig = {
+        Type = "simple";
+      };
     };
     systemd.services.woodpecker-secrets-setup = {
       description = "Stage Woodpecker secrets from virtiofs share";
-      before = ["woodpecker.service"];
-      requiredBy = ["woodpecker.service"];
-      wantedBy = ["multi-user.target"];
+      before = [ "woodpecker.service" ];
+      requiredBy = [ "woodpecker.service" ];
+      wantedBy = [ "multi-user.target" ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;

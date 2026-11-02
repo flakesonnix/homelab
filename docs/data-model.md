@@ -24,15 +24,17 @@ data/
 │   ├── system.nix          # Tagged system/user package registry
 │   └── home.nix            # Tagged home package registry
 ├── hosts/
-│   ├── x270/
+│   ├── p53/
 │   │   ├── settings.nix    # NixOS config merged into host
-│   │   ├── roles.nix       # [ "desktop" "dev" "llm" "gaming" ]
+│   │   ├── roles.nix       # [ "desktop" "dev" "gaming" ]
 │   │   ├── module-flags.nix
 │   │   ├── packages.nix
 │   │   ├── power.nix
 │   │   └── services.nix
 │   └── mireo/
-│       └── settings.nix
+│       ├── settings.nix
+│       ├── packages.nix
+│       └── services.nix
 └── home/lucy/
     ├── bundles.nix         # Extra bundles beyond role-derived ones
     ├── roles.nix           # [ "core" "desktop" "dev" ]
@@ -81,7 +83,7 @@ Roles are the top-level unit of intent. A host or home declares a list of role n
 | Role | Targets | Effect |
 |------|---------|--------|
 | `core` | home | Activates `core` bundle |
-| `desktop` | host + home | Enables niri, fonts, waybar fonts; activates `desktop` bundle |
+| `desktop` | host + home | Enables GNOME/extensions and font flags, disables Niri/Plasma; activates `desktop` bundle |
 | `dev` | host + home | Adds dev/network/monitoring package tags; activates `dev` bundle |
 | `gaming` | host | Applies `gaming-base`, `gaming-performance`, `gaming-steam` presets |
 | `llm` | host | Adds `llm` package tag |
@@ -89,7 +91,7 @@ Roles are the top-level unit of intent. A host or home declares a list of role n
 ### Host role data
 
 ```
-data/hosts/x270/roles.nix   →  [ "desktop" "dev" "gaming" ]
+data/hosts/p53/roles.nix   →  [ "desktop" "dev" "gaming" ]
 
 data/home/lucy/roles.nix    →  [ "core" "desktop" "dev" ]
 ```
@@ -143,8 +145,13 @@ Bundles are Home Manager configuration slices activated by roles.
 | Bundle | Programs enabled |
 |--------|-----------------|
 | `core` | bash, git, neovim, htop, btop, bat, fzf, ssh, opencode, nh; packages: comma, manix, nix-output-monitor |
-| `desktop` | alacritty, dunst, eww, firefox, fuzzel, gnomeTheme, niri, rofi, starship, thunderbird, vesktop, zathura; stylix; flatpak: TeamSpeak; packages: jetbrains-mono, nautilus |
+| `desktop` | alacritty, firefox, gnomeTheme, gnomeShell, starship, thunderbird, vesktop, virtManager, zathura; stylix; flatpak: TeamSpeak; packages: geist-mono, nautilus |
 | `dev` | packages: android-studio |
+
+The desktop bundle explicitly disables Dunst, Eww, Fuzzel, Niri, Rofi and Waybar.
+Host-aware settings in `data/home/lucy/settings.nix` can enable session-specific
+tools separately (for example Fuzzel/Mako under SwayFX). The `geist-mono` package
+is still installed, but the configured desktop/app font is now Iosevka.
 
 ---
 
@@ -212,7 +219,7 @@ Same shape, but for home packages:
 }
 ```
 
-Entries: `jetbrains-mono`, `nautilus`, `comma`, `manix`, `nix-output-monitor`, `android-studio`.
+Entries: `geist-mono`, `nautilus`, `comma`, `manix`, `nix-output-monitor`, `android-studio`.
 
 Referenced by bundle `packageToggles` lists.
 
@@ -247,14 +254,14 @@ Files in `data/hosts/<host>/` are loaded by the framework's `loadHostDirectory`.
 - `dashboard.widgets` — one `host-summary` per host + `dashboardWidgets`, `featureFlags` (`terminal`, `files`, `containers`, `tailscale`, `proxy`), `rbac` (default `admin * *`).
 
 **M1 fixes (7a05039):**
-- `hasVms` was `vmCatalog.hostsVms` (always missing, `false`) → now `attrNames vmCatalog` — `hasVms` now correctly true when mireo has 7 VMs, so `/vms` navigation appears.
-- `hostRoles` check was `dir.value ? roles.nix` (invalid Nix — `roles.nix` is not a valid identifier, so always false) → now `hasAttr "roles.nix" dir.value` — `x270` now correctly shows `roles [desktop dev gaming]`, `bundles [desktop dev]`, `presets [gaming-*]`.
-- `mireo` intentionally has no `roles.nix` (server profile, `roles: []`, `bundles: []`, `presets: []`), not a bug — declarative config comes from `settings.nix` directly; roles remain Nix-originated for `x270`/`home`.
+- `hasVms` was `vmCatalog.hostsVms` (always missing, `false`) → now `attrNames vmCatalog` — `/vms` navigation appears whenever the manifest contains VMs.
+- `hostRoles` check was `dir.value ? roles.nix` (invalid Nix — `roles.nix` is not a valid identifier, so always false) → now `hasAttr "roles.nix" dir.value` — `p53` now correctly shows `roles [desktop dev gaming]`, `bundles [desktop dev]`, `presets [gaming-*]`.
+- `mireo` intentionally has no `roles.nix` (server profile, `roles: []`, `bundles: []`, `presets: []`), not a bug — declarative config comes from `settings.nix` directly; roles remain Nix-originated for `p53`/`home`.
 
 **M1 API (7a05039):**
 - Runtime: `GET /api/v1/hosts`, `/:host/health` (`healthy|degraded|critical|unknown`, `failedUnits`), `/:host/resources` (`/proc`), `/:host/network` (`ip -j`), `/:host/vms` (merged `configured` from manifest + `runtime` via `systemctl is-active microvm@<name>` validated), `/:host/systemd/failed` (`systemctl --failed`).
 - Typed Go structs (`nixfleet/api/manifest`, `nixfleet/api/runtime`), `404` for unknown host/vm, `503` when agent not local (mireo observability only), no shell strings.
-- Frontend: `HostOverview` + `VMTable` (7 VMs: grafana…aptcache, columns: Name|IP|State|vCPU|RAM|Health|Ports) + `SystemdFailed` on dashboard, `/vms` + `/network` pages (dark dense monospace).
+- Frontend: `HostOverview` + `VMTable` (manifest-driven, columns: Name|IP|State|vCPU|RAM|Health|Ports) + `SystemdFailed` on dashboard, `/vms` + `/network` pages (dark dense monospace). The current mireo configuration has 18 VMs; committed artifacts must be regenerated after VM changes.
 - No WebSocket/auth/SQLite yet — observability first.
 
 ---

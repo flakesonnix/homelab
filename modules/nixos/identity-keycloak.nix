@@ -3,25 +3,29 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.lucy.services.identity;
-in {
+in
+{
   config = lib.mkIf cfg.enable {
-    networking.firewall.allowedTCPPorts = [443];
+    networking.firewall.allowedTCPPorts = [ 443 ];
     networking.firewall.interfaces."vm-identity" = {
-      allowedTCPPorts = [443];
+      allowedTCPPorts = [ 443 ];
     };
     systemd.services.keycloak = {
       description = "Keycloak SSO identity provider";
-      wantedBy = ["multi-user.target"];
-      after = ["openldap.service"];
-      serviceConfig = {Type = "simple";};
+      wantedBy = [ "multi-user.target" ];
+      after = [ "openldap.service" ];
+      serviceConfig = {
+        Type = "simple";
+      };
     };
     systemd.services.keycloak-secrets-setup = {
       description = "Stage Keycloak secrets from virtiofs share";
-      before = ["keycloak.service"];
-      requiredBy = ["keycloak.service"];
-      wantedBy = ["multi-user.target"];
+      before = [ "keycloak.service" ];
+      requiredBy = [ "keycloak.service" ];
+      wantedBy = [ "multi-user.target" ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;

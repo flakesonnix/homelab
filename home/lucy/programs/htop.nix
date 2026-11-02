@@ -4,9 +4,11 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   colors = config.lib.stylix.colors;
-in {
+in
+{
   config = lib.mkIf config.programs.htop.enable {
     programs.htop = {
       settings = {

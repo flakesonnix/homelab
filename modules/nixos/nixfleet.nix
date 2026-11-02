@@ -3,16 +3,22 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   inherit (lib) mkEnableOption mkOption types;
   cfg = config.lucy.nixfleet;
-in {
+in
+{
   options = {
     lucy.nixfleet = {
       enable = mkEnableOption "nixfleet control plane";
 
       role = mkOption {
-        type = types.enum ["api" "agent" "cli"];
+        type = types.enum [
+          "api"
+          "agent"
+          "cli"
+        ];
         description = "nixfleet role of this host (api runs the server)";
       };
 
@@ -37,20 +43,22 @@ in {
           description = "Built nixfleet-web SPA directory (served at /)";
         };
         proxy = mkOption {
-          type = types.attrsOf (types.submodule {
-            options = {
-              target = mkOption {
-                type = types.str;
-                description = "Upstream URL, e.g. http://10.8.0.2:3000";
+          type = types.attrsOf (
+            types.submodule {
+              options = {
+                target = mkOption {
+                  type = types.str;
+                  description = "Upstream URL, e.g. http://10.8.0.2:3000";
+                };
+                subPath = mkOption {
+                  type = types.bool;
+                  default = false;
+                  description = "App serves under /apps/<name> (e.g. Grafana)";
+                };
               };
-              subPath = mkOption {
-                type = types.bool;
-                default = false;
-                description = "App serves under /apps/<name> (e.g. Grafana)";
-              };
-            };
-          });
-          default = {};
+            }
+          );
+          default = { };
           description = "Reverse-proxy routes mounted at /apps/<name>";
         };
       };
@@ -73,12 +81,16 @@ in {
         };
         plugins = mkOption {
           type = types.listOf types.str;
-          default = ["systemd" "journal" "metrics"];
+          default = [
+            "systemd"
+            "journal"
+            "metrics"
+          ];
           description = "Enabled agent plugins (selection is declarative, execution is Go)";
         };
         filesRoots = mkOption {
           type = types.listOf types.path;
-          default = [];
+          default = [ ];
           description = "Path allowlist for the files plugin";
         };
         terminalUser = mkOption {
@@ -90,64 +102,72 @@ in {
 
       ui = {
         navigation = mkOption {
-          type = types.listOf (types.submodule {
-            options = {
-              label = mkOption {type = types.str;};
-              path = mkOption {type = types.str;};
-              page = mkOption {type = types.str;};
-            };
-          });
-          default = [];
+          type = types.listOf (
+            types.submodule {
+              options = {
+                label = mkOption { type = types.str; };
+                path = mkOption { type = types.str; };
+                page = mkOption { type = types.str; };
+              };
+            }
+          );
+          default = [ ];
           description = "Extra navigation entries merged into the generated ui.json";
         };
         dashboardWidgets = mkOption {
-          type = types.listOf (types.submodule {
-            options = {
-              type = mkOption {type = types.str;};
-              host = mkOption {
-                type = types.nullOr types.str;
-                default = null;
+          type = types.listOf (
+            types.submodule {
+              options = {
+                type = mkOption { type = types.str; };
+                host = mkOption {
+                  type = types.nullOr types.str;
+                  default = null;
+                };
+                dataSource = mkOption {
+                  type = types.nullOr types.str;
+                  default = null;
+                };
+                refreshMs = mkOption {
+                  type = types.nullOr types.ints.positive;
+                  default = null;
+                };
+                config = mkOption {
+                  type = types.attrs;
+                  default = { };
+                };
               };
-              dataSource = mkOption {
-                type = types.nullOr types.str;
-                default = null;
-              };
-              refreshMs = mkOption {
-                type = types.nullOr types.ints.positive;
-                default = null;
-              };
-              config = mkOption {
-                type = types.attrs;
-                default = {};
-              };
-            };
-          });
-          default = [];
+            }
+          );
+          default = [ ];
           description = "Extra dashboard widgets merged into ui.json";
         };
         pages = mkOption {
-          type = types.attrsOf (types.submodule {
-            options = {
-              enabled = mkOption {
-                type = types.bool;
-                default = true;
+          type = types.attrsOf (
+            types.submodule {
+              options = {
+                enabled = mkOption {
+                  type = types.bool;
+                  default = true;
+                };
               };
-            };
-          });
-          default = {};
+            }
+          );
+          default = { };
           description = "Per-page feature toggles (page exists iff enabled)";
         };
       };
 
       rbac = mkOption {
-        type = types.listOf (types.submodule {
-          options = {
-            role = mkOption {type = types.str;};
-            action = mkOption {type = types.str;};
-            resource = mkOption {type = types.str;};
-          };
-        });
-        default = [];
+        type = types.listOf (
+          types.submodule {
+            options = {
+              role = mkOption { type = types.str; };
+              action = mkOption { type = types.str; };
+              resource = mkOption { type = types.str; };
+            };
+          }
+        );
+        default = [ ];
         description = "Permission policy (role, action, resource); enforced by Go, declared here";
       };
     };
@@ -158,8 +178,8 @@ in {
       (lib.mkIf (cfg.api.package != null) {
         systemd.services.nixfleet-api = {
           description = "nixfleet control-plane API";
-          wantedBy = ["multi-user.target"];
-          after = ["network.target"];
+          wantedBy = [ "multi-user.target" ];
+          after = [ "network.target" ];
           # API failure must not break the whole NixOS activation: keep it as a
           # normal service (no Requires/PartOf), just restart on failure.
           startLimitBurst = 5;
@@ -185,9 +205,9 @@ in {
       (lib.mkIf (cfg.agent.package != null) {
         systemd.services.nixfleet-agent = {
           description = "nixfleet agent";
-          wantedBy = ["multi-user.target"];
-          wants = ["network-online.target"];
-          after = ["network-online.target"];
+          wantedBy = [ "multi-user.target" ];
+          wants = [ "network-online.target" ];
+          after = [ "network-online.target" ];
           startLimitBurst = 5;
           startLimitIntervalSec = 60;
           serviceConfig = {

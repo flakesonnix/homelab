@@ -4,12 +4,14 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   theme = frameworkLib.theme.fromStylix config;
   inherit (theme) colors gradient;
-in {
+in
+{
   config = lib.mkIf config.programs.thunderbird.enable {
-    home.packages = [pkgs.thunderbird];
+    home.packages = [ pkgs.thunderbird ];
 
     xdg.configFile."thunderbird/userChrome.css".text = ''
       /* Thunderbird userChrome.css */
@@ -37,7 +39,13 @@ in {
 
       #navigation-toolbox,
       #toolbar-menubar {
-        background: ${gradient "90deg" [colors.base00 colors.base01 colors.base02]} !important;
+        background: ${
+          gradient "90deg" [
+            colors.base00
+            colors.base01
+            colors.base02
+          ]
+        } !important;
         color: ${colors.base05} !important;
       }
 

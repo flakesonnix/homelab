@@ -1,11 +1,12 @@
-{pkgs, ...}: let
+{ pkgs, ... }:
+let
   inherit (import ../../lib/secret-keys.nix pkgs) mkKeyGenService;
   dashboard = builtins.toJSON {
-    annotations.list = [];
+    annotations.list = [ ];
     editable = true;
     graphTooltip = 1;
     id = null;
-    links = [];
+    links = [ ];
     liveNow = false;
     panels = [
       {
@@ -119,7 +120,7 @@
           justifyMode = "auto";
           orientation = "auto";
           reduceOptions = {
-            calcs = ["lastNotNull"];
+            calcs = [ "lastNotNull" ];
             fields = "";
             values = false;
           };
@@ -174,7 +175,7 @@
           justifyMode = "auto";
           orientation = "auto";
           reduceOptions = {
-            calcs = ["lastNotNull"];
+            calcs = [ "lastNotNull" ];
             fields = "";
             values = false;
           };
@@ -229,7 +230,7 @@
           justifyMode = "auto";
           orientation = "auto";
           reduceOptions = {
-            calcs = ["lastNotNull"];
+            calcs = [ "lastNotNull" ];
             fields = "";
             values = false;
           };
@@ -282,7 +283,7 @@
           justifyMode = "auto";
           orientation = "auto";
           reduceOptions = {
-            calcs = ["lastNotNull"];
+            calcs = [ "lastNotNull" ];
             fields = "";
             values = false;
           };
@@ -360,7 +361,7 @@
           justifyMode = "auto";
           orientation = "auto";
           reduceOptions = {
-            calcs = ["lastNotNull"];
+            calcs = [ "lastNotNull" ];
             fields = "";
             values = false;
           };
@@ -403,7 +404,7 @@
           justifyMode = "auto";
           orientation = "auto";
           reduceOptions = {
-            calcs = ["lastNotNull"];
+            calcs = [ "lastNotNull" ];
             fields = "";
             values = false;
           };
@@ -446,7 +447,7 @@
           justifyMode = "auto";
           orientation = "auto";
           reduceOptions = {
-            calcs = ["lastNotNull"];
+            calcs = [ "lastNotNull" ];
             fields = "";
             values = false;
           };
@@ -489,7 +490,7 @@
           justifyMode = "auto";
           orientation = "auto";
           reduceOptions = {
-            calcs = ["lastNotNull"];
+            calcs = [ "lastNotNull" ];
             fields = "";
             values = false;
           };
@@ -507,26 +508,34 @@
     refresh = "10s";
     schemaVersion = 39;
     style = "dark";
-    tags = ["router" "mireo"];
-    templating.list = [];
+    tags = [
+      "router"
+      "mireo"
+    ];
+    templating.list = [ ];
     time = {
       from = "now-6h";
       to = "now";
     };
-    timepicker = {};
+    timepicker = { };
     timezone = "browser";
     title = "Mireo Router";
     uid = "mireo-router";
     version = 1;
   };
-in {
+in
+{
   imports = [
     (import ./mk-microvm.nix {
       name = "grafana";
       ip = (import ./vm-ips.nix).grafana;
       mem = 768;
       vcpu = 2;
-      tcpPorts = [22 3000 9090];
+      tcpPorts = [
+        22
+        3000
+        9090
+      ];
       volumes = [
         {
           image = "grafana-data.img";
@@ -570,9 +579,9 @@ in {
         # stages once, grafana only ever reads /run/grafana).
         systemd.services.grafana-secrets-setup = {
           description = "Stage Grafana secrets from virtiofs share into tmpfs";
-          before = ["grafana.service"];
-          requiredBy = ["grafana.service"];
-          wantedBy = ["multi-user.target"];
+          before = [ "grafana.service" ];
+          requiredBy = [ "grafana.service" ];
+          wantedBy = [ "multi-user.target" ];
           serviceConfig = {
             Type = "oneshot";
             RemainAfterExit = true;
@@ -585,10 +594,10 @@ in {
           '';
         };
 
-        services.journald.extraConfig = ''
-          ForwardToConsole=yes
-          MaxLevelConsole=debug
-        '';
+        services.journald.settings.Journal = {
+          ForwardToConsole = true;
+          MaxLevelConsole = "debug";
+        };
 
         environment.etc."grafana-dashboards/mireo-router.json".text = dashboard;
 
@@ -600,7 +609,7 @@ in {
               job_name = "router";
               static_configs = [
                 {
-                  targets = ["10.8.0.1:9100"];
+                  targets = [ "10.8.0.1:9100" ];
                   labels = {
                     instance = "router";
                     host = "mireo";
@@ -612,10 +621,10 @@ in {
               job_name = "hosts";
               static_configs = [
                 {
-                  targets = ["10.8.0.176:9100"];
+                  targets = [ "10.8.0.176:9100" ];
                   labels = {
-                    instance = "x270";
-                    host = "x270";
+                    instance = "p53";
+                    host = "p53";
                   };
                 }
               ];

@@ -4,7 +4,7 @@ pkgs: {
   # nixos-rebuild switch without reboot).
   mkNvidiaLoader = pkgs.writeShellApplication {
     name = "nvidia-loader";
-    runtimeInputs = [pkgs.kmod];
+    runtimeInputs = [ pkgs.kmod ];
     text = ''
       if ! modinfo -k "$(uname -r)" nvidia >/dev/null 2>&1; then
         exit 0
@@ -19,7 +19,10 @@ pkgs: {
   # blocks the calling process for timeo*retrans even with soft mounts.
   mkMireoDataDispatcher = pkgs.writeShellApplication {
     name = "mireo-data-dispatcher";
-    runtimeInputs = [pkgs.netcat-gnu pkgs.util-linux];
+    runtimeInputs = [
+      pkgs.netcat-gnu
+      pkgs.util-linux
+    ];
     text = ''
       mnt=/mnt/mireo/data
 

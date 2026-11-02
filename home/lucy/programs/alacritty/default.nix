@@ -2,9 +2,11 @@
   config,
   lib,
   ...
-}: let
+}:
+let
   colors = config.lib.stylix.colors.withHashtag;
-in {
+in
+{
   config = lib.mkIf config.programs.alacritty.enable {
     programs.alacritty.settings = {
       env.TERM = "xterm-256color";
@@ -27,11 +29,11 @@ in {
 
       font = {
         normal = {
-          family = "GeistMono Nerd Font Mono";
+          family = "Iosevka";
           style = "Regular";
         };
         bold = {
-          family = "GeistMono Nerd Font Mono";
+          family = "Iosevka";
           style = "Bold";
         };
         size = 13.0;

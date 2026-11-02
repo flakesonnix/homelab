@@ -4,16 +4,20 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   projectLib = frameworkLib;
-  inherit (import ../../lib/types.nix {inherit lib;}) checked packageRegistryType;
-  packageRegistry = checked packageRegistryType (import ../../data/packages/home.nix {inherit pkgs;});
+  inherit (import ../../lib/types.nix { inherit lib; }) checked packageRegistryType;
+  packageRegistry = checked packageRegistryType (
+    import ../../data/packages/home.nix { inherit pkgs; }
+  );
   homeData = projectLib.framework.home.loadHomeDirectory {
     inherit lib;
     root = ../../data/home/lucy;
-    args = {inherit osConfig pkgs;};
+    args = { inherit osConfig pkgs; };
   };
-in {
+in
+{
   imports = [
     ./shell.nix
     ./git.nix
@@ -27,6 +31,7 @@ in {
     ./programs/fzf
     ./programs/firefox.nix
     ./programs/gnome-theme.nix
+    ./programs/gnome-shell.nix
     ./programs/thunderbird.nix
     ./programs/vesktop.nix
     ./programs/virt-manager.nix
@@ -44,6 +49,9 @@ in {
     roleRoot = ../../data/roles;
     bundleRoot = ../../data/bundles;
     inherit packageRegistry;
-    packagePath = ["lucy" "programs"];
+    packagePath = [
+      "lucy"
+      "programs"
+    ];
   };
 }

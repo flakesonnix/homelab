@@ -4,25 +4,44 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   projectLib = frameworkLib;
   theme = projectLib.theme.fromStylix config;
   inherit (theme) colors gradient;
   waybarFramework = projectLib.framework.waybar;
   renderCss = projectLib.render.css.renderSheet;
-  barGradient = gradient "90deg" [colors.base00 colors.base01 colors.base02];
-  panelGradient = gradient "90deg" [colors.base01 colors.base02];
-  accentGradient = gradient "90deg" [colors.base0E colors.base0D colors.base0C];
-  cardGradient = gradient "135deg" [colors.base01 colors.base02];
+  barGradient = gradient "90deg" [
+    colors.base00
+    colors.base01
+    colors.base02
+  ];
+  panelGradient = gradient "90deg" [
+    colors.base01
+    colors.base02
+  ];
+  accentGradient = gradient "90deg" [
+    colors.base0E
+    colors.base0D
+    colors.base0C
+  ];
+  cardGradient = gradient "135deg" [
+    colors.base01
+    colors.base02
+  ];
 
   waybarScripts = import ../../lib/waybar-scripts.nix pkgs;
   mediaPopupScript = waybarScripts.mkMediaPopup;
   playerPickerScript = waybarScripts.mkPlayerPicker;
-  notifScript = waybarScripts.mkNotifCounter {};
+  notifScript = waybarScripts.mkNotifCounter { };
 
   waybarStyle = renderCss [
     (waybarFramework.rule "*" {
-      font_family = ["Inter" "Hack Nerd Font" "sans-serif"];
+      font_family = [
+        "Iosevka"
+        "Symbols Nerd Font Mono"
+        "sans-serif"
+      ];
       font_size = "14px";
       min_height = "0";
     })
@@ -88,13 +107,13 @@
     (waybarFramework.rule "#mpris.paused, #mpris.stopped" {
       color = colors.base04;
     })
-    (waybarFramework.rule "#battery" {color = colors.base0A;})
-    (waybarFramework.rule "#battery.charging" {color = colors.base0B;})
-    (waybarFramework.rule "#battery.warning" {color = colors.base09;})
-    (waybarFramework.rule "#battery.critical" {color = colors.base08;})
-    (waybarFramework.rule "#cpu, #memory" {color = colors.base0D;})
-    (waybarFramework.rule "#cpu.warning, #memory.warning" {color = colors.base09;})
-    (waybarFramework.rule "#cpu.critical, #memory.critical" {color = colors.base08;})
+    (waybarFramework.rule "#battery" { color = colors.base0A; })
+    (waybarFramework.rule "#battery.charging" { color = colors.base0B; })
+    (waybarFramework.rule "#battery.warning" { color = colors.base09; })
+    (waybarFramework.rule "#battery.critical" { color = colors.base08; })
+    (waybarFramework.rule "#cpu, #memory" { color = colors.base0D; })
+    (waybarFramework.rule "#cpu.warning, #memory.warning" { color = colors.base09; })
+    (waybarFramework.rule "#cpu.critical, #memory.critical" { color = colors.base08; })
     (waybarFramework.rule "#custom-power" {
       color = colors.base0E;
       padding = "0 8px";
@@ -103,20 +122,20 @@
       color = colors.base08;
       background = panelGradient;
     })
-    (waybarFramework.rule "#network" {color = colors.base0C;})
-    (waybarFramework.rule "#network.disconnected" {color = colors.base08;})
-    (waybarFramework.rule "#pulseaudio" {color = colors.base0E;})
-    (waybarFramework.rule "#pulseaudio.muted" {color = colors.base04;})
-    (waybarFramework.rule "#tray" {color = colors.base05;})
-    (waybarFramework.rule "#idle_inhibitor" {color = colors.base05;})
-    (waybarFramework.rule "#idle_inhibitor.activated" {color = colors.base0A;})
+    (waybarFramework.rule "#network" { color = colors.base0C; })
+    (waybarFramework.rule "#network.disconnected" { color = colors.base08; })
+    (waybarFramework.rule "#pulseaudio" { color = colors.base0E; })
+    (waybarFramework.rule "#pulseaudio.muted" { color = colors.base04; })
+    (waybarFramework.rule "#tray" { color = colors.base05; })
+    (waybarFramework.rule "#idle_inhibitor" { color = colors.base05; })
+    (waybarFramework.rule "#idle_inhibitor.activated" { color = colors.base0A; })
     (waybarFramework.rule "#window" {
       color = colors.base06;
       font_style = "italic";
     })
-    (waybarFramework.rule "#custom-notifications" {color = colors.base05;})
-    (waybarFramework.rule "#custom-notifications.active" {color = colors.base0A;})
-    (waybarFramework.rule "#custom-notifications.inactive" {color = colors.base04;})
+    (waybarFramework.rule "#custom-notifications" { color = colors.base05; })
+    (waybarFramework.rule "#custom-notifications.active" { color = colors.base0A; })
+    (waybarFramework.rule "#custom-notifications.inactive" { color = colors.base04; })
     (waybarFramework.rule "#custom-notifications:hover" {
       color = colors.base08;
       background = panelGradient;
@@ -129,7 +148,7 @@
       padding = "6px 10px";
       box_shadow = "0 12px 28px ${colors.base00}";
     })
-    (waybarFramework.rule "tooltip label" {color = colors.base06;})
+    (waybarFramework.rule "tooltip label" { color = colors.base06; })
   ];
 
   mainBar = waybarFramework.bar {
@@ -140,13 +159,29 @@
     margin-left = 18;
     margin-right = 18;
     spacing = 6;
-    modules-left = ["niri/workspaces" "niri/window"];
-    modules-center = ["mpris"];
-    modules-right = ["custom/notifications" "idle_inhibitor" "clock" "network" "pulseaudio" "battery" "cpu" "memory" "tray" "custom/power"];
+    modules-left = [
+      "niri/workspaces"
+      "niri/window"
+    ];
+    modules-center = [ "mpris" ];
+    modules-right = [
+      "custom/notifications"
+      "idle_inhibitor"
+      "clock"
+      "network"
+      "pulseaudio"
+      "battery"
+      "cpu"
+      "memory"
+      "tray"
+      "custom/power"
+    ];
 
     "niri/window" = {
       format = "{title}";
-      rewrite = {"^$" = "";};
+      rewrite = {
+        "^$" = "";
+      };
       max-length = 30;
     };
 
@@ -154,7 +189,10 @@
       format = "{player_icon}  {dynamic}";
       format-paused = "{status_icon}  {dynamic}";
       dynamic-len = 25;
-      dynamic-order = ["title" "artist"];
+      dynamic-order = [
+        "title"
+        "artist"
+      ];
       player-icons = {
         default = "󰎆";
         spotify = "󰓇";
@@ -205,7 +243,11 @@
     pulseaudio = {
       format = "{icon}  {volume}%";
       format-muted = "󰝟  mute";
-      format-icons.default = ["" "" ""];
+      format-icons.default = [
+        ""
+        ""
+        ""
+      ];
       on-click = "pwvucontrol";
       on-scroll-up = "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05+ -l 1.0";
       on-scroll-down = "wpctl set-volume @DEFAULT_AUDIO_SINK@ 0.05-";
@@ -216,7 +258,18 @@
       format-charging = "󰂄  {capacity}%";
       format-warning = "󰂃  {capacity}%";
       format-critical = "󰁺  {capacity}%";
-      format-icons = ["󰁺" "󰁻" "󰁼" "󰁽" "󰁾" "󰁿" "󰂀" "󰂁" "󰂂" "󰁹"];
+      format-icons = [
+        "󰁺"
+        "󰁻"
+        "󰁼"
+        "󰁽"
+        "󰁾"
+        "󰁿"
+        "󰂀"
+        "󰂁"
+        "󰂂"
+        "󰁹"
+      ];
     };
 
     cpu = {
@@ -247,13 +300,20 @@
       on-click = "wlogout";
     };
   };
-in {
+in
+{
   config = lib.mkIf config.programs.waybar.enable {
-    home.packages = [pkgs.siji pkgs.libnotify pkgs.curl];
+    home.packages = [
+      pkgs.siji
+      pkgs.libnotify
+      pkgs.curl
+    ];
     programs.waybar = {
       package = pkgs.waybar;
-      settings = [mainBar];
+      settings = [ mainBar ];
     };
-    xdg.configFile."waybar/style.css" = lib.mkForce {source = pkgs.writeText "waybar-style.css" waybarStyle;};
+    xdg.configFile."waybar/style.css" = lib.mkForce {
+      source = pkgs.writeText "waybar-style.css" waybarStyle;
+    };
   };
 }

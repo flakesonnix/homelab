@@ -1,7 +1,9 @@
 # Network networks definition.
-{lib}: let
+{ lib }:
+let
   inherit (lib) types mkOption;
-in {
+in
+{
   networks = {
     lan = {
       name = "lan";
@@ -9,12 +11,6 @@ in {
       gateway = "10.8.0.1";
       dns = "10.8.0.1";
       domain = "home.arpa";
-    };
-    vpn = {
-      name = "vpn";
-      subnet = "10.66.0.0/30";
-      gateway = "10.66.0.1";
-      dns = null;
     };
   };
 }

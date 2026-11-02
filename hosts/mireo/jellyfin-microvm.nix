@@ -12,7 +12,10 @@
       ip = (import ./vm-ips.nix).jellyfin;
       mem = 2304; # NB: never exactly 2048 (QEMU hangs, microvm.nix#171)
       vcpu = 2;
-      tcpPorts = [22 8096];
+      tcpPorts = [
+        22
+        8096
+      ];
       shares = [
         {
           tag = "jellyfin-media";
@@ -25,7 +28,9 @@
         {
           image = "jellyfin-data.img";
           mountPoint = "/var/lib/jellyfin";
-          size = 8192;
+          # 2026-10-03: vollgelaufen (8G, v.a. livetv-Aufnahmen) -> 16G.
+          # Image auf mireo per qemu-img/resize2fs erweitert.
+          size = 16384;
           user = "jellyfin";
           group = "jellyfin";
         }

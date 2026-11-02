@@ -1,13 +1,15 @@
 let
   projectLib = import ../default.nix;
   inherit (projectLib.core) composition;
-in {
-  applyBundle = {
-    lib,
-    bundle,
-    packagePath,
-  }:
-    (bundle.moduleFlags or {})
+in
+{
+  applyBundle =
+    {
+      lib,
+      bundle,
+      packagePath,
+    }:
+    (bundle.moduleFlags or { })
     // lib.optionalAttrs (bundle ? packageToggles) (
       composition.renderEnabledAttrs {
         inherit lib;
@@ -16,14 +18,23 @@ in {
       }
     );
 
-  mergeBundles = {
-    lib,
-    bundles,
-  }:
+  mergeBundles =
+    {
+      lib,
+      bundles,
+    }:
     composition.mergeDefinitions {
       inherit lib;
       parts = bundles;
-      attrFields = ["moduleFlags" "settings" "home" "programs" "services" "xdg" "nix"];
-      listFields = ["packageToggles"];
+      attrFields = [
+        "moduleFlags"
+        "settings"
+        "home"
+        "programs"
+        "services"
+        "xdg"
+        "nix"
+      ];
+      listFields = [ "packageToggles" ];
     };
 }

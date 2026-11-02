@@ -5,9 +5,9 @@ type: module
 namespace: lucy.gaming.*
 ---
 
-# Gaming stack (x270)
+# Gaming stack (p53)
 
-[[20-Modules/Modules-MOC|← Modules]] · [[10-Hosts/x270|x270]] · Source `docs/gaming-x270.md`, `modules/nixos/gaming/` (6), `data/presets/gaming-*.nix`.
+[[20-Modules/Modules-MOC|← Modules]] · [[10-Hosts/p53|p53]] · Source `docs/gaming-p53.md`, `modules/nixos/gaming/` (6), `data/presets/gaming-*.nix`.
 
 The `gaming` role activates 3 presets:
 

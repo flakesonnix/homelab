@@ -1,30 +1,35 @@
 # Service network definitions: ports, visibility, and dependencies.
 # This is the single source of truth for firewall rules and
 # reverse proxy configuration.
-{lib}: let
+{ lib }:
+let
   inherit (lib) types mkOption;
-in {
+in
+{
   services = {
     ldap = {
       name = "ldap";
       ip = "10.8.0.29";
-      ports = [636];
+      ports = [ 636 ];
       public = false;
       vpnOnly = false;
-      dependencies = [];
-      dataDirs = [];
-      databases = [];
-      sopsSecrets = ["ldap/admin-password"];
+      dependencies = [ ];
+      dataDirs = [ ];
+      databases = [ ];
+      sopsSecrets = [ "ldap/admin-password" ];
     };
 
     keycloak = {
       name = "keycloak";
       ip = "10.8.0.29";
-      ports = [443];
+      ports = [ 443 ];
       public = false;
       vpnOnly = true;
-      dependencies = ["ldap" "postgres"];
-      dataDirs = [];
+      dependencies = [
+        "ldap"
+        "postgres"
+      ];
+      dataDirs = [ ];
       databases = [
         {
           name = "keycloak";
@@ -32,27 +37,30 @@ in {
           passwordSecret = "database/keycloak";
         }
       ];
-      sopsSecrets = ["database/keycloak"];
+      sopsSecrets = [ "database/keycloak" ];
     };
 
     postgres = {
       name = "postgres";
       ip = "10.8.0.28";
-      ports = [5432];
+      ports = [ 5432 ];
       public = false;
       vpnOnly = true;
-      dependencies = [];
-      databases = [];
-      sopsSecrets = [];
+      dependencies = [ ];
+      databases = [ ];
+      sopsSecrets = [ ];
     };
 
     nextcloud = {
       name = "nextcloud";
       ip = "10.8.0.14";
-      ports = [443];
+      ports = [ 443 ];
       public = true;
       vpnOnly = false;
-      dependencies = ["postgres" "ldap"];
+      dependencies = [
+        "postgres"
+        "ldap"
+      ];
       dataDirs = [
         {
           path = "/data/nextcloud";
@@ -67,16 +75,16 @@ in {
           passwordSecret = "database/nextcloud";
         }
       ];
-      sopsSecrets = ["database/nextcloud"];
+      sopsSecrets = [ "database/nextcloud" ];
     };
 
     netbox = {
       name = "netbox";
       ip = "10.8.0.15";
-      ports = [443];
+      ports = [ 443 ];
       public = false;
       vpnOnly = true;
-      dependencies = ["postgres"];
+      dependencies = [ "postgres" ];
       dataDirs = [
         {
           path = "/data/netbox";
@@ -91,16 +99,16 @@ in {
           passwordSecret = "database/netbox";
         }
       ];
-      sopsSecrets = ["database/netbox"];
+      sopsSecrets = [ "database/netbox" ];
     };
 
     librenms = {
       name = "librenms";
       ip = "10.8.0.16";
-      ports = [443];
+      ports = [ 443 ];
       public = false;
       vpnOnly = true;
-      dependencies = ["postgres"];
+      dependencies = [ "postgres" ];
       dataDirs = [
         {
           path = "/data/librenms";
@@ -115,16 +123,16 @@ in {
           passwordSecret = "database/librenms";
         }
       ];
-      sopsSecrets = ["database/librenms"];
+      sopsSecrets = [ "database/librenms" ];
     };
 
     woodpecker = {
       name = "woodpecker";
       ip = "10.8.0.17";
-      ports = [80];
+      ports = [ 80 ];
       public = false;
       vpnOnly = true;
-      dependencies = ["postgres"];
+      dependencies = [ "postgres" ];
       dataDirs = [
         {
           path = "/data/woodpecker";
@@ -139,16 +147,19 @@ in {
           passwordSecret = "database/woodpecker";
         }
       ];
-      sopsSecrets = ["database/woodpecker" "devops/woodpecker-secret"];
+      sopsSecrets = [
+        "database/woodpecker"
+        "devops/woodpecker-secret"
+      ];
     };
 
     hydra = {
       name = "hydra";
       ip = "10.8.0.18";
-      ports = [443];
+      ports = [ 443 ];
       public = false;
       vpnOnly = true;
-      dependencies = ["postgres"];
+      dependencies = [ "postgres" ];
       dataDirs = [
         {
           path = "/data/hydra";
@@ -163,16 +174,16 @@ in {
           passwordSecret = "database/hydra";
         }
       ];
-      sopsSecrets = ["database/hydra"];
+      sopsSecrets = [ "database/hydra" ];
     };
 
     registry = {
       name = "registry";
       ip = "10.8.0.19";
-      ports = [5000];
+      ports = [ 5000 ];
       public = false;
       vpnOnly = true;
-      dependencies = [];
+      dependencies = [ ];
       dataDirs = [
         {
           path = "/data/registry";
@@ -180,17 +191,17 @@ in {
           group = "registry";
         }
       ];
-      databases = [];
-      sopsSecrets = [];
+      databases = [ ];
+      sopsSecrets = [ ];
     };
 
     attic = {
       name = "attic";
       ip = "10.8.0.20";
-      ports = [80];
+      ports = [ 80 ];
       public = false;
       vpnOnly = true;
-      dependencies = [];
+      dependencies = [ ];
       dataDirs = [
         {
           path = "/data/attic";
@@ -198,17 +209,17 @@ in {
           group = "attic";
         }
       ];
-      databases = [];
-      sopsSecrets = [];
+      databases = [ ];
+      sopsSecrets = [ ];
     };
 
     immich = {
       name = "immich";
       ip = "10.8.0.21";
-      ports = [443];
+      ports = [ 443 ];
       public = true;
       vpnOnly = false;
-      dependencies = ["postgres"];
+      dependencies = [ "postgres" ];
       dataDirs = [
         {
           path = "/data/immich";
@@ -223,16 +234,16 @@ in {
           passwordSecret = "database/immich";
         }
       ];
-      sopsSecrets = ["database/immich"];
+      sopsSecrets = [ "database/immich" ];
     };
 
     paperless = {
       name = "paperless";
       ip = "10.8.0.22";
-      ports = [80];
+      ports = [ 80 ];
       public = false;
       vpnOnly = true;
-      dependencies = ["postgres"];
+      dependencies = [ "postgres" ];
       dataDirs = [
         {
           path = "/data/paperless";
@@ -247,16 +258,19 @@ in {
           passwordSecret = "database/paperless";
         }
       ];
-      sopsSecrets = ["database/paperless"];
+      sopsSecrets = [ "database/paperless" ];
     };
 
     matrix = {
       name = "matrix";
       ip = "10.8.0.23";
-      ports = [443 8448];
+      ports = [
+        443
+        8448
+      ];
       public = true;
       vpnOnly = false;
-      dependencies = ["postgres"];
+      dependencies = [ "postgres" ];
       dataDirs = [
         {
           path = "/data/matrix";
@@ -271,16 +285,16 @@ in {
           passwordSecret = "database/matrix";
         }
       ];
-      sopsSecrets = ["matrix/registration_shared_secret"];
+      sopsSecrets = [ "matrix/registration_shared_secret" ];
     };
 
     ntfy = {
       name = "ntfy";
       ip = "10.8.0.24";
-      ports = [443];
+      ports = [ 443 ];
       public = true;
       vpnOnly = false;
-      dependencies = [];
+      dependencies = [ ];
       dataDirs = [
         {
           path = "/data/ntfy";
@@ -288,17 +302,26 @@ in {
           group = "ntfy";
         }
       ];
-      databases = [];
-      sopsSecrets = ["ntfy/admin-token"];
+      databases = [ ];
+      sopsSecrets = [ "ntfy/admin-token" ];
     };
 
     rustdesk = {
       name = "rustdesk";
       ip = "10.8.0.25";
-      ports = [21115 21116 21118 21119 21121 21122 21123 21124];
+      ports = [
+        21115
+        21116
+        21118
+        21119
+        21121
+        21122
+        21123
+        21124
+      ];
       public = false;
       vpnOnly = true;
-      dependencies = [];
+      dependencies = [ ];
       dataDirs = [
         {
           path = "/data/rustdesk";
@@ -306,17 +329,20 @@ in {
           group = "rustdesk";
         }
       ];
-      databases = [];
-      sopsSecrets = [];
+      databases = [ ];
+      sopsSecrets = [ ];
     };
 
     syncthing = {
       name = "syncthing";
       ip = "10.8.0.26";
-      ports = [8384 22000];
+      ports = [
+        8384
+        22000
+      ];
       public = false;
       vpnOnly = true;
-      dependencies = [];
+      dependencies = [ ];
       dataDirs = [
         {
           path = "/data/syncthing";
@@ -324,8 +350,8 @@ in {
           group = "syncthing";
         }
       ];
-      databases = [];
-      sopsSecrets = [];
+      databases = [ ];
+      sopsSecrets = [ ];
     };
   };
 }

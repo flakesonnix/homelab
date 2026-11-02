@@ -3,15 +3,20 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.lucy.waybar;
-in {
+in
+{
   options.lucy.waybar = {
     installFonts = lib.mkEnableOption "install Waybar fonts system-wide";
 
     nerdFonts = lib.mkOption {
       type = lib.types.listOf lib.types.package;
-      default = [pkgs.nerd-fonts.hack pkgs.nerd-fonts.symbols-only];
+      default = [
+        pkgs.nerd-fonts.hack
+        pkgs.nerd-fonts.symbols-only
+      ];
       description = "Nerd Font families installed for Waybar glyphs";
     };
   };

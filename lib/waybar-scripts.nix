@@ -1,10 +1,16 @@
-pkgs: let
+pkgs:
+let
   inherit (pkgs) lib;
   inherit (lib) mkOption types;
-in {
+in
+{
   mkMediaPopup = pkgs.writeShellApplication {
     name = "waybar-media-popup";
-    runtimeInputs = with pkgs; [playerctl curl libnotify];
+    runtimeInputs = with pkgs; [
+      playerctl
+      curl
+      libnotify
+    ];
     text = ''
       title=$(playerctl metadata title 2>/dev/null)
       artist=$(playerctl metadata artist 2>/dev/null)
@@ -43,7 +49,10 @@ in {
 
   mkPlayerPicker = pkgs.writeShellApplication {
     name = "waybar-player-picker";
-    runtimeInputs = with pkgs; [playerctl fuzzel];
+    runtimeInputs = with pkgs; [
+      playerctl
+      fuzzel
+    ];
     text = ''
       players=$(playerctl -l 2>/dev/null)
       count=$(printf '%s\n' "$players" | grep -c . || echo 0)
@@ -57,10 +66,11 @@ in {
     '';
   };
 
-  mkNotifCounter = spec: let
-    inherit (import ./types.nix {inherit lib;}) checked;
-    s =
-      checked (types.submodule {
+  mkNotifCounter =
+    spec:
+    let
+      inherit (import ./types.nix { inherit lib; }) checked;
+      s = checked (types.submodule {
         options.icons = mkOption {
           type = types.submodule {
             options = {
@@ -74,14 +84,16 @@ in {
               };
             };
           };
-          default = {};
+          default = { };
         };
-      })
-      spec;
-  in
+      }) spec;
+    in
     pkgs.writeShellApplication {
       name = "waybar-notifications";
-      runtimeInputs = with pkgs; [mako jq];
+      runtimeInputs = with pkgs; [
+        mako
+        jq
+      ];
       text = ''
         output=$(makoctl list 2>&1 || true)
         if printf '%s' "$output" | grep -q "DBus\|does not exist\|Error"; then

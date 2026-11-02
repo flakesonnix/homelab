@@ -2,7 +2,8 @@
   config,
   lib,
   ...
-}: {
+}:
+{
   config = lib.mkIf config.programs.btop.enable {
     programs.btop.settings = {
       proc_gradient = false;

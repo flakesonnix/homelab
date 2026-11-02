@@ -1,12 +1,18 @@
-{pkgs, ...}: {
+{ pkgs, ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "cups";
       ip = (import ./vm-ips.nix).cups;
       mem = 512;
       vcpu = 1;
-      tcpPorts = [22 631];
-      udpPorts = [631 5353];
+      tcpPorts = [
+        22
+        631
+      ];
+      udpPorts = [
+        631
+        5353
+      ];
       volumes = [
         {
           image = "cups-etc.img";

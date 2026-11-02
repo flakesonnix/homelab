@@ -2,16 +2,18 @@
   config,
   lib,
   ...
-}: let
+}:
+let
   cfg = config.lucy.serialGetty;
-in {
+in
+{
   options.lucy.serialGetty.disabled = lib.mkOption {
     type = lib.types.listOf lib.types.str;
-    default = [];
+    default = [ ];
     description = "Serial TTY devices whose systemd getty units should be disabled.";
   };
 
-  config = lib.mkIf (cfg.disabled != []) {
+  config = lib.mkIf (cfg.disabled != [ ]) {
     systemd.services = lib.genAttrs (map (tty: "serial-getty@${tty}") cfg.disabled) (_: {
       enable = false;
     });

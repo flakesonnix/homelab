@@ -1,13 +1,16 @@
 # Management microVM: NetBox + LibreNMS
 # Network inventory and monitoring.
-{...}: {
+{ ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "management";
       ip = (import ./vm-ips.nix).netbox;
       mem = 1024;
       vcpu = 2;
-      tcpPorts = [22 443];
+      tcpPorts = [
+        22
+        443
+      ];
       volumes = [
         {
           image = "netbox-data.img";
@@ -24,6 +27,9 @@
           group = "librenms";
         }
       ];
+      # Secrets land here via host sops (management/*); the API tokens are
+      # placeholders until minted in the LibreNMS/NetBox UIs (see
+      # data/hosts/mireo/services.nix).
       shares = [
         {
           tag = "management-secrets";
@@ -54,6 +60,13 @@
           databaseName = "librenms";
           databaseUser = "librenms";
           databasePasswordSecret = "database/librenms";
+        };
+        # Add pci-setup script to satisfy ConditionPathExists in microvm-pci-devices@.service
+        systemd.services."pci-setup-management" = {
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = "/bin/true";
+          };
         };
       };
     })

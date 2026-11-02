@@ -4,15 +4,17 @@
 # ill-typed fields abort evaluation instead of being silently ignored.
 # Volume entries with `user`/`group` also generate a matching tmpfiles
 # ownership rule; `config` is extra VM NixOS config (imports are appended).
-spec: {lib, ...}: let
+spec:
+{ lib, ... }:
+let
   inherit (lib) mkOption types;
-  inherit (import ../../lib/types.nix {inherit lib;}) checked ipv4;
+  inherit (import ../../lib/types.nix { inherit lib; }) checked ipv4;
 
   volumeType = types.submodule {
     options = {
-      image = mkOption {type = types.str;};
-      mountPoint = mkOption {type = types.path;};
-      size = mkOption {type = types.ints.positive;};
+      image = mkOption { type = types.str; };
+      mountPoint = mkOption { type = types.path; };
+      size = mkOption { type = types.ints.positive; };
       user = mkOption {
         type = types.nullOr types.str;
         default = null;
@@ -26,56 +28,61 @@ spec: {lib, ...}: let
 
   vmSpecType = types.submodule {
     options = {
-      name = mkOption {type = types.nonEmptyStr;};
-      ip = mkOption {type = ipv4;};
-      mem = mkOption {type = types.ints.positive;};
-      vcpu = mkOption {type = types.ints.positive;};
+      name = mkOption { type = types.nonEmptyStr; };
+      ip = mkOption { type = ipv4; };
+      mem = mkOption { type = types.ints.positive; };
+      vcpu = mkOption { type = types.ints.positive; };
       tcpPorts = mkOption {
         type = types.listOf types.port;
-        default = [];
+        default = [ ];
       };
       udpPorts = mkOption {
         type = types.listOf types.port;
-        default = [];
+        default = [ ];
       };
       volumes = mkOption {
         type = types.listOf volumeType;
-        default = [];
+        default = [ ];
       };
       tmpfiles = mkOption {
         type = types.listOf types.str;
-        default = [];
+        default = [ ];
       };
       extraDns = mkOption {
         type = types.listOf types.str;
-        default = [];
+        default = [ ];
       };
       interfaceId = mkOption {
         type = types.nullOr types.nonEmptyStr;
         default = null;
       };
       shares = mkOption {
-        type = types.listOf (types.submodule {
-          options = {
-            tag = mkOption {type = types.nonEmptyStr;};
-            source = mkOption {type = types.nonEmptyStr;};
-            mountPoint = mkOption {type = types.nonEmptyStr;};
-            readOnly = mkOption {
-              type = types.bool;
-              default = true;
+        type = types.listOf (
+          types.submodule {
+            options = {
+              tag = mkOption { type = types.nonEmptyStr; };
+              source = mkOption { type = types.nonEmptyStr; };
+              mountPoint = mkOption { type = types.nonEmptyStr; };
+              readOnly = mkOption {
+                type = types.bool;
+                default = true;
+              };
+              proto = mkOption {
+                type = types.enum [
+                  "virtiofs"
+                  "9p"
+                ];
+                default = "virtiofs";
+              };
             };
-            proto = mkOption {
-              type = types.enum ["virtiofs" "9p"];
-              default = "virtiofs";
-            };
-          };
-        });
-        default = [];
+          }
+        );
+        default = [ ];
         description = "Host directories shared into the guest (auto-mounted by microvm.nix at mountPoint).";
       };
       config = mkOption {
         type = types.attrs;
-        default = {};
+        default = { };
       };
     };
   };
@@ -86,11 +93,8 @@ spec: {lib, ...}: let
   baseConfig = {
     imports = [
       (import ./microvm-base.nix {
-        inherit (s) ip;
-        interfaceId =
-          if s.interfaceId == null
-          then "vm-${s.name}"
-          else s.interfaceId;
+        inherit (s) ip name;
+        interfaceId = if s.interfaceId == null then "vm-${s.name}" else s.interfaceId;
         inherit (s) extraDns;
       })
       # Every guest gets the lucy.services.* option tree, so specs can
@@ -105,16 +109,26 @@ spec: {lib, ...}: let
     # Merges (not replaces) microvm-base.nix's ro-store share: module
     # lists concatenate across imports.
     microvm.shares = s.shares;
-    microvm.volumes = map (v: lib.removeAttrs v ["user" "group"]) volumes;
+    microvm.volumes = map (
+      v:
+      lib.removeAttrs v [
+        "user"
+        "group"
+      ]
+    ) volumes;
     systemd.tmpfiles.rules =
       s.tmpfiles
-      ++ lib.concatLists (map (v:
-        lib.optionals (v.user != null) [
-          "d ${v.mountPoint} 0750 ${v.user} ${v.group} - -"
-        ])
-      volumes);
+      ++ lib.concatLists (
+        map (
+          v:
+          lib.optionals (v.user != null) [
+            "d ${v.mountPoint} 0750 ${v.user} ${v.group} - -"
+          ]
+        ) volumes
+      );
   };
-in {
+in
+{
   # autostart list is derived by microvm.nix from vms.<name>.autostart
   # Deep merge so spec `config` can extend nested base keys (e.g. adding
   # systemd.services.* must not drop base systemd.tmpfiles.rules).

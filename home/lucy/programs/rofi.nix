@@ -4,11 +4,13 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   colors = config.lib.stylix.colors.withHashtag;
-in {
+in
+{
   config = lib.mkIf config.programs.rofi.enable {
-    home.packages = [pkgs.rofi];
+    home.packages = [ pkgs.rofi ];
 
     xdg.configFile."rofi/config.rasi".text = ''
       configuration {
@@ -17,7 +19,7 @@ in {
         show-icons: true;
         icon-theme: "Papirus-Dark";
         drun-icon-theme: "Papirus-Dark";
-        font: "Inter 12";
+        font: "Iosevka 12";
         terminal: "alacritty";
         location: 0;
         yoffset: 0;
@@ -88,14 +90,14 @@ in {
       prompt {
         background-color: inherit;
         text-color: @primary;
-        font: "Inter 14";
+        font: "Iosevka 14";
         padding: 0 10px 0 0;
       }
 
       entry {
         background-color: inherit;
         text-color: @fg;
-        font: "Inter 14";
+        font: "Iosevka 14";
       }
 
       separator {
@@ -147,7 +149,7 @@ in {
       element-text {
         background-color: inherit;
         text-color: inherit;
-        font: "Inter 12";
+        font: "Iosevka 12";
         vertical-align: 0.5;
       }
 

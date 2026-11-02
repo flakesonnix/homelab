@@ -1,0 +1,238 @@
+--- a/Makefile
++++ b/Makefile
+@@ -12,12 +12,12 @@
+ 	-Wfloat-conversion
+ 
+ # CFLAGS / LDFLAGS
+-PKGS      = wayland-server xkbcommon libinput $(XLIBS)
++PKGS      = wayland-server xkbcommon libinput pangocairo gio-unix-2.0 libdrm libsfdo-icon libsfdo-basedir gdk-pixbuf-2.0 librsvg-2.0 $(XLIBS)
+ DWLCFLAGS = `$(PKG_CONFIG) --cflags $(PKGS)` $(WLR_INCS) $(DWLCPPFLAGS) $(DWLDEVCFLAGS) $(CFLAGS)
+ LDLIBS    = `$(PKG_CONFIG) --libs $(PKGS)` $(WLR_LIBS) -lm $(LIBS)
+ 
+ all: dwl
+-dwl: dwl.c scroll.c client.h config.h ime.h util.h config.mk cursor-shape-v1-protocol.h \
++dwl: dwl.c scroll.c launcher.c launcher-model.c launcher-icons.c client.h config.h ime.h util.h config.mk cursor-shape-v1-protocol.h \
+ 	ext-image-copy-capture-v1-protocol.h \
+ 	pointer-constraints-unstable-v1-protocol.h wlr-layer-shell-unstable-v1-protocol.h \
+ 	wlr-output-power-management-unstable-v1-protocol.h xdg-shell-protocol.h
+@@ -56,7 +56,7 @@
+ dist: clean
+ 	mkdir -p dwl-$(VERSION)
+ 	cp -R LICENSE* Makefile CHANGELOG.md README.md client.h config.def.h \
+-		config.mk protocols dwl.1 dwl.c scroll.c ime.h util.h dwl.desktop \
++		config.mk protocols dwl.1 dwl.c scroll.c launcher.c launcher-model.c launcher-icons.c ime.h util.h dwl.desktop \
+ 		dwl-$(VERSION)
+ 	tar -caf dwl-$(VERSION).tar.gz dwl-$(VERSION)
+ 	rm -rf dwl-$(VERSION)
+--- a/dwl.c
++++ b/dwl.c
+@@ -89,7 +89,7 @@
+ enum { CurNormal, CurPressed, CurMove, CurResize }; /* cursor */
+ enum { XDGShell, LayerShell, X11 }; /* client types */
+ enum { LyrBg, LyrBottom, LyrTile, LyrFloat, LyrTop, LyrFS, LyrUnmanaged, LyrOverlay,
+-	LyrIMPopup, LyrBlock, NUM_LAYERS }; /* scene layers */
++	LyrIMPopup, LyrLauncher, LyrBlock, NUM_LAYERS }; /* scene layers */
+ enum { AxisUp, AxisRight, AxisDown, AxisLeft };
+ 
+ typedef union {
+@@ -180,6 +180,7 @@
+ 	struct wlr_keyboard *virtual_keyboard;
+ 
+ 	xkb_keysym_t keysyms[2];
++	uint32_t launcher_keycode;
+ 	uint32_t mods;
+ 	struct wl_event_source *key_repeat_source;
+ 
+@@ -401,6 +402,7 @@
+ static void scrollwidth(const Arg *arg);
+ static void scrollpreset(const Arg *arg);
+ static void scrollmaximize(const Arg *arg);
++static void showlauncher(const Arg *arg);
+ 
+ /* variables */
+ static pid_t child_pid = -1;
+@@ -514,6 +516,7 @@
+ #include "ime.h"
+ 
+ #include "scroll.c"
++#include "launcher.c"
+ 
+ /* function implementations */
+ void
+@@ -669,6 +672,11 @@
+ 
+ 	/* Find topmost keyboard interactive layer that has indicated it wants
+ 	 * exclusive access to the keyboard, if such a layer exists */
++	if (launcher.active) {
++		if (launcher.mon == m)
++			launcherrender();
++		return;
++	}
+ 	for (i = 0; i < (int)LENGTH(layers_above_shell); i++) {
+ 		wl_list_for_each_reverse(l, &m->layers[layers_above_shell[i]], link) {
+ 			if (locked ||
+@@ -697,6 +705,13 @@
+ 
+ 	wlr_idle_notifier_v1_notify_activity(idle_notifier, seat);
+ 
++	if (launcher.active) {
++		if (event->orientation == WL_POINTER_AXIS_VERTICAL_SCROLL && event->delta) {
++			launcherselect(&launcher.model, event->delta > 0 ? 1 : -1);
++			launcherrender();
++		}
++		return;
++	}
+ 	if (event->orientation == WL_POINTER_AXIS_VERTICAL_SCROLL)
+ 		adir = event->delta > 0 ? AxisDown : AxisUp;
+ 	else
+@@ -734,6 +749,20 @@
+ 	const Button *b;
+ 
+ 	wlr_idle_notifier_v1_notify_activity(idle_notifier, seat);
++
++	if (event->button <= KEY_MAX && launcher.buttons[event->button]
++			&& event->state == WL_POINTER_BUTTON_STATE_RELEASED) {
++		launcher.buttons[event->button] = 0;
++		return;
++	}
++	if (launcher.active) {
++		if (event->state == WL_POINTER_BUTTON_STATE_PRESSED) {
++			if (event->button <= KEY_MAX)
++				launcher.buttons[event->button] = 1;
++			launcherpointer(event->button);
++		}
++		return;
++	}
+ 
+ 	switch (event->state) {
+ 	case WL_POINTER_BUTTON_STATE_PRESSED:
+@@ -830,6 +859,7 @@
+ void
+ cleanup(void)
+ {
++	launcherclose(0);
+ 	cleanuplisteners();
+ #ifdef XWAYLAND
+ 	wlr_xwayland_destroy(xwayland);
+@@ -930,6 +960,8 @@
+ 	 * move closed monitor's clients to the focused one */
+ 	Client *c;
+ 	int i = 0, nmons = wl_list_length(&mons);
++	if (launcher.active && launcher.mon == m)
++		launcherclose(0);
+ 	if (!nmons) {
+ 		selmon = NULL;
+ 	} else if (m == selmon) {
+@@ -1555,7 +1587,7 @@
+ 	Client *old_c = NULL;
+ 	LayerSurface *old_l = NULL;
+ 
+-	if (locked)
++	if (locked || launcher.active)
+ 		return;
+ 
+ 	/* Raise client in stacking order if requested */
+@@ -1801,6 +1833,21 @@
+ 
+ 	wlr_idle_notifier_v1_notify_activity(idle_notifier, seat);
+ 
++	if (launcher.active && !locked) {
++		wl_event_source_timer_update(group->key_repeat_source, 0);
++		if (event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
++			consumed[event->keycode] = 1;
++			group->launcher_keycode = keycode;
++			launcherkey(kb, keycode);
++			if (launcher.active && xkb_keymap_key_repeats(kb->keymap, keycode))
++				wl_event_source_timer_update(group->key_repeat_source, kb->repeat_info.delay);
++		} else {
++			consumed[event->keycode] = 0;
++		}
++		return;
++	}
++	group->launcher_keycode = 0;
++
+ 	/* On _press_ if there is no active screen locker,
+ 	 * attempt to process a compositor keybinding. */
+ 	if (!locked && event->state == WL_KEYBOARD_KEY_STATE_PRESSED) {
+@@ -1815,7 +1862,7 @@
+ 		}
+ 	}
+ 
+-	if (handled && group->wlr_group->keyboard.repeat_info.delay > 0)
++	if (handled && !launcher.active && group->wlr_group->keyboard.repeat_info.delay > 0)
+ 		wl_event_source_timer_update(group->key_repeat_source,
+ 				group->wlr_group->keyboard.repeat_info.delay);
+ 	else
+@@ -1842,6 +1889,9 @@
+ 	 * pressed. We simply communicate this to the client. */
+ 	KeyboardGroup *group = wl_container_of(listener, group, modifiers);
+ 
++	if (launcher.active)
++		return;
++
+ 	if (input_method_keyboard_grab_forward_modifiers(group))
+ 		return;
+ 
+@@ -1857,6 +1907,15 @@
+ 	KeyboardGroup *group = data;
+ 	if (group->wlr_group->keyboard.repeat_info.rate <= 0)
+ 		return 0;
++	if (group->launcher_keycode) {
++		if (launcher.active && !locked) {
++			launcherkey(&group->wlr_group->keyboard, group->launcher_keycode);
++			if (launcher.active)
++				wl_event_source_timer_update(group->key_repeat_source,
++						1000 / group->wlr_group->keyboard.repeat_info.rate);
++		}
++		return 0;
++	}
+ 
+ 	wl_event_source_timer_update(group->key_repeat_source,
+ 			1000 / group->wlr_group->keyboard.repeat_info.rate);
+@@ -1891,6 +1950,7 @@
+ 		return;
+ 	}
+ 	lock = session_lock->data = ecalloc(1, sizeof(*lock));
++	launcherclose(0);
+ 	focusclient(NULL, 0);
+ 
+ 	lock->scene = wlr_scene_tree_create(layers[LyrBlock]);
+@@ -2055,6 +2115,15 @@
+ 	struct wlr_pointer_constraint_v1 *constraint;
+ 
+ 	/* Find the client under the pointer and send the event along. */
++	if (launcher.active) {
++		if (time) {
++			wlr_cursor_move(cursor, device, dx, dy);
++			wlr_idle_notifier_v1_notify_activity(idle_notifier, seat);
++		}
++		wlr_seat_pointer_clear_focus(seat);
++		wlr_cursor_set_xcursor(cursor, cursor_mgr, "default");
++		return;
++	}
+ 	xytonode(cursor->x, cursor->y, &surface, &c, &l, &sx, &sy);
+ 
+ 	if (cursor_mode == CurPressed && !seat->drag
+@@ -3105,6 +3174,9 @@
+ 	struct wlr_output_configuration_head_v1 *config_head;
+ 	Monitor *m;
+ 
++	if (launcher.active && !launcher.mon->wlr_output->enabled)
++		launcherclose(0);
++
+ 	/* First remove from the layout the disabled monitors */
+ 	wl_list_for_each(m, &mons, link) {
+ 		if (m->wlr_output->enabled)
+@@ -3455,9 +3527,11 @@
+ 	char *startup_cmd = NULL;
+ 	int c;
+ 
+-	while ((c = getopt(argc, argv, "s:hdv")) != -1) {
++	while ((c = getopt(argc, argv, "a:s:hdv")) != -1) {
+ 		if (c == 's')
+ 			startup_cmd = optarg;
++		else if (c == 'a')
++			return launcheractivate(optarg);
+ 		else if (c == 'd')
+ 			log_level = WLR_DEBUG;
+ 		else if (c == 'v')

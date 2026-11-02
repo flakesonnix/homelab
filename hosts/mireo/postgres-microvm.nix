@@ -1,13 +1,16 @@
 # PostgreSQL microVM: dedicated database platform
 # Security boundary, separate failure domain.
-{...}: {
+{ ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "postgres";
       ip = (import ./vm-ips.nix).postgres;
-      mem = 2048;
+      mem = 2304; # NB: never exactly 2048 (QEMU hangs, microvm.nix#171)
       vcpu = 4;
-      tcpPorts = [22 5432];
+      tcpPorts = [
+        22
+        5432
+      ];
       volumes = [
         {
           image = "postgres-data.img";
@@ -17,10 +20,14 @@
           group = "postgres";
         }
       ];
+      # DB passwords live in host sops (database/*) and are shared here as
+      # /run/secrets/postgres so postgres-secrets-setup stages them
+      # unchanged into /run/secrets/database. This VM *is* the database
+      # host, so sharing the whole database dir is least surprise.
       shares = [
         {
           tag = "postgres-secrets";
-          source = "/run/secrets/postgres";
+          source = "/run/secrets/database";
           mountPoint = "/run/secrets/postgres";
           readOnly = true;
         }
@@ -29,7 +36,7 @@
         "d /var/lib/postgresql 0750 postgres postgres - -"
       ];
       config = {
-        imports = [(import ../../modules/nixos/postgres.nix)];
+        imports = [ (import ../../modules/nixos/postgres.nix) ];
         lucy.services.postgres = {
           enable = true;
           port = 5432;
@@ -83,7 +90,7 @@
         };
         systemd.services.postgres-secrets-setup = {
           description = "Stage PostgreSQL secrets from virtiofs share";
-          before = ["postgresql.service"];
+          before = [ "postgresql.service" ];
           serviceConfig.Type = "oneshot";
           serviceConfig.RemainAfterExit = true;
           script = ''
@@ -95,13 +102,16 @@
           '';
         };
         systemd.services.postgresql = {
-          after = ["postgres-secrets-setup.service"];
-          requires = ["postgres-secrets-setup.service"];
+          after = [ "postgres-secrets-setup.service" ];
+          requires = [ "postgres-secrets-setup.service" ];
         };
-        networking.firewall.allowedTCPPorts = [22 5432];
+        networking.firewall.allowedTCPPorts = [
+          22
+          5432
+        ];
         networking.firewall.interfaces = {
           "vm-postgres" = {
-            allowedTCPPorts = [5432];
+            allowedTCPPorts = [ 5432 ];
           };
         };
       };

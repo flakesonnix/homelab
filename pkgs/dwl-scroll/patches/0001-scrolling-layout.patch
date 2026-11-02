@@ -1,0 +1,479 @@
+--- a/Makefile
++++ b/Makefile
+@@ -17,7 +17,7 @@
+ LDLIBS    = `$(PKG_CONFIG) --libs $(PKGS)` $(WLR_LIBS) -lm $(LIBS)
+ 
+ all: dwl
+-dwl: dwl.c client.h config.h ime.h util.h config.mk cursor-shape-v1-protocol.h \
++dwl: dwl.c scroll.c client.h config.h ime.h util.h config.mk cursor-shape-v1-protocol.h \
+ 	ext-image-copy-capture-v1-protocol.h \
+ 	pointer-constraints-unstable-v1-protocol.h wlr-layer-shell-unstable-v1-protocol.h \
+ 	wlr-output-power-management-unstable-v1-protocol.h xdg-shell-protocol.h
+@@ -56,7 +56,7 @@
+ dist: clean
+ 	mkdir -p dwl-$(VERSION)
+ 	cp -R LICENSE* Makefile CHANGELOG.md README.md client.h config.def.h \
+-		config.mk protocols dwl.1 dwl.c ime.h util.h dwl.desktop \
++		config.mk protocols dwl.1 dwl.c scroll.c ime.h util.h dwl.desktop \
+ 		dwl-$(VERSION)
+ 	tar -caf dwl-$(VERSION).tar.gz dwl-$(VERSION)
+ 	rm -rf dwl-$(VERSION)
+--- a/config.def.h
++++ b/config.def.h
+@@ -29,8 +29,17 @@
+ };
+ 
+ /* layout(s) */
++static const float scroll_width = 0.55f; /* fraction of usable output width */
++static const int scroll_column_gap = 12;
++static const int scroll_window_gap = 8;
++static const int scroll_padding = 12;
++static const int scroll_center = 0; /* 0: minimal reveal, 1: center on focus */
++static const int scroll_insert = 1; /* -1: new left, 0: current, 1: new right */
++static const int scroll_step = 160; /* pixels per keyboard pan */
++
+ static const Layout layouts[] = {
+ 	/* symbol     arrange function */
++	{ "|||",      scrolling },
+ 	{ "[]=",      tile },
+ 	{ "><>",      NULL },    /* no layout function means floating behavior */
+ 	{ "[M]",      monocle },
+@@ -120,6 +129,12 @@
+ static const char *menucmd[] = { "wmenu-run", NULL };
+ 
+ static const Key keys[] = {
++	{ MODKEY, XKB_KEY_Left, scrollfocuscolumn, {.i = -1} },
++	{ MODKEY, XKB_KEY_Right, scrollfocuscolumn, {.i = 1} },
++	{ MODKEY, XKB_KEY_Up, scrollfocuswindow, {.i = -1} },
++	{ MODKEY, XKB_KEY_Down, scrollfocuswindow, {.i = 1} },
++	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_Left, scrollpan, {.i = -1} },
++	{ MODKEY|WLR_MODIFIER_CTRL, XKB_KEY_Right, scrollpan, {.i = 1} },
+ 	/* modifier                  key                  function          argument */
+ 	{ MODKEY,                    XKB_KEY_p,           spawn,            {.v = menucmd} },
+ 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Return,      spawn,            {.v = termcmd} },
+--- a/dwl.c
++++ b/dwl.c
+@@ -115,6 +115,11 @@
+ 
+ typedef struct Monitor Monitor;
+ typedef struct {
++	struct wl_list link, clients;
++	float fraction, restore_fraction; /* saved width while maximized; otherwise 0 */
++	int x, width; /* virtual geometry from the last arrange */
++} Column;
++typedef struct {
+ 	/* Must keep this field first */
+ 	unsigned int type; /* XDGShell or X11* */
+ 
+@@ -124,6 +129,8 @@
+ 	struct wlr_scene_tree *scene_surface;
+ 	struct wl_list link;
+ 	struct wl_list flink;
++	struct wl_list column_link;
++	Column *column;
+ 	struct wlr_box geom; /* layout-relative, includes border */
+ 	struct wlr_box prev; /* layout-relative, includes border */
+ 	struct wlr_box bounds; /* only width and height are used */
+@@ -225,6 +232,12 @@
+ 	int nmaster;
+ 	char ltsymbol[16];
+ 	int asleep;
++	struct wl_list columns;
++	double scrolloffset[32]; /* 1..31: single tags; 0: combined tag views */
++	Client *scrollfocus;
++	uint32_t scrolltags;
++	struct wlr_box scrollarea;
++	int scrollinsert;
+ };
+ 
+ typedef struct {
+@@ -372,6 +385,13 @@
+ static void xytonode(double x, double y, struct wlr_surface **psurface,
+ 		Client **pc, LayerSurface **pl, double *nx, double *ny);
+ static void zoom(const Arg *arg);
++static int scrollactive(Monitor *m);
++static void scrollattach(Client *c);
++static void scrolldetach(Client *c);
++static void scrolling(Monitor *m);
++static void scrollfocuscolumn(const Arg *arg);
++static void scrollfocuswindow(const Arg *arg);
++static void scrollpan(const Arg *arg);
+ 
+ /* variables */
+ static pid_t child_pid = -1;
+@@ -484,6 +504,8 @@
+ 
+ #include "ime.h"
+ 
++#include "scroll.c"
++
+ /* function implementations */
+ void
+ applybounds(Client *c, struct wlr_box *bbox)
+@@ -505,6 +527,9 @@
+ 			c->geom.height = MIN(max.height + 2 * (int)c->bw, c->geom.height);
+ 	}
+ 
++	/* A scrolling tile needs size hints but no output position clamp. */
++	if (!bbox)
++		return;
+ 	if (c->geom.x >= bbox->x + bbox->width)
+ 		c->geom.x = bbox->x + bbox->width - c->geom.width;
+ 	if (c->geom.y >= bbox->y + bbox->height)
+@@ -1149,6 +1174,8 @@
+ 
+ 	m = wlr_output->data = ecalloc(1, sizeof(*m));
+ 	m->wlr_output = wlr_output;
++	wl_list_init(&m->columns);
++	m->scrollinsert = scroll_insert;
+ 
+ 	for (i = 0; i < LENGTH(m->layers); i++)
+ 		wl_list_init(&m->layers[i]);
+@@ -1584,6 +1611,8 @@
+ 
+ 	if (!client_is_unmanaged(c))
+ 		focused_client = c;
++	if (c->mon && scrollactive(c->mon) && !client_is_unmanaged(c))
++		arrange(c->mon);
+ }
+ 
+ void
+@@ -2374,11 +2403,13 @@
+ 
+ 	client_set_bounds(c, geo.width, geo.height);
+ 	c->geom = geo;
+-	applybounds(c, bbox);
++	applybounds(c, !interact && scrollactive(c->mon) && !c->isfloating
++			&& !c->isfullscreen ? NULL : bbox);
+ 
+ 	/* Update scene-graph, including borders */
+ 	wlr_scene_node_set_position(&c->scene->node, c->geom.x, c->geom.y);
+ 	wlr_scene_node_set_position(&c->scene_surface->node, c->bw, c->bw);
++	wlr_scene_node_set_enabled(&c->scene_surface->node, 1);
+ 	wlr_scene_rect_set_size(c->border[0], c->geom.width, c->bw);
+ 	wlr_scene_rect_set_size(c->border[1], c->geom.width, c->bw);
+ 	wlr_scene_rect_set_size(c->border[2], c->bw, c->geom.height - 2 * c->bw);
+@@ -2390,6 +2421,8 @@
+ 	client_set_size(c, c->geom.width - 2 * c->bw, c->geom.height - 2 * c->bw);
+ 	client_get_clip(c, &clip);
+ 	wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &clip);
++	if (scrollactive(c->mon) && !c->isfloating && !c->isfullscreen)
++		scrollclip(c, clip);
+ }
+ 
+ void
+@@ -2492,12 +2525,18 @@
+ {
+ 	Client *p = client_get_parent(c);
+ 	c->isfloating = floating;
++	if (!floating)
++		scrollattach(c);
++	if (scrollactive(c->mon))
++		c->mon->scrollfocus = NULL;
+ 	/* If in floating layout do not change the client's layer */
+ 	if (!c->mon || !client_surface(c)->mapped || !c->mon->lt[c->mon->sellt]->arrange)
+ 		return;
+ 	wlr_scene_node_reparent(&c->scene->node, layers[c->isfullscreen ||
+ 			(p && p->isfullscreen) ? LyrFS
+ 			: c->isfloating ? LyrFloat : LyrTile]);
++	if (scrollactive(c->mon))
++		resize(c, c->geom, 0); /* restore surface/border clips when floating */
+ 	arrange(c->mon);
+ 	printstatus();
+ }
+@@ -2521,6 +2560,8 @@
+ 		 * client positions are set by the user and cannot be recalculated */
+ 		resize(c, c->prev, 0);
+ 	}
++	if (scrollactive(c->mon))
++		c->mon->scrollfocus = NULL;
+ 	arrange(c->mon);
+ 	printstatus();
+ }
+@@ -2528,6 +2569,8 @@
+ void
+ setlayout(const Arg *arg)
+ {
++	Client *c;
++	int was_scroll = scrollactive(selmon);
+ 	if (!selmon)
+ 		return;
+ 	if (!arg || !arg->v || arg->v != selmon->lt[selmon->sellt])
+@@ -2535,6 +2578,11 @@
+ 	if (arg && arg->v)
+ 		selmon->lt[selmon->sellt] = (Layout *)arg->v;
+ 	strncpy(selmon->ltsymbol, selmon->lt[selmon->sellt]->symbol, LENGTH(selmon->ltsymbol));
++	if (was_scroll && !scrollactive(selmon)) {
++		wl_list_for_each(c, &clients, link)
++			if (c->mon == selmon && !c->isfullscreen)
++				resize(c, c->geom, 0);
++	}
+ 	arrange(selmon);
+ 	printstatus();
+ }
+@@ -2561,6 +2609,7 @@
+ 
+ 	if (oldmon == m)
+ 		return;
++	scrolldetach(c);
+ 	c->mon = m;
+ 	c->prev = c->geom;
+ 
+@@ -2571,6 +2620,7 @@
+ 		/* Make sure window actually overlaps with the monitor */
+ 		resize(c, c->geom, 0);
+ 		c->tags = newtags ? newtags : m->tagset[m->seltags]; /* assign tags of target monitor */
++		scrollattach(c);
+ 		setfullscreen(c, c->isfullscreen); /* This will call arrange(c->mon) */
+ 		setfloating(c, c->isfloating);
+ 	}
+--- /dev/null
++++ b/scroll.c
+@@ -0,0 +1,247 @@
++/* Persistent scrolling columns for dwl 0.9. Included after client.h. */
++static int
++scrollactive(Monitor *m)
++{
++	return m && m->lt[m->sellt]->arrange == scrolling;
++}
++
++static int
++scrollvisible(Client *c, Monitor *m)
++{
++	return VISIBLEON(c, m) && !c->isfloating && !c->isfullscreen;
++}
++
++static unsigned int
++scrollslot(Monitor *m)
++{
++	uint32_t tags = m->tagset[m->seltags];
++	unsigned int i = 1;
++	if (!tags || (tags & (tags - 1)))
++		return 0;
++	while (tags >>= 1)
++		i++;
++	return i;
++}
++
++static Client *
++scrollfirst(Column *col, Monitor *m)
++{
++	Client *c;
++	wl_list_for_each(c, &col->clients, column_link)
++		if (scrollvisible(c, m))
++			return c;
++	return NULL;
++}
++
++static Column *
++scrollnew(Monitor *m, Column *near, int direction)
++{
++	Column *col = ecalloc(1, sizeof(*col));
++	wl_list_init(&col->clients);
++	col->fraction = MAX(0.1f, MIN(1.0f, scroll_width));
++	wl_list_insert(near ? (direction < 0 ? near->link.prev : &near->link)
++			: m->columns.prev, &col->link);
++	return col;
++}
++
++static void
++scrolldetach(Client *c)
++{
++	Column *col = c->column;
++	if (c->mon && c->mon->scrollfocus == c)
++		c->mon->scrollfocus = NULL;
++	if (!col)
++		return;
++	wl_list_remove(&c->column_link);
++	c->column = NULL;
++	if (wl_list_empty(&col->clients)) {
++		wl_list_remove(&col->link);
++		free(col);
++	}
++}
++
++static void
++scrollattach(Client *c)
++{
++	Client *near;
++	Column *col = NULL;
++	if (c->column || !c->mon || c->isfloating || client_is_unmanaged(c)
++			|| !client_surface(c)->mapped)
++		return;
++	/* The mapping client is already at the head of fstack. Skip it. */
++	wl_list_for_each(near, &fstack, flink) {
++		if (near != c && scrollvisible(near, c->mon) && near->column
++				&& (near->tags & c->tags)) {
++			col = near->column;
++			break;
++		}
++	}
++	if (!col || c->mon->scrollinsert)
++		col = scrollnew(c->mon, col, c->mon->scrollinsert);
++	c->column = col;
++	wl_list_insert(col->clients.prev, &c->column_link);
++}
++
++/* Clip the body AND server-side borders; moving nodes alone leaks columns
++ * onto neighbouring outputs. Popup constraints remain dwl's monitor box. */
++static void
++scrollclip(Client *c, struct wlr_box clip)
++{
++	struct wlr_box area = c->mon->w, part, body;
++	struct wlr_box edges[4] = {
++		{c->geom.x, c->geom.y, c->geom.width, (int)c->bw},
++		{c->geom.x, c->geom.y + c->geom.height - (int)c->bw, c->geom.width, (int)c->bw},
++		{c->geom.x, c->geom.y + (int)c->bw, (int)c->bw, c->geom.height - 2 * (int)c->bw},
++		{c->geom.x + c->geom.width - (int)c->bw, c->geom.y + (int)c->bw,
++			(int)c->bw, c->geom.height - 2 * (int)c->bw}
++	};
++	size_t i;
++	int visible = wlr_box_intersection(&part, &area, &c->geom);
++	wlr_scene_node_set_enabled(&c->scene->node, visible && VISIBLEON(c, c->mon));
++	body = area;
++	/* The clip uses root-surface coordinates, not xdg window geometry. */
++	body.x += clip.x - c->geom.x - (int)c->bw;
++	body.y += clip.y - c->geom.y - (int)c->bw;
++	/* A zero clip disables clipping in wlroots. The whole scene is disabled
++	 * above if the client has no intersection at all. */
++	visible = wlr_box_intersection(&part, &clip, &body);
++	wlr_scene_node_set_enabled(&c->scene_surface->node, visible);
++	if (visible)
++		wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &part);
++	for (i = 0; i < LENGTH(edges); i++) {
++		wlr_box_intersection(&part, &area, &edges[i]);
++		wlr_scene_rect_set_size(c->border[i], part.width, part.height);
++		wlr_scene_node_set_position(&c->border[i]->node,
++				part.x - c->geom.x, part.y - c->geom.y);
++	}
++}
++
++static void
++scrolling(Monitor *m)
++{
++	Column *col;
++	Client *c, *focused = focustop(m);
++	struct wlr_box area = m->w, min, max;
++	unsigned int slot = scrollslot(m);
++	int total = 0, n, y, i, height, gap, width;
++	int pad = MIN(MAX(0, scroll_padding), MAX(0, (MIN(area.width, area.height) - 1) / 2));
++	int reveal = focused != m->scrollfocus || m->scrolltags != m->tagset[m->seltags]
++			|| memcmp(&m->scrollarea, &area, sizeof(area));
++	area.x += pad;
++	area.y += pad;
++	area.width = MAX(1, area.width - 2 * pad);
++	area.height = MAX(1, area.height - 2 * pad);
++	width = area.width;
++	wl_list_for_each(col, &m->columns, link) {
++		if (!scrollfirst(col, m))
++			continue;
++		col->x = total;
++		col->width = MAX(1, (int)roundf(col->fraction * (float)width));
++		wl_list_for_each(c, &col->clients, column_link) {
++			if (!scrollvisible(c, m))
++				continue;
++			min = max = (struct wlr_box){0};
++			client_get_size_hints(c, &max, &min);
++			if (min.width <= INT_MAX - 2 * (int)c->bw)
++				col->width = MAX(col->width, min.width + 2 * (int)c->bw);
++		}
++		total += col->width + MAX(0, scroll_column_gap);
++	}
++	total = MAX(0, total - MAX(0, scroll_column_gap));
++	if (reveal && focused && scrollvisible(focused, m) && focused->column) {
++		col = focused->column;
++		if (scroll_center)
++			m->scrolloffset[slot] = col->x + (col->width - width) / 2.0;
++		else if (col->width > width || col->x < m->scrolloffset[slot])
++			m->scrolloffset[slot] = col->x;
++		else if (col->x + col->width > m->scrolloffset[slot] + width)
++			m->scrolloffset[slot] = col->x + col->width - width;
++	}
++	m->scrolloffset[slot] = MAX(0, MIN(m->scrolloffset[slot], MAX(0, total - width)));
++	m->scrollfocus = focused;
++	m->scrolltags = m->tagset[m->seltags];
++	m->scrollarea = m->w;
++	wl_list_for_each(col, &m->columns, link) {
++		n = 0;
++		wl_list_for_each(c, &col->clients, column_link)
++			n += scrollvisible(c, m);
++		if (!n)
++			continue;
++		gap = n > 1 ? MIN(MAX(0, scroll_window_gap), MAX(0, (area.height - n) / (n - 1))) : 0;
++		height = MAX(n, area.height - (n - 1) * gap);
++		i = 0;
++		y = area.y;
++		wl_list_for_each(c, &col->clients, column_link) {
++			if (!scrollvisible(c, m))
++				continue;
++			resize(c, (struct wlr_box){area.x + col->x - (int)round(m->scrolloffset[slot]),
++					y, col->width, height / n + (i < height % n)}, 0);
++			y += height / n + (i++ < height % n) + gap;
++		}
++	}
++}
++
++static Client *
++scrollselected(void)
++{
++	Client *c = focustop(selmon);
++	return scrollactive(selmon) && c && scrollvisible(c, selmon) && c->column ? c : NULL;
++}
++
++static Column *
++scrolladjacent(Column *col, int direction)
++{
++	struct wl_list *p = direction < 0 ? col->link.prev : col->link.next;
++	for (; p != &selmon->columns; p = direction < 0 ? p->prev : p->next) {
++		col = wl_container_of(p, col, link);
++		if (scrollfirst(col, selmon))
++			return col;
++	}
++	return NULL;
++}
++
++static Client *
++scrollvertical(Client *c, int direction)
++{
++	struct wl_list *p = direction < 0 ? c->column_link.prev : c->column_link.next;
++	Column *col = c->column;
++	for (; p != &col->clients; p = direction < 0 ? p->prev : p->next) {
++		c = wl_container_of(p, c, column_link);
++		if (scrollvisible(c, selmon))
++			return c;
++	}
++	return NULL;
++}
++
++static void
++scrollfocuscolumn(const Arg *arg)
++{
++	Client *c = scrollselected(), *target;
++	Column *col;
++	if (!c || !(col = scrolladjacent(c->column, arg->i)))
++		return;
++	/* Prefer the last focused visible member, not global tiling order. */
++	wl_list_for_each(target, &fstack, flink) {
++		if (target->column == col && scrollvisible(target, selmon)) {
++			focusclient(target, 1);
++			return;
++		}
++	}
++}
++
++static void
++scrollfocuswindow(const Arg *arg)
++{
++	Client *c = scrollselected();
++	if (c && (c = scrollvertical(c, arg->i)))
++		focusclient(c, 1);
++}
++
++static void
++scrollpan(const Arg *arg)
++{
++	if (!scrollactive(selmon))
++		return;
++	selmon->scrolloffset[scrollslot(selmon)] += arg->i * scroll_step;
++	arrange(selmon);
++}

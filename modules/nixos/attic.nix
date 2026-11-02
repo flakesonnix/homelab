@@ -3,9 +3,11 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.lucy.services.attic;
-in {
+in
+{
   config = lib.mkIf cfg.enable {
     services.atticd = {
       enable = true;
@@ -14,19 +16,19 @@ in {
       #   ATTIC_SERVER_TOKEN_RS256_SECRET="<base64 RSA key>"
       environmentFile = "/run/secrets/artifacts/attic-env";
     };
-    networking.firewall.allowedTCPPorts = [80];
+    networking.firewall.allowedTCPPorts = [ 80 ];
     networking.firewall.interfaces."vm-artifacts" = {
-      allowedTCPPorts = [80];
+      allowedTCPPorts = [ 80 ];
     };
     systemd.services.atticd = {
-      after = ["postgresql.service"];
-      requires = ["postgresql.service"];
+      after = [ "postgresql.service" ];
+      requires = [ "postgresql.service" ];
     };
     systemd.services.attic-secrets-setup = {
       description = "Stage Attic secrets from virtiofs share";
-      before = ["atticd.service"];
-      requiredBy = ["atticd.service"];
-      wantedBy = ["multi-user.target"];
+      before = [ "atticd.service" ];
+      requiredBy = [ "atticd.service" ];
+      wantedBy = [ "multi-user.target" ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
