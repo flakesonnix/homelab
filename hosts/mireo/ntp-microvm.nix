@@ -9,8 +9,8 @@
       ip = (import ./vm-ips.nix).ntp;
       mem = 256;
       vcpu = 1;
-      tcpPorts = [22];
-      udpPorts = [123];
+      tcpPorts = [ 22 ];
+      udpPorts = [ 123 ];
       config = {
         services.chrony = {
           enable = true;

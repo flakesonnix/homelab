@@ -28,61 +28,62 @@ let
   frameworkWaybar = import ./framework/waybar.nix;
 
   compat = {
-    mkUser = {
-      username,
-      description ? "",
-      modules ? [],
-    }: {
-      inherit username modules description;
-    };
+    mkUser =
+      {
+        username,
+        description ? "",
+        modules ? [ ],
+      }:
+      {
+        inherit username modules description;
+      };
 
-    enableAttrs = lib: names:
-      map (name: lib.setAttrByPath [name] true) names;
+    enableAttrs = lib: names: map (name: lib.setAttrByPath [ name ] true) names;
 
-    mkPackageOptions = lib: packageOptions:
-      lib.mapAttrs (_: value: lib.mkEnableOption value.description) packageOptions;
+    mkPackageOptions =
+      lib: packageOptions: lib.mapAttrs (_: value: lib.mkEnableOption value.description) packageOptions;
 
-    getEnabledPackagesBy = lib: enabledAttrs: packageOptions: getPackages:
+    getEnabledPackagesBy =
+      lib: enabledAttrs: packageOptions: getPackages:
       lib.concatMap (
-        name:
-          lib.optionals (enabledAttrs.${name} or false) (getPackages packageOptions.${name})
+        name: lib.optionals (enabledAttrs.${name} or false) (getPackages packageOptions.${name})
       ) (builtins.attrNames packageOptions);
   };
 in
-  {
-    inherit symbols compat;
+{
+  inherit symbols compat;
 
-    core = {
-      attrs = coreAttrs;
-      lists = coreLists;
-      toggles = coreToggles;
-      registry = coreRegistry;
-      composition = coreComposition;
-      "package-routing" = corePackageRouting;
-      validation = coreValidation;
-    };
+  core = {
+    attrs = coreAttrs;
+    lists = coreLists;
+    toggles = coreToggles;
+    registry = coreRegistry;
+    composition = coreComposition;
+    "package-routing" = corePackageRouting;
+    validation = coreValidation;
+  };
 
-    render = {
-      command = renderCommand;
-      kdl = renderKdl;
-      css = renderCss;
-    };
+  render = {
+    command = renderCommand;
+    kdl = renderKdl;
+    css = renderCss;
+  };
 
-    inherit theme;
+  inherit theme;
 
-    framework = {
-      keys = frameworkKeys;
-      actions = frameworkActions;
-      package = frameworkPackage;
-      bundle = frameworkBundle;
-      export = frameworkExport;
-      preset = frameworkPreset;
-      resolve = frameworkResolve;
-      webui = frameworkWebui;
-      host = frameworkHost;
-      home = frameworkHome;
-      niri = frameworkNiri;
-      waybar = frameworkWaybar;
-    };
-  }
-  // compat
+  framework = {
+    keys = frameworkKeys;
+    actions = frameworkActions;
+    package = frameworkPackage;
+    bundle = frameworkBundle;
+    export = frameworkExport;
+    preset = frameworkPreset;
+    resolve = frameworkResolve;
+    webui = frameworkWebui;
+    host = frameworkHost;
+    home = frameworkHome;
+    niri = frameworkNiri;
+    waybar = frameworkWaybar;
+  };
+}
+// compat

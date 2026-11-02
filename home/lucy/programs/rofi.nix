@@ -4,11 +4,13 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   colors = config.lib.stylix.colors.withHashtag;
-in {
+in
+{
   config = lib.mkIf config.programs.rofi.enable {
-    home.packages = [pkgs.rofi];
+    home.packages = [ pkgs.rofi ];
 
     xdg.configFile."rofi/config.rasi".text = ''
       configuration {

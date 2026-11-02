@@ -3,11 +3,12 @@
   lib,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.lucy.dwlScroll;
 
   # Import the typed settings interface and defaults from pkgs/dwl-scroll/config.nix
-  dwlScrollSettings = import ../../pkgs/dwl-scroll/config.nix {inherit lib;};
+  dwlScrollSettings = import ../../pkgs/dwl-scroll/config.nix { inherit lib; };
 
   # Derived package based on the selected settings. Override configH to supply a
   # complete raw C header instead of using the Nix settings interface.
@@ -31,11 +32,14 @@
       ${lib.optionalString (lib.elem "nvidia" config.services.xserver.videoDrivers) "--nvidia-smi ${lib.getExe' config.hardware.nvidia.package "nvidia-smi"}"}
   '';
   sessionService = {
-    wantedBy = ["dwl-scroll-session.target"];
-    requisite = ["dwl-scroll-session.target"];
-    partOf = ["dwl-scroll-session.target"];
-    after = ["dwl-scroll-session.target"];
-    unitConfig.ConditionEnvironment = ["XDG_CURRENT_DESKTOP=dwl-scroll" "WAYLAND_DISPLAY"];
+    wantedBy = [ "dwl-scroll-session.target" ];
+    requisite = [ "dwl-scroll-session.target" ];
+    partOf = [ "dwl-scroll-session.target" ];
+    after = [ "dwl-scroll-session.target" ];
+    unitConfig.ConditionEnvironment = [
+      "XDG_CURRENT_DESKTOP=dwl-scroll"
+      "WAYLAND_DISPLAY"
+    ];
   };
 
   # Session wrapper script used by the GDM session entry.
@@ -66,20 +70,23 @@
     wait "$compositor"
   '';
   sessionPackage =
-    pkgs.runCommand "dwl-scroll-session" {
-      passthru.providedSessions = ["dwl-scroll"];
-    } ''
-      mkdir -p "$out/share/wayland-sessions"
-      cat > "$out/share/wayland-sessions/dwl-scroll.desktop" <<EOF
-      [Desktop Entry]
-      Name=dwl-scroll
-      Comment=Upstream dwl with persistent scrolling columns
-      Exec=${session}
-      Type=Application
-      DesktopNames=dwl-scroll
-      EOF
-    '';
-in {
+    pkgs.runCommand "dwl-scroll-session"
+      {
+        passthru.providedSessions = [ "dwl-scroll" ];
+      }
+      ''
+        mkdir -p "$out/share/wayland-sessions"
+        cat > "$out/share/wayland-sessions/dwl-scroll.desktop" <<EOF
+        [Desktop Entry]
+        Name=dwl-scroll
+        Comment=Upstream dwl with persistent scrolling columns
+        Exec=${session}
+        Type=Application
+        DesktopNames=dwl-scroll
+        EOF
+      '';
+in
+{
   options.lucy.dwlScroll = {
     enable = lib.mkEnableOption "the opt-in upstream dwl scrolling session";
 
@@ -87,8 +94,8 @@ in {
     # static `pkgs/dwl-scroll/config.h`; the render function validates values and
     # produces the complete C header.
     settings = lib.mkOption {
-      type = lib.types.submodule {options = dwlScrollSettings.options;};
-      default = {};
+      type = lib.types.submodule { options = dwlScrollSettings.options; };
+      default = { };
       description = ''
         Settings that drive the dwl-scroll compositor.
         Use this attrset to configure keybindings, gaps, commands, etc.
@@ -126,66 +133,71 @@ in {
     ];
     # Do not enable programs.dwl, replace pkgs.dwl, select a greeter, or
     # change the host's default session. Vanilla dwl can coexist with this.
-    environment.systemPackages = [cfg.package pkgs.dwlb pkgs.networkmanagerapplet];
-    fonts.packages = [pkgs.iosevka pkgs.nerd-fonts.symbols-only];
-    services.displayManager.sessionPackages = [sessionPackage];
+    environment.systemPackages = [
+      cfg.package
+      pkgs.dwlb
+      pkgs.networkmanagerapplet
+    ];
+    fonts.packages = [
+      pkgs.iosevka
+      pkgs.nerd-fonts.symbols-only
+    ];
+    services.displayManager.sessionPackages = [ sessionPackage ];
     services.graphical-desktop.enable = true;
     hardware.graphics.enable = true;
     security.polkit.enable = true;
-    security.pam.services.swaylock = {};
+    security.pam.services.swaylock = { };
 
     xdg.portal = {
       enable = true;
       wlr.enable = true;
-      extraPortals = [pkgs.xdg-desktop-portal-gtk];
+      extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
       config.dwl-scroll = {
-        default = ["gtk"];
-        "org.freedesktop.impl.portal.ScreenCast" = ["wlr"];
-        "org.freedesktop.impl.portal.Screenshot" = ["wlr"];
+        default = [ "gtk" ];
+        "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+        "org.freedesktop.impl.portal.Screenshot" = [ "wlr" ];
       };
     };
 
     systemd.user.targets.dwl-scroll-session = {
       description = "dwl-scroll graphical session";
-      bindsTo = ["graphical-session.target"];
-      wants = ["graphical-session-pre.target"];
-      after = ["graphical-session-pre.target"];
+      bindsTo = [ "graphical-session.target" ];
+      wants = [ "graphical-session-pre.target" ];
+      after = [ "graphical-session-pre.target" ];
     };
     systemd.user.services.dwl-scroll-polkit = {
       description = "PolicyKit authentication agent for dwl-scroll";
-      wantedBy = ["dwl-scroll-session.target"];
-      requisite = ["dwl-scroll-session.target"];
-      partOf = ["dwl-scroll-session.target"];
-      after = ["dwl-scroll-session.target"];
+      wantedBy = [ "dwl-scroll-session.target" ];
+      requisite = [ "dwl-scroll-session.target" ];
+      partOf = [ "dwl-scroll-session.target" ];
+      after = [ "dwl-scroll-session.target" ];
       unitConfig.ConditionEnvironment = "XDG_CURRENT_DESKTOP=dwl-scroll";
       serviceConfig.ExecStart = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1";
     };
-    systemd.user.services.dwl-scroll-status =
-      sessionService
-      // {
-        description = "dwlb battery and system metrics";
-        serviceConfig = {
-          ExecStart = status;
-          Restart = "on-failure";
-        };
+    systemd.user.services.dwl-scroll-status = sessionService // {
+      description = "dwlb battery and system metrics";
+      serviceConfig = {
+        ExecStart = status;
+        Restart = "on-failure";
       };
-    systemd.user.services.dwl-scroll-tray =
-      sessionService
-      // {
-        description = "Clock and tray overlay for dwl-scroll";
-        serviceConfig = {
-          ExecStart = lib.getExe tray;
-          Restart = "on-failure";
-        };
+    };
+    systemd.user.services.dwl-scroll-tray = sessionService // {
+      description = "Clock and tray overlay for dwl-scroll";
+      serviceConfig = {
+        ExecStart = lib.getExe tray;
+        Restart = "on-failure";
       };
-    systemd.user.services.dwl-scroll-nm-applet = lib.mkIf config.networking.networkmanager.enable (sessionService
+    };
+    systemd.user.services.dwl-scroll-nm-applet = lib.mkIf config.networking.networkmanager.enable (
+      sessionService
       // {
         description = "NetworkManager tray controls for dwl-scroll";
-        after = sessionService.after ++ ["dwl-scroll-tray.service"];
+        after = sessionService.after ++ [ "dwl-scroll-tray.service" ];
         serviceConfig = {
           ExecStart = "${lib.getExe pkgs.networkmanagerapplet} --indicator";
           Restart = "on-failure";
         };
-      });
+      }
+    );
   };
 }

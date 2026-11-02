@@ -4,7 +4,8 @@
   pkgs,
   frameworkLib,
   ...
-}: {
+}:
+{
   config = lib.mkIf config.programs.neovim.enable {
     # rust-analyzer finds stdlib sources here (no rustup in Nix).
     home.sessionVariables.RUST_SRC_PATH = "${pkgs.rustPlatform.rustLibSrc}";
@@ -21,7 +22,7 @@
         fd
         # Nix
         nil
-        alejandra
+        nixfmt
         statix
         # Go
         go
@@ -46,7 +47,7 @@
         csharp-ls
         # Debug adapters (no mason; wired explicitly below)
         delve
-        (python3.withPackages (ps: [ps.debugpy]))
+        (python3.withPackages (ps: [ ps.debugpy ]))
         # PHP (phpactor: LSP + format + diagnostics in one, no Node needed)
         phpactor
         php
@@ -182,8 +183,8 @@
         # Format + lint
         conform-nvim
         nvim-lint
-        (nvim-treesitter.withPlugins (p:
-          with p; [
+        (nvim-treesitter.withPlugins (
+          p: with p; [
             nix
             go
             gomod
@@ -224,7 +225,8 @@
             latex
             bibtex
             typst
-          ]))
+          ]
+        ))
       ];
       extraConfig = ''
         set number
@@ -436,7 +438,7 @@
         vim.lsp.enable("rust_analyzer")
         vim.lsp.config("nil_ls", {
           capabilities = caps,
-          settings = { ["nil"] = { formatting = { command = { "alejandra" } } } },
+          settings = { ["nil"] = { formatting = { command = { "nixfmt" } } } },
         })
         vim.lsp.enable("nil_ls")
         vim.lsp.config("gopls", {
@@ -475,7 +477,7 @@
         -- Format on save (per filetype) + lint on save.
         require("conform").setup({
           formatters_by_ft = {
-            nix = { "alejandra" },
+            nix = { "nixfmt" },
             go = { "gofumpt" },
             python = { "ruff_format" },
             javascript = { "prettierd" },
@@ -723,7 +725,7 @@
         dap.listeners.after.event_initialized["dapui"] = function() dapui.open() end
         dap.listeners.before.event_terminated["dapui"] = function() dapui.close() end
         dap.listeners.before.event_exited["dapui"] = function() dapui.close() end
-        require("dap-python").setup("${pkgs.python3.withPackages (ps: [ps.debugpy])}/bin/python")
+        require("dap-python").setup("${pkgs.python3.withPackages (ps: [ ps.debugpy ])}/bin/python")
         require("dap-go").setup()
         -- JS/TS debugging (node + chrome). No codelldb/lldb-dap in this
         -- pin, so no native Rust/C++ DAP (delve/debugpy/js/netcoredbg wired).

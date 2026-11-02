@@ -2,7 +2,8 @@
   lib,
   config,
   ...
-}: {
+}:
+{
   options = {
     lucy.secrets = {
       enable = lib.mkEnableOption "sops-nix secrets management";
@@ -23,9 +24,10 @@
     };
   };
 
-  config = let
-    cfg = config.lucy.secrets;
-  in
+  config =
+    let
+      cfg = config.lucy.secrets;
+    in
     lib.mkIf cfg.enable {
       assertions = [
         {

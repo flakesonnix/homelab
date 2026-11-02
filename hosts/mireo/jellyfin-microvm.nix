@@ -12,7 +12,10 @@
       ip = (import ./vm-ips.nix).jellyfin;
       mem = 2304; # NB: never exactly 2048 (QEMU hangs, microvm.nix#171)
       vcpu = 2;
-      tcpPorts = [22 8096];
+      tcpPorts = [
+        22
+        8096
+      ];
       shares = [
         {
           tag = "jellyfin-media";

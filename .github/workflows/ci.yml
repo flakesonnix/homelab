@@ -25,6 +25,8 @@ jobs:
         name: Evaluate dev shell output
       - run: nix eval .#apps.x86_64-linux.rebuild.type --raw
         name: Evaluate app outputs
+      - run: nix build .#checks.x86_64-linux.formatting .#checks.x86_64-linux.repository --no-link
+        name: Check source formatting and repository tooling
 
   check-full:
     runs-on: ubuntu-latest

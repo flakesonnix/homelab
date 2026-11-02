@@ -1,64 +1,65 @@
 /*
-* VoIP/SIP client abstraction (Phase 2: live PJSIP trunk rendering)
-*
-* Goal topology:
-*   Internet SIP provider (e.g. Easybell)
-*     -> NixOS VoIP service (Asterisk PJSIP, see services.asteriskLocal)
-*     -> local clients / internal SIP endpoints
-*
-* Phase 2 renders the provider trunk from the Easybell official
-* Asterisk-22 guide (easybell.de/hilfe "Asterisk Telefonanlagen",
-* checked Sep 2026): per client a registration/endpoint/auth/aor stanza
-* set plus inbound/outbound dialplan contexts. Passwords are injected at
-* RUNTIME by voip-render-trunks.service (reads passwordFile, writes
-* /run/asterisk/voip-{trunks,extensions}.conf before asterisk starts),
-* so secrets never enter the Nix store. Asterisk pulls the fragments in
-* via #include lines in asteriskLocal's generated configs (placeholders
-* pre-created by tmpfiles, so disabled voip = harmless empty include).
-*
-* Design notes:
-* - Soft dependency on modules/nixos/asterisk.nix (localTest assertion
-*   + extraExtensions hook + trunk #includes, guarded via `options`).
-*   True on p53 via flake.nix. A live trunk REQUIRES asteriskLocal
-*   (clear assertion); localTest alone too.
-* - Reuses the existing Asterisk 22 stack (nixpkgs nixos-unstable,
-*   same major version as Easybell's official Asterisk guide). No new
-*   dependencies: baresip is client-only (no dialplan/routing for
-*   Nebenstellen), FreeSWITCH/Kamailio would be new heavy stacks.
-* - Secrets NEVER enter the Nix store: only *paths* (passwordFile) are
-*   stored. Point them at sops-nix secret paths, e.g.
-*     passwordFile = "/run/secrets/voip/easybell-main";
-*   See docs/secrets.md ("VoIP secrets"). Password rotation is manual:
-*   update the secret, then
-*     systemctl restart voip-render-trunks && asterisk -rx 'core reload'
-*   (same reload workflow as services.asteriskLocal).
-* - No firewall changes here. See NETWORKING TODO below.
-*
-* NETWORKING TODO (still open, do not implement yet):
-* - Easybell needs (unencrypted): SIP 5060 or 5064 UDP/TCP, RTP
-*   20000-50000 UDP/TCP; encrypted: SIP 5061 TLS, same RTP range.
-*   Sources: easybell.de/help "Configuring the firewall for Easybell
-*   VoIP and SIP trunking", "VoIP configuration for advanced users".
-* - MISMATCH: services.asteriskLocal.openFirewall currently opens RTP
-*   10000-20000 only. Before going live, align the RTP range with the
-*   Easybell product in use (phone numbers: 20000-50000).
-* - Easybell guidance: STUN off, outbound proxy = registrar, no fixed
-*   port forwarding, no SIP ALG, no multi-WAN/load-balancing for voice.
-*   asteriskLocal already sets rtp_symmetric/force_rport/rewrite_contact.
-*   Transport local_net/external_media_address are NOT set by
-*   asteriskLocal yet — needed behind NAT (FritzBox) for Phase-2 live.
-* - [global] endpoint_identifier_order (Easybell guide uses
-*   auth_username,ip,username) is NOT set by asteriskLocal yet.
-* - Fail2Ban: Easybell bans source IPs after repeated failed REGISTERs.
-*   Keep retry_interval conservative (default 60s) and never enable a
-*   trunk with placeholder credentials.
+  * VoIP/SIP client abstraction (Phase 2: live PJSIP trunk rendering)
+  *
+  * Goal topology:
+  *   Internet SIP provider (e.g. Easybell)
+  *     -> NixOS VoIP service (Asterisk PJSIP, see services.asteriskLocal)
+  *     -> local clients / internal SIP endpoints
+  *
+  * Phase 2 renders the provider trunk from the Easybell official
+  * Asterisk-22 guide (easybell.de/hilfe "Asterisk Telefonanlagen",
+  * checked Sep 2026): per client a registration/endpoint/auth/aor stanza
+  * set plus inbound/outbound dialplan contexts. Passwords are injected at
+  * RUNTIME by voip-render-trunks.service (reads passwordFile, writes
+  * /run/asterisk/voip-{trunks,extensions}.conf before asterisk starts),
+  * so secrets never enter the Nix store. Asterisk pulls the fragments in
+  * via #include lines in asteriskLocal's generated configs (placeholders
+  * pre-created by tmpfiles, so disabled voip = harmless empty include).
+  *
+  * Design notes:
+  * - Soft dependency on modules/nixos/asterisk.nix (localTest assertion
+  *   + extraExtensions hook + trunk #includes, guarded via `options`).
+  *   True on p53 via flake.nix. A live trunk REQUIRES asteriskLocal
+  *   (clear assertion); localTest alone too.
+  * - Reuses the existing Asterisk 22 stack (nixpkgs nixos-unstable,
+  *   same major version as Easybell's official Asterisk guide). No new
+  *   dependencies: baresip is client-only (no dialplan/routing for
+  *   Nebenstellen), FreeSWITCH/Kamailio would be new heavy stacks.
+  * - Secrets NEVER enter the Nix store: only *paths* (passwordFile) are
+  *   stored. Point them at sops-nix secret paths, e.g.
+  *     passwordFile = "/run/secrets/voip/easybell-main";
+  *   See docs/secrets.md ("VoIP secrets"). Password rotation is manual:
+  *   update the secret, then
+  *     systemctl restart voip-render-trunks && asterisk -rx 'core reload'
+  *   (same reload workflow as services.asteriskLocal).
+  * - No firewall changes here. See NETWORKING TODO below.
+  *
+  * NETWORKING TODO (still open, do not implement yet):
+  * - Easybell needs (unencrypted): SIP 5060 or 5064 UDP/TCP, RTP
+  *   20000-50000 UDP/TCP; encrypted: SIP 5061 TLS, same RTP range.
+  *   Sources: easybell.de/help "Configuring the firewall for Easybell
+  *   VoIP and SIP trunking", "VoIP configuration for advanced users".
+  * - MISMATCH: services.asteriskLocal.openFirewall currently opens RTP
+  *   10000-20000 only. Before going live, align the RTP range with the
+  *   Easybell product in use (phone numbers: 20000-50000).
+  * - Easybell guidance: STUN off, outbound proxy = registrar, no fixed
+  *   port forwarding, no SIP ALG, no multi-WAN/load-balancing for voice.
+  *   asteriskLocal already sets rtp_symmetric/force_rport/rewrite_contact.
+  *   Transport local_net/external_media_address are NOT set by
+  *   asteriskLocal yet — needed behind NAT (FritzBox) for Phase-2 live.
+  * - [global] endpoint_identifier_order (Easybell guide uses
+  *   auth_username,ip,username) is NOT set by asteriskLocal yet.
+  * - Fail2Ban: Easybell bans source IPs after repeated failed REGISTERs.
+  *   Keep retry_interval conservative (default 60s) and never enable a
+  *   trunk with placeholder credentials.
 */
 {
   config,
   lib,
   options,
   ...
-}: let
+}:
+let
   cfg = config.services.voip;
 
   # Soft dependency: asterisk.nix may be absent (e.g. hosts without a
@@ -72,110 +73,111 @@
 
   # Effective contact user (head number) per client: explicit contactUser
   # wins, otherwise the DID. At least one is enforced by assertion.
-  contactOf = client:
-    if client.contactUser != null
-    then client.contactUser
-    else client.did;
+  contactOf = client: if client.contactUser != null then client.contactUser else client.did;
 
   # PJSIP transport object names in asteriskLocal are [transport-<proto>].
   transportOf = provider: "transport-${provider.transport}";
 
-  serverUriOf = provider:
-    if provider.port == 5060
-    then "sip:${provider.registrar}"
-    else "sip:${provider.registrar}:${toString provider.port}";
+  serverUriOf =
+    provider:
+    if provider.port == 5060 then
+      "sip:${provider.registrar}"
+    else
+      "sip:${provider.registrar}:${toString provider.port}";
 
   # Non-secret per-client descriptor (admin visibility + renderer contract).
   # Contains only public data + the *path* to the credential file.
-  clientDescriptor = name: client: let
-    provider = cfg.providers.${client.provider};
-  in ''
-    # Generated by services.voip (no secrets).
-    # voip-render-trunks.service renders the Asterisk PJSIP trunk from
-    # these values plus the password read at runtime from password_file.
-    client=${name}
-    provider=${client.provider}
-    registrar=${provider.registrar}
-    sip_port=${toString provider.port}
-    transport=${provider.transport}
-    username=${client.username}
-    did=${client.did}
-    contact_user=${contactOf client}
-    inbound_extension=${
-      if client.inboundExtension == null
-      then ""
-      else client.inboundExtension
-    }
-    fax_dids=${lib.concatStringsSep "," client.faxDids}
-    display_name=${client.displayName}
-    password_file=${client.passwordFile}
-    expires=${toString provider.expires}
-    retry_interval=${toString provider.retryInterval}
-  '';
+  clientDescriptor =
+    name: client:
+    let
+      provider = cfg.providers.${client.provider};
+    in
+    ''
+      # Generated by services.voip (no secrets).
+      # voip-render-trunks.service renders the Asterisk PJSIP trunk from
+      # these values plus the password read at runtime from password_file.
+      client=${name}
+      provider=${client.provider}
+      registrar=${provider.registrar}
+      sip_port=${toString provider.port}
+      transport=${provider.transport}
+      username=${client.username}
+      did=${client.did}
+      contact_user=${contactOf client}
+      inbound_extension=${if client.inboundExtension == null then "" else client.inboundExtension}
+      fax_dids=${lib.concatStringsSep "," client.faxDids}
+      display_name=${client.displayName}
+      password_file=${client.passwordFile}
+      expires=${toString provider.expires}
+      retry_interval=${toString provider.retryInterval}
+    '';
 
   # Static (non-secret) PJSIP fragment per client, following the Easybell
   # Asterisk-22 guide. Only the [auth] password is injected at runtime
   # (placeholder line replaced by voip-render-trunks.service).
-  trunkStatic = name: client: let
-    provider = cfg.providers.${client.provider};
-    transport = transportOf provider;
-    codecs = lib.concatStringsSep "," client.codecs;
-    contact = contactOf client;
-  in ''
-    ; ===== client '${name}' (services.voip, provider ${client.provider}) =====
-    [${name}]
-    type=registration
-    transport=${transport}
-    outbound_auth=${name}_auth
-    server_uri=${serverUriOf provider}
-    client_uri=sip:${client.did}@${provider.registrar}
-    contact_user=${contact}
-    retry_interval=${toString provider.retryInterval}
-    forbidden_retry_interval=600
-    expiration=${toString provider.expires}
-    line=yes
-    endpoint=${name}
+  trunkStatic =
+    name: client:
+    let
+      provider = cfg.providers.${client.provider};
+      transport = transportOf provider;
+      codecs = lib.concatStringsSep "," client.codecs;
+      contact = contactOf client;
+    in
+    ''
+      ; ===== client '${name}' (services.voip, provider ${client.provider}) =====
+      [${name}]
+      type=registration
+      transport=${transport}
+      outbound_auth=${name}_auth
+      server_uri=${serverUriOf provider}
+      client_uri=sip:${client.did}@${provider.registrar}
+      contact_user=${contact}
+      retry_interval=${toString provider.retryInterval}
+      forbidden_retry_interval=600
+      expiration=${toString provider.expires}
+      line=yes
+      endpoint=${name}
 
-    [${name}_auth]
-    type=auth
-    auth_type=userpass
-    #PASSWORD:${name}#
-    username=${client.username}
+      [${name}_auth]
+      type=auth
+      auth_type=userpass
+      #PASSWORD:${name}#
+      username=${client.username}
 
-    [${name}]
-    type=endpoint
-    transport=${transport}
-    ${lib.optionalString provider.mediaEncryption "media_encryption=sdes"}
-    context=${name}
-    disallow=all
-    allow=${codecs}
-    outbound_auth=${name}_auth
-    aors=${name}_aor
-    force_rport=yes
-    direct_media=no
-    ice_support=no
-    rtp_symmetric=yes
-    from_domain=${provider.registrar}
-    send_pai=yes
+      [${name}]
+      type=endpoint
+      transport=${transport}
+      ${lib.optionalString provider.mediaEncryption "media_encryption=sdes"}
+      context=${name}
+      disallow=all
+      allow=${codecs}
+      outbound_auth=${name}_auth
+      aors=${name}_aor
+      force_rport=yes
+      direct_media=no
+      ice_support=no
+      rtp_symmetric=yes
+      from_domain=${provider.registrar}
+      send_pai=yes
 
-    [${name}_aor]
-    type=aor
-    contact=sip:${contact}@${provider.registrar}
-    ; NAT keepalive (~60s OPTIONS): keeps the FritzBox UDP mapping open
-    ; between re-REGISTERs (Eventphone recommends keep-alive ~every minute
-    ; behind NAT; Easybell expiration=1800 alone would let it expire).
-    ; NOTE: qualify_frequency lives on the AOR in Asterisk 22 — on the
-    ; endpoint it kills the object at parse time (seen 2026-09-16).
-    qualify_frequency=60
+      [${name}_aor]
+      type=aor
+      contact=sip:${contact}@${provider.registrar}
+      ; NAT keepalive (~60s OPTIONS): keeps the FritzBox UDP mapping open
+      ; between re-REGISTERs (Eventphone recommends keep-alive ~every minute
+      ; behind NAT; Easybell expiration=1800 alone would let it expire).
+      ; NOTE: qualify_frequency lives on the AOR in Asterisk 22 — on the
+      ; endpoint it kills the object at parse time (seen 2026-09-16).
+      qualify_frequency=60
 
-    [${name}_in]
-    type=endpoint
-    transport=${transport}
-    context=${name}_in
-    disallow=all
-    allow=${codecs}
-    outbound_auth=${name}_auth
-  '';
+      [${name}_in]
+      type=endpoint
+      transport=${transport}
+      context=${name}_in
+      disallow=all
+      allow=${codecs}
+      outbound_auth=${name}_auth
+    '';
 
   # Dialplan fragment per client: outbound via trunk (+ emergency breakout
   # like the Easybell guide), inbound DID -> local extension.
@@ -183,28 +185,32 @@
   # two-part form PJSIP/sip:EXTEN@name puts the literal "sip:" scheme into
   # the user part (To: sip:sip%3a0310@…) which Yate-based servers 403
   # (seen live 2026-09-16 on hg.eventphone.de).
-  dialplanStatic = name: client: let
-    provider = cfg.providers.${client.provider};
-    trunkDial = "PJSIP/${name}/sip:\${EXTEN}@${provider.registrar}";
-  in ''
-            ; ===== client '${name}' (services.voip) =====
-            [${name}]
-            exten => _X.,1,Dial(${trunkDial})
-                same => n,Hangup()
-            exten => 110,1,Dial(PJSIP/${name}/sip:110@${provider.registrar})
-                same => n,Hangup()
-            exten => 112,1,Dial(PJSIP/${name}/sip:112@${provider.registrar})
-                same => n,Hangup()
+  dialplanStatic =
+    name: client:
+    let
+      provider = cfg.providers.${client.provider};
+      trunkDial = "PJSIP/${name}/sip:\${EXTEN}@${provider.registrar}";
+    in
+    ''
+              ; ===== client '${name}' (services.voip) =====
+              [${name}]
+              exten => _X.,1,Dial(${trunkDial})
+                  same => n,Hangup()
+              exten => 110,1,Dial(PJSIP/${name}/sip:110@${provider.registrar})
+                  same => n,Hangup()
+              exten => 112,1,Dial(PJSIP/${name}/sip:112@${provider.registrar})
+                  same => n,Hangup()
 
-            [${name}_in]
-    ${lib.optionalString (client.inboundExtension != null) ''
-      exten => ${contactOf client},1,Dial(PJSIP/${client.inboundExtension},30)
-          same => n,Hangup()''}
-        ${lib.concatStringsSep "\n" (map (faxDid: ''
-      ; Fax DID -> fax receive (services.asteriskLocal.fax must be enabled).
-      exten => ${faxDid},1,Goto(fax-in,s,1)'')
-    client.faxDids)}
-  '';
+              [${name}_in]
+      ${lib.optionalString (client.inboundExtension != null) ''
+        exten => ${contactOf client},1,Dial(PJSIP/${client.inboundExtension},30)
+            same => n,Hangup()''}
+          ${lib.concatStringsSep "\n" (
+            map (faxDid: ''
+              ; Fax DID -> fax receive (services.asteriskLocal.fax must be enabled).
+              exten => ${faxDid},1,Goto(fax-in,s,1)'') client.faxDids
+          )}
+    '';
 
   # Local test extension (provider-free): SIP client -> Asterisk ->
   # playback. Uses only app_playback (already loaded by asteriskLocal's
@@ -220,159 +226,177 @@
   # Outbound routes from local phones ([from-internal]) into each trunk.
   # One exten per pattern; ${EXTEN} passes the dialed number through.
   # Three-part dial string, see dialplanStatic NOTE (two-part 403s).
-  trunkOutboundLines = lib.concatStringsSep "\n" (lib.flatten (lib.mapAttrsToList (name: client: let
-    provider = cfg.providers.${client.provider};
-  in
-    map (pat: ''
-      exten => ${pat},1,Dial(PJSIP/${name}/sip:''${EXTEN}@${provider.registrar})
-          same => n,Hangup()'')
-    client.localPatterns)
-  enabledClients));
+  trunkOutboundLines = lib.concatStringsSep "\n" (
+    lib.flatten (
+      lib.mapAttrsToList (
+        name: client:
+        let
+          provider = cfg.providers.${client.provider};
+        in
+        map (pat: ''
+          exten => ${pat},1,Dial(PJSIP/${name}/sip:''${EXTEN}@${provider.registrar})
+              same => n,Hangup()'') client.localPatterns
+      ) enabledClients
+    )
+  );
 
   internalAdditions =
     lib.optionalString cfg.localTest.enable localTestLines
     + lib.optionalString (trunkOutboundLines != "") ("\n" + trunkOutboundLines + "\n");
-in {
+in
+{
   options.services.voip = {
     enable = lib.mkEnableOption "generic VoIP/SIP client abstraction (validates accounts, renders Asterisk PJSIP provider trunks with runtime passwords)";
 
     providers = lib.mkOption {
-      type = lib.types.attrsOf (lib.types.submodule {
-        options = {
-          registrar = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            description = "SIP registrar hostname. Null = TODO, provider not usable yet.";
+      type = lib.types.attrsOf (
+        lib.types.submodule {
+          options = {
+            registrar = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "SIP registrar hostname. Null = TODO, provider not usable yet.";
+            };
+            port = lib.mkOption {
+              type = lib.types.port;
+              default = 5060;
+              description = "SIP port (Easybell: 5060, alt 5064; TLS 5061).";
+            };
+            transport = lib.mkOption {
+              type = lib.types.enum [
+                "udp"
+                "tcp"
+                "tls"
+              ];
+              default = "udp";
+              description = "SIP transport.";
+            };
+            outboundProxy = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "Outbound proxy. Null = same as registrar (Easybell default).";
+            };
+            expires = lib.mkOption {
+              type = lib.types.int;
+              default = 1800;
+              description = "Registration expiry in seconds (Easybell reference).";
+            };
+            retryInterval = lib.mkOption {
+              type = lib.types.int;
+              default = 60;
+              description = "REGISTER retry interval. Keep conservative: Easybell Fail2Ban-bans sources with repeated failures.";
+            };
+            mediaEncryption = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = "Enable SDES-SRTP (media_encryption=sdes). Needed for Easybell encrypted telephony together with transport=tls (port 5061). Test unencrypted first (Easybell recommendation).";
+            };
+            note = lib.mkOption {
+              type = lib.types.str;
+              default = "";
+              description = "Free-form product notes (e.g. which Easybell product this registrar belongs to).";
+            };
           };
-          port = lib.mkOption {
-            type = lib.types.port;
-            default = 5060;
-            description = "SIP port (Easybell: 5060, alt 5064; TLS 5061).";
-          };
-          transport = lib.mkOption {
-            type = lib.types.enum ["udp" "tcp" "tls"];
-            default = "udp";
-            description = "SIP transport.";
-          };
-          outboundProxy = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            description = "Outbound proxy. Null = same as registrar (Easybell default).";
-          };
-          expires = lib.mkOption {
-            type = lib.types.int;
-            default = 1800;
-            description = "Registration expiry in seconds (Easybell reference).";
-          };
-          retryInterval = lib.mkOption {
-            type = lib.types.int;
-            default = 60;
-            description = "REGISTER retry interval. Keep conservative: Easybell Fail2Ban-bans sources with repeated failures.";
-          };
-          mediaEncryption = lib.mkOption {
-            type = lib.types.bool;
-            default = false;
-            description = "Enable SDES-SRTP (media_encryption=sdes). Needed for Easybell encrypted telephony together with transport=tls (port 5061). Test unencrypted first (Easybell recommendation).";
-          };
-          note = lib.mkOption {
-            type = lib.types.str;
-            default = "";
-            description = "Free-form product notes (e.g. which Easybell product this registrar belongs to).";
-          };
-        };
-      });
-      default = {};
+        }
+      );
+      default = { };
       description = "SIP provider presets keyed by name (e.g. easybell, eventphone). Clients reference these by name.";
     };
 
     clients = lib.mkOption {
-      type = lib.types.attrsOf (lib.types.submodule {
-        options = {
-          provider = lib.mkOption {
-            type = lib.types.str;
-            default = "easybell";
-            description = "Key into services.voip.providers.";
+      type = lib.types.attrsOf (
+        lib.types.submodule {
+          options = {
+            provider = lib.mkOption {
+              type = lib.types.str;
+              default = "easybell";
+              description = "Key into services.voip.providers.";
+            };
+            username = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "SIP auth username (Easybell: e.g. K12345678 from the customer portal). Null until assigned via host config.";
+            };
+            passwordFile = lib.mkOption {
+              type = lib.types.str;
+              default = "";
+              description = ''
+                Absolute runtime path to a file containing the SIP password.
+                Only the path enters the Nix store, never the secret.
+                NOTE: the password must not start with '#' or ';' (Asterisk
+                comment chars); all other special chars are passed through
+                verbatim.
+                sops-nix wiring (later):
+                  sops.secrets."voip/<client>" = {};
+                  services.voip.clients.<client>.passwordFile =
+                    config.sops.secrets."voip/<client>".path;
+              '';
+            };
+            did = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "Public number / DID in E.164 without '+' (e.g. 00493012345; for eventphone: the Guru3 extension number). Null = not assigned yet. Required when enabled (client_uri + inbound routing).";
+            };
+            contactUser = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = ''
+                Head number for contact_user / AOR contact (Easybell: usually the
+                Zentrale, e.g. 493012345000). Falls back to did when null.
+                At least one of did / contactUser is required per enabled client.
+              '';
+            };
+            inboundExtension = lib.mkOption {
+              type = lib.types.nullOr lib.types.str;
+              default = null;
+              description = "Local target for inbound calls to did (e.g. an asteriskLocal phone extension or the localTest extension). Required unless the client is fax-only (faxDids set).";
+            };
+            faxDids = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [ ];
+              description = ''
+                Inbound numbers routed to fax receive ([fax-in] in
+                services.asteriskLocal, needs fax.enable there) instead of
+                inboundExtension. A fax-only client sets inboundExtension=null
+                and lists its number here (e.g. second EPVPN extension).
+              '';
+            };
+            displayName = lib.mkOption {
+              type = lib.types.str;
+              default = "";
+              description = "Caller-ID display name (optional). NOTE: Easybell only signals it with 'PBX bestimmt Anrufer-ID (CLIP No Screening)' + 'From Display' set in my.easybell (see guide).";
+            };
+            codecs = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [
+                "alaw"
+                "ulaw"
+                "g722"
+              ];
+              description = "Allowed codecs in Easybell order (G.722 first for HD, then G.711A/G.711U).";
+            };
+            localPatterns = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [ ];
+              description = ''
+                Dial patterns in [from-internal] routed out via this trunk,
+                e.g. eventphone EPVPN: ["_0X." "_[2-7]XXX"] (0-prefix specials
+                like 0310/09…/01999… + 2100-7999 user range). Local extensions
+                (999, 100, phones) win only when they DON'T collide: keep
+                local numbers outside these patterns (no 0XXX/2XXX-7XXX phones).
+                Empty = no outbound route from local phones (trunk still
+                registers + receives inbound).
+              '';
+            };
+            enable = lib.mkOption {
+              type = lib.types.bool;
+              default = true;
+              description = "Set false to keep a defined client dormant.";
+            };
           };
-          username = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            description = "SIP auth username (Easybell: e.g. K12345678 from the customer portal). Null until assigned via host config.";
-          };
-          passwordFile = lib.mkOption {
-            type = lib.types.str;
-            default = "";
-            description = ''
-              Absolute runtime path to a file containing the SIP password.
-              Only the path enters the Nix store, never the secret.
-              NOTE: the password must not start with '#' or ';' (Asterisk
-              comment chars); all other special chars are passed through
-              verbatim.
-              sops-nix wiring (later):
-                sops.secrets."voip/<client>" = {};
-                services.voip.clients.<client>.passwordFile =
-                  config.sops.secrets."voip/<client>".path;
-            '';
-          };
-          did = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            description = "Public number / DID in E.164 without '+' (e.g. 00493012345; for eventphone: the Guru3 extension number). Null = not assigned yet. Required when enabled (client_uri + inbound routing).";
-          };
-          contactUser = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            description = ''
-              Head number for contact_user / AOR contact (Easybell: usually the
-              Zentrale, e.g. 493012345000). Falls back to did when null.
-              At least one of did / contactUser is required per enabled client.
-            '';
-          };
-          inboundExtension = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            description = "Local target for inbound calls to did (e.g. an asteriskLocal phone extension or the localTest extension). Required unless the client is fax-only (faxDids set).";
-          };
-          faxDids = lib.mkOption {
-            type = lib.types.listOf lib.types.str;
-            default = [];
-            description = ''
-              Inbound numbers routed to fax receive ([fax-in] in
-              services.asteriskLocal, needs fax.enable there) instead of
-              inboundExtension. A fax-only client sets inboundExtension=null
-              and lists its number here (e.g. second EPVPN extension).
-            '';
-          };
-          displayName = lib.mkOption {
-            type = lib.types.str;
-            default = "";
-            description = "Caller-ID display name (optional). NOTE: Easybell only signals it with 'PBX bestimmt Anrufer-ID (CLIP No Screening)' + 'From Display' set in my.easybell (see guide).";
-          };
-          codecs = lib.mkOption {
-            type = lib.types.listOf lib.types.str;
-            default = ["alaw" "ulaw" "g722"];
-            description = "Allowed codecs in Easybell order (G.722 first for HD, then G.711A/G.711U).";
-          };
-          localPatterns = lib.mkOption {
-            type = lib.types.listOf lib.types.str;
-            default = [];
-            description = ''
-              Dial patterns in [from-internal] routed out via this trunk,
-              e.g. eventphone EPVPN: ["_0X." "_[2-7]XXX"] (0-prefix specials
-              like 0310/09…/01999… + 2100-7999 user range). Local extensions
-              (999, 100, phones) win only when they DON'T collide: keep
-              local numbers outside these patterns (no 0XXX/2XXX-7XXX phones).
-              Empty = no outbound route from local phones (trunk still
-              registers + receives inbound).
-            '';
-          };
-          enable = lib.mkOption {
-            type = lib.types.bool;
-            default = true;
-            description = "Set false to keep a defined client dormant.";
-          };
-        };
-      });
-      default = {};
+        }
+      );
+      default = { };
       description = ''
         SIP accounts keyed by client name (e.g. easybell-main, testnummer).
         Example:
@@ -404,7 +428,8 @@ in {
     };
   };
 
-  config = lib.mkMerge ([
+  config = lib.mkMerge (
+    [
       # Provider presets. Registrar values are per-product on Easybell's side:
       # SIP Trunk/VoIP -> voip.easybell.de, Cloud PBX -> pbx.easybell.de,
       # legacy single numbers -> sip.easybell.de:5060.
@@ -437,89 +462,115 @@ in {
       }
 
       (lib.mkIf cfg.enable {
-        assertions =
-          [
-            {
-              assertion = !cfg.localTest.enable || hasAsterisk;
-              message = "services.voip.localTest needs modules/nixos/asterisk.nix in the host imports (provides services.asteriskLocal).";
-            }
-          ]
-          ++ lib.optional hasAsterisk {
-            assertion = cfg.localTest.enable -> config.services.asteriskLocal.enable;
-            message = "services.voip.localTest needs services.asteriskLocal.enable = true (the test extension runs on the local Asterisk).";
+        assertions = [
+          {
+            assertion = !cfg.localTest.enable || hasAsterisk;
+            message = "services.voip.localTest needs modules/nixos/asterisk.nix in the host imports (provides services.asteriskLocal).";
           }
-          ++ [
-            {
-              assertion = lib.all (c: builtins.hasAttr c.provider cfg.providers) (builtins.attrValues enabledClients);
-              message = "services.voip: a client references an unknown provider. Add it under services.voip.providers first.";
-            }
-            {
-              assertion = lib.all (c: c.username != null && c.username != "") (builtins.attrValues enabledClients);
-              message = "services.voip: every enabled client needs a username (no placeholder credentials; Easybell Fail2Ban-bans failing REGISTERs).";
-            }
-            {
-              assertion = lib.all (c: c.passwordFile != "" && lib.hasPrefix "/" c.passwordFile) (builtins.attrValues enabledClients);
-              message = "services.voip: every enabled client needs passwordFile as an absolute runtime path (e.g. config.sops.secrets.\"voip/<client>\".path).";
-            }
-            {
-              assertion = lib.all (c: cfg.providers.${c.provider}.registrar != null) (builtins.attrValues enabledClients);
-              message = "services.voip: a client uses a provider with registrar = null (TODO stub, e.g. eventphone). Fill in the registrar first.";
-            }
-            {
-              assertion = let
+        ]
+        ++ lib.optional hasAsterisk {
+          assertion = cfg.localTest.enable -> config.services.asteriskLocal.enable;
+          message = "services.voip.localTest needs services.asteriskLocal.enable = true (the test extension runs on the local Asterisk).";
+        }
+        ++ [
+          {
+            assertion = lib.all (c: builtins.hasAttr c.provider cfg.providers) (
+              builtins.attrValues enabledClients
+            );
+            message = "services.voip: a client references an unknown provider. Add it under services.voip.providers first.";
+          }
+          {
+            assertion = lib.all (c: c.username != null && c.username != "") (
+              builtins.attrValues enabledClients
+            );
+            message = "services.voip: every enabled client needs a username (no placeholder credentials; Easybell Fail2Ban-bans failing REGISTERs).";
+          }
+          {
+            assertion = lib.all (c: c.passwordFile != "" && lib.hasPrefix "/" c.passwordFile) (
+              builtins.attrValues enabledClients
+            );
+            message = "services.voip: every enabled client needs passwordFile as an absolute runtime path (e.g. config.sops.secrets.\"voip/<client>\".path).";
+          }
+          {
+            assertion = lib.all (c: cfg.providers.${c.provider}.registrar != null) (
+              builtins.attrValues enabledClients
+            );
+            message = "services.voip: a client uses a provider with registrar = null (TODO stub, e.g. eventphone). Fill in the registrar first.";
+          }
+          {
+            assertion =
+              let
                 dids = lib.filter (d: d != null) (lib.mapAttrsToList (_n: c: c.did) enabledClients);
               in
-                lib.length dids == lib.length (lib.unique dids);
-              message = "services.voip: duplicate did values across enabled clients.";
-            }
-            {
-              assertion = lib.all (c: c.did != null && c.did != "") (builtins.attrValues enabledClients);
-              message = "services.voip: every enabled client needs a did (E.164 without '+', used for client_uri and inbound routing).";
-            }
-            {
-              assertion = lib.all (c: (c.inboundExtension != null && c.inboundExtension != "") || c.faxDids != []) (builtins.attrValues enabledClients);
-              message = "services.voip: every enabled client needs inboundExtension (local target) or faxDids (fax-only client, e.g. second EPVPN extension).";
-            }
-          ]
-          # A live trunk is only useful on the local Asterisk (PJSIP #includes
-          # + asterisk user + tmpfiles placeholders all come from asterisk.nix).
-          ++ lib.optional hasAsterisk {
-            assertion = (builtins.attrNames enabledClients == []) || config.services.asteriskLocal.enable;
-            message = "services.voip: enabled clients need services.asteriskLocal.enable = true (trunk runs on the local Asterisk).";
-          };
+              lib.length dids == lib.length (lib.unique dids);
+            message = "services.voip: duplicate did values across enabled clients.";
+          }
+          {
+            assertion = lib.all (c: c.did != null && c.did != "") (builtins.attrValues enabledClients);
+            message = "services.voip: every enabled client needs a did (E.164 without '+', used for client_uri and inbound routing).";
+          }
+          {
+            assertion = lib.all (
+              c: (c.inboundExtension != null && c.inboundExtension != "") || c.faxDids != [ ]
+            ) (builtins.attrValues enabledClients);
+            message = "services.voip: every enabled client needs inboundExtension (local target) or faxDids (fax-only client, e.g. second EPVPN extension).";
+          }
+        ]
+        # A live trunk is only useful on the local Asterisk (PJSIP #includes
+        # + asterisk user + tmpfiles placeholders all come from asterisk.nix).
+        ++ lib.optional hasAsterisk {
+          assertion = (builtins.attrNames enabledClients == [ ]) || config.services.asteriskLocal.enable;
+          message = "services.voip: enabled clients need services.asteriskLocal.enable = true (trunk runs on the local Asterisk).";
+        };
 
         warnings =
-          lib.mapAttrsToList
-          (_name: c: "services.voip: client passwordFile '${c.passwordFile}' points into the Nix store — the secret would be world-readable. Use /run/secrets/... via sops-nix instead.")
-          (lib.filterAttrs (_name: c: lib.hasPrefix "/nix/store" c.passwordFile) enabledClients)
-          ++ lib.optionals hasAsterisk (lib.mapAttrsToList (name: c: "services.voip: client '${name}' uses transport '${cfg.providers.${c.provider}.transport}' but asteriskLocal runs '${config.services.asteriskLocal.transport.protocol}' — the PJSIP transport object [transport-${config.services.asteriskLocal.transport.protocol}] won't match. Align both (TLS additionally needs a [transport-tls] section + certs, follow-up).") (lib.filterAttrs (_name: c: cfg.providers.${c.provider}.transport != config.services.asteriskLocal.transport.protocol) enabledClients));
+          lib.mapAttrsToList (
+            _name: c:
+            "services.voip: client passwordFile '${c.passwordFile}' points into the Nix store — the secret would be world-readable. Use /run/secrets/... via sops-nix instead."
+          ) (lib.filterAttrs (_name: c: lib.hasPrefix "/nix/store" c.passwordFile) enabledClients)
+          ++ lib.optionals hasAsterisk (
+            lib.mapAttrsToList
+              (
+                name: c:
+                "services.voip: client '${name}' uses transport '${
+                  cfg.providers.${c.provider}.transport
+                }' but asteriskLocal runs '${config.services.asteriskLocal.transport.protocol}' — the PJSIP transport object [transport-${config.services.asteriskLocal.transport.protocol}] won't match. Align both (TLS additionally needs a [transport-tls] section + certs, follow-up)."
+              )
+              (
+                lib.filterAttrs (
+                  _name: c: cfg.providers.${c.provider}.transport != config.services.asteriskLocal.transport.protocol
+                ) enabledClients
+              )
+          );
 
         # Easybell registrar is DNS-SRV capable: dnsmgr keeps it resolving
         # (refresh 60-120s per guide). Own key, no clash with asteriskLocal.
-        services.asterisk.confFiles."dnsmgr.conf" = lib.mkIf (builtins.attrNames enabledClients != []) ''
+        services.asterisk.confFiles."dnsmgr.conf" = lib.mkIf (builtins.attrNames enabledClients != [ ]) ''
           [general]
           enable=yes
           refreshinterval=90
         '';
 
         # Descriptors: public account data for admins (no secrets).
-        environment.etc = lib.mapAttrs' (name: client:
+        environment.etc = lib.mapAttrs' (
+          name: client:
           lib.nameValuePair "voip/clients/${name}.conf" {
             text = clientDescriptor name client;
-          })
-        enabledClients;
+          }
+        ) enabledClients;
 
         systemd.services.voip-check = {
           description = "Validate VoIP client credential files";
-          wantedBy = ["multi-user.target"];
-          wants = ["network-online.target"];
-          after = ["network-online.target"];
-          before = ["asterisk.service"];
+          wantedBy = [ "multi-user.target" ];
+          wants = [ "network-online.target" ];
+          after = [ "network-online.target" ];
+          before = [ "asterisk.service" ];
           serviceConfig.Type = "oneshot";
           script = ''
             set -eu
             fail=0
-            ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: c: ''
+            ${lib.concatStringsSep "\n" (
+              lib.mapAttrsToList (name: c: ''
                 if [ -r "${c.passwordFile}" ]; then
                   echo "voip-check: client '${name}' credential file OK (${c.passwordFile})"
                 else
@@ -527,8 +578,8 @@ in {
                   echo "voip-check: provide it via sops-nix (sops.secrets.\"voip/${name}\") — see docs/secrets.md" >&2
                   fail=1
                 fi
-              '')
-              enabledClients)}
+              '') enabledClients
+            )}
             ${lib.optionalString cfg.localTest.enable ''
               echo "voip-check: local test extension ${cfg.localTest.extension} expected on Asterisk (dial ${cfg.localTest.extension} from any internal phone)"
             ''}
@@ -546,10 +597,13 @@ in {
         #   systemctl restart voip-render-trunks && asterisk -rx 'core reload'
         systemd.services.voip-render-trunks = {
           description = "Render VoIP provider trunks for Asterisk (runtime passwords)";
-          wantedBy = ["multi-user.target"];
-          wants = ["network-online.target"];
-          after = ["network-online.target" "sops-nix.service"];
-          before = ["asterisk.service"];
+          wantedBy = [ "multi-user.target" ];
+          wants = [ "network-online.target" ];
+          after = [
+            "network-online.target"
+            "sops-nix.service"
+          ];
+          before = [ "asterisk.service" ];
           serviceConfig.Type = "oneshot";
           script = ''
             set -eu
@@ -559,7 +613,8 @@ in {
             dialplan=/run/asterisk/voip-extensions.conf
             : > "$trunks"
             : > "$dialplan"
-            ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: client: ''
+            ${lib.concatStringsSep "\n" (
+              lib.mapAttrsToList (name: client: ''
                 if [ ! -r "${client.passwordFile}" ]; then
                   echo "voip-render-trunks: client '${name}': password file ${client.passwordFile} missing/unreadable" >&2
                   echo "voip-render-trunks: provide it via sops-nix (sops.secrets.\"voip/${name}\") — see docs/secrets.md" >&2
@@ -586,8 +641,8 @@ in {
                 ${dialplanStatic name client}
                 DIALPLAN_EOF
                 echo "voip-render-trunks: client '${name}' trunk rendered"
-              '')
-              enabledClients)}
+              '') enabledClients
+            )}
             if getent passwd asterisk >/dev/null; then
               chown asterisk:asterisk "$trunks" "$dialplan"
             fi
@@ -600,7 +655,10 @@ in {
     # documented extension point (types.lines concatenates with host
     # config). List element absent entirely without asterisk.nix
     # (see hasAsterisk note above).
-    ++ lib.optional hasAsterisk (lib.mkIf (cfg.enable && internalAdditions != "") {
-      services.asteriskLocal.extraExtensions = internalAdditions;
-    }));
+    ++ lib.optional hasAsterisk (
+      lib.mkIf (cfg.enable && internalAdditions != "") {
+        services.asteriskLocal.extraExtensions = internalAdditions;
+      }
+    )
+  );
 }

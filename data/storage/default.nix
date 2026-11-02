@@ -2,10 +2,12 @@
   lib,
   pkgs,
   ...
-}: let
+}:
+let
   inherit (lib) mkOption types;
-  inherit (import ../../lib/types.nix {inherit lib;}) checked dataDirectorySpec;
-in {
+  inherit (import ../../lib/types.nix { inherit lib; }) checked dataDirectorySpec;
+in
+rec {
   # Central storage definitions for the homelab.
   # Each service gets its data directory specification.
   #
@@ -32,7 +34,12 @@ in {
       owner = "nextcloud";
       group = "nextcloud";
       mode = "0750";
-      subdirs = ["config" "data" "apps" "state"];
+      subdirs = [
+        "config"
+        "data"
+        "apps"
+        "state"
+      ];
     };
 
     photos = {
@@ -40,7 +47,7 @@ in {
       owner = "lucy";
       group = "lucy";
       mode = "0755";
-      subdirs = [];
+      subdirs = [ ];
     };
 
     immich = {
@@ -48,7 +55,11 @@ in {
       owner = "immich";
       group = "immich";
       mode = "0750";
-      subdirs = ["db" "cache" "upload"];
+      subdirs = [
+        "db"
+        "cache"
+        "upload"
+      ];
     };
 
     syncthing = {
@@ -56,7 +67,11 @@ in {
       owner = "syncthing";
       group = "syncthing";
       mode = "0750";
-      subdirs = ["config" "data" "folders"];
+      subdirs = [
+        "config"
+        "data"
+        "folders"
+      ];
     };
 
     paperless = {
@@ -64,7 +79,13 @@ in {
       owner = "paperless";
       group = "paperless";
       mode = "0750";
-      subdirs = ["consume" "documents" "export" "media" "data"];
+      subdirs = [
+        "consume"
+        "documents"
+        "export"
+        "media"
+        "data"
+      ];
     };
 
     registry = {
@@ -72,7 +93,7 @@ in {
       owner = "registry";
       group = "registry";
       mode = "0750";
-      subdirs = [];
+      subdirs = [ ];
     };
 
     attic = {
@@ -80,7 +101,7 @@ in {
       owner = "attic";
       group = "attic";
       mode = "0750";
-      subdirs = [];
+      subdirs = [ ];
     };
 
     hydra = {
@@ -88,7 +109,7 @@ in {
       owner = "hydra";
       group = "hydra";
       mode = "0750";
-      subdirs = [];
+      subdirs = [ ];
     };
 
     netbox = {
@@ -96,7 +117,7 @@ in {
       owner = "netbox";
       group = "netbox";
       mode = "0750";
-      subdirs = [];
+      subdirs = [ ];
     };
 
     librenms = {
@@ -104,7 +125,10 @@ in {
       owner = "librenms";
       group = "librenms";
       mode = "0750";
-      subdirs = ["rrd" "logs"];
+      subdirs = [
+        "rrd"
+        "logs"
+      ];
     };
 
     matrix = {
@@ -112,7 +136,11 @@ in {
       owner = "matrix";
       group = "matrix";
       mode = "0750";
-      subdirs = ["db" "media" "uploads"];
+      subdirs = [
+        "db"
+        "media"
+        "uploads"
+      ];
     };
 
     rustdesk = {
@@ -120,7 +148,10 @@ in {
       owner = "rustdesk";
       group = "rustdesk";
       mode = "0750";
-      subdirs = ["db" "config"];
+      subdirs = [
+        "db"
+        "config"
+      ];
     };
 
     postgres = {
@@ -128,7 +159,7 @@ in {
       owner = "postgres";
       group = "postgres";
       mode = "0750";
-      subdirs = [];
+      subdirs = [ ];
     };
 
     osm = {
@@ -136,7 +167,11 @@ in {
       owner = "osm";
       group = "osm";
       mode = "0750";
-      subdirs = ["planet" "tiles" "data"];
+      subdirs = [
+        "planet"
+        "tiles"
+        "data"
+      ];
     };
 
     fax = {
@@ -144,7 +179,11 @@ in {
       owner = "asterisk";
       group = "asterisk";
       mode = "0750";
-      subdirs = ["inbox" "outbox" "queued"];
+      subdirs = [
+        "inbox"
+        "outbox"
+        "queued"
+      ];
     };
 
     backups = {
@@ -152,7 +191,7 @@ in {
       owner = "lucy";
       group = "lucy";
       mode = "0750";
-      subdirs = [];
+      subdirs = [ ];
     };
   };
 
@@ -163,9 +202,7 @@ in {
   getDataDir = name: data.${name};
 
   # Generate systemd.tmpfiles rules for all data dirs.
-  tmpfilesRules =
-    lib.concatMap (_name: spec: [
-      "d ${spec.path} ${spec.mode} ${spec.owner} ${spec.group} - -"
-    ])
-    dataDirConfigs;
+  tmpfilesRules = lib.concatMap (spec: [
+    "d ${spec.path} ${spec.mode} ${spec.owner} ${spec.group} - -"
+  ]) dataDirConfigs;
 }

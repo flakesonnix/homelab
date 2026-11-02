@@ -2,14 +2,17 @@
   meta = {
     description = "Development tools, IDEs, and device tooling";
     requires = {
-      host = [];
-      home = ["core"];
+      host = [ ];
+      home = [ "core" ];
     };
     conflicts = {
-      host = [];
-      home = [];
+      host = [ ];
+      home = [ ];
     };
-    targets = ["host" "home"];
+    targets = [
+      "host"
+      "home"
+    ];
   };
 
   host = {
@@ -21,6 +24,6 @@
   };
 
   home = {
-    bundles = ["dev"];
+    bundles = [ "dev" ];
   };
 }

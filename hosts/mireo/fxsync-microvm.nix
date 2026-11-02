@@ -8,14 +8,14 @@
 # Secrets (SYNC_MASTER_SECRET + metrics hash secret) are generated in-guest
 # on first boot into the data volume — never in the store, no host sops
 # needed (hence "fxsync" in secretlessVMs in tests/default.nix).
-{pkgs, ...}: {
+{ pkgs, ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "fxsync";
       ip = (import ./vm-ips.nix).fxsync;
       mem = 1024;
       vcpu = 1;
-      tcpPorts = [22];
+      tcpPorts = [ 22 ];
       volumes = [
         {
           image = "fxsync-data.img";
@@ -40,9 +40,9 @@
         # error here must abort loudly instead).
         systemd.services.firefox-syncserver-secrets-setup = {
           description = "Generate Firefox Sync secrets on first boot";
-          before = ["firefox-syncserver.service"];
-          requiredBy = ["firefox-syncserver.service"];
-          wantedBy = ["multi-user.target"];
+          before = [ "firefox-syncserver.service" ];
+          requiredBy = [ "firefox-syncserver.service" ];
+          wantedBy = [ "multi-user.target" ];
           serviceConfig = {
             Type = "oneshot";
             RemainAfterExit = true;
@@ -76,11 +76,9 @@
           package = pkgs.syncstorage-rs.overrideAttrs (old: {
             PYO3_USE_ABI3_FORWARD_COMPATIBILITY = "1";
             RUSTFLAGS = "--cap-lints=warn";
-            postPatch =
-              (old.postPatch or "")
-              + ''
-                sed -i '1i #![allow(ambiguous_glob_imports)]' syncstorage-mysql/src/db/db_impl.rs
-              '';
+            postPatch = (old.postPatch or "") + ''
+              sed -i '1i #![allow(ambiguous_glob_imports)]' syncstorage-mysql/src/db/db_impl.rs
+            '';
           });
           secrets = "/var/lib/firefox-syncserver/secrets.env";
           settings.host = "0.0.0.0";

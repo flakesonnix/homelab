@@ -1,13 +1,16 @@
 # Media microVM: Immich
 # Photo management and AI tagging.
-{...}: {
+{ ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "media";
       ip = (import ./vm-ips.nix).immich;
       mem = 4096;
       vcpu = 4;
-      tcpPorts = [22 443];
+      tcpPorts = [
+        22
+        443
+      ];
       volumes = [
         {
           image = "immich-data.img";
@@ -35,7 +38,7 @@
         "d /data/immich 0750 immich immich - -"
       ];
       config = {
-        imports = [(import ../../modules/nixos/immich.nix)];
+        imports = [ (import ../../modules/nixos/immich.nix) ];
         lucy.services.immich = {
           enable = true;
           dataDir = "/data/immich";

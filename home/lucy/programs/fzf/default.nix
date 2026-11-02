@@ -1,4 +1,4 @@
-{lib, ...}: {
+{ lib, ... }: {
   config.programs.fzf = {
     enable = true;
     defaultOptions = [

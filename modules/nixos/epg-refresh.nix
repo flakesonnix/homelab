@@ -1,43 +1,44 @@
 /*
-* Aktueller XMLTV-EPG für Jellyfin (iptv-org/epg, host-seitig)
-*
-* Baut aus iptv-org/epg-Quellen einen Guide, dessen `channel id`s exakt zu
-* den `tvg-id`s der M3Us auf der Jellyfin-MicroVM passen, und schiebt ihn
-* per SSH auf die VM. Läuft auf DIESEM Host (nicht in der VM): Repo-Clone,
-* npm und SSH-Key leben hier, das Davies-`/media` der VM ist read-only.
-*
-* Ablauf pro Lauf (alles geloggt, `journalctl -u epg-refresh`):
-*   1. iptv-org/epg frisch per `git clone --depth 1` (kein Snapshot!),
-*      `npm ci` nur bei geändertem package-lock.
-*   2. Drift-Check: M3U-`tvg-id`s auf der VM vs. ./channels.xml (nur WARN).
-*   3. `npm run grab` (days/maxConnections konfigurierbar).
-*   4. ANTI-STALE-GATE: späteste Sendung >= jetzt+20h, früheste >= jetzt-48h,
-*      >= 1000 Programme, Pflichtsender (RTL/ProSieben/VOX/ZDF/DasErste)
-*      je >= 1 Sendung — sonst ABBRUCH, kein Push (schützt vor
-*      Juli-2026-Feed wie freeepg.xml).
-*   5. Push per scp nach remoteGuidePath (jellyfin:jellyfin, 0644).
-*   6. Jellyfin-XMLTV-Cache auf der VM löschen
-*      (/var/cache/jellyfin/xmltv/*.xml — Key ist die Provider-ID, sonst
-*      liest Jellyfin nach Pfadwechsel still die ALTE Datei, 0 Programme,
-*      keine Fehlermeldung!).
-*   7. RefreshGuide per Jellyfin-API triggern (Token via LoadCredential,
-*      Task-ID wird per API gesucht, nicht hartcodiert).
-*   8. Verifikation (best-effort): früheste/späteste Sendung + Total via API.
-*
-* Secrets: NUR der Jellyfin-API-Token, via sops
-*   (hosts/<host>/secrets.yaml: `jellyfin/epg-api-token`, Key auf dem
-*   Jellyfin-Host als `epg-setup` angelegt). SSH läuft über den User-Key
-*   (BatchMode, StrictHostKeyChecking bleibt an).
-*
-* Debugging: systemctl status epg-refresh; manuell: systemctl start epg-refresh
-* Timer: täglich + Persistent (holt Boot-Lücken nach).
+  * Aktueller XMLTV-EPG für Jellyfin (iptv-org/epg, host-seitig)
+  *
+  * Baut aus iptv-org/epg-Quellen einen Guide, dessen `channel id`s exakt zu
+  * den `tvg-id`s der M3Us auf der Jellyfin-MicroVM passen, und schiebt ihn
+  * per SSH auf die VM. Läuft auf DIESEM Host (nicht in der VM): Repo-Clone,
+  * npm und SSH-Key leben hier, das Davies-`/media` der VM ist read-only.
+  *
+  * Ablauf pro Lauf (alles geloggt, `journalctl -u epg-refresh`):
+  *   1. iptv-org/epg frisch per `git clone --depth 1` (kein Snapshot!),
+  *      `npm ci` nur bei geändertem package-lock.
+  *   2. Drift-Check: M3U-`tvg-id`s auf der VM vs. ./channels.xml (nur WARN).
+  *   3. `npm run grab` (days/maxConnections konfigurierbar).
+  *   4. ANTI-STALE-GATE: späteste Sendung >= jetzt+20h, früheste >= jetzt-48h,
+  *      >= 1000 Programme, Pflichtsender (RTL/ProSieben/VOX/ZDF/DasErste)
+  *      je >= 1 Sendung — sonst ABBRUCH, kein Push (schützt vor
+  *      Juli-2026-Feed wie freeepg.xml).
+  *   5. Push per scp nach remoteGuidePath (jellyfin:jellyfin, 0644).
+  *   6. Jellyfin-XMLTV-Cache auf der VM löschen
+  *      (/var/cache/jellyfin/xmltv/*.xml — Key ist die Provider-ID, sonst
+  *      liest Jellyfin nach Pfadwechsel still die ALTE Datei, 0 Programme,
+  *      keine Fehlermeldung!).
+  *   7. RefreshGuide per Jellyfin-API triggern (Token via LoadCredential,
+  *      Task-ID wird per API gesucht, nicht hartcodiert).
+  *   8. Verifikation (best-effort): früheste/späteste Sendung + Total via API.
+  *
+  * Secrets: NUR der Jellyfin-API-Token, via sops
+  *   (hosts/<host>/secrets.yaml: `jellyfin/epg-api-token`, Key auf dem
+  *   Jellyfin-Host als `epg-setup` angelegt). SSH läuft über den User-Key
+  *   (BatchMode, StrictHostKeyChecking bleibt an).
+  *
+  * Debugging: systemctl status epg-refresh; manuell: systemctl start epg-refresh
+  * Timer: täglich + Persistent (holt Boot-Lücken nach).
 */
 {
   config,
   lib,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.services.epg-refresh;
 
   nodejs = pkgs.nodejs;
@@ -45,7 +46,20 @@
 
   refreshScript = pkgs.writeShellScript "epg-refresh-run" ''
     set -euo pipefail
-    PATH=${lib.makeBinPath [pkgs.bash pkgs.coreutils pkgs.curl pkgs.gawk pkgs.git pkgs.gnugrep pkgs.gnused pkgs.jq nodejs pkgs.openssh]}:$PATH
+    PATH=${
+      lib.makeBinPath [
+        pkgs.bash
+        pkgs.coreutils
+        pkgs.curl
+        pkgs.gawk
+        pkgs.git
+        pkgs.gnugrep
+        pkgs.gnused
+        pkgs.jq
+        nodejs
+        pkgs.openssh
+      ]
+    }:$PATH
 
     log() { echo "epg-refresh: $*" >&2; }
     die() { log "FATAL: $*"; exit 1; }
@@ -145,7 +159,8 @@
     log "Jellyfin meldet: $SUM"
     log "fertig (Quelle $REV)"
   '';
-in {
+in
+{
   options.services.epg-refresh = {
     enable = lib.mkEnableOption "täglicher XMLTV-Guide für Jellyfin (iptv-org/epg, host-seitig gebaut)";
 
@@ -226,10 +241,12 @@ in {
       }
     ];
 
-    sops.secrets."jellyfin/epg-api-token" = lib.mkIf (cfg.apiTokenFile == "/run/secrets/jellyfin/epg-api-token") {
-      # LoadCredential liest als root — Owner root genügt; zusätzlich eng:
-      mode = "0400";
-    };
+    sops.secrets."jellyfin/epg-api-token" =
+      lib.mkIf (cfg.apiTokenFile == "/run/secrets/jellyfin/epg-api-token")
+        {
+          # LoadCredential liest als root — Owner root genügt; zusätzlich eng:
+          mode = "0400";
+        };
 
     systemd.services.epg-refresh = {
       description = "XMLTV-Guide bauen (iptv-org/epg) und auf Jellyfin schieben";
@@ -237,8 +254,8 @@ in {
       # VM restart (2026-10-05: connection refused mid-deploy failed the
       # whole p53 switch + revoked all nodes). Timer-driven only; a failed
       # run retries at the next timer tick, never blocks deploys.
-      wants = ["network-online.target"];
-      after = ["network-online.target"];
+      wants = [ "network-online.target" ];
+      after = [ "network-online.target" ];
       serviceConfig = {
         Type = "oneshot";
         User = cfg.user;
@@ -255,7 +272,7 @@ in {
 
     systemd.timers.epg-refresh = {
       description = "Täglicher XMLTV-Guide für Jellyfin";
-      wantedBy = ["timers.target"];
+      wantedBy = [ "timers.target" ];
       timerConfig = {
         OnCalendar = cfg.onCalendar;
         Persistent = true;

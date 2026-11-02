@@ -2,14 +2,17 @@
   meta = {
     description = "Desktop environment, GUI apps, and compositor integration";
     requires = {
-      host = [];
-      home = ["core"];
+      host = [ ];
+      home = [ "core" ];
     };
     conflicts = {
-      host = [];
-      home = [];
+      host = [ ];
+      home = [ ];
     };
-    targets = ["host" "home"];
+    targets = [
+      "host"
+      "home"
+    ];
   };
 
   host = {
@@ -22,10 +25,10 @@
       lucy.waybar.installFonts = true;
     };
 
-    packageTags = ["desktop"];
+    packageTags = [ "desktop" ];
   };
 
   home = {
-    bundles = ["desktop"];
+    bundles = [ "desktop" ];
   };
 }

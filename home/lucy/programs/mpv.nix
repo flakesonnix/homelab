@@ -3,9 +3,10 @@
   lib,
   pkgs,
   ...
-}: {
+}:
+{
   config = lib.mkIf config.programs.mpv.enable {
-    home.packages = [pkgs.mpv];
+    home.packages = [ pkgs.mpv ];
 
     xdg.configFile."mpv/mpv.conf".text = ''
       profile=gpu-hq

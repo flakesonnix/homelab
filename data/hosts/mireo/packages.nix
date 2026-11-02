@@ -1,4 +1,4 @@
-{pkgs, ...}: {
+{ pkgs, ... }: {
   systemPackages = with pkgs; [
     # Network diagnostics
     ethtool

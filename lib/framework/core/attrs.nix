@@ -1,31 +1,32 @@
 {
-  attrsFromNames = names: value:
-    builtins.listToAttrs (map (name: {
+  attrsFromNames =
+    names: value:
+    builtins.listToAttrs (
+      map (name: {
         inherit name value;
-      })
-      names);
+      }) names
+    );
 
-  mergeAttrsList = builtins.foldl' (acc: attrs: acc // attrs) {};
+  mergeAttrsList = builtins.foldl' (acc: attrs: acc // attrs) { };
 
-  setTrueByPath = lib: path:
-    lib.setAttrByPath path true;
+  setTrueByPath = lib: path: lib.setAttrByPath path true;
 
-  pickAttrs = names: attrs:
+  pickAttrs =
+    names: attrs:
     builtins.listToAttrs (
       builtins.filter (entry: entry != null) (
         map (
           name:
-            if builtins.hasAttr name attrs
-            then {
+          if builtins.hasAttr name attrs then
+            {
               inherit name;
               value = attrs.${name};
             }
-            else null
-        )
-        names
+          else
+            null
+        ) names
       )
     );
 
-  mapAttrValues = f: attrs:
-    builtins.mapAttrs (_: f) attrs;
+  mapAttrValues = f: attrs: builtins.mapAttrs (_: f) attrs;
 }

@@ -2,7 +2,8 @@
 {
   pkgs,
   settings,
-}: let
+}:
+let
   inherit (pkgs) lib;
   inherit (settings) colors;
   args = [
@@ -36,6 +37,6 @@
     "-no-active-color-title"
   ];
 in
-  pkgs.writeShellScriptBin "dwl-scroll-bar" ''
-    exec ${lib.getExe pkgs.dwlb} ${lib.escapeShellArgs args} "$@"
-  ''
+pkgs.writeShellScriptBin "dwl-scroll-bar" ''
+  exec ${lib.getExe pkgs.dwlb} ${lib.escapeShellArgs args} "$@"
+''

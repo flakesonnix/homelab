@@ -1,6 +1,6 @@
 # Identity microVM: OpenLDAP + Keycloak
 # Dedicated IP 10.8.0.29, security boundary for identity services.
-{config, ...}: {
+{ config, ... }: {
   # Keycloak DB password reuses the host database/keycloak secret (single
   # source, no duplicated secret): rendered into a dedicated dir so the
   # guest share sees exactly one file (same pattern as pocket-id).
@@ -13,7 +13,11 @@
       ip = (import ./vm-ips.nix).identity;
       mem = 1024;
       vcpu = 2;
-      tcpPorts = [22 443 636];
+      tcpPorts = [
+        22
+        443
+        636
+      ];
       volumes = [
         {
           image = "ldap-data.img";
@@ -56,7 +60,7 @@
         };
         systemd.services.keycloak-secrets-setup = {
           description = "Stage Keycloak secrets from virtiofs share";
-          before = ["keycloak.service"];
+          before = [ "keycloak.service" ];
           serviceConfig.Type = "oneshot";
           serviceConfig.RemainAfterExit = true;
           script = ''
@@ -65,7 +69,11 @@
             install -D -o keycloak -g keycloak -m0400 /run/secrets/identity/database/keycloak /run/secrets/database/keycloak
           '';
         };
-        networking.firewall.allowedTCPPorts = [22 443 636];
+        networking.firewall.allowedTCPPorts = [
+          22
+          443
+          636
+        ];
       };
     })
   ];

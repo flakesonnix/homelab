@@ -2,15 +2,17 @@
   config,
   lib,
   ...
-}: let
+}:
+let
   cfg = config.lucy.nvidia.resumeWorkaround;
-in {
+in
+{
   options.lucy.nvidia.resumeWorkaround = {
     enable = lib.mkEnableOption "NVIDIA suspend/resume rebind workaround";
 
     restartUnits = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      default = [];
+      default = [ ];
       description = "Units to restart after rebinding NVIDIA devices on resume.";
     };
   };
@@ -18,8 +20,18 @@ in {
   config = lib.mkIf cfg.enable {
     systemd.services.nvidia-resume = {
       description = lib.mkForce "Reinitialize NVIDIA driver after resume";
-      after = ["suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target"];
-      wantedBy = ["suspend.target" "hibernate.target" "hybrid-sleep.target" "suspend-then-hibernate.target"];
+      after = [
+        "suspend.target"
+        "hibernate.target"
+        "hybrid-sleep.target"
+        "suspend-then-hibernate.target"
+      ];
+      wantedBy = [
+        "suspend.target"
+        "hibernate.target"
+        "hybrid-sleep.target"
+        "suspend-then-hibernate.target"
+      ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
@@ -41,7 +53,9 @@ in {
               done
             fi
 
-            ${lib.concatStringsSep "\n" (map (unit: "systemctl restart ${unit} 2>/dev/null || true") cfg.restartUnits)}
+            ${lib.concatStringsSep "\n" (
+              map (unit: "systemctl restart ${unit} 2>/dev/null || true") cfg.restartUnits
+            )}
           ''
         ];
       };

@@ -91,18 +91,18 @@ SwayFX prefers the Intel GPU and also adds the NVIDIA DRM device when present,
 so NVIDIA-wired outputs can be discovered. This session-local selection does not
 change GNOME or PRIME offload. Physical output/hotplug behavior needs separate testing.
 
-- `Super` as modifier with the Niri bind layout (Sway workspaces `1`–`9` on `Super+1`…`Super+9`)
-- `Super+Enter`: Alacritty; `Super+D`: Fuzzel; `Super+W`: close
-- `Super+H/J/K/L` or arrows: focus; add `Ctrl` to move; `Super+Shift+Arrows`: across outputs
-- `Super+1`…`Super+9`: workspaces; `Super+Ctrl+1`…`Super+9` / `Super+Shift+1`…`Super+9`: move window there
-- `Super+U/I` or `Super+PgUp/PgDn`: previous/next workspace; scrolled with `Super+Wheel`
-- `Super+V`: floating toggle; `Super+Shift+V`: focus floating/tiling; `Super+Shift+F`: fullscreen
-- `Super+Minus/Equal`: resize width; add `Shift` for height
-- `Print` / `Super+Shift+S`: area shot; `Ctrl+Print`: screen; `Super+Print`: window (files like Niri under `~/Pictures/Screenshots`)
-- `Super+Ctrl+Escape`: lock; `Super+Shift+C`: reload; `Super+Shift+E`: log out
+- `Alt` as modifier with the Niri bind layout (Sway workspaces `1`–`9` on `Alt+1`…`Alt+9`)
+- `Alt+Enter`: Alacritty; `Alt+D`: Fuzzel; `Alt+W`: close
+- `Alt+H/J/K/L` or arrows: focus; add `Ctrl` to move; `Alt+Shift+Arrows`: across outputs
+- `Alt+1`…`Alt+9`: workspaces; `Alt+Ctrl+1`…`Alt+Ctrl+9` / `Alt+Shift+1`…`Alt+Shift+9`: move window there
+- `Alt+U/I` or `Alt+PgUp/PgDn`: previous/next workspace; scrolled with `Alt+Wheel`
+- `Alt+V`: floating toggle; `Alt+Shift+V`: focus floating/tiling; `Alt+Shift+F`: fullscreen
+- `Alt+Minus/Equal`: resize width; add `Shift` for height
+- `Print` / `Alt+Shift+S`: area shot; `Ctrl+Print`: screen; `Alt+Print`: window (files like Niri under `~/Pictures/Screenshots`)
+- `Alt+Ctrl+Escape`: lock; `Alt+Shift+C`: reload; `Alt+Shift+E`: log out
 - Lock after 5 minutes idle and before suspend; turn displays off after 10 minutes
 - Cyberdeck colors with blur and shadows but square corners; the existing Niri-only Waybar stays disabled
-- Niri-only actions without Sway equivalent: overview, column consume/expel, preset widths/heights, maximize-column (`Super+F` unbound), workspace moving, shortcut-inhibit toggle
+- Niri-only actions without Sway equivalent: overview, column consume/expel, preset widths/heights, maximize-column (`Alt+F` unbound), workspace moving, shortcut-inhibit toggle
 
 ### EWM alongside GNOME and SwayFX
 
@@ -196,29 +196,39 @@ nix run .#deploy-mireo  # SSH to 10.8.0.1
 
 ### Firefox Sync enrollment
 
-Sync is opt-in: this configuration does not change Firefox profiles or migrate
-existing Mozilla-hosted Sync data. Mozilla still provides the account; only
-storage and Sync token issuance are self-hosted. Both LAN resolvers point
-`fxsync.home.arpa` at mireo's Caddy, not the backend VM. Caddy uses `tls internal`
-(no public ACME) and permits only loopback, `10.8.0.0/24`, and
+Lucy's Nix-managed Firefox profile selects the self-hosted Sync endpoint below.
+This does not sign in, disconnect existing accounts, or migrate Mozilla-hosted
+Sync data. Existing unmanaged profiles need the endpoint set manually. Mozilla
+still provides the account; only storage and Sync token issuance are self-hosted.
+Both LAN resolvers point `fxsync.home.arpa` at mireo's Caddy, not the backend VM.
+Caddy uses `tls internal` (no public ACME) and permits only loopback, `10.8.0.0/24`, and
 `fd00:cafe:1::/64`; other source addresses receive HTTP 403 over HTTPS.
 
-1. After an explicitly authorized deployment, obtain only Caddy's **public root
-   CA certificate** over authenticated SSH from
-   `/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt` on mireo.
-   Verify its fingerprint over that trusted channel; keep the public certificate
-   client-local, not in this repository. Import it into Firefox's
-   certificate Authorities with website trust, or a client trust store Firefox
-   actually uses. Android must also trust this CA in the store used by that
-   Firefox build; installing a user CA alone is not sufficient on every build.
-2. Confirm `https://fxsync.home.arpa` has no certificate warning before enrolling.
-   Never disable certificate verification or use an HTTP endpoint. Never copy or
-   commit Caddy's private CA key (`root.key`) or its private CA directory.
-3. Desktop: before signing in to Sync, set `identity.sync.tokenserver.uri` in
-   `about:config` to `https://fxsync.home.arpa/1.0/sync/1.5`, restart Firefox,
-   then sign in. A previously connected profile must disconnect first; changing
-   this preference alone does not migrate it.
-4. Android: disconnect the Mozilla account, tap the logo five times under
+1. The shared [`lucy-ca` module/package](modules.md#lucy-canix) distributes the
+   verified **public** root to every NixOS host, microVM, and PXE installer.
+   OS trust and Firefox's `Certificates.Install` policy use the package's
+   store-backed certificate. Before activating the new Sync endpoint, disconnect
+   any existing Sync account and retain local browser data; then rebuild/deploy
+   the client configuration. No per-user CA file is required.
+2. Restart Firefox, check `about:policies`, and confirm
+   `https://fxsync.home.arpa` has no certificate warning before enrolling.
+   System-wide Firefox policies take precedence over Home Manager package
+   policies, so both reference the packaged CA. Never disable TLS verification
+   or use an HTTP endpoint. Only the public root certificate is packaged:
+   Caddy's private CA key (`root.key`) and private CA directory stay on mireo.
+3. The managed `lucy` profile sets `identity.sync.tokenserver.uri` to
+   `https://fxsync.home.arpa/1.0/sync/1.5`. For an existing unmanaged profile, set
+   the same preference in `about:config` manually. After CA trust works, restart
+   Firefox and sign in with the Mozilla account. Changing this preference alone
+   does not migrate an already connected profile. The service is LAN-only.
+   Off-LAN clients need VPN routing, local DNS, and a source address permitted
+   by Caddy's allowlist.
+4. Other desktops/Android: obtain the public certificate with
+   `nix build .#lucy-ca` (`result/share/ca-certificates/lucy-ca.crt`) and import
+   it into a trust store that Firefox actually uses. Do not rely on
+   `ImportEnterpriseRoots` on Linux; a user-installed Android CA alone is not
+   sufficient on every Firefox build. On Android, disconnect the Mozilla
+   account, tap the logo five times under
    Settings > About Firefox, then set **Sync Debug > Custom Sync Server** to the
    same HTTPS tokenserver URL. Restart and sign in only after CA trust works.
 

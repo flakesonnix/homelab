@@ -2,7 +2,8 @@
   lib,
   config,
   ...
-}: let
+}:
+let
   settingsJson = builtins.toJSON {
     arRPC = true;
     discordBranch = "stable";
@@ -13,9 +14,10 @@
     staticTitle = true;
     theme = "dark";
   };
-in {
+in
+{
   config = lib.mkIf config.programs.vesktop.enable {
-    home.activation.vesktopWritableSettings = lib.hm.dag.entryBefore ["checkLinkTargets"] ''
+    home.activation.vesktopWritableSettings = lib.hm.dag.entryBefore [ "checkLinkTargets" ] ''
             settings_dir="$HOME/.config/vesktop/settings"
             settings_file="$settings_dir/settings.json"
             backup_file="$settings_file.hm-backup"

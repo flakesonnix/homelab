@@ -4,14 +4,17 @@
 # Alle Homelab-Dienste als Kacheln; tote Links beleben sich, sobald die
 # jeweiligen Stub-VMs echte Dienste bekommen. Erreichbar via
 # http://dash.home.arpa (Caddy -> :8082).
-{lib, ...}: {
+{ lib, ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "dash";
       ip = (import ./vm-ips.nix).dash;
       mem = 1024;
       vcpu = 1;
-      tcpPorts = [22 8082];
+      tcpPorts = [
+        22
+        8082
+      ];
       volumes = [
         {
           image = "dash-data.img";
@@ -26,7 +29,7 @@
           isSystemUser = true;
           group = "dash";
         };
-        users.groups.dash = {};
+        users.groups.dash = { };
         # Upstream nutzt DynamicUser + StateDirectory — das beißt sich mit
         # dem gemounteten Volume (Exit 238, selbe Falle wie uptime-kuma/lldap).
         # Statischer User wie in lldap-microvm.nix.

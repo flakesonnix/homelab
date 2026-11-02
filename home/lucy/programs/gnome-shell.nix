@@ -2,7 +2,8 @@
   config,
   lib,
   ...
-}: {
+}:
+{
   options.programs.gnomeShell.enable = lib.mkEnableOption "GNOME Shell extensions (dash-to-dock + systray)";
 
   config = lib.mkIf config.programs.gnomeShell.enable {

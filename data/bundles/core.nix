@@ -1,7 +1,7 @@
 {
   meta = {
     description = "Base shell, editor, SSH, and Nix workflow configuration";
-    targets = ["home"];
+    targets = [ "home" ];
   };
 
   programs = {
@@ -40,5 +40,8 @@
   };
 
   programs.home-manager.enable = true;
-  nix.settings.experimental-features = ["nix-command" "flakes"];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
 }

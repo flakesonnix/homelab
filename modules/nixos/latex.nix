@@ -3,7 +3,8 @@
   config,
   pkgs,
   ...
-}: {
+}:
+{
   options.lucy.latex = {
     enable = lib.mkEnableOption "LaTeX writing environment";
   };

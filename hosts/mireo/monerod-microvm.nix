@@ -1,11 +1,16 @@
-{...}: {
+{ ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "monerod";
       ip = (import ./vm-ips.nix).monerod;
       mem = 2304;
       vcpu = 2;
-      tcpPorts = [22 18080 18081 9001];
+      tcpPorts = [
+        22
+        18080
+        18081
+        9001
+      ];
       volumes = [
         {
           image = "monerod-data.img";

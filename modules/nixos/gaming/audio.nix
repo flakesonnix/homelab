@@ -2,9 +2,11 @@
   config,
   lib,
   ...
-}: let
+}:
+let
   cfg = config.lucy.gaming;
-in {
+in
+{
   config = lib.mkIf cfg.enable {
     services.pipewire.lowLatency = lib.mkIf cfg.lowLatency.enable {
       enable = true;

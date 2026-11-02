@@ -1,5 +1,10 @@
 {
-  lucy.serialGetty.disabled = ["ttyS0" "ttyS1" "ttyS2" "ttyS3"];
+  lucy.serialGetty.disabled = [
+    "ttyS0"
+    "ttyS1"
+    "ttyS2"
+    "ttyS3"
+  ];
 
   services.thermald.enable = true;
 
@@ -9,7 +14,7 @@
   # encrypted unlike the plain swap partition). resume_offset = first
   # extent of /swapfile in 512-byte sectors (filefrag: 262725632 * 8).
   # The 8.8G partition swap stays as plain swap space.
-  swapDevices = [{device = "/swapfile";}];
+  swapDevices = [ { device = "/swapfile"; } ];
   boot.resumeDevice = "/dev/mapper/luks-90b17531-753e-4576-a453-a7d81be1d09e";
 
   # Note: settings/power/services are merged with lib.recursiveUpdate, so

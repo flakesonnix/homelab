@@ -1,55 +1,69 @@
 /*
-* Declarative Uptime Kuma monitors (GitOps sync, host-side)
-*
-* The nixpkgs module only covers server knobs (HOST/PORT via settings);
-* monitors/users/notifications live in SQLite. This module reconciles the
-* monitor set over the HTTP API (python3Packages.uptime-kuma-api):
-* Nix is authoritative — missing monitors are created, drifted ones are
-* updated, extras are DELETED. UI edits between syncs get overwritten.
-*
-* Runs on the mireo HOST (not in the VM): no secret sharing into the
-* guest needed, the admin password stays in host sops (/run/secrets).
-* Timer-driven only (boot + daily, Persistent) for convergence: the
-* service is deliberately NOT wanted by multi-user.target, so a transient
-* API outage (e.g. kuma VM restarting mid-switch) can never fail a
-* nixos-rebuild/deploy and trigger a rollback. Sync right after a monitor
-* change: systemctl start uptime-kuma-sync (timer retries daily anyway).
-* Notifications are NOT managed (none exist; needs channel + secrets —
-* follow-up once a channel is chosen).
-*
-* Debugging: systemctl status uptime-kuma-sync; dry-run preview:
-*   /etc/uptime-kuma-sync/preview --dry-run   (needs passwordFile present)
-* Manual re-sync: systemctl start uptime-kuma-sync
+  * Declarative Uptime Kuma monitors (GitOps sync, host-side)
+  *
+  * The nixpkgs module only covers server knobs (HOST/PORT via settings);
+  * monitors/users/notifications live in SQLite. This module reconciles the
+  * monitor set over the HTTP API (python3Packages.uptime-kuma-api):
+  * Nix is authoritative — missing monitors are created, drifted ones are
+  * updated, extras are DELETED. UI edits between syncs get overwritten.
+  *
+  * Runs on the mireo HOST (not in the VM): no secret sharing into the
+  * guest needed, the admin password stays in host sops (/run/secrets).
+  * Timer-driven only (boot + daily, Persistent) for convergence: the
+  * service is deliberately NOT wanted by multi-user.target, so a transient
+  * API outage (e.g. kuma VM restarting mid-switch) can never fail a
+  * nixos-rebuild/deploy and trigger a rollback. Sync right after a monitor
+  * change: systemctl start uptime-kuma-sync (timer retries daily anyway).
+  * Notifications are NOT managed (none exist; needs channel + secrets —
+  * follow-up once a channel is chosen).
+  *
+  * Debugging: systemctl status uptime-kuma-sync; dry-run preview:
+  *   /etc/uptime-kuma-sync/preview --dry-run   (needs passwordFile present)
+  * Manual re-sync: systemctl start uptime-kuma-sync
 */
 {
   config,
   lib,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.services.uptime-kuma-sync;
 
-  py = pkgs.python3.withPackages (ps: [ps.uptime-kuma-api]);
+  py = pkgs.python3.withPackages (ps: [ ps.uptime-kuma-api ]);
 
   # Store-safe JSON (names/targets/groups/tags only, no secrets).
-  desiredJson = pkgs.writeText "uptime-kuma-monitors.json" (builtins.toJSON
-    (lib.mapAttrs (name: m: {
+  desiredJson = pkgs.writeText "uptime-kuma-monitors.json" (
+    builtins.toJSON (
+      lib.mapAttrs (name: m: {
         inherit name;
-        inherit (m) type target interval maxRetries dnsServer dnsType group tags;
+        inherit (m)
+          type
+          target
+          interval
+          maxRetries
+          dnsServer
+          dnsType
+          group
+          tags
+          ;
         port = m.port;
-      })
-      cfg.monitors));
+      }) cfg.monitors
+    )
+  );
 
   # Empty slug = status page unmanaged (script skips).
-  statusPageJson = pkgs.writeText "uptime-kuma-status-page.json" (builtins.toJSON
-    (
-      if cfg.statusPage.enable
-      then {
-        inherit (cfg.statusPage) slug title description;
-        monitors = builtins.attrNames cfg.monitors;
-      }
-      else {slug = "";}
-    ));
+  statusPageJson = pkgs.writeText "uptime-kuma-status-page.json" (
+    builtins.toJSON (
+      if cfg.statusPage.enable then
+        {
+          inherit (cfg.statusPage) slug title description;
+          monitors = builtins.attrNames cfg.monitors;
+        }
+      else
+        { slug = ""; }
+    )
+  );
 
   syncScript = pkgs.writeTextFile {
     name = "uptime-kuma-sync.py";
@@ -370,7 +384,8 @@
           sys.exit(main())
     '';
   };
-in {
+in
+{
   options.services.uptime-kuma-sync = {
     enable = lib.mkEnableOption "declarative Uptime Kuma monitor sync (Nix-authoritative, API-based)";
 
@@ -399,58 +414,65 @@ in {
     };
 
     monitors = lib.mkOption {
-      type = lib.types.attrsOf (lib.types.submodule {
-        options = {
-          type = lib.mkOption {
-            type = lib.types.enum ["http" "ping" "port" "dns"];
-            description = "Check type.";
+      type = lib.types.attrsOf (
+        lib.types.submodule {
+          options = {
+            type = lib.mkOption {
+              type = lib.types.enum [
+                "http"
+                "ping"
+                "port"
+                "dns"
+              ];
+              description = "Check type.";
+            };
+            target = lib.mkOption {
+              type = lib.types.str;
+              description = "URL (http), hostname/IP (ping/port/dns).";
+            };
+            port = lib.mkOption {
+              type = lib.types.nullOr lib.types.port;
+              default = null;
+              description = "TCP port (required for type=port).";
+            };
+            interval = lib.mkOption {
+              type = lib.types.ints.positive;
+              default = 60;
+              description = "Check interval in seconds.";
+            };
+            maxRetries = lib.mkOption {
+              type = lib.types.ints.unsigned;
+              default = 1;
+              description = "Retries before paging DOWN.";
+            };
+            dnsServer = lib.mkOption {
+              type = lib.types.str;
+              default = "10.8.0.1";
+              description = "Resolver for type=dns (default: our LAN DNS — also tests dnsmasq).";
+            };
+            dnsType = lib.mkOption {
+              type = lib.types.str;
+              default = "A";
+              description = "Record type for type=dns.";
+            };
+            group = lib.mkOption {
+              type = lib.types.str;
+              default = "Homelab";
+              description = "Status page category (site) for this monitor.";
+            };
+            tags = lib.mkOption {
+              type = lib.types.attrsOf lib.types.str;
+              default = { };
+              description = ''
+                Extra monitor tags (name -> value), e.g. { role = "metrics"; }.
+                The target address is always tagged automatically. Tags are
+                only ever added, never deleted (UI-added tags survive).
+              '';
+            };
           };
-          target = lib.mkOption {
-            type = lib.types.str;
-            description = "URL (http), hostname/IP (ping/port/dns).";
-          };
-          port = lib.mkOption {
-            type = lib.types.nullOr lib.types.port;
-            default = null;
-            description = "TCP port (required for type=port).";
-          };
-          interval = lib.mkOption {
-            type = lib.types.ints.positive;
-            default = 60;
-            description = "Check interval in seconds.";
-          };
-          maxRetries = lib.mkOption {
-            type = lib.types.ints.unsigned;
-            default = 1;
-            description = "Retries before paging DOWN.";
-          };
-          dnsServer = lib.mkOption {
-            type = lib.types.str;
-            default = "10.8.0.1";
-            description = "Resolver for type=dns (default: our LAN DNS — also tests dnsmasq).";
-          };
-          dnsType = lib.mkOption {
-            type = lib.types.str;
-            default = "A";
-            description = "Record type for type=dns.";
-          };
-          group = lib.mkOption {
-            type = lib.types.str;
-            default = "Homelab";
-            description = "Status page category (site) for this monitor.";
-          };
-          tags = lib.mkOption {
-            type = lib.types.attrsOf lib.types.str;
-            default = {};
-            description = ''
-              Extra monitor tags (name -> value), e.g. { role = "metrics"; }.
-              The target address is always tagged automatically. Tags are
-              only ever added, never deleted (UI-added tags survive).
-            '';
-          };
-        };
-      });
-      default = {};
+        }
+      );
+      default = { };
       description = ''
         Monitors keyed by display name. Authoritative: extras on the
         server are deleted. Example:
@@ -492,15 +514,17 @@ in {
         message = "services.uptime-kuma-sync: type=port monitors need port set.";
       }
       {
-        assertion = lib.all (m: m.type != "http" || lib.hasPrefix "http" m.target) (builtins.attrValues cfg.monitors);
+        assertion = lib.all (m: m.type != "http" || lib.hasPrefix "http" m.target) (
+          builtins.attrValues cfg.monitors
+        );
         message = "services.uptime-kuma-sync: type=http monitors need an http(s) URL target.";
       }
     ];
 
-    warnings =
-      lib.mapAttrsToList
-      (_name: m: "services.uptime-kuma-sync: monitor target '${m.target}' points into the Nix store — did you mean a runtime address?")
-      (lib.filterAttrs (_name: m: lib.hasPrefix "/nix/store" m.target) cfg.monitors);
+    warnings = lib.mapAttrsToList (
+      _name: m:
+      "services.uptime-kuma-sync: monitor target '${m.target}' points into the Nix store — did you mean a runtime address?"
+    ) (lib.filterAttrs (_name: m: lib.hasPrefix "/nix/store" m.target) cfg.monitors);
 
     systemd.services.uptime-kuma-sync = {
       description = "Sync declarative Uptime Kuma monitors (authoritative)";
@@ -508,8 +532,11 @@ in {
       # restart (2026-10-03 deploy failed + rolled back on a connect
       # timeout). Convergence comes from the timer (boot + daily) and
       # manual `systemctl start uptime-kuma-sync`.
-      wants = ["network-online.target"];
-      after = ["network-online.target" "microvm@uptime-kuma.service"];
+      wants = [ "network-online.target" ];
+      after = [
+        "network-online.target"
+        "microvm@uptime-kuma.service"
+      ];
       # Self-heal transient API login flakes (seen daily 00:00 runs +
       # deploy-time race while the kuma VM boots): retry 3x, then give up
       # until the next timer run (no infinite loop on permanent failure).
@@ -535,7 +562,7 @@ in {
 
     systemd.timers.uptime-kuma-sync = {
       description = "Uptime Kuma monitor convergence (boot + daily)";
-      wantedBy = ["timers.target"];
+      wantedBy = [ "timers.target" ];
       timerConfig = {
         # Boot-delayed so the kuma VM is up (no switch-time race).
         OnBootSec = "10m";

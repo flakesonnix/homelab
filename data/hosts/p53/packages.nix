@@ -2,7 +2,8 @@
   pkgs,
   wrappers,
   ...
-}: let
+}:
+let
   hyfetch-wrapped = wrappers.lib.wrapPackage {
     inherit pkgs;
     package = pkgs.hyfetch;
@@ -10,7 +11,8 @@
       "-p" = "transgender";
     };
   };
-in {
+in
+{
   basePackages = with pkgs; [
     alacritty
     emacs-pgtk
@@ -33,7 +35,10 @@ in {
     cloc
   ];
 
-  systemPackages = [hyfetch-wrapped pkgs.fastfetch];
+  systemPackages = [
+    hyfetch-wrapped
+    pkgs.fastfetch
+  ];
 
   fontPackages = with pkgs; [
     hack-font

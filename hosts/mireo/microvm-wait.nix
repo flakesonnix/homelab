@@ -10,7 +10,8 @@
   lib,
   pkgs,
   ...
-}: let
+}:
+let
   waitForVirtiofsd = pkgs.writeShellScript "microvm-wait-virtiofsd" ''
     set -eu
     vm="$1"
@@ -74,15 +75,17 @@
     echo "microvm-wait-virtiofsd@$vm: virtiofs sockets never bound" >&2
     exit 1
   '';
-in {
+in
+{
   # As drop-ins (not replacements): microvm.nix owns the instance units,
   # we only append the pre-start gate. Matches its own overrideStrategy.
-  systemd.services = lib.mapAttrs' (vmName: _:
+  systemd.services = lib.mapAttrs' (
+    vmName: _:
     lib.nameValuePair "microvm@${vmName}" {
       overrideStrategy = "asDropin";
       # Leading +: runs as root despite the unit's microvm user (needed
       # for the systemctl restart below).
-      serviceConfig.ExecStartPre = ["+${waitForVirtiofsd} ${vmName}"];
-    })
-  config.microvm.vms;
+      serviceConfig.ExecStartPre = [ "+${waitForVirtiofsd} ${vmName}" ];
+    }
+  ) config.microvm.vms;
 }

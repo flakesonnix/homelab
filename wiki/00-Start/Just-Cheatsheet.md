@@ -20,7 +20,7 @@ type: guide
 | `just check` | `nix run .#check` (full) |
 | `just check-full` | builds only |
 | `just update` | `nix flake update` |
-| `just fmt` | `nix fmt` (alejandra) |
+| `just fmt` / `just fmt-check` | Format/check tracked Nix source with RFC 166 nixfmt; skip generated hardware configs |
 | `just lint` | `statix check` |
 | `just sops [host]` | Generate `.sops/keys.txt`; install the private key on the target separately |
 | `just topology` | `nix build .#topology` → `result/{main,network}.svg`; CI updates `docs/topology/` |

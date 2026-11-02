@@ -2,7 +2,8 @@
   config,
   pkgs,
   ...
-}: {
+}:
+{
   nixpkgs.hostPlatform = "x86_64-freebsd";
   system.stateVersion = "26.11";
   networking.hostName = "p53-nixbsd";
@@ -25,7 +26,7 @@
   users.users.root.initialHashedPassword = "";
   users.users.lucy = {
     isNormalUser = true;
-    extraGroups = ["wheel"];
+    extraGroups = [ "wheel" ];
     initialHashedPassword = "!";
   };
   services.openssh.enable = false;
@@ -34,8 +35,16 @@
   # libtiff → lerc einen kaputten lerc-Patch (FreeBSD-Cross, „Reversed patch
   # detected") und damit den gesamten Image-Build runter. Fetch-Tool ist
   # hyfetch (liefert neowofetch als neofetch-Nachfolger gleich mit).
-  environment.systemPackages = with pkgs; [git vim htop hyfetch];
-  nix.settings.experimental-features = ["nix-command" "flakes"];
+  environment.systemPackages = with pkgs; [
+    git
+    vim
+    htop
+    hyfetch
+  ];
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
   nixbsd.enableExtraSubstituters = false;
 
   virtualisation.vmVariant.virtualisation = {

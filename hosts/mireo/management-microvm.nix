@@ -1,13 +1,16 @@
 # Management microVM: NetBox + LibreNMS
 # Network inventory and monitoring.
-{...}: {
+{ ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "management";
       ip = (import ./vm-ips.nix).netbox;
       mem = 1024;
       vcpu = 2;
-      tcpPorts = [22 443];
+      tcpPorts = [
+        22
+        443
+      ];
       volumes = [
         {
           image = "netbox-data.img";

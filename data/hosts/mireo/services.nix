@@ -64,7 +64,12 @@
       # EPVPN dialplan: 0-prefix specials (0310, 09…, 01999…) + 2100-7999
       # user range + emergency. Local numbers must avoid these (999/100/
       # phones do — no 0XXX/2XXX-7XXX locals, see module docs).
-      localPatterns = ["_0X." "_[2-7]XXX" "110" "112"];
+      localPatterns = [
+        "_0X."
+        "_[2-7]XXX"
+        "110"
+        "112"
+      ];
     };
     # Fax-only client (2nd EPVPN extension, no phone target): inbound to
     # its own number loops back into [fax-in]. Hairpin test: poller sends
@@ -75,12 +80,12 @@
       passwordFile = "/run/secrets/voip/eventphone-fax";
       did = "6983";
       inboundExtension = null; # fax-only (see faxDids)
-      faxDids = ["6983"];
+      faxDids = [ "6983" ];
     };
   };
   # sops.secrets."voip/easybell-main" = {};
-  sops.secrets."voip/eventphone" = {};
-  sops.secrets."voip/eventphone-fax" = {};
+  sops.secrets."voip/eventphone" = { };
+  sops.secrets."voip/eventphone-fax" = { };
 
   # --- Minecraft server (Paper + Geyser, manual ~/mcserver dir) ---
   # Only the SERVICE is declarative (modules/nixos/minecraft.nix): the unit
@@ -104,7 +109,7 @@
   # `mopidy` on Jellyfin (10.8.0.10), then replace the placeholder:
   #   sops set hosts/mireo/secrets.yaml '["mopidy"]["jellyfin-password"]' '"<pw>"'
   # Until then the jellyfin backend logs auth errors (others keep working).
-  sops.secrets."mopidy/jellyfin-password" = {};
+  sops.secrets."mopidy/jellyfin-password" = { };
 
   # --- Declarative Uptime Kuma monitors (authoritative API sync) ---
   # Targets verified live 2026-09-16 (only 2xx/3xx + reachable hosts).
@@ -278,61 +283,61 @@
       };
     };
   };
-  sops.secrets."uptime-kuma/admin-password" = {};
+  sops.secrets."uptime-kuma/admin-password" = { };
   # LLDAP admin password -> shared read-only into the lldap guest; the
   # guest-side staging unit (root) copies it to tmpfs, so host ownership
   # stays default (no uid pinning needed). Key must exist in
   # hosts/mireo/secrets.yaml (verified present).
-  sops.secrets."lldap/admin-password" = {};
+  sops.secrets."lldap/admin-password" = { };
   # Per-user passwords for the declarative seed (lldap-microvm.nix).
-  sops.secrets."lldap/users/lucy" = {};
-  sops.secrets."lldap/users/test" = {};
+  sops.secrets."lldap/users/lucy" = { };
+  sops.secrets."lldap/users/test" = { };
   # OIDC client secret for Grafana (created in the Pocket ID UI, step 3 of
   # hosts/mireo/pocket-id-microvm.nix bootstrap). Placeholder first:
   #   sops set hosts/mireo/secrets.yaml '["grafana"]["oidc-client-secret"]' '"CHANGEME"'
   # then the real secret after the OIDC client exists. Grafana keeps
   # anonymous Viewer access until then — no lockout while bootstrapping.
-  sops.secrets."grafana/oidc-client-secret" = {};
+  sops.secrets."grafana/oidc-client-secret" = { };
 
   # ── Homelab platform secrets ──────────────────────
   # LDAP
-  sops.secrets."ldap/replication-password" = {};
+  sops.secrets."ldap/replication-password" = { };
   # PostgreSQL databases
-  sops.secrets."database/keycloak" = {};
-  sops.secrets."database/nextcloud" = {};
-  sops.secrets."database/immich" = {};
-  sops.secrets."database/paperless" = {};
-  sops.secrets."database/netbox" = {};
-  sops.secrets."database/hydra" = {};
-  sops.secrets."database/woodpecker" = {};
-  sops.secrets."database/librenms" = {};
-  sops.secrets."database/matrix" = {};
+  sops.secrets."database/keycloak" = { };
+  sops.secrets."database/nextcloud" = { };
+  sops.secrets."database/immich" = { };
+  sops.secrets."database/paperless" = { };
+  sops.secrets."database/netbox" = { };
+  sops.secrets."database/hydra" = { };
+  sops.secrets."database/woodpecker" = { };
+  sops.secrets."database/librenms" = { };
+  sops.secrets."database/matrix" = { };
   # Keycloak
-  sops.secrets."database/keycloak-admin" = {};
+  sops.secrets."database/keycloak-admin" = { };
   # Devops
-  sops.secrets."devops/woodpecker-secret" = {};
-  sops.secrets."devops/netbox-secret" = {};
-  sops.secrets."devops/hydra-secret" = {};
+  sops.secrets."devops/woodpecker-secret" = { };
+  sops.secrets."devops/netbox-secret" = { };
+  sops.secrets."devops/hydra-secret" = { };
   # Registry
-  sops.secrets."registry/auth" = {};
+  sops.secrets."registry/auth" = { };
   # Matrix
-  sops.secrets."matrix/registration_shared_secret" = {};
-  sops.secrets."matrix/macaroon_secret" = {};
-  sops.secrets."matrix/form_secret" = {};
+  sops.secrets."matrix/registration_shared_secret" = { };
+  sops.secrets."matrix/macaroon_secret" = { };
+  sops.secrets."matrix/form_secret" = { };
   # ntfy
-  sops.secrets."ntfy/admin-token" = {};
+  sops.secrets."ntfy/admin-token" = { };
   # Backups
-  sops.secrets."backup/postgres" = {};
-  sops.secrets."backup/hydra" = {};
-  sops.secrets."backup/nextcloud" = {};
+  sops.secrets."backup/postgres" = { };
+  sops.secrets."backup/hydra" = { };
+  sops.secrets."backup/nextcloud" = { };
   # Nextcloud admin
-  sops.secrets."database/nextcloud-admin" = {};
+  sops.secrets."database/nextcloud-admin" = { };
   # Attic binary cache token secret (artifacts VM, environmentFile).
-  sops.secrets."artifacts/attic-env" = {};
+  sops.secrets."artifacts/attic-env" = { };
   # Management VM API tokens (least privilege: per-VM dir, not shared).
   # PLACEHOLDERS — mint real tokens in the LibreNMS/NetBox UIs, then:
   #   sops set hosts/mireo/secrets.yaml '["management"]["librenms-api-key"]' '"<token>"'
   #   sops set hosts/mireo/secrets.yaml '["management"]["netbox-api-token"]' '"<token>"'
-  sops.secrets."management/librenms-api-key" = {};
-  sops.secrets."management/netbox-api-token" = {};
+  sops.secrets."management/librenms-api-key" = { };
+  sops.secrets."management/netbox-api-token" = { };
 }

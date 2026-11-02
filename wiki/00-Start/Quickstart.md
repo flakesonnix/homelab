@@ -37,7 +37,8 @@ Details: [[40-Guides/Deploy-Rebuild|Deploy & rebuild]].
 nix run .#check-light   # eval surface: formatter, devShell, apps
 nix run .#check         # full: + dotfiles-tests build
 nix run .#check-full    # builds only
-nix fmt                 # alejandra
+nix fmt                 # RFC 166 nixfmt, tracked non-generated source
+nix fmt -- --check      # formatting check, no writes
 statix check            # lint (just lint)
 ```
 

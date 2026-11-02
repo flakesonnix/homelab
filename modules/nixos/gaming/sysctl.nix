@@ -2,10 +2,12 @@
   config,
   lib,
   ...
-}: let
+}:
+let
   cfg = config.lucy.gaming;
   inherit (cfg) sysctl;
-in {
+in
+{
   config = lib.mkIf (cfg.enable && sysctl.enable) {
     boot.kernel.sysctl = lib.filterAttrs (_: v: v != null) {
       # Scheduler
@@ -21,18 +23,10 @@ in {
       "fs.inotify.max_user_watches" = sysctl.fs.inotifyMaxWatches;
 
       # Network
-      "net.core.rmem_max" =
-        if sysctl.network.lowLatency
-        then sysctl.network.rmemMax
-        else null;
-      "net.core.wmem_max" =
-        if sysctl.network.lowLatency
-        then sysctl.network.wmemMax
-        else null;
+      "net.core.rmem_max" = if sysctl.network.lowLatency then sysctl.network.rmemMax else null;
+      "net.core.wmem_max" = if sysctl.network.lowLatency then sysctl.network.wmemMax else null;
       "net.ipv4.tcp_low_latency" =
-        if sysctl.network.lowLatency
-        then sysctl.network.tcpLowLatency
-        else null;
+        if sysctl.network.lowLatency then sysctl.network.tcpLowLatency else null;
     };
   };
 }

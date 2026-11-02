@@ -4,7 +4,8 @@
   nix-flatpak,
   frameworkLib,
   ...
-}: {
+}:
+{
   home-manager.backupFileExtension = "hm-backup";
 
   home-manager.users.lucy = {

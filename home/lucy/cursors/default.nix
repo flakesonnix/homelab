@@ -8,7 +8,7 @@ stdenvNoCC.mkDerivation {
 
   src = ./hello-kitty-peach-milk-donut;
 
-  nativeBuildInputs = [win2xcur];
+  nativeBuildInputs = [ win2xcur ];
 
   buildPhase = ''
         mkdir -p $out/share/icons/HelloKittyPeachMilkDonut/cursors
@@ -110,5 +110,5 @@ stdenvNoCC.mkDerivation {
 
   dontInstall = true;
 
-  outputs = ["out"];
+  outputs = [ "out" ];
 }

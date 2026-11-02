@@ -7,7 +7,8 @@
 # The generated SVG only exists as a store path at build time, so the fix is
 # applied by evaluating the pure function with `nix eval --file` inside a
 # thin runner; the shell is plumbing only (mktemp/mv), no fixer logic.
-pkgs: let
+pkgs:
+let
   inherit (pkgs) lib;
   defaultSpec = {
     minSpacing = 16;
@@ -19,27 +20,35 @@ pkgs: let
     iconPrefix = "M178.6 ";
     iconSuffix = "h8v8h-8z";
   };
-in {
+in
+{
   # Pure: fix the given SVG string with the given spec.
-  fixNetworkSvg = spec: svg: (import ./topology-fixer.nix {
-    inherit svg;
-    spec = defaultSpec // spec;
-  });
+  fixNetworkSvg =
+    spec: svg:
+    (import ./topology-fixer.nix {
+      inherit svg;
+      spec = defaultSpec // spec;
+    });
 
   # Build-time runner: fixes a generated SVG file in place via `nix eval`.
   # The fixer runs as pure Nix; the shell is plumbing only (mv/mktemp).
-  fixNetworkSvgApp = spec: let
-    fixer = pkgs.writeText "topology-fixer.nix" (builtins.readFile ./topology-fixer.nix);
-    expr = pkgs.writeText "fix-network-svg.nix" ''
-      (import ${fixer}) {
-        spec = builtins.fromJSON '''${builtins.toJSON (defaultSpec // spec)}''';
-        svg = builtins.readFile (builtins.getEnv "SVG_PATH");
-      }
-    '';
-  in
+  fixNetworkSvgApp =
+    spec:
+    let
+      fixer = pkgs.writeText "topology-fixer.nix" (builtins.readFile ./topology-fixer.nix);
+      expr = pkgs.writeText "fix-network-svg.nix" ''
+        (import ${fixer}) {
+          spec = builtins.fromJSON '''${builtins.toJSON (defaultSpec // spec)}''';
+          svg = builtins.readFile (builtins.getEnv "SVG_PATH");
+        }
+      '';
+    in
     pkgs.writeShellApplication {
       name = "fix-network-svg";
-      runtimeInputs = [pkgs.nix pkgs.coreutils];
+      runtimeInputs = [
+        pkgs.nix
+        pkgs.coreutils
+      ];
       text = ''
         set -euo pipefail
         svg="$(realpath "$1")"

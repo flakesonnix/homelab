@@ -4,9 +4,11 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   colors = config.lib.stylix.colors.withHashtag;
-in {
+in
+{
   config = lib.mkIf config.programs.zathura.enable {
     programs.zathura = {
       extraConfig = ''

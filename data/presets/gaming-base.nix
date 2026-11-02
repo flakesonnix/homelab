@@ -1,7 +1,7 @@
 {
   meta = {
     description = "Enable the shared gaming module baseline";
-    targets = ["host"];
+    targets = [ "host" ];
   };
 
   moduleFlags = {

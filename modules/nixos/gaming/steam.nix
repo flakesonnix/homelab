@@ -3,9 +3,11 @@
   lib,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.lucy.gaming;
-in {
+in
+{
   config = lib.mkIf cfg.enable {
     hardware.steam-hardware.enable = cfg.steam.enable;
     programs.steam.enable = cfg.steam.enable;
@@ -15,6 +17,6 @@ in {
       inherit (cfg.gamescope) enable;
       inherit (cfg.gamescope) capSysNice;
     };
-    environment.systemPackages = lib.optionals cfg.mangohud.enable [pkgs.mangohud];
+    environment.systemPackages = lib.optionals cfg.mangohud.enable [ pkgs.mangohud ];
   };
 }

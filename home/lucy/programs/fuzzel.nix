@@ -4,10 +4,12 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   theme = frameworkLib.theme.fromStylix config;
   inherit (theme) colors stripHash;
-in {
+in
+{
   config = lib.mkIf config.programs.fuzzel.enable {
     programs.fuzzel = {
       settings = lib.mkForce {
@@ -45,6 +47,6 @@ in {
       };
     };
 
-    home.packages = [pkgs.iosevka];
+    home.packages = [ pkgs.iosevka ];
   };
 }

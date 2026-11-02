@@ -1,7 +1,9 @@
 # Network sites for the homelab.
-{lib}: let
+{ lib }:
+let
   inherit (lib) types mkOption;
-in {
+in
+{
   sites = {
     lan = {
       name = "lan";

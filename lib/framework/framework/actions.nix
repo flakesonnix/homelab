@@ -1,4 +1,4 @@
-{symbols}: {
+{ symbols }: {
   builtin = name: {
     kind = "builtin";
     inherit name;

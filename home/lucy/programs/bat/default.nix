@@ -2,7 +2,8 @@
   config,
   lib,
   ...
-}: {
+}:
+{
   config = lib.mkIf config.programs.bat.enable {
     programs.bat = {
       config = {

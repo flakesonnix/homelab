@@ -3,9 +3,10 @@
   lib,
   pkgs,
   ...
-}: {
+}:
+{
   config = {
-    home.packages = [pkgs.easyeffects];
+    home.packages = [ pkgs.easyeffects ];
 
     xdg.configFile."easyeffects/config.json".text = builtins.toJSON {
       input = {

@@ -3,7 +3,7 @@
 # data/hosts/mireo/settings.nix), NICHT hier — ein zweiter DHCP-Server auf
 # br0 würde mit dem Host um Leases raufen. Diese Reservierung pinnt nur
 # 10.8.0.3 + den DNS-Namen für künftige Netzdienste.
-{...}: {
+{ ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "network-services";

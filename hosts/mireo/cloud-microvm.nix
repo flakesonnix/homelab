@@ -1,13 +1,16 @@
 # Cloud microVM: Nextcloud
 # Personal cloud storage and collaboration.
-{...}: {
+{ ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "cloud";
       ip = (import ./vm-ips.nix).nextcloud;
       mem = 2304; # NB: never exactly 2048 (QEMU hangs, microvm.nix#171)
       vcpu = 4;
-      tcpPorts = [22 443];
+      tcpPorts = [
+        22
+        443
+      ];
       volumes = [
         {
           image = "nextcloud-data.img";
@@ -35,7 +38,7 @@
         "d /data/nextcloud 0750 nextcloud nextcloud - -"
       ];
       config = {
-        imports = [(import ../../modules/nixos/nextcloud.nix)];
+        imports = [ (import ../../modules/nixos/nextcloud.nix) ];
         lucy.services.nextcloud = {
           enable = true;
           host = "nextcloud.home.arpa";

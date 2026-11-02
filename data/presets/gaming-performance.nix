@@ -1,7 +1,7 @@
 {
   meta = {
     description = "Apply gaming performance tuning and low-latency sysctl settings";
-    targets = ["host"];
+    targets = [ "host" ];
   };
 
   moduleFlags = {

@@ -3,10 +3,12 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.lucy.waydroid;
   package = config.virtualisation.waydroid.package;
-in {
+in
+{
   options.lucy.waydroid = {
     enable = lib.mkEnableOption "Waydroid Android container";
     gapps = lib.mkOption {
@@ -25,10 +27,17 @@ in {
 
     systemd.services.waydroid-gapps-init = lib.mkIf cfg.gapps {
       description = "Waydroid GApps image initialisation";
-      after = ["network-online.target"];
-      wants = ["network-online.target" "waydroid-container.service"];
-      wantedBy = ["multi-user.target"];
-      path = [package pkgs.curl pkgs.xz];
+      after = [ "network-online.target" ];
+      wants = [
+        "network-online.target"
+        "waydroid-container.service"
+      ];
+      wantedBy = [ "multi-user.target" ];
+      path = [
+        package
+        pkgs.curl
+        pkgs.xz
+      ];
       unitConfig.ConditionPathExists = "!/var/lib/waydroid/images/system.img";
       serviceConfig = {
         Type = "oneshot";

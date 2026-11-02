@@ -3,13 +3,16 @@
   pkgs,
   lib,
   ...
-}: let
+}:
+let
   colors = config.lib.stylix.colors.withHashtag;
   wallpaperUri =
-    if config.stylix.image != null
-    then "file://${toString config.stylix.image}"
-    else "file:///run/current-system/sw/share/backgrounds/gnome/adwaita-dark.svg";
-in {
+    if config.stylix.image != null then
+      "file://${toString config.stylix.image}"
+    else
+      "file:///run/current-system/sw/share/backgrounds/gnome/adwaita-dark.svg";
+in
+{
   options.programs.gnomeTheme.enable = lib.mkEnableOption "Clean macOS dark GNOME theme";
 
   config = lib.mkIf config.programs.gnomeTheme.enable {
@@ -75,7 +78,7 @@ in {
       };
 
       "org/gnome/mutter" = {
-        experimental-features = ["scale-monitor-framebuffer"];
+        experimental-features = [ "scale-monitor-framebuffer" ];
       };
 
       "org/gnome/settings-daemon/plugins/power" = {

@@ -4,7 +4,8 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   colors = config.lib.stylix.colors.withHashtag;
   css = frameworkLib.render.css;
   rules = [
@@ -40,7 +41,8 @@
       };
     }
   ];
-in {
+in
+{
   config = lib.mkIf config.programs.git.enable {
     programs.git = {
       settings = {

@@ -1,9 +1,11 @@
 # Declarative identity data model for OpenLDAP.
 # Users and groups are the source of truth for the directory.
 # Passwords live in SOPS, never here.
-{lib}: let
+{ lib }:
+let
   inherit (lib) types mkOption;
-in {
+in
+{
   # Base DN for the directory.
   baseDN = "dc=home,dc=arpa";
   domain = "home.arpa";
@@ -28,19 +30,19 @@ in {
       cn = "admins";
       gidNumber = 1000;
       description = "Administrative group";
-      members = ["lucy"];
+      members = [ "lucy" ];
     };
     users = {
       cn = "users";
       gidNumber = 1001;
       description = "Default user group";
-      members = ["lucy"];
+      members = [ "lucy" ];
     };
     services = {
       cn = "services";
       gidNumber = 1002;
       description = "Service accounts";
-      members = [];
+      members = [ ];
     };
   };
 

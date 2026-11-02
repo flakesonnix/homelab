@@ -1,4 +1,4 @@
-{lib}: {
+{ lib }: {
   lucy = {
     default = lib.fileContents ./keys/lucy.pub;
     git = lib.fileContents ./keys/lucy_git.pub;

@@ -1,7 +1,9 @@
 # Network networks definition.
-{lib}: let
+{ lib }:
+let
   inherit (lib) types mkOption;
-in {
+in
+{
   networks = {
     lan = {
       name = "lan";

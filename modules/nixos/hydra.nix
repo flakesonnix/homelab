@@ -3,25 +3,29 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.lucy.services.hydra;
-in {
+in
+{
   config = lib.mkIf cfg.enable {
-    networking.firewall.allowedTCPPorts = [443];
+    networking.firewall.allowedTCPPorts = [ 443 ];
     networking.firewall.interfaces."vm-devops" = {
-      allowedTCPPorts = [443];
+      allowedTCPPorts = [ 443 ];
     };
     systemd.services.hydra = {
       description = "Hydra CI build farm";
-      wantedBy = ["multi-user.target"];
-      after = ["postgresql.service"];
-      serviceConfig = {Type = "simple";};
+      wantedBy = [ "multi-user.target" ];
+      after = [ "postgresql.service" ];
+      serviceConfig = {
+        Type = "simple";
+      };
     };
     systemd.services.hydra-secrets-setup = {
       description = "Stage Hydra secrets from virtiofs share";
-      before = ["hydra.service"];
-      requiredBy = ["hydra.service"];
-      wantedBy = ["multi-user.target"];
+      before = [ "hydra.service" ];
+      requiredBy = [ "hydra.service" ];
+      wantedBy = [ "multi-user.target" ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;

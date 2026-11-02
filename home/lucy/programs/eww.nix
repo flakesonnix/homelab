@@ -4,7 +4,8 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   inherit (frameworkLib.render) css;
   theme = frameworkLib.theme.fromStylix config;
   inherit (theme) colors gradient;
@@ -19,7 +20,9 @@
     }
     {
       selector = "window";
-      declarations = {background = "transparent";};
+      declarations = {
+        background = "transparent";
+      };
     }
     {
       selector = ".sidebar";
@@ -36,7 +39,11 @@
     {
       selector = ".topbar";
       declarations = {
-        background = gradient "90deg" ["${colors.base00}f0" "${colors.base01}e8" "${colors.base02}de"];
+        background = gradient "90deg" [
+          "${colors.base00}f0"
+          "${colors.base01}e8"
+          "${colors.base02}de"
+        ];
         border = "1px solid ${colors.base0E}";
         border_radius = "20px";
         padding = "10px 16px";
@@ -61,7 +68,10 @@
     {
       selector = ".cluster";
       declarations = {
-        background = gradient "135deg" [colors.base01 colors.base02];
+        background = gradient "135deg" [
+          colors.base01
+          colors.base02
+        ];
         border = "1px solid ${colors.base03}";
         border_radius = "14px";
         padding = "6px 12px";
@@ -108,7 +118,9 @@
     }
     {
       selector = "scale";
-      declarations = {margin = "8px 0";};
+      declarations = {
+        margin = "8px 0";
+      };
     }
     {
       selector = ".ram-scale";
@@ -146,7 +158,10 @@
     {
       selector = ".power-btn";
       declarations = {
-        background = gradient "135deg" ["${colors.base08}88" "${colors.base09}88"];
+        background = gradient "135deg" [
+          "${colors.base08}88"
+          "${colors.base09}88"
+        ];
         border = "1px solid ${colors.base08}";
         border_radius = "12px";
         padding = "14px 24px";
@@ -159,7 +174,10 @@
     {
       selector = ".power-btn:hover";
       declarations = {
-        background = gradient "135deg" [colors.base08 colors.base09];
+        background = gradient "135deg" [
+          colors.base08
+          colors.base09
+        ];
       };
     }
     {
@@ -189,7 +207,10 @@
     {
       selector = ".chip";
       declarations = {
-        background = gradient "135deg" [colors.base01 colors.base02];
+        background = gradient "135deg" [
+          colors.base01
+          colors.base02
+        ];
         border = "1px solid ${colors.base03}";
         border_radius = "999px";
         padding = "6px 12px";
@@ -200,7 +221,11 @@
     {
       selector = ".chip-accent";
       declarations = {
-        background = gradient "90deg" [colors.base0E colors.base0D colors.base0C];
+        background = gradient "90deg" [
+          colors.base0E
+          colors.base0D
+          colors.base0C
+        ];
         color = colors.base00;
       };
     }
@@ -233,7 +258,10 @@
     {
       selector = ".launch-btn:hover";
       declarations = {
-        background = gradient "90deg" [colors.base01 colors.base02];
+        background = gradient "90deg" [
+          colors.base01
+          colors.base02
+        ];
         border = "1px solid ${colors.base0D}";
       };
     }
@@ -245,9 +273,13 @@
       };
     }
   ];
-in {
+in
+{
   config = lib.mkIf config.programs.eww.enable {
-    home.packages = [pkgs.eww pkgs.curl];
+    home.packages = [
+      pkgs.eww
+      pkgs.curl
+    ];
 
     xdg.configFile."eww/eww.yuck".text = ''
       (defpoll clock_time :interval "1s" "date +'%H:%M'")

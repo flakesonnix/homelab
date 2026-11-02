@@ -18,15 +18,17 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.lucy.services.minecraft;
-in {
+in
+{
   config = lib.mkIf cfg.enable {
     systemd.services.minecraft = {
       description = "Minecraft Java + Geyser server";
-      wantedBy = ["multi-user.target"];
-      after = ["network-online.target"];
-      wants = ["network-online.target"];
+      wantedBy = [ "multi-user.target" ];
+      after = [ "network-online.target" ];
+      wants = [ "network-online.target" ];
       serviceConfig = {
         Type = "simple";
         User = cfg.user;

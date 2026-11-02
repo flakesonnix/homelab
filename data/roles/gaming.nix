@@ -1,9 +1,9 @@
 {
   meta = {
     description = "Gaming stack with Steam, GameMode, and performance presets";
-    requires.host = ["desktop"];
-    conflicts.host = [];
-    targets = ["host"];
+    requires.host = [ "desktop" ];
+    conflicts.host = [ ];
+    targets = [ "host" ];
   };
 
   host = {

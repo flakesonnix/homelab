@@ -4,7 +4,8 @@
   lib,
   frameworkLib,
   ...
-}: let
+}:
+let
   bashPrompt = ''
     __lucy_git_branch() {
       local branch
@@ -30,11 +31,15 @@
 
     PROMPT_COMMAND=__lucy_prompt
   '';
-in {
+in
+{
   config = lib.mkIf config.programs.bash.enable {
     programs.bash = {
       enableCompletion = true;
-      historyControl = ["ignoreboth" "erasedups"];
+      historyControl = [
+        "ignoreboth"
+        "erasedups"
+      ];
       historyFileSize = 50000;
       historySize = 10000;
       shellAliases = {
@@ -67,9 +72,7 @@ in {
       EDITOR = lib.mkForce "${pkgs.neovim}/bin/nvim";
       VISUAL = lib.mkForce "${pkgs.neovim}/bin/nvim";
       TERMINAL = lib.mkForce (
-        if config.programs.alacritty.enable
-        then "${pkgs.alacritty}/bin/alacritty"
-        else "kgx"
+        if config.programs.alacritty.enable then "${pkgs.alacritty}/bin/alacritty" else "kgx"
       );
     };
   };

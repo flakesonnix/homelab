@@ -23,22 +23,36 @@ if ! [[ "$name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
   exit 1
 fi
 
-# Find next free 10.8.0.x for VMs (10.8.0.2-10.8.0.254, skip .1 host)
+# Find a free service address, including central reservations and disabled specs.
 next_vm_ip() {
   local used
-  used=$(grep -h 'ip = "10\.8\.0\.' hosts/mireo/*-microvm.nix 2>/dev/null | grep -oE '10\.8\.0\.[0-9]+' | cut -d. -f4 | sort -n || true)
-  local ip=9
-  for u in $used; do
-    if [[ "$u" -eq "$ip" ]]; then ip=$((ip+1)); else break; fi
+  used=$(grep -hoE '10\.8\.0\.[0-9]+' hosts/mireo/vm-ips.nix hosts/mireo/*-microvm.nix | cut -d. -f4 | sort -nu)
+  local ip
+  for ((ip=2; ip<=254; ip++)); do
+    # Never allocate from dnsmasq's dynamic client range.
+    if (( ip >= 100 && ip <= 199 )); then continue; fi
+    if ! grep -qx "$ip" <<< "$used"; then
+      echo "10.8.0.$ip"
+      return
+    fi
   done
-  if (( ip > 254 )); then echo "error: no free VM IP" >&2; exit 1; fi
-  echo "10.8.0.$ip"
+  echo "error: no free VM IP" >&2
+  return 1
 }
 
 case "$kind" in
   host)
     dir="hosts/$name"
-    if [[ -e "$dir" ]]; then echo "error: $dir already exists" >&2; exit 1; fi
+    if [[ -e "$dir" || -e "data/hosts/$name" ]]; then
+      echo "error: host directory or data for $name already exists" >&2
+      exit 1
+    fi
+    for marker in scaffold:host-definitions scaffold:host-registrations; do
+      if [[ $(grep -c "$marker" flake.nix) != 1 ]]; then
+        echo "error: expected one $marker marker in flake.nix" >&2
+        exit 1
+      fi
+    done
     mkdir -p "$dir"
     cat > "$dir/default.nix" <<EOF
 {nixos-hardware, ...}: {
@@ -58,7 +72,7 @@ EOF
 EOF
     cat > "$dir/hardware-configuration.nix" <<EOF
 # Generated with: nixos-generate-config --show-hardware-config > hosts/$name/hardware-configuration.nix
-# TODO: replace with real hardware config (or `nixos-generate-config` on the host)
+# TODO: replace with real hardware config (or nixos-generate-config on the host)
 {config, lib, pkgs, modulesPath, ...}: {
   imports = [ (modulesPath + "/installer/scan/not-detected.nix") ];
   boot.initrd.availableKernelModules = [];
@@ -76,33 +90,23 @@ EOF
 }
 EOF
     echo "Created $dir/ (default.nix, host.nix, hardware-configuration.nix) + data/hosts/$name/"
-    # auto-add to flake.nix if not already present
-    if ! grep -q "nixosConfigurations.$name" flake.nix; then
-      # Append <name>-config at the end of the mkHost let-block (closing
-      # "    };" directly followed by "  in").
-      awk -v n="$name" '
-        prev_close && $0 ~ /^  in$/ && !done {
-          print "    " n "-config = mkHost {";
-          print "      specialArgs = p53SpecialArgs;";
-          print "      modules = [ ./hosts/" n " ];";
-          print "    };";
-          done=1
-        }
-        { prev_close = ($0 ~ /^    \};$/); print }
-      ' flake.nix > /tmp/flake.nix.tmp && mv /tmp/flake.nix.tmp flake.nix
-      # Add the host at the start of the configuration map.
-      awk -v n="$name" '
-        $0 ~ /^[[:space:]]*nixosConfigurations = \{$/ && !done2 {
-          print;
-          print "            " n " = " n "-config;";
-          done2=1;
-          next
-        }
-        { print }
-      ' flake.nix > /tmp/flake.nix.tmp && mv /tmp/flake.nix.tmp flake.nix
-      echo "Added $name-config + nixosConfigurations.$name to flake.nix (add deploy.nodes.$name manually if needed)"
-    else
-      echo "flake.nix already contains $name (skipped auto-add)"
+    # Explicit markers survive nixfmt; never infer Nix structure from indentation.
+    temp=$(mktemp flake.nix.XXXXXX)
+    trap 'rm -f -- "$temp"' EXIT
+    awk -v n="$name" '
+      /# scaffold:host-definitions/ {
+        print "    " n "-config = mkHost {";
+        print "      specialArgs = p53SpecialArgs;";
+        print "      modules = [ ./hosts/" n " ];";
+        print "    };";
+      }
+      /# scaffold:host-registrations/ { print "            " n " = " n "-config;" }
+      { print }
+    ' flake.nix > "$temp"
+    mv -- "$temp" flake.nix
+    echo "Added $name-config + nixosConfigurations.$name to flake.nix (add deploy.nodes.$name manually if needed)"
+    if command -v nixfmt >/dev/null; then
+      nixfmt flake.nix "$dir/default.nix" "$dir/host.nix" "data/hosts/$name/settings.nix"
     fi
     echo "Next:"
     echo "  1. Edit $dir/host.nix and $dir/hardware-configuration.nix"
@@ -137,12 +141,20 @@ EOF
 EOF
     # auto-add import to hosts/mireo/default.nix if not already present
     if ! grep -q "$name-microvm.nix" hosts/mireo/default.nix; then
-      # insert before the closing ];
+      # Insert before the imports list closes, not before the module's closing }.
+      temp=$(mktemp hosts/mireo/default.nix.XXXXXX)
+      trap 'rm -f -- "$temp"' EXIT
       awk -v f="./$name-microvm.nix" '
-        /^\};/ && !done { print "    " f; done=1 }
+        /^[[:space:]]*imports = \[/ { in_imports=1 }
+        in_imports && /^[[:space:]]*\];/ && !done { print "    " f; done=1 }
         { print }
-      ' hosts/mireo/default.nix > /tmp/mireo-default.nix.tmp && mv /tmp/mireo-default.nix.tmp hosts/mireo/default.nix
+        END { if (!done) exit 1 }
+      ' hosts/mireo/default.nix > "$temp"
+      mv -- "$temp" hosts/mireo/default.nix
       echo "Added import ./$name-microvm.nix to hosts/mireo/default.nix"
+    fi
+    if command -v nixfmt >/dev/null; then
+      nixfmt "$file" hosts/mireo/default.nix
     fi
     echo "Created $file with IP $ip (vm-$name, br0)"
     echo "Next:"

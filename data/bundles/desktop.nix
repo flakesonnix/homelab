@@ -1,7 +1,7 @@
 {
   meta = {
     description = "Desktop GUI apps, stylix, and flatpak desktop integrations";
-    targets = ["home"];
+    targets = [ "home" ];
   };
 
   programs = {

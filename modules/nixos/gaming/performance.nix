@@ -2,14 +2,22 @@
   config,
   lib,
   ...
-}: let
+}:
+let
   cfg = config.lucy.gaming;
-in {
+in
+{
   config = lib.mkIf cfg.enable {
-    powerManagement.cpuFreqGovernor = lib.mkIf cfg.performance.enable (lib.mkDefault cfg.performance.cpuFreqGovernor);
+    powerManagement.cpuFreqGovernor = lib.mkIf cfg.performance.enable (
+      lib.mkDefault cfg.performance.cpuFreqGovernor
+    );
 
-    services.irqbalance.enable = lib.mkIf (cfg.performance.enable && cfg.performance.enableIrqbalance) (lib.mkDefault true);
+    services.irqbalance.enable = lib.mkIf (cfg.performance.enable && cfg.performance.enableIrqbalance) (
+      lib.mkDefault true
+    );
 
-    services.power-profiles-daemon.enable = lib.mkIf cfg.performance.disablePowerProfilesDaemon (lib.mkForce false);
+    services.power-profiles-daemon.enable = lib.mkIf cfg.performance.disablePowerProfilesDaemon (
+      lib.mkForce false
+    );
   };
 }

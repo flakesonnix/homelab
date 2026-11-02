@@ -4,28 +4,31 @@
   pkgs,
   frameworkLib,
   ...
-}: let
+}:
+let
   projectLib = frameworkLib;
   packageFramework = projectLib.framework.package;
-  inherit (import ../../lib/types.nix {inherit lib;}) checked packageRegistryType;
-  packageRegistry = checked packageRegistryType (import ../../data/packages/system.nix {inherit pkgs;});
-in {
+  inherit (import ../../lib/types.nix { inherit lib; }) checked packageRegistryType;
+  packageRegistry = checked packageRegistryType (
+    import ../../data/packages/system.nix { inherit pkgs; }
+  );
+in
+{
   options = with lib; {
-    lucy =
-      {
-        basePackages = mkOption {
-          type = types.listOf types.package;
-          default = [];
-        };
-        hostPackages = mkOption {
-          type = types.listOf types.package;
-          default = [];
-        };
-      }
-      // packageFramework.mkRegistryModule {
-        inherit lib;
-        registry = packageRegistry;
+    lucy = {
+      basePackages = mkOption {
+        type = types.listOf types.package;
+        default = [ ];
       };
+      hostPackages = mkOption {
+        type = types.listOf types.package;
+        default = [ ];
+      };
+    }
+    // packageFramework.mkRegistryModule {
+      inherit lib;
+      registry = packageRegistry;
+    };
   };
 
   config = {
@@ -38,13 +41,15 @@ in {
         target = "user";
       };
 
-    environment.systemPackages =
-      [pkgs.nodejs_22 pkgs.gnome-tweaks]
-      ++ packageFramework.collectTargetPackages {
-        enabledAttrs = config.lucy;
-        registry = packageRegistry;
-        target = "system";
-      };
+    environment.systemPackages = [
+      pkgs.nodejs_22
+      pkgs.gnome-tweaks
+    ]
+    ++ packageFramework.collectTargetPackages {
+      enabledAttrs = config.lucy;
+      registry = packageRegistry;
+      target = "system";
+    };
 
     programs.npm.enable = true;
     programs.npm.package = pkgs.nodejs_22;

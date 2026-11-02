@@ -2,7 +2,8 @@
   lib,
   nixGaming,
   ...
-}: {
+}:
+{
   imports = [
     nixGaming.nixosModules.pipewireLowLatency
     nixGaming.nixosModules.platformOptimizations

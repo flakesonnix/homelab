@@ -1,13 +1,17 @@
 # Artifacts microVM: Attic binary cache + OCI Registry
 # Binary cache and container registry.
-{...}: {
+{ ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "artifacts";
       ip = (import ./vm-ips.nix).attic;
       mem = 1024;
       vcpu = 2;
-      tcpPorts = [22 80 5000];
+      tcpPorts = [
+        22
+        80
+        5000
+      ];
       volumes = [
         {
           image = "attic-data.img";

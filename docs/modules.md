@@ -9,6 +9,35 @@ Importing an option-bearing module does not enable its feature.
 
 ## NixOS Modules (`modules/nixos/`)
 
+### `lucy-ca.nix`
+
+Installs the `lucy-ca` package and adds its public root certificate to the
+system trust bundle, preserving the standard public roots. Imported by the
+shared NixOS module set, every mireo microVM, and the PXE desktop installer.
+Each activated host also exposes the public root at `/etc/ssl/certs/lucy-ca.crt`.
+Firefox-enabled hosts also install the CA through the system-wide
+`Certificates.Install` policy; Home Manager's Firefox package uses the same
+store-backed certificate. No per-user certificate download is needed.
+
+```sh
+nix build .#lucy-ca
+# Public certificate: result/share/ca-certificates/lucy-ca.crt
+```
+
+Other NixOS configurations can import `nixosModules.lucy-ca` from this flake.
+Installing the package alone only provides the public certificate; the module
+also enables OS and Firefox trust. Non-NixOS clients can import the exported
+public certificate into their appropriate trust store.
+
+This packages mireo's existing **Caddy Local Authority - 2026 ECC Root**;
+it does not create or replace the issuer. The SHA-256 fingerprint is pinned to
+`de8a1c7b92633abf93b0e242a01f083812cf8241f6ac75c9b4e124fbde66564d`.
+Build checks validate the root and fingerprint. **Only `root.crt` is public**:
+the private CA key stays on mireo, never in Git, the package, or the Nix store.
+When rotating the CA, retrieve only the new public certificate over verified
+SSH, verify its fingerprint, update the package and pin, and rebuild clients.
+Do not remove an old trusted root until certificates using it have been replaced.
+
 ### `dwl-scroll.nix`
 
 `lucy.dwlScroll.enable` adds an opt-in upstream dwl 0.9 scrolling session.

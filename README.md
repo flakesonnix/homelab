@@ -35,7 +35,7 @@ It handles DHCP/DNS, IPv4 NAT, IPv6 via the FritzBox, NFS, Pixiecore/netboot.xyz
 Run from the repository root. Rebuild and deploy commands activate configurations; checks do not.
 
 ```sh
-nix develop                 # tools, including just, alejandra and statix
+nix develop                 # tools, including just, nixfmt and statix
 just check-light            # evaluate formatter/devShell/app outputs
 just check-full             # build the aggregate CI checks
 just rebuild                # switch the local p53 configuration via nh
@@ -52,6 +52,7 @@ just pxe-boot               # build optional custom Xfce installer, not default 
 * [Secrets](docs/secrets.md), [printing](docs/printing.md), [gaming](docs/gaming-p53.md) and [NFS clients](docs/nfs-ubuntu-client.md)
 * [Obsidian wiki](wiki/README.md) — navigation and operational summaries
 * [Experimental NixBSD bootstrap](nixbsd/README.md) — isolated subflake, not a Linux deploy target
+* [Contributing and repository conventions](CONTRIBUTING.md) — layout, RFC-based formatting and checks
 
 ## Structure
 

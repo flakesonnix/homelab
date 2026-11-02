@@ -24,11 +24,13 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   inherit (import ../../lib/secret-keys.nix pkgs) mkKeyGenService;
   vmIp = (import ./vm-ips.nix).pocket-id;
   lldapIp = (import ./vm-ips.nix).lldap;
-in {
+in
+{
   # LDAP bind reuses the LLDAP admin password (single source, no duplicated
   # secret): rendered into a dedicated dir so the guest share sees exactly
   # one file, not all of /run/secrets/lldap. Default template path is
@@ -42,7 +44,10 @@ in {
       ip = vmIp;
       mem = 512;
       vcpu = 1;
-      tcpPorts = [22 1411];
+      tcpPorts = [
+        22
+        1411
+      ];
       volumes = [
         {
           image = "pocket-id-data.img";
@@ -79,9 +84,9 @@ in {
         # pocket-id only ever sees /run/pocket-id).
         systemd.services.pocket-id-secrets-setup = {
           description = "Stage Pocket ID secrets from virtiofs share into tmpfs";
-          before = ["pocket-id.service"];
-          requiredBy = ["pocket-id.service"];
-          wantedBy = ["multi-user.target"];
+          before = [ "pocket-id.service" ];
+          requiredBy = [ "pocket-id.service" ];
+          wantedBy = [ "multi-user.target" ];
           serviceConfig = {
             Type = "oneshot";
             RemainAfterExit = true;

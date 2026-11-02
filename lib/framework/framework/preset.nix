@@ -1,4 +1,3 @@
 {
-  mergePresets = presets:
-    builtins.foldl' (acc: preset: acc // preset) {} presets;
+  mergePresets = presets: builtins.foldl' (acc: preset: acc // preset) { } presets;
 }

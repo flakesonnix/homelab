@@ -42,9 +42,13 @@ check:
 update:
     nix run .#update
 
-# Format all nix files (alejandra)
+# Format tracked, non-generated Nix source (RFC 166 nixfmt)
 fmt:
     nix fmt
+
+# Check formatting without changing source files
+fmt-check:
+    nix fmt -- --check
 
 # Lint with statix
 lint:

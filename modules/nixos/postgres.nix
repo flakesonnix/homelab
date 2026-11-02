@@ -3,25 +3,29 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.lucy.services.postgres;
-in {
+in
+{
   config = lib.mkIf cfg.enable {
-    networking.firewall.allowedTCPPorts = [cfg.port];
+    networking.firewall.allowedTCPPorts = [ cfg.port ];
     networking.firewall.interfaces."vm-postgres" = {
-      allowedTCPPorts = [cfg.port];
+      allowedTCPPorts = [ cfg.port ];
     };
     systemd.services.postgresql = {
       description = "PostgreSQL database server";
-      wantedBy = ["multi-user.target"];
-      after = ["network.target"];
-      serviceConfig = {Type = "simple";};
+      wantedBy = [ "multi-user.target" ];
+      after = [ "network.target" ];
+      serviceConfig = {
+        Type = "simple";
+      };
     };
     systemd.services.postgres-secrets-setup = {
       description = "Stage PostgreSQL secrets from virtiofs share";
-      before = ["postgresql.service"];
-      requiredBy = ["postgresql.service"];
-      wantedBy = ["multi-user.target"];
+      before = [ "postgresql.service" ];
+      requiredBy = [ "postgresql.service" ];
+      wantedBy = [ "multi-user.target" ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;

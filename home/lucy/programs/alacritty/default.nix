@@ -2,9 +2,11 @@
   config,
   lib,
   ...
-}: let
+}:
+let
   colors = config.lib.stylix.colors.withHashtag;
-in {
+in
+{
   config = lib.mkIf config.programs.alacritty.enable {
     programs.alacritty.settings = {
       env.TERM = "xterm-256color";

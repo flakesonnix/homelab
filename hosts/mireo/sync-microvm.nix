@@ -1,13 +1,17 @@
 # Sync microVM: Syncthing
 # File synchronization across devices.
-{...}: {
+{ ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "sync";
       ip = (import ./vm-ips.nix).syncthing;
       mem = 512;
       vcpu = 1;
-      tcpPorts = [22 8384 22000];
+      tcpPorts = [
+        22
+        8384
+        22000
+      ];
       volumes = [
         {
           image = "syncthing-data.img";
@@ -27,11 +31,14 @@
         "d /data/syncthing 0750 syncthing syncthing - -"
       ];
       config = {
-        imports = [(import ../../modules/nixos/syncthing.nix)];
+        imports = [ (import ../../modules/nixos/syncthing.nix) ];
         lucy.services.syncthing = {
           enable = true;
           dataDir = "/data/syncthing";
-          ports = [8384 22000];
+          ports = [
+            8384
+            22000
+          ];
         };
       };
     })

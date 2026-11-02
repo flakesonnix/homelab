@@ -3,21 +3,28 @@
   pkgs,
   yammat,
   ...
-}: let
+}:
+let
   inherit (import ../../lib/secret-keys.nix pkgs) mkKeyGenService;
   yammatPackage = yammat.packages.${pkgs.stdenv.hostPlatform.system}.yammat.overrideAttrs (old: {
-    meta = (old.meta or {}) // {mainProgram = "yammat";};
+    meta = (old.meta or { }) // {
+      mainProgram = "yammat";
+    };
   });
-in {
+in
+{
   imports = [
     (import ./mk-microvm.nix {
       name = "yammat";
       ip = (import ./vm-ips.nix).yammat;
       mem = 2304;
       vcpu = 2;
-      tcpPorts = [22 3000];
+      tcpPorts = [
+        22
+        3000
+      ];
       # Writable CWD for the app key (see WorkingDirectory below).
-      tmpfiles = ["d /var/lib/yammat/config 0750 yammat yammat - -"];
+      tmpfiles = [ "d /var/lib/yammat/config 0750 yammat yammat - -" ];
       volumes = [
         {
           image = "yammat-postgres.img";
@@ -82,8 +89,8 @@ in {
         };
 
         systemd.services.yammat = {
-          after = ["postgresql.service"];
-          requires = ["postgresql.service"];
+          after = [ "postgresql.service" ];
+          requires = [ "postgresql.service" ];
           # App resolves config/client_session_key.aes relative to CWD;
           # the package dir in the store is read-only, so run from state.
           serviceConfig.WorkingDirectory = lib.mkForce "/var/lib/yammat";

@@ -1,13 +1,16 @@
 # DevOps microVM: Woodpecker + Hydra
 # CI/CD build services.
-{...}: {
+{ ... }: {
   imports = [
     (import ./mk-microvm.nix {
       name = "devops";
       ip = (import ./vm-ips.nix).woodpecker;
       mem = 2048;
       vcpu = 4;
-      tcpPorts = [22 80];
+      tcpPorts = [
+        22
+        80
+      ];
       volumes = [
         {
           image = "woodpecker-data.img";

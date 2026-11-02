@@ -23,7 +23,13 @@ nyagate is retired; there is no root live-ISO configuration. The optional Xfce
 PXE installer is a package, not a deploy target. `nixbsd/` is a separate
 experimental flake with its own lockfile; see `nixbsd/README.md`.
 
-perSystem: `formatter=alejandra`, devShell (alejandra/statix/nix-tree/go/nodejs_22/just/fzf), `topology.modules=[topology.nix]`, packages (`full-ci-checks`, `topology`, `nixfleet-api/agent/web/manifest/ui`, `nixfleet` CLI, `dwl-scroll`, `lucy-ca`, `pxe-desktop-boot`), apps (`rebuild/check/check-light/check-full/update/deploy-*/setup-sops/nixfleet/nixfleet-manifest/menu`).
+perSystem: `formatter` wraps RFC 166 `nixfmt` for tracked non-generated source;
+devShell includes nixfmt/statix/nix-tree/go/nodejs_22/just/fzf.
+`topology.modules=[topology.nix]`; packages: `full-ci-checks`, `topology`,
+`nixfleet-api/agent/web/manifest/ui`, `nixfleet` CLI, `dwl-scroll`, `lucy-ca`,
+`pxe-desktop-boot`. App names are unchanged; their definitions live in
+`flake/apps.nix`. The optional PXE build is in `hosts/pxe-desktop/boot.nix`.
+See `CONTRIBUTING.md` for RFC scope and repository conventions.
 
 Exported NixOS modules: `nixos`, `home`, `dwl-scroll`, `lucy-ca`. The dwl checks
 cover the default/no-Xwayland packages, opt-in module behavior, headless runtime
@@ -31,7 +37,7 @@ and typed settings/keymaps. They are included in `full-ci-checks`.
 
 ## CI (`.github/workflows/ci.yml`, 6 jobs, push to master + PR, cancel-in-progress)
 
-- `check-light` — eval formatter/devShell/apps
+- `check-light` — eval formatter/devShell/apps + build formatting/repository-tooling checks
 - `check-full` — `nix build .#full-ci-checks`
 - `eval` — p53 toplevel eval
 - `nixfleet` — Go + frontend tests

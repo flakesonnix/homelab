@@ -10,15 +10,17 @@
   config,
   pkgs,
   ...
-}: let
+}:
+let
   cfg = config.lucy.services.mopidy;
-in {
+in
+{
   config = lib.mkIf cfg.enable {
     # ALSA devices are root:audio by default; mopidy joins audio via the
     # upstream module. Stable device name (no cardN guessing): verify with
     # `aplay -L` on the host, adjust lucy.services.mopidy.alsaDevice.
-    users.users.mopidy.extraGroups = ["audio"];
-    boot.kernelModules = ["snd-usb-audio"];
+    users.users.mopidy.extraGroups = [ "audio" ];
+    boot.kernelModules = [ "snd-usb-audio" ];
 
     services.mopidy = {
       enable = true;
@@ -43,7 +45,7 @@ in {
       # Jellyfin credentials: rendered by sops-nix, applied after the main
       # config (later files win). Key must exist in hosts/mireo/secrets.yaml
       # or activation fails — see data/hosts/mireo/services.nix.
-      extraConfigFiles = [config.sops.templates."mopidy/jellyfin".path];
+      extraConfigFiles = [ config.sops.templates."mopidy/jellyfin".path ];
     };
 
     # Mopidy scans local files on demand (`mopidy local scan` / mpc update);
